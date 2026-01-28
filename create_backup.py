@@ -106,17 +106,16 @@ def main():
         "*.cjs",
         "*.lock",
         "*.css",
+        "*",
     ]
 
     exclude_dirs = {
         # "mkdocs",
         # "swagger_offlain",
         "filestore",
-        "dist",
         ".venv",
         "node_modules",
         "__pycache__",
-        ".git",
     }
 
     # Create archive
