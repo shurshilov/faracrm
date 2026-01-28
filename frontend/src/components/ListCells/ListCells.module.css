@@ -1,0 +1,44 @@
+/* Boolean Cell */
+.booleanDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--mantine-color-gray-4);
+  flex-shrink: 0;
+}
+
+.booleanDot[data-active] {
+  background-color: var(--mantine-color-green-6);
+  box-shadow: 0 0 4px var(--mantine-color-green-4);
+}
+
+/* Relation Cell */
+.relationLink {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.relationLink:hover {
+  text-decoration: underline;
+}
+
+.relationBadge {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.relationBadge:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--mantine-shadow-xs);
+}
+
+/* DateTime Cell */
+.dateIcon {
+  color: var(--mantine-color-dimmed);
+  flex-shrink: 0;
+}
+
+.dateText {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

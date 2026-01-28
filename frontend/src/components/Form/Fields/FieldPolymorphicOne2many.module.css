@@ -1,0 +1,42 @@
+.dropzone {
+  border: 2px dashed var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mantine-color-gray-0);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropzone:hover {
+  border-color: var(--mantine-color-blue-4);
+  background-color: var(--mantine-color-blue-0);
+}
+
+.dropzone[data-drag-over] {
+  border-color: var(--mantine-color-blue-5);
+  background-color: var(--mantine-color-blue-1);
+}
+
+.dropzone[data-loading] {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-md);
+  background-color: var(--mantine-color-gray-0);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.addButton:hover {
+  border-color: var(--mantine-color-blue-4);
+  background-color: var(--mantine-color-blue-0);
+}
+
+.addButton:hover svg {
+  color: var(--mantine-color-blue-5) !important;
+}

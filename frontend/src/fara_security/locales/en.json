@@ -1,0 +1,53 @@
+{
+  "terminateAllSessions": "Terminate all sessions",
+  "confirmTerminate": "Confirmation",
+  "terminateAllConfirmText": "Are you sure you want to terminate all active sessions except the current one?",
+  "terminate": "Terminate",
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "code": "Code",
+    "active": "Active",
+    "model_id": "Model",
+    "role_id": "Role",
+    "perm_create": "Create",
+    "perm_read": "Read",
+    "perm_update": "Update",
+    "perm_delete": "Delete",
+    "permissions": "Permissions",
+    "user_id": "User",
+    "token": "Token",
+    "ttl": "TTL",
+    "expired_datetime": "Expires",
+    "create_datetime": "Created",
+    "create_user_id": "Created By",
+    "update_datetime": "Updated",
+    "update_user_id": "Updated By",
+    "acl_ids": "Access Lists",
+    "rule_ids": "Rules",
+    "user_ids": "Users"
+  },
+  "sections": {
+    "basicInfo": "Basic Information",
+    "permissions": "Permissions",
+    "sessionInfo": "Session Info",
+    "lifetime": "Lifetime",
+    "audit": "Audit"
+  },
+  "tabs": {
+    "acl": "Access Lists",
+    "rules": "Rules",
+    "users": "Users"
+  },
+  "menu": {
+    "title": "Security",
+    "security": "Security",
+    "other": "Other",
+    "roles": "Roles",
+    "rules": "Rules",
+    "access_list": "Access List",
+    "sessions": "Sessions",
+    "models": "Models",
+    "apps": "Applications"
+  }
+}

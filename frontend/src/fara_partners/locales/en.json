@@ -1,0 +1,30 @@
+{
+  "menu": {
+    "title": "Partners",
+    "partners": "Partners",
+    "contacts": "Contacts"
+  },
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "mobile": "Mobile",
+    "website": "Website",
+    "company_id": "Company",
+    "user_id": "Salesperson",
+    "parent_id": "Parent Partner",
+    "vat": "Tax ID",
+    "tz": "Timezone",
+    "lang": "Language",
+    "notes": "Notes",
+    "active": "Active",
+    "child_ids": "Child Partners",
+    "contact_ids": "Contacts",
+    "contact_type": "Contact Type",
+    "is_primary": "Primary"
+  },
+  "partners": {
+    "title": "Partners"
+  }
+}

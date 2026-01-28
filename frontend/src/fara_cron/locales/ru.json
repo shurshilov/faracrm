@@ -1,0 +1,38 @@
+{
+  "menu": {
+    "cron_job": "Крон задачи"
+  },
+  "fields": {
+    "id": "ID",
+    "name": "Название",
+    "active": "Активна",
+    "code": "Код (Python)",
+    "model_name": "Модель",
+    "method_name": "Метод",
+    "args": "Аргументы (JSON)",
+    "kwargs": "Именованные аргументы (JSON)",
+    "interval_number": "Интервал",
+    "interval_type": "Тип интервала",
+    "numbercall": "Макс. запусков",
+    "doall": "Выполнить пропущенные",
+    "nextcall": "Следующий запуск",
+    "lastcall": "Последний запуск",
+    "last_status": "Статус",
+    "last_error": "Последняя ошибка",
+    "last_duration": "Длительность (сек)",
+    "run_count": "Кол-во запусков",
+    "priority": "Приоритет",
+    "timeout": "Таймаут (сек)"
+  },
+  "sections": {
+    "main": "Основная информация",
+    "code": "Код",
+    "method": "Метод модели",
+    "schedule": "Расписание",
+    "history": "История"
+  },
+  "actions": {
+    "run_now": "Запустить сейчас",
+    "toggle": "Вкл/Выкл"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "fields": {
+    "id": "ID",
+    "code": "Код",
+    "name": "Название",
+    "flag": "Флаг",
+    "active": "Активен"
+  },
+  "sections": {
+    "language": "Язык"
+  },
+  "menu": {
+    "title": "Языки",
+    "language": "Языки"
+  }
+}

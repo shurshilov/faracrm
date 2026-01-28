@@ -1,0 +1,21 @@
+{
+  "title": "Saved Filters",
+  "menu": {
+    "saved_filters": "Saved Filters"
+  },
+  "fields": {
+    "name": "Name",
+    "model_name": "Model",
+    "filter_data": "Filter Data (JSON)",
+    "is_global": "Global",
+    "is_default": "Default",
+    "use_count": "Use Count",
+    "last_used_at": "Last Used",
+    "created_at": "Created At",
+    "user_id": "Owner"
+  },
+  "tabs": {
+    "filter": "Filter Conditions",
+    "stats": "Statistics"
+  }
+}

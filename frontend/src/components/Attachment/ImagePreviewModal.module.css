@@ -1,0 +1,59 @@
+.modalContent {
+  background-color: rgba(0, 0, 0, 0.95);
+}
+
+.modalBody {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}
+
+.imageContainer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px 20px;
+  overflow: hidden;
+  cursor: zoom-out;
+}
+
+.imageWrapper {
+  transition: transform 0.2s ease;
+  cursor: default;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.image {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+}
+
+.navButton {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1001;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.navButton:hover {
+  opacity: 1;
+}

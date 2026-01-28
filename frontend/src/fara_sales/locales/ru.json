@@ -1,0 +1,44 @@
+{
+  "menu": {
+    "title": "Продажи",
+    "sale": "Заказы",
+    "sale_line": "Позиции заказа",
+    "sale_stage": "Стадии",
+    "tax": "Налоги"
+  },
+  "sales": {
+    "title": "Заказы на продажу",
+    "name": "Номер заказа",
+    "date_order": "Дата заказа",
+    "parent_id": "Клиент",
+    "user_id": "Менеджер",
+    "company_id": "Компания",
+    "origin": "Источник",
+    "notes": "Заметки",
+    "active": "Активен",
+    "order_line_ids": "Позиции заказа",
+    "email": "Email",
+    "phone": "Телефон",
+    "mobile": "Мобильный",
+    "website": "Вебсайт"
+  },
+  "sale_line": {
+    "title": "Позиции заказа",
+    "sale_id": "Заказ",
+    "sequence": "Последовательность",
+    "product_id": "Товар",
+    "product_uom_qty": "Количество",
+    "product_uom_id": "Ед. измерения",
+    "price_unit": "Цена за ед.",
+    "discount": "Скидка (%)",
+    "tax_id": "Налог",
+    "price_subtotal": "Подитог",
+    "price_tax": "Сумма налога",
+    "price_total": "Итого",
+    "notes": "Заметки"
+  },
+  "tax": {
+    "title": "Налоги",
+    "name": "Название налога"
+  }
+}

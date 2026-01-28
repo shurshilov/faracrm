@@ -1,0 +1,38 @@
+{
+  "menu": {
+    "cron_job": "Scheduled Tasks"
+  },
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "active": "Active",
+    "code": "Code (Python)",
+    "model_name": "Model",
+    "method_name": "Method",
+    "args": "Arguments (JSON)",
+    "kwargs": "Keyword Arguments (JSON)",
+    "interval_number": "Interval",
+    "interval_type": "Interval Type",
+    "numbercall": "Max Runs",
+    "doall": "Run Missed",
+    "nextcall": "Next Run",
+    "lastcall": "Last Run",
+    "last_status": "Status",
+    "last_error": "Last Error",
+    "last_duration": "Duration (sec)",
+    "run_count": "Run Count",
+    "priority": "Priority",
+    "timeout": "Timeout (sec)"
+  },
+  "sections": {
+    "main": "Main Information",
+    "code": "Code",
+    "method": "Model Method",
+    "schedule": "Schedule",
+    "history": "History"
+  },
+  "actions": {
+    "run_now": "Run Now",
+    "toggle": "Toggle"
+  }
+}

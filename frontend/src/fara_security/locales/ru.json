@@ -1,0 +1,53 @@
+{
+  "terminateAllSessions": "Завершить все сессии",
+  "confirmTerminate": "Подтверждение",
+  "terminateAllConfirmText": "Вы уверены, что хотите завершить все активные сессии кроме текущей?",
+  "terminate": "Завершить",
+  "fields": {
+    "id": "ID",
+    "name": "Название",
+    "code": "Код",
+    "active": "Активен",
+    "model_id": "Модель",
+    "role_id": "Роль",
+    "perm_create": "Создание",
+    "perm_read": "Чтение",
+    "perm_update": "Изменение",
+    "perm_delete": "Удаление",
+    "permissions": "Разрешения",
+    "user_id": "Пользователь",
+    "token": "Токен",
+    "ttl": "Время жизни",
+    "expired_datetime": "Истекает",
+    "create_datetime": "Создано",
+    "create_user_id": "Создал",
+    "update_datetime": "Изменено",
+    "update_user_id": "Изменил",
+    "acl_ids": "Права доступа",
+    "rule_ids": "Правила",
+    "user_ids": "Пользователи"
+  },
+  "sections": {
+    "basicInfo": "Основная информация",
+    "permissions": "Права доступа",
+    "sessionInfo": "Информация о сессии",
+    "lifetime": "Время жизни",
+    "audit": "Аудит"
+  },
+  "tabs": {
+    "acl": "Права доступа",
+    "rules": "Правила",
+    "users": "Пользователи"
+  },
+  "menu": {
+    "title": "Безопасность",
+    "security": "Безопасность",
+    "other": "Прочее",
+    "roles": "Роли",
+    "rules": "Правила",
+    "access_list": "Права доступа",
+    "sessions": "Сессии",
+    "models": "Модели",
+    "apps": "Приложения"
+  }
+}

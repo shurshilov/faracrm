@@ -1,0 +1,39 @@
+.container {
+  width: 320px;
+  background: var(--mantine-color-body);
+  border-radius: var(--mantine-radius-md);
+}
+
+.tabs {
+  padding: 8px;
+}
+
+.tabsList {
+  gap: 2px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+}
+
+.tab {
+  padding: 4px 8px;
+  min-width: auto;
+  font-size: 16px;
+}
+
+.emoji {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: var(--mantine-radius-sm);
+  transition: background-color 150ms ease;
+}
+
+.emoji:hover {
+  background-color: var(--mantine-color-default-hover);
+}

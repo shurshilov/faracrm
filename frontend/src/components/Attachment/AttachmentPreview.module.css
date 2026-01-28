@@ -1,0 +1,98 @@
+.container {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-sm);
+  max-width: 280px;
+}
+
+.audioContainer {
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.preview {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+.image {
+  object-fit: cover;
+}
+
+.iconWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: light-dark(
+    var(--mantine-color-gray-1),
+    var(--mantine-color-dark-6)
+  );
+  border-radius: var(--mantine-radius-md);
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.filename {
+  word-break: break-word;
+}
+
+/* Компактный режим для ChatInput */
+.compactContainer {
+  position: relative;
+  border-radius: var(--mantine-radius-sm);
+  overflow: hidden;
+  background-color: light-dark(
+    var(--mantine-color-gray-1),
+    var(--mantine-color-dark-6)
+  );
+}
+
+.compactAudio,
+.compactFile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: var(--mantine-spacing-xs);
+  gap: 4px;
+}
+
+.compactName {
+  text-align: center;
+  max-width: 100%;
+  font-size: 10px;
+  color: light-dark(
+    var(--mantine-color-gray-6),
+    var(--mantine-color-gray-5)
+  );
+}
+
+.compactDeleteBtn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+  }
+}

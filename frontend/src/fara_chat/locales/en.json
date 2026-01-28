@@ -1,0 +1,386 @@
+{
+  "menu": {
+    "chat_connector": "Connectors",
+    "chat_external_account": "External Accounts",
+    "chat_external_chat": "External Chats",
+    "chat_external_message": "External Messages"
+  },
+  "chats": "Chats",
+  "newChat": "New Chat",
+  "searchChats": "Search chats...",
+  "noChats": "No chats yet",
+  "noChatsFound": "No chats found",
+  "noMessages": "No messages",
+  "yesterday": "Yesterday",
+  "today": "Today",
+  "errorLoadingChats": "Error loading chats",
+  "errorLoadingMessages": "Error loading messages",
+  "noMessagesYet": "No messages yet",
+  "startConversation": "Start a conversation by sending a message",
+  "typeMessage": "Type a message...",
+  "send": "Send",
+  "attach": "Attach",
+  "attachImage": "Image",
+  "attachFile": "File",
+  "emoji": "Emoji",
+  "search": "Search",
+  "options": "Options",
+  "addMember": "Add member",
+  "notifications": "Notifications",
+  "settings": "Settings",
+  "deleteChat": "Delete chat",
+  "leaveChat": "Leave chat",
+  "online": "Online",
+  "offline": "Offline",
+  "userTyping": "{{name}} is typing...",
+  "usersTyping": "{{count}} users are typing...",
+  "membersCount": "{{count}} members",
+  "selectChatOrCreate": "Select a chat or create a new one",
+  "directChat": "Direct",
+  "groupChat": "Group",
+  "groupName": "Group name",
+  "enterGroupName": "Enter group name",
+  "selectUser": "Select user",
+  "selectMembers": "Select members",
+  "searchUsers": "Search users...",
+  "typeToSearch": "Type at least 2 characters to search",
+  "searching": "Searching...",
+  "noUsersFound": "No users found",
+  "directChatHint": "Start a private conversation with another user",
+  "groupChatHint": "Create a group chat with multiple members",
+  "cancel": "Cancel",
+  "create": "Create",
+  "chatSettings": "Chat Settings",
+  "loading": "Loading...",
+  "chatName": "Chat name",
+  "enterChatName": "Enter chat name",
+  "description": "Description",
+  "enterDescription": "Enter description",
+  "members": "Members",
+  "you": "you",
+  "removeMember": "Remove member",
+  "dangerZone": "Danger zone",
+  "save": "Save",
+  "channel": "Channel",
+  "copyText": "Copy text",
+  "downloadFile": "Download file",
+  "edit": "Edit",
+  "delete": "Delete",
+  "pin": "Pin",
+  "unpin": "Unpin",
+  "markAsUnread": "Mark as unread",
+  "forward": "Forward",
+  "pinned": "Pinned",
+  "edited": "edited",
+  "textCopied": "Text copied",
+  "messageEdited": "Message edited",
+  "messageDeleted": "Message deleted",
+  "messagePinned": "Message pinned",
+  "messageUnpinned": "Message unpinned",
+  "markedAsUnread": "Marked as unread",
+  "messageForwarded": "Message forwarded",
+  "errorEditingMessage": "Error editing message",
+  "errorDeletingMessage": "Error deleting message",
+  "errorPinningMessage": "Error pinning message",
+  "errorMarkingUnread": "Error marking as unread",
+  "errorForwardingMessage": "Error forwarding message",
+  "errorAddingReaction": "Error adding reaction",
+  "editMessage": "Edit message",
+  "messageText": "Message text",
+  "forwardMessage": "Forward message",
+  "selectChat": "Select chat",
+  "selectReaction": "Select reaction",
+  "pinnedMessages": "Pinned messages",
+  "noPinnedMessages": "No pinned messages",
+  "read": "Read",
+  "delivered": "Delivered",
+  "openChat": "Open chats",
+  "recordVoice": "Record voice message",
+  "stopRecording": "Stop recording",
+  "attachedFiles": "Attached: {{count}}",
+  "clearAll": "Clear all",
+  "all": "All",
+  "internal": "Internal",
+  "telegram": "Telegram",
+  "whatsapp": "WhatsApp",
+
+  "permissions": {
+    "title": "Permissions",
+    "canRead": "Can read messages",
+    "canWrite": "Can send messages",
+    "canInvite": "Can invite members",
+    "canPin": "Can pin messages",
+    "canDeleteOthers": "Can delete others' messages",
+    "isAdmin": "Administrator",
+    "defaultPermissions": "Default permissions for new members",
+    "memberPermissions": "Member permissions",
+    "noPermission": "You don't have permission to do this",
+    "readOnly": "Read only",
+    "cannotWrite": "You cannot send messages in this chat",
+    "cannotInvite": "You cannot invite members to this chat",
+    "cannotPin": "You cannot pin messages in this chat",
+    "cannotDelete": "You cannot delete this message"
+  },
+  
+  "connector": {
+    "title": "Chat Connectors",
+    "singular": "Connector",
+    "plural": "Connectors",
+    "menu": "Connectors",
+    
+    "fields": {
+      "name": "Name",
+      "active": "Active",
+      "type": "Type",
+      "category": "Category",
+      "connectorUrl": "API URL",
+      "webhookUrl": "Webhook URL",
+      "webhookHash": "Secret Hash",
+      "webhookState": "Webhook Status",
+      "accessToken": "Access Token",
+      "accessTokenType": "Token Type",
+      "accessTokenExpired": "Expires",
+      "refreshToken": "Refresh Token",
+      "refreshTokenExpired": "Expires",
+      "clientAppId": "App ID",
+      "externalAccountId": "External Account ID",
+      "telegramBotId": "Telegram bot ID",
+      "telegramBotToken": "Telegram bot token",
+      "leadType": "Lead Type",
+      "lastResponse": "Last Response",
+      "createDate": "Created",
+      "writeDate": "Modified"
+    },
+    
+    "tabs": {
+      "connection": "Connection",
+      "webhooks": "Webhooks",
+      "auth": "Authorization",
+      "crm": "CRM",
+      "logs": "Logs"
+    },
+    
+    "groups": {
+      "api": "API Settings",
+      "webhook": "Webhook",
+      "webhookSettings": "Webhook Settings",
+      "accessToken": "Access Token",
+      "refreshToken": "Refresh Token",
+      "leadSettings": "Lead Settings",
+      "lastResponse": "Last API Response",
+      "timestamps": "Timestamps",
+      "telegram": "Telegram Bot"
+    },
+    
+    "actions": {
+      "setWebhook": "Set Webhook",
+      "unsetWebhook": "Remove Webhook"
+    },
+    
+    "webhookSet": "Webhook Set",
+    "webhookSetSuccess": "Webhook successfully registered",
+    "webhookUnset": "Webhook Removed",
+    "webhookUnsetSuccess": "Webhook successfully removed",
+    "error": "Error",
+    
+    "types": {
+      "internal": "Internal",
+      "telegram": "Telegram",
+      "whatsapp": "WhatsApp",
+      "whatsapp_chatapp": "WhatsApp (ChatApp)",
+      "avito": "Avito",
+      "vk": "VKontakte"
+    },
+    
+    "categories": {
+      "messenger": "Messenger",
+      "phone": "Phone",
+      "email": "Email",
+      "social": "Social"
+    },
+    
+    "webhookStates": {
+      "none": "Not Set",
+      "successful": "Active",
+      "failed": "Failed"
+    },
+    
+    "leadTypes": {
+      "lead": "Lead",
+      "opportunity": "Opportunity"
+    },
+    
+    "telegram": {
+      "noAuthRequired": "Telegram uses Bot Token for authorization. Configure it in the \"Connection\" tab."
+    },
+    "email": {
+      "noAuthRequired": "Email uses login and password for authorization. Configure it in the \"Connection\" tab."
+    }
+  },
+  
+  "member": {
+    "title": "Chat Members",
+    "singular": "Member",
+    "plural": "Members",
+    
+    "fields": {
+      "chatId": "Chat",
+      "userId": "User",
+      "partnerId": "Partner",
+      "isActive": "Active",
+      "joinedAt": "Joined",
+      "leftAt": "Left",
+      "canRead": "Can Read",
+      "canWrite": "Can Write",
+      "canInvite": "Can Invite",
+      "canPin": "Can Pin",
+      "canDeleteOthers": "Can Delete Others",
+      "isAdmin": "Administrator"
+    },
+    
+    "roles": {
+      "admin": "Admin",
+      "member": "Member",
+      "readonly": "Read Only"
+    }
+  },
+  
+  "chat": {
+    "fields": {
+      "defaultCanRead": "Default: Can Read",
+      "defaultCanWrite": "Default: Can Write",
+      "defaultCanInvite": "Default: Can Invite",
+      "defaultCanPin": "Default: Can Pin",
+      "defaultCanDeleteOthers": "Default: Can Delete Others"
+    },
+    
+    "tabs": {
+      "main": "Main",
+      "permissions": "Permissions",
+      "members": "Members"
+    },
+    
+    "groups": {
+      "defaultPermissions": "Default Permissions for New Members"
+    }
+  },
+  
+  "externalAccount": {
+    "title": "External Accounts",
+    "singular": "External Account",
+    "plural": "External Accounts",
+    "menu": "External Accounts",
+    
+    "fields": {
+      "name": "Name",
+      "active": "Active",
+      "externalId": "External ID",
+      "connectorId": "Connector",
+      "userId": "User",
+      "partnerId": "Partner",
+      "raw": "Raw Data",
+      "sequence": "Sequence",
+      "createDate": "Created",
+      "writeDate": "Modified"
+    },
+    
+    "tabs": {
+      "main": "Main",
+      "links": "Links",
+      "data": "Data"
+    },
+    
+    "groups": {
+      "info": "Account Info",
+      "connection": "Connection",
+      "links": "Linked Records",
+      "rawData": "Raw Data",
+      "timestamps": "Timestamps"
+    },
+    
+    "hints": {
+      "operator": "Operator (staff member)",
+      "client": "Client (external user)"
+    }
+  },
+  
+  "externalChat": {
+    "title": "External Chats",
+    "singular": "External Chat",
+    "plural": "External Chats",
+    "menu": "External Chats",
+    
+    "fields": {
+      "externalId": "External ID",
+      "connectorId": "Connector",
+      "chatId": "Internal Chat",
+      "createDate": "Created"
+    },
+    
+    "tabs": {
+      "main": "Main"
+    },
+    
+    "groups": {
+      "connection": "Connection",
+      "timestamps": "Timestamps"
+    }
+  },
+  
+  "externalMessage": {
+    "title": "External Messages",
+    "singular": "External Message",
+    "plural": "External Messages",
+    "menu": "External Messages",
+    
+    "fields": {
+      "externalId": "External ID",
+      "externalChatId": "External Chat ID",
+      "connectorId": "Connector",
+      "messageId": "Internal Message",
+      "createDate": "Created"
+    },
+    
+    "tabs": {
+      "main": "Main"
+    },
+    
+    "groups": {
+      "connection": "Connection",
+      "timestamps": "Timestamps"
+    }
+  },
+
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "active": "Active",
+    "create_date": "Created",
+    "external_id": "External ID",
+    "connector_id": "Connector",
+    "type": "Type",
+    "external_account_id": "External Account ID",
+    "operator_ids": "Operators",
+    "webhook_url": "Webhook URL",
+    "contact_id": "Contact",
+    "raw": "Raw Data",
+    "external_chat_id": "External Chat ID",
+    "chat_id": "Internal Chat",
+    "external_message_id": "External Message ID",
+    "message_id": "Internal Message"
+  },
+
+  "externalChat": {
+    "sections": {
+      "connection": "Chat Connection",
+      "relations": "Relations"
+    }
+  },
+
+  "externalMessage": {
+    "sections": {
+      "connection": "Message Connection",
+      "relations": "Relations"
+    }
+  }
+}

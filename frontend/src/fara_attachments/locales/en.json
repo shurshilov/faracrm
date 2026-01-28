@@ -1,0 +1,19 @@
+{
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "filename": "Filename",
+    "mimetype": "MIME Type",
+    "filesize": "Size",
+    "res_id": "Resource ID",
+    "res_model": "Resource Model",
+    "storage_id": "Storage",
+    "url": "URL",
+    "type": "Type"
+  },
+  "menu": {
+    "title": "Files",
+    "attachments": "All Files",
+    "attachments_storage": "Storages"
+  }
+}

@@ -1,0 +1,110 @@
+/* FormSection */
+.sectionPaper {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.sectionIcon {
+  color: var(--mantine-color-blue-6);
+  display: flex;
+  align-items: center;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  color: var(--mantine-color-gray-8);
+}
+
+[data-mantine-color-scheme="dark"] .sectionTitle {
+  color: var(--mantine-color-gray-2);
+}
+
+.collapseIcon {
+  color: var(--mantine-color-gray-6);
+  display: flex;
+  align-items: center;
+}
+
+.section {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+/* FormRow */
+.formRow {
+  width: 100%;
+}
+
+/* FormTabs */
+.tabsContainer {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.tabsRoot {
+  
+}
+
+.tabsList {
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+}
+
+[data-mantine-color-scheme="dark"] .tabsList {
+  border-bottom: 1px solid var(--mantine-color-dark-4);
+}
+
+.tab {
+  font-weight: 500;
+}
+
+.tabPanel {
+  padding-top: var(--mantine-spacing-md);
+}
+
+/* FormHeader */
+.headerPaper {
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+.headerAvatar {
+  flex-shrink: 0;
+}
+
+/* FormSheet (без рамки) */
+.sheetContainer {
+  margin-bottom: var(--mantine-spacing-lg);
+  padding-bottom: var(--mantine-spacing-md);
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+}
+
+[data-mantine-color-scheme="dark"] .sheetContainer {
+  border-bottom: 1px solid var(--mantine-color-dark-4);
+}
+
+.sheetAvatar {
+  flex-shrink: 0;
+}
+
+.avatarField {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .headerPaper > div,
+  .sheetContainer > div {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .headerAvatar,
+  .sheetAvatar {
+    margin-bottom: var(--mantine-spacing-md);
+  }
+}

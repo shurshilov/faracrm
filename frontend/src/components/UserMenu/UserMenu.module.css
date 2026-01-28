@@ -1,0 +1,28 @@
+.user {
+  padding: 4px 8px;
+  border-radius: var(--mantine-radius-md);
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background-color: light-dark(
+      var(--mantine-color-gray-1),
+      var(--mantine-color-dark-6)
+    );
+  }
+}
+
+.userInfo {
+  cursor: default;
+  opacity: 1 !important;
+  
+  &:hover {
+    background-color: transparent;
+  }
+}
+
+.activeItem {
+  background-color: light-dark(
+    var(--mantine-color-blue-0),
+    var(--mantine-color-dark-5)
+  );
+}

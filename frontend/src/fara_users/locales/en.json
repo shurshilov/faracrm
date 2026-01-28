@@ -1,0 +1,77 @@
+{
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "email": "Email",
+    "login": "Login",
+    "image": "Avatar",
+    "role_ids": "Roles",
+    "image_ids": "Files",
+    "lang": "Language",
+    "lang_ids": "Available Languages",
+    "active": "Active",
+    "is_admin": "Superuser",
+    "contact_ids": "Contacts"
+  },
+  "tabs": {
+    "roles": "Roles & Permissions",
+    "files": "Files",
+    "languages": "Available Languages"
+  },
+  "menu": {
+    "title": "Users",
+    "users": "Users"
+  },
+  "actions": {
+    "changePassword": "Change Password",
+    "copyUser": "Copy"
+  },
+  "changePassword": {
+    "title": "Change Password",
+    "forUser": "For user",
+    "newPassword": "New Password",
+    "enterNewPassword": "Enter new password",
+    "confirmPassword": "Confirm Password",
+    "confirmNewPassword": "Confirm new password",
+    "submit": "Change Password",
+    "success": "Success",
+    "successMessage": "Password changed successfully",
+    "error": "Error",
+    "errorMessage": "Failed to change password",
+    "passwordRequired": "Password is required",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "confirmRequired": "Please confirm password",
+    "passwordsMismatch": "Passwords do not match"
+  },
+  "copyUser": {
+    "title": "Copy User",
+    "name": "Name",
+    "namePlaceholder": "Enter name",
+    "nameRequired": "Name is required",
+    "login": "Login",
+    "loginPlaceholder": "Enter login",
+    "loginRequired": "Login is required",
+    "loginInvalid": "Login can only contain letters, numbers and _",
+    "copyOptions": "Copy options",
+    "copyPassword": "Copy password",
+    "copyPasswordDesc": "New user will be able to log in with the same password",
+    "copyRoles": "Copy roles and permissions",
+    "copyLanguages": "Copy available languages",
+    "copyIsAdmin": "Superuser",
+    "copyIsAdminDesc": "Copy superuser status",
+    "currentlyEnabled": "currently enabled",
+    "copyFiles": "Copy files",
+    "copyFilesDesc": "Create copies of attached files",
+    "copyContacts": "Copy contacts",
+    "copyContactsDesc": "Phone numbers, emails, messengers",
+    "submit": "Create",
+    "success": "Success",
+    "successMessage": "User copied successfully",
+    "error": "Error",
+    "errorMessage": "Failed to copy user"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "actions": "Actions"
+  }
+}

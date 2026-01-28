@@ -1,0 +1,27 @@
+.scrollarea {
+    flex: 1;
+}
+.main {
+    @mixin light {
+        /* background-color: var(--mantine-color-gray-0); */
+      }
+    
+    @mixin dark {
+        background-color: var(--mantine-color-dark-8);
+    }
+}
+
+.navbar {
+    @mixin light {
+        background-color: var(--mantine-color-gray-0);
+      }
+    
+    @mixin dark {
+        background-color: var(--mantine-color-dark-7);
+    }
+}
+
+.body {
+    padding-top: var(--mantine-spacing-md);
+    /* padding-bottom: 100px; */
+}

@@ -1,0 +1,31 @@
+{
+  "fields": {
+    "name": "Name",
+    "type": "Type",
+    "category_id": "Category",
+    "company_id": "Company",
+    "default_code": "Internal Code",
+    "code": "Code",
+    "barcode": "Barcode",
+    "id": "ID",
+    "uom_id": "Unit of Measure",
+    "list_price": "Sale Price",
+    "standard_price": "Cost",
+    "extra_price": "Extra Price",
+    "weight": "Weight",
+    "volume": "Volume",
+    "description": "Description",
+    "image": "Image"
+  },
+  "sections": {
+    "identification": "Identification",
+    "prices": "Prices",
+    "characteristics": "Characteristics"
+  },
+  "menu": {
+    "title": "Stock",
+    "products": "Products",
+    "category": "Categories",
+    "uom": "Units of Measure"
+  }
+}

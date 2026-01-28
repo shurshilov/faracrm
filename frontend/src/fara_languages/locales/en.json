@@ -1,0 +1,16 @@
+{
+  "fields": {
+    "id": "ID",
+    "code": "Code",
+    "name": "Name",
+    "flag": "Flag",
+    "active": "Active"
+  },
+  "sections": {
+    "language": "Language"
+  },
+  "menu": {
+    "title": "Languages",
+    "language": "Languages"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "menu": {
+    "title": "Sales",
+    "sale": "Orders",
+    "sale_line": "Order Lines",
+    "sale_stage": "Stages",
+    "tax": "Taxes"
+  },
+  "sales": {
+    "title": "Sales Orders",
+    "name": "Order Number",
+    "date_order": "Order Date",
+    "parent_id": "Customer",
+    "user_id": "Salesperson",
+    "company_id": "Company",
+    "origin": "Source Document",
+    "notes": "Notes",
+    "active": "Active",
+    "order_line_ids": "Order Lines",
+    "email": "Email",
+    "phone": "Phone",
+    "mobile": "Mobile",
+    "website": "Website"
+  },
+  "sale_line": {
+    "title": "Order Lines",
+    "sale_id": "Sale Order",
+    "sequence": "Sequence",
+    "product_id": "Product",
+    "product_uom_qty": "Quantity",
+    "product_uom_id": "Unit of Measure",
+    "price_unit": "Unit Price",
+    "discount": "Discount (%)",
+    "tax_id": "Tax",
+    "price_subtotal": "Subtotal",
+    "price_tax": "Tax Amount",
+    "price_total": "Total",
+    "notes": "Notes"
+  },
+  "tax": {
+    "title": "Taxes",
+    "name": "Tax Name"
+  }
+}

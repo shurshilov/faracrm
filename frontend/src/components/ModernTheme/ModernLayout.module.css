@@ -1,0 +1,67 @@
+.header {
+  @mixin light {
+    background-color: var(--mantine-color-white);
+    border-bottom: 1px solid var(--mantine-color-gray-2);
+  }
+
+  @mixin dark {
+    background-color: var(--mantine-color-dark-7);
+    border-bottom: 1px solid var(--mantine-color-dark-5);
+  }
+}
+
+.main {
+  @mixin light {
+    background-color: var(--mantine-color-gray-0);
+  }
+
+  @mixin dark {
+    background-color: var(--mantine-color-dark-8);
+  }
+}
+
+.chatNavbar {
+  padding: var(--mantine-spacing-sm);
+
+  @mixin light {
+    background-color: var(--mantine-color-white);
+    border-right: 1px solid var(--mantine-color-gray-2);
+  }
+
+  @mixin dark {
+    background-color: var(--mantine-color-dark-7);
+    border-right: 1px solid var(--mantine-color-dark-5);
+  }
+}
+
+.scrollarea {
+  height: 100%;
+}
+
+.collapseButton {
+  position: fixed;
+  top: 75px;
+  z-index: 200;
+  transition: left 200ms ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  width: 24px;
+  height: 24px;
+
+  @mixin light {
+    background: white;
+    border: 1px solid var(--mantine-color-gray-3);
+    
+    &:hover {
+      background: var(--mantine-color-gray-0);
+    }
+  }
+
+  @mixin dark {
+    background: var(--mantine-color-dark-6);
+    border: 1px solid var(--mantine-color-dark-4);
+    
+    &:hover {
+      background: var(--mantine-color-dark-5);
+    }
+  }
+}

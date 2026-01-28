@@ -1,0 +1,16 @@
+{
+  "errors": {
+    "accessDenied": { "title": "Доступ запрещён", "description": "У вас нет доступа к этому ресурсу." },
+    "permissionDenied": { "title": "Недостаточно прав", "description": "У вас нет прав для выполнения этого действия." },
+    "adminRequired": { "title": "Требуются права администратора", "description": "Только администраторы чата могут выполнить это действие." },
+    "cannotAddToDirectChat": { "title": "Невозможно добавить участника", "description": "В личный чат нельзя добавлять участников." },
+    "cannotRemoveFromDirectChat": { "title": "Невозможно удалить участника", "description": "Из личного чата нельзя удалять участников." },
+    "cannotLeaveDirectChat": { "title": "Невозможно покинуть чат", "description": "Личный чат нельзя покинуть." },
+    "cannotEditDirectChat": { "title": "Невозможно редактировать чат", "description": "Личные чаты нельзя редактировать." },
+    "memberNotFound": { "title": "Участник не найден", "description": "Указанный участник не найден в этом чате." },
+    "notFound": { "title": "Не найдено", "description": "Запрашиваемый ресурс не найден." },
+    "emptyMessage": { "title": "Пустое сообщение", "description": "Введите текст сообщения или прикрепите файл." },
+    "unknown": { "title": "Ошибка", "description": "Произошла непредвиденная ошибка. Попробуйте ещё раз." }
+  },
+  "common": { "ok": "OK" }
+}

@@ -1,0 +1,93 @@
+/* Users Kanban Grid */
+.usersGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.userCard {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.userCard:hover {
+  box-shadow: var(--mantine-shadow-lg);
+  transform: translateY(-4px);
+}
+
+/* Админ карточка */
+.userCard[data-admin] {
+  border-color: var(--mantine-color-violet-4);
+}
+
+.userCard[data-admin]:hover {
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 16px;
+  background: linear-gradient(135deg, 
+    var(--mantine-color-blue-1) 0%, 
+    var(--mantine-color-cyan-1) 100%
+  );
+}
+
+[data-mantine-color-scheme='dark'] .cardHeader {
+  background: linear-gradient(135deg, 
+    var(--mantine-color-dark-5) 0%, 
+    var(--mantine-color-dark-4) 100%
+  );
+}
+
+/* Админ хедер */
+.cardHeader[data-admin] {
+  background: linear-gradient(135deg, 
+    var(--mantine-color-violet-1) 0%, 
+    var(--mantine-color-grape-1) 100%
+  );
+}
+
+[data-mantine-color-scheme='dark'] .cardHeader[data-admin] {
+  background: linear-gradient(135deg, 
+    var(--mantine-color-violet-9) 0%, 
+    var(--mantine-color-grape-9) 100%
+  );
+}
+
+.avatarWrapper {
+  position: relative;
+}
+
+.avatar {
+  border: 4px solid var(--mantine-color-body);
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+/* Админ аватар */
+.avatar[data-admin] {
+  border-color: var(--mantine-color-violet-4);
+  box-shadow: 0 0 0 2px var(--mantine-color-violet-2);
+}
+
+.adminBadge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, 
+    var(--mantine-color-violet-5) 0%, 
+    var(--mantine-color-grape-5) 100%
+  );
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--mantine-color-body);
+  box-shadow: var(--mantine-shadow-sm);
+}

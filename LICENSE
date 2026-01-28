@@ -1,0 +1,182 @@
+FARA CRM License v1.0
+
+Copyright (c) 2024-2026 FARA CRM Authors. All rights reserved.
+
+================================================================================
+FARA CRM SOURCE AVAILABLE LICENSE
+================================================================================
+
+This license governs use of the accompanying software ("Software"). By using
+the Software, you accept this license. If you do not accept the license, do not
+use the Software.
+
+================================================================================
+1. DEFINITIONS
+================================================================================
+
+"Licensor" means the copyright owner or entity authorized by the copyright owner.
+
+"You" means the individual or legal entity exercising permissions granted by 
+this License.
+
+"Software" means the FARA CRM source code, documentation, and associated files
+made available under this License.
+
+"Module" means an add-on, extension, or plugin that extends the functionality
+of the Software without modifying its core source code.
+
+"Commercial Use" means any use intended for or directed toward commercial 
+advantage or monetary compensation.
+
+"Competing Product" means any product or service that provides functionality
+substantially similar to the Software.
+
+"Official Marketplace" means the marketplace designated by the Licensor for
+distribution of Modules.
+
+================================================================================
+2. GRANT OF RIGHTS
+================================================================================
+
+Subject to the terms of this License, the Licensor grants You a non-exclusive,
+worldwide, royalty-free license to:
+
+2.1 INTERNAL USE
+    - Use the Software for internal business purposes within Your organization
+    - Use the Software for personal, non-commercial purposes
+    - Install and run the Software on Your own infrastructure
+    - Modify the Software for Your own internal use
+
+2.2 SERVICES
+    - Provide installation, configuration, and deployment services for the Software
+    - Provide training and educational services related to the Software
+    - Provide technical support and administration services for the Software
+    - Charge fees for such services
+
+2.3 MODULE DEVELOPMENT
+    - Develop Modules that extend the functionality of the Software
+    - Distribute and sell Modules through the Official Marketplace
+    - Use the Software's APIs and extension points for Module development
+
+================================================================================
+3. RESTRICTIONS
+================================================================================
+
+You may NOT:
+
+3.1 DISTRIBUTION AND FORKING
+    - Fork, copy, or redistribute the Software as a standalone product
+    - Create derivative works intended for distribution outside Your organization
+    - Rebrand, rename, or present the Software as Your own product
+    - Remove or alter any copyright notices, trademarks, or attribution
+
+3.2 COMMERCIAL EXPLOITATION
+    - Sell, license, or sublicense the Software itself
+    - Offer the Software as a hosted or managed service (SaaS) without
+      a separate written agreement with the Licensor
+    - Include the Software in a product or service offered for sale
+
+3.3 COMPETITION
+    - Use the Software to create a Competing Product
+    - Use the Software's code, architecture, or design to develop
+      a substantially similar product or service
+    - Provide the Software to third parties for the purpose of
+      creating a Competing Product
+
+3.4 MODULE RESTRICTIONS
+    - Modules must not circumvent or disable any features of the Software
+    - Modules must not replicate core functionality to create a standalone product
+    - Distribution of Modules outside the Official Marketplace requires
+      written permission from the Licensor
+
+================================================================================
+4. INTELLECTUAL PROPERTY
+================================================================================
+
+4.1 OWNERSHIP
+    The Licensor retains all right, title, and interest in and to the Software,
+    including all intellectual property rights.
+
+4.2 CONTRIBUTIONS
+    If You submit contributions to the Software, You grant the Licensor a
+    perpetual, worldwide, non-exclusive, royalty-free, irrevocable license
+    to use, reproduce, modify, and distribute Your contributions as part
+    of the Software.
+
+4.3 TRADEMARKS
+    This License does not grant permission to use the trade names, trademarks,
+    service marks, or product names of the Licensor, except as required for
+    reasonable and customary use in describing the origin of the Software.
+
+================================================================================
+5. DISCLAIMER OF WARRANTY
+================================================================================
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+================================================================================
+6. LIMITATION OF LIABILITY
+================================================================================
+
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
+IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
+OF SUCH DAMAGE.
+
+================================================================================
+7. TERMINATION
+================================================================================
+
+7.1 This License is effective until terminated.
+
+7.2 Your rights under this License will terminate automatically without notice
+    if You fail to comply with any of its terms.
+
+7.3 Upon termination, You must cease all use of the Software and destroy all
+    copies in Your possession.
+
+7.4 Sections 4, 5, 6, and 8 shall survive any termination of this License.
+
+================================================================================
+8. GENERAL
+================================================================================
+
+8.1 ENTIRE AGREEMENT
+    This License constitutes the entire agreement between You and the Licensor
+    relating to the Software and supersedes all prior agreements.
+
+8.2 SEVERABILITY
+    If any provision of this License is held to be unenforceable, such provision
+    shall be reformed only to the extent necessary to make it enforceable, and
+    the remaining provisions shall remain in full force and effect.
+
+8.3 WAIVER
+    Failure to enforce any provision of this License shall not constitute a
+    waiver of future enforcement of that or any other provision.
+
+8.4 GOVERNING LAW
+    This License shall be governed by and construed in accordance with the laws
+    of the jurisdiction in which the Licensor is located, without regard to
+    conflict of law principles.
+
+8.5 AMENDMENTS
+    The Licensor reserves the right to publish revised versions of this License.
+    You may choose to use the Software under the terms of any version of this
+    License published by the Licensor.
+
+================================================================================
+CONTACT
+================================================================================
+
+For licensing inquiries, partnership opportunities, or permission requests:
+[Your contact email/website]
+
+================================================================================

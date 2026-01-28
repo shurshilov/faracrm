@@ -1,0 +1,44 @@
+/* Security Kanban Cards */
+.card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--mantine-shadow-md);
+  transform: translateY(-2px);
+}
+
+/* Неактивные элементы */
+.card[data-inactive] {
+  opacity: 0.6;
+  background-color: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .card[data-inactive] {
+  background-color: var(--mantine-color-dark-6);
+}
+
+/* Админ роль */
+.card[data-admin] {
+  border-color: var(--mantine-color-violet-4);
+}
+
+.card[data-admin]:hover {
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+/* App icon wrapper */
+.appIconWrapper {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+}
+
+[data-mantine-color-scheme='dark'] .appIconWrapper {
+  background: transparent;
+}

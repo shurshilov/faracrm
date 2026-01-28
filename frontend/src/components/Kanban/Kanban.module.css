@@ -1,0 +1,63 @@
+.kanbanContainer {
+  height: calc(100vh - 140px);
+  width: 100%;
+}
+
+.columnsWrapper {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  min-width: max-content;
+}
+
+.column {
+  width: 300px;
+  min-width: 300px;
+  background-color: var(--mantine-color-gray-0);
+  border-radius: var(--mantine-radius-md);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 180px);
+}
+
+[data-mantine-color-scheme='dark'] .column {
+  background-color: var(--mantine-color-dark-6);
+}
+
+.columnHeader {
+  padding: 12px 16px;
+  border-top: 3px solid;
+  border-radius: var(--mantine-radius-md) var(--mantine-radius-md) 0 0;
+  background-color: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme='dark'] .columnHeader {
+  background-color: var(--mantine-color-dark-5);
+}
+
+.columnContent {
+  flex: 1;
+  min-height: 100px;
+}
+
+.card {
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--mantine-shadow-md);
+  transform: translateY(-2px);
+}
+
+.dragOverlay {
+  cursor: grabbing;
+  box-shadow: var(--mantine-shadow-xl);
+}
+
+.simpleKanban {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}

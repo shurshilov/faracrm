@@ -1,0 +1,26 @@
+{
+  "menu": {
+    "title": "CRM",
+    "lead": "Лиды",
+    "lead_stage": "Стадии",
+    "team_crm": "Команды"
+  },
+  "leads": {
+    "title": "Лиды",
+    "name": "Название лида",
+    "type": "Тип",
+    "active": "Активен",
+    "user_id": "Ответственный",
+    "parent_id": "Партнёр",
+    "company_id": "Компания",
+    "notes": "Заметки",
+    "website": "Вебсайт",
+    "email": "Email",
+    "phone": "Телефон",
+    "mobile": "Мобильный"
+  },
+  "team_crm": {
+    "title": "Команды CRM",
+    "name": "Название команды"
+  }
+}

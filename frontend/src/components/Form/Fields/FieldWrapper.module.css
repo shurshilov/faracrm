@@ -1,0 +1,42 @@
+.wrapper {
+  width: 100%;
+}
+
+.labelContainer {
+  padding-top: 8px; /* выравнивание с input */
+  flex-shrink: 0;
+}
+
+.label {
+  color: var(--mantine-color-gray-7);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+[data-mantine-color-scheme="dark"] .label {
+  color: var(--mantine-color-gray-4);
+}
+
+.required {
+  color: var(--mantine-color-red-6);
+}
+
+.fieldContainer {
+  flex: 1;
+  min-width: 0; /* для корректного overflow */
+}
+
+/* Курсор для Switch */
+.fieldContainer :global(.mantine-Switch-root) {
+  cursor: pointer;
+}
+
+.fieldContainer :global(.mantine-Switch-track) {
+  cursor: pointer;
+}
+
+/* Убираем встроенные лейблы у Mantine компонентов когда используем FieldWrapper */
+.fieldContainer :global(.mantine-InputWrapper-label),
+.fieldContainer :global(.mantine-Checkbox-label) {
+  /* display: none; */
+}

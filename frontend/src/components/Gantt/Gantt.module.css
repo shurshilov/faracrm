@@ -1,0 +1,233 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--mantine-color-body);
+}
+
+.toolbar {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+  background: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .toolbar {
+  background: var(--mantine-color-dark-6);
+  border-bottom-color: var(--mantine-color-dark-4);
+}
+
+.ganttWrapper {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Левая фиксированная панель */
+.leftPanel {
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid var(--mantine-color-gray-3);
+  background: var(--mantine-color-body);
+  z-index: 10;
+}
+
+[data-mantine-color-scheme='dark'] .leftPanel {
+  border-right-color: var(--mantine-color-dark-4);
+}
+
+.leftHeader {
+  display: flex;
+  height: 60px;
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+  background: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .leftHeader {
+  background: var(--mantine-color-dark-6);
+  border-bottom-color: var(--mantine-color-dark-4);
+}
+
+.leftBody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.leftRow {
+  display: flex;
+  height: 40px;
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+}
+
+[data-mantine-color-scheme='dark'] .leftRow {
+  border-bottom-color: var(--mantine-color-dark-5);
+}
+
+.leftRow:hover {
+  background: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme='dark'] .leftRow:hover {
+  background: var(--mantine-color-dark-6);
+}
+
+.labelColumn {
+  width: 180px;
+  min-width: 180px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--mantine-color-gray-2);
+}
+
+[data-mantine-color-scheme='dark'] .labelColumn {
+  border-right-color: var(--mantine-color-dark-5);
+}
+
+.durationColumn {
+  width: 80px;
+  min-width: 80px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Область таймлайна */
+.timelineArea {
+  flex: 1;
+  overflow: auto;
+}
+
+.timelineContent {
+  position: relative;
+  min-height: 100%;
+}
+
+/* Верхний уровень заголовка (даты/месяцы/годы) */
+.majorHeader {
+  position: sticky;
+  top: 0;
+  height: 28px;
+  background: var(--mantine-color-gray-1);
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+  z-index: 5;
+}
+
+[data-mantine-color-scheme='dark'] .majorHeader {
+  background: var(--mantine-color-dark-5);
+  border-bottom-color: var(--mantine-color-dark-4);
+}
+
+.majorCell {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--mantine-color-gray-3);
+  background: var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme='dark'] .majorCell {
+  background: var(--mantine-color-dark-5);
+  border-right-color: var(--mantine-color-dark-4);
+}
+
+/* Нижний уровень заголовка (часы/дни/недели) */
+.minorHeader {
+  position: sticky;
+  top: 28px;
+  height: 32px;
+  background: var(--mantine-color-gray-0);
+  border-bottom: 2px solid var(--mantine-color-gray-3);
+  z-index: 5;
+}
+
+[data-mantine-color-scheme='dark'] .minorHeader {
+  background: var(--mantine-color-dark-6);
+  border-bottom-color: var(--mantine-color-dark-4);
+}
+
+.minorCell {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--mantine-color-gray-2);
+  box-sizing: border-box;
+}
+
+[data-mantine-color-scheme='dark'] .minorCell {
+  border-right-color: var(--mantine-color-dark-5);
+}
+
+.minorCell.weekend {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+[data-mantine-color-scheme='dark'] .minorCell.weekend {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* Тело таймлайна */
+.timelineBody {
+  position: relative;
+  min-height: calc(100% - 60px);
+}
+
+.gridColumn {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 1px solid var(--mantine-color-gray-1);
+}
+
+[data-mantine-color-scheme='dark'] .gridColumn {
+  border-right-color: var(--mantine-color-dark-6);
+}
+
+.gridColumn.weekendColumn {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+[data-mantine-color-scheme='dark'] .gridColumn.weekendColumn {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Строка с барами */
+.timelineRow {
+  position: relative;
+  height: 40px;
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+}
+
+[data-mantine-color-scheme='dark'] .timelineRow {
+  border-bottom-color: var(--mantine-color-dark-5);
+}
+
+/* Бар */
+.bar {
+  position: absolute;
+  top: 6px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.bar:hover {
+  transform: scaleY(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 5;
+}
+
+.empty {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}

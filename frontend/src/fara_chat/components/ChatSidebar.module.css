@@ -1,0 +1,14 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--mantine-spacing-sm);
+  background: var(--mantine-color-body);
+  border-right: 1px solid var(--mantine-color-default-border);
+}
+
+.scrollArea {
+  flex: 1;
+  margin: 0 calc(-1 * var(--mantine-spacing-sm));
+  padding: 0 var(--mantine-spacing-sm);
+}

@@ -1,0 +1,207 @@
+/* Container */
+.container {
+  width: 100%;
+}
+
+/* Header - опциональный */
+.header {
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mantine-color-gray-7);
+}
+
+.count {
+  font-size: 12px;
+  color: var(--mantine-color-gray-5);
+}
+
+/* Input area */
+.inputArea {
+  margin-bottom: 8px;
+}
+
+.inputWrapper {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.typeButton {
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1;
+}
+
+.input input {
+  border-radius: 8px;
+}
+
+/* Type selector dropdown */
+.typeOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.typeOptionIcon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-6);
+}
+
+/* Detected type hint */
+.detectedType {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--mantine-color-blue-6);
+  background: var(--mantine-color-blue-0);
+  border-radius: 4px;
+  width: fit-content;
+}
+
+/* Contacts list - компактный вид */
+.listContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Contact item - inline chip */
+.contactItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 6px;
+  background: var(--mantine-color-gray-0);
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: 20px;
+  transition: all 0.15s ease;
+}
+
+.contactItem:hover {
+  background: var(--mantine-color-gray-1);
+  border-color: var(--mantine-color-gray-3);
+}
+
+.contactItemNew {
+  background: var(--mantine-color-green-0);
+  border-color: var(--mantine-color-green-2);
+}
+
+/* Contact icon */
+.contactIcon {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--mantine-color-gray-2);
+  color: var(--mantine-color-gray-6);
+  flex-shrink: 0;
+}
+
+.contactIcon[data-type="phone"] {
+  background: var(--mantine-color-green-1);
+  color: var(--mantine-color-green-7);
+}
+
+.contactIcon[data-type="email"] {
+  background: var(--mantine-color-blue-1);
+  color: var(--mantine-color-blue-7);
+}
+
+.contactIcon[data-type="telegram"] {
+  background: var(--mantine-color-cyan-1);
+  color: var(--mantine-color-cyan-7);
+}
+
+.contactIcon[data-type="whatsapp"] {
+  background: var(--mantine-color-teal-1);
+  color: var(--mantine-color-teal-7);
+}
+
+.contactIcon[data-type="instagram"] {
+  background: var(--mantine-color-pink-1);
+  color: var(--mantine-color-pink-7);
+}
+
+.contactIcon[data-type="viber"] {
+  background: var(--mantine-color-violet-1);
+  color: var(--mantine-color-violet-7);
+}
+
+.contactIcon[data-type="website"] {
+  background: var(--mantine-color-indigo-1);
+  color: var(--mantine-color-indigo-7);
+}
+
+/* Contact value */
+.contactValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mantine-color-gray-8);
+  white-space: nowrap;
+}
+
+/* Contact type label */
+.contactType {
+  font-size: 11px;
+  color: var(--mantine-color-gray-5);
+  white-space: nowrap;
+}
+
+/* Contact actions */
+.contactActions {
+  display: flex;
+  align-items: center;
+  margin-left: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.contactItem:hover .contactActions {
+  opacity: 1;
+}
+
+/* Dark mode */
+[data-mantine-color-scheme="dark"] {
+  .contactItem {
+    background: var(--mantine-color-dark-6);
+    border-color: var(--mantine-color-dark-4);
+  }
+
+  .contactItem:hover {
+    background: var(--mantine-color-dark-5);
+    border-color: var(--mantine-color-dark-3);
+  }
+
+  .contactValue {
+    color: var(--mantine-color-gray-2);
+  }
+
+  .contactType {
+    color: var(--mantine-color-gray-5);
+  }
+
+  .contactIcon {
+    background: var(--mantine-color-dark-4);
+    color: var(--mantine-color-gray-4);
+  }
+}

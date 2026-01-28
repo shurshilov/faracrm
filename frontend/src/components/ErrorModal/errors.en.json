@@ -1,0 +1,16 @@
+{
+  "errors": {
+    "accessDenied": { "title": "Access Denied", "description": "You don't have access to this resource." },
+    "permissionDenied": { "title": "Permission Denied", "description": "You don't have permission to perform this action." },
+    "adminRequired": { "title": "Admin Rights Required", "description": "Only chat administrators can perform this action." },
+    "cannotAddToDirectChat": { "title": "Cannot Add Member", "description": "You cannot add members to a direct chat." },
+    "cannotRemoveFromDirectChat": { "title": "Cannot Remove Member", "description": "You cannot remove members from a direct chat." },
+    "cannotLeaveDirectChat": { "title": "Cannot Leave Chat", "description": "You cannot leave a direct chat." },
+    "cannotEditDirectChat": { "title": "Cannot Edit Chat", "description": "Direct chats cannot be edited." },
+    "memberNotFound": { "title": "Member Not Found", "description": "The specified member was not found in this chat." },
+    "notFound": { "title": "Not Found", "description": "The requested resource was not found." },
+    "emptyMessage": { "title": "Empty Message", "description": "Please enter a message or attach a file." },
+    "unknown": { "title": "Error", "description": "An unexpected error occurred. Please try again." }
+  },
+  "common": { "ok": "OK" }
+}

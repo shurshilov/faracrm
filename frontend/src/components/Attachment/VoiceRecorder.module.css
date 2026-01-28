@@ -1,0 +1,39 @@
+.container {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: var(--mantine-color-gray-0);
+  border-radius: 20px;
+}
+
+[data-mantine-color-scheme='dark'] .container {
+  background-color: var(--mantine-color-dark-6);
+}
+
+.recordingIndicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--mantine-color-red-6);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.9);
+  }
+}
+
+.audioPreview {
+  height: 32px;
+  max-width: 150px;
+}
+
+.audioPreview::-webkit-media-controls-panel {
+  background-color: transparent;
+}

@@ -1,0 +1,19 @@
+{
+  "fields": {
+    "id": "ID",
+    "name": "Название",
+    "filename": "Имя файла",
+    "mimetype": "Тип MIME",
+    "filesize": "Размер",
+    "res_id": "ID ресурса",
+    "res_model": "Модель ресурса",
+    "storage_id": "Хранилище",
+    "url": "URL",
+    "type": "Тип"
+  },
+  "menu": {
+    "title": "Файлы",
+    "attachments": "Все файлы",
+    "attachments_storage": "Хранилища"
+  }
+}

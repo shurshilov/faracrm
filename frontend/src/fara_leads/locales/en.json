@@ -1,0 +1,26 @@
+{
+  "menu": {
+    "title": "CRM",
+    "lead": "Leads",
+    "lead_stage": "Stages",
+    "team_crm": "Teams"
+  },
+  "leads": {
+    "title": "Leads",
+    "name": "Lead Name",
+    "type": "Type",
+    "active": "Active",
+    "user_id": "Salesperson",
+    "parent_id": "Partner",
+    "company_id": "Company",
+    "notes": "Notes",
+    "website": "Website",
+    "email": "Email",
+    "phone": "Phone",
+    "mobile": "Mobile"
+  },
+  "team_crm": {
+    "title": "CRM Teams",
+    "name": "Team Name"
+  }
+}

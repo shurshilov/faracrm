@@ -1,0 +1,64 @@
+.container {
+  padding: 8px 12px;
+  background-color: var(--mantine-color-gray-0);
+  border-radius: 20px;
+  min-width: 200px;
+  max-width: 300px;
+}
+
+[data-mantine-color-scheme='dark'] .container {
+  background-color: var(--mantine-color-dark-5);
+}
+
+.compact {
+  padding: 6px 10px;
+  min-width: 180px;
+  max-width: 250px;
+}
+
+/* Slider styles */
+.slider {
+  flex: 1;
+}
+
+.slider :global(.mantine-Slider-track) {
+  height: 4px;
+}
+
+.slider :global(.mantine-Slider-thumb) {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+
+/* Waveform styles */
+.waveform {
+  display: block;
+  cursor: pointer;
+}
+
+.waveformBar {
+  fill: var(--mantine-color-gray-4);
+  transition: fill 0.15s ease;
+}
+
+[data-mantine-color-scheme='dark'] .waveformBar {
+  fill: var(--mantine-color-dark-3);
+}
+
+.waveformBarActive {
+  fill: var(--mantine-color-blue-5);
+}
+
+.waveformBarPlaying {
+  animation: pulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.8;
+  }
+  to {
+    opacity: 1;
+  }
+}

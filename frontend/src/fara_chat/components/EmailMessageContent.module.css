@@ -1,0 +1,106 @@
+.emailContent {
+  width: 100%;
+}
+
+.emailHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+  color: var(--mantine-color-dimmed);
+}
+
+.emailBody {
+  font-size: var(--mantine-font-size-sm);
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Стили для элементов внутри email */
+.emailBody p {
+  margin: 0 0 0.5em 0;
+}
+
+.emailBody blockquote {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--mantine-color-gray-4);
+  background: var(--mantine-color-gray-0);
+  color: var(--mantine-color-gray-7);
+}
+
+.emailBody img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.emailBody pre,
+.emailBody code {
+  background: var(--mantine-color-gray-1);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.emailBody pre {
+  padding: 8px;
+  overflow-x: auto;
+}
+
+.emailBody a {
+  color: var(--mantine-color-blue-6);
+  text-decoration: none;
+}
+
+.emailBody a:hover {
+  text-decoration: underline;
+}
+
+/* Внешние ссылки с иконкой */
+.externalLink::after {
+  content: ' ↗';
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.emailBody table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.emailBody td,
+.emailBody th {
+  border: 1px solid var(--mantine-color-gray-3);
+  padding: 4px 8px;
+}
+
+.emailBody hr {
+  border: none;
+  border-top: 1px solid var(--mantine-color-gray-3);
+  margin: 12px 0;
+}
+
+/* Цитаты в email (часто используются для пересылок) */
+.emailBody .gmail_quote,
+.emailBody .yahoo_quoted {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--mantine-color-gray-3);
+  color: var(--mantine-color-gray-6);
+}
+
+/* Dark mode support */
+[data-mantine-color-scheme='dark'] .emailBody blockquote {
+  background: var(--mantine-color-dark-6);
+  border-left-color: var(--mantine-color-dark-4);
+}
+
+[data-mantine-color-scheme='dark'] .emailBody pre,
+[data-mantine-color-scheme='dark'] .emailBody code {
+  background: var(--mantine-color-dark-6);
+}

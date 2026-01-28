@@ -1,0 +1,138 @@
+/* Контейнер таблицы */
+.tableContainer {
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: var(--mantine-radius-md);
+  overflow: hidden;
+  margin-bottom: var(--mantine-spacing-md);
+}
+
+[data-mantine-color-scheme="dark"] .tableContainer {
+  border-color: var(--mantine-color-dark-4);
+}
+
+/* Заголовок таблицы */
+.tableHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  background-color: var(--mantine-color-gray-0);
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+}
+
+[data-mantine-color-scheme="dark"] .tableHeader {
+  background-color: var(--mantine-color-dark-6);
+  border-bottom-color: var(--mantine-color-dark-4);
+}
+
+.tableTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+.tableTitleText {
+  font-weight: 600;
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-gray-7);
+}
+
+[data-mantine-color-scheme="dark"] .tableTitleText {
+  color: var(--mantine-color-gray-3);
+}
+
+.recordCount {
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-gray-5);
+  font-weight: 400;
+}
+
+/* Кнопка добавления */
+.addButton {
+  height: 28px;
+  padding: 0 var(--mantine-spacing-sm);
+  font-size: var(--mantine-font-size-xs);
+}
+
+/* Пустое состояние */
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mantine-spacing-xl) var(--mantine-spacing-md);
+  color: var(--mantine-color-gray-5);
+}
+
+.emptyIcon {
+  margin-bottom: var(--mantine-spacing-sm);
+  opacity: 0.5;
+}
+
+.emptyText {
+  font-size: var(--mantine-font-size-sm);
+  color: var(--mantine-color-gray-5);
+  margin-bottom: var(--mantine-spacing-sm);
+}
+
+.emptyAddButton {
+  margin-top: var(--mantine-spacing-xs);
+}
+
+/* Таблица */
+.tableWrapper {
+  
+}
+
+/* Строка действий */
+.rowActions {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.tableWrapper tr:hover .rowActions {
+  opacity: 1;
+}
+
+/* Ссылки в таблице */
+.cellLink {
+  color: var(--mantine-color-blue-6);
+  cursor: pointer;
+  text-decoration: none;
+  font-size: var(--mantine-font-size-sm);
+}
+
+.cellLink:hover {
+  text-decoration: underline;
+  color: var(--mantine-color-blue-7);
+}
+
+/* Счётчик записей */
+.recordsBadge {
+  background-color: var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-6);
+  padding: 2px 8px;
+  border-radius: var(--mantine-radius-sm);
+  font-size: var(--mantine-font-size-xs);
+}
+
+[data-mantine-color-scheme="dark"] .recordsBadge {
+  background-color: var(--mantine-color-dark-5);
+  color: var(--mantine-color-gray-4);
+}
+
+/* Footer с пагинацией */
+.tableFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--mantine-spacing-xs) var(--mantine-spacing-md);
+  background-color: var(--mantine-color-gray-0);
+  border-top: 1px solid var(--mantine-color-gray-3);
+  font-size: var(--mantine-font-size-xs);
+}
+
+[data-mantine-color-scheme="dark"] .tableFooter {
+  background-color: var(--mantine-color-dark-6);
+  border-top-color: var(--mantine-color-dark-4);
+}

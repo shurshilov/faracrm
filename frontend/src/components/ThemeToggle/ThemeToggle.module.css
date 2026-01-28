@@ -1,0 +1,42 @@
+.toggle {
+  width: 34px;
+  height: 34px;
+  color: light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4));
+
+  &:hover {
+    background-color: light-dark(
+      var(--mantine-color-gray-1),
+      var(--mantine-color-dark-5)
+    );
+  }
+}
+
+.light,
+.dark {
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  transition: transform 0.3s ease, opacity 0.2s ease;
+}
+
+/* Светлая тема: показываем солнце, прячем луну */
+:root[data-mantine-color-scheme='light'] .light {
+  transform: rotate(0deg) scale(1);
+  opacity: 1;
+}
+
+:root[data-mantine-color-scheme='light'] .dark {
+  transform: rotate(-90deg) scale(0);
+  opacity: 0;
+}
+
+/* Тёмная тема: показываем луну, прячем солнце */
+:root[data-mantine-color-scheme='dark'] .light {
+  transform: rotate(90deg) scale(0);
+  opacity: 0;
+}
+
+:root[data-mantine-color-scheme='dark'] .dark {
+  transform: rotate(0deg) scale(1);
+  opacity: 1;
+}

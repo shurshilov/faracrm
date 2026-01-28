@@ -1,0 +1,31 @@
+{
+  "fields": {
+    "name": "Название",
+    "type": "Тип",
+    "category_id": "Категория",
+    "company_id": "Компания",
+    "default_code": "Внутр. код",
+    "code": "Код",
+    "barcode": "Штрихкод",
+    "id": "ID",
+    "uom_id": "Ед. измерения",
+    "list_price": "Цена продажи",
+    "standard_price": "Себестоимость",
+    "extra_price": "Доп. цена",
+    "weight": "Вес",
+    "volume": "Объём",
+    "description": "Описание",
+    "image": "Изображение"
+  },
+  "sections": {
+    "identification": "Идентификация",
+    "prices": "Цены",
+    "characteristics": "Характеристики"
+  },
+  "menu": {
+    "title": "Склад",
+    "products": "Товары",
+    "category": "Категории",
+    "uom": "Единицы измерения"
+  }
+}

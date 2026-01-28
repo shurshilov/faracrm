@@ -1,0 +1,14 @@
+{
+  "menu": {
+    "title": "Companies",
+    "company": "Companies"
+  },
+  "company": {
+    "title": "Companies",
+    "name": "Company Name",
+    "active": "Active",
+    "sequence": "Sequence",
+    "parent_id": "Parent Company",
+    "child_ids": "Child Companies"
+  }
+}

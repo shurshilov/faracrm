@@ -1,0 +1,77 @@
+{
+  "fields": {
+    "id": "ID",
+    "name": "Имя",
+    "email": "Email",
+    "login": "Логин",
+    "image": "Аватар",
+    "role_ids": "Роли",
+    "image_ids": "Файлы",
+    "lang": "Язык",
+    "lang_ids": "Доступные языки",
+    "active": "Активен",
+    "is_admin": "Суперпользователь",
+    "contact_ids": "Контакты"
+  },
+  "tabs": {
+    "roles": "Роли и права",
+    "files": "Файлы",
+    "languages": "Доступные языки"
+  },
+  "menu": {
+    "title": "Пользователи",
+    "users": "Пользователи"
+  },
+  "actions": {
+    "changePassword": "Сменить пароль",
+    "copyUser": "Копировать"
+  },
+  "changePassword": {
+    "title": "Смена пароля",
+    "forUser": "Для пользователя",
+    "newPassword": "Новый пароль",
+    "enterNewPassword": "Введите новый пароль",
+    "confirmPassword": "Подтверждение пароля",
+    "confirmNewPassword": "Подтвердите новый пароль",
+    "submit": "Сменить пароль",
+    "success": "Успешно",
+    "successMessage": "Пароль успешно изменён",
+    "error": "Ошибка",
+    "errorMessage": "Не удалось изменить пароль",
+    "passwordRequired": "Пароль обязателен",
+    "passwordTooShort": "Пароль должен содержать минимум 8 символов",
+    "confirmRequired": "Подтвердите пароль",
+    "passwordsMismatch": "Пароли не совпадают"
+  },
+  "copyUser": {
+    "title": "Копировать пользователя",
+    "name": "Имя",
+    "namePlaceholder": "Введите имя",
+    "nameRequired": "Имя обязательно",
+    "login": "Логин",
+    "loginPlaceholder": "Введите логин",
+    "loginRequired": "Логин обязателен",
+    "loginInvalid": "Логин может содержать только латинские буквы, цифры и _",
+    "copyOptions": "Параметры копирования",
+    "copyPassword": "Копировать пароль",
+    "copyPasswordDesc": "Новый пользователь сможет войти с тем же паролем",
+    "copyRoles": "Копировать роли и права",
+    "copyLanguages": "Копировать доступные языки",
+    "copyIsAdmin": "Суперпользователь",
+    "copyIsAdminDesc": "Копировать статус суперпользователя",
+    "currentlyEnabled": "у исходного включено",
+    "copyFiles": "Копировать файлы",
+    "copyFilesDesc": "Создать копии прикреплённых файлов",
+    "copyContacts": "Копировать контакты",
+    "copyContactsDesc": "Телефоны, email, мессенджеры",
+    "submit": "Создать",
+    "success": "Успешно",
+    "successMessage": "Пользователь скопирован",
+    "error": "Ошибка",
+    "errorMessage": "Не удалось скопировать пользователя"
+  },
+  "common": {
+    "cancel": "Отмена",
+    "actions": "Действия"
+  }
+}

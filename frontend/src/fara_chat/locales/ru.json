@@ -1,0 +1,386 @@
+{
+  "menu": {
+    "chat_connector": "Коннекторы",
+    "chat_external_account": "Внешние аккаунты",
+    "chat_external_chat": "Внешние чаты",
+    "chat_external_message": "Внешние сообщения"
+  },
+  "chats": "Чаты",
+  "newChat": "Новый чат",
+  "searchChats": "Поиск чатов...",
+  "noChats": "Нет чатов",
+  "noChatsFound": "Чаты не найдены",
+  "noMessages": "Нет сообщений",
+  "yesterday": "Вчера",
+  "today": "Сегодня",
+  "errorLoadingChats": "Ошибка загрузки чатов",
+  "errorLoadingMessages": "Ошибка загрузки сообщений",
+  "noMessagesYet": "Пока нет сообщений",
+  "startConversation": "Начните разговор, отправив сообщение",
+  "typeMessage": "Введите сообщение...",
+  "send": "Отправить",
+  "attach": "Прикрепить",
+  "attachImage": "Изображение",
+  "attachFile": "Файл",
+  "emoji": "Эмодзи",
+  "search": "Поиск",
+  "options": "Опции",
+  "addMember": "Добавить участника",
+  "notifications": "Уведомления",
+  "settings": "Настройки",
+  "deleteChat": "Удалить чат",
+  "leaveChat": "Покинуть чат",
+  "online": "В сети",
+  "offline": "Не в сети",
+  "userTyping": "{{name}} печатает...",
+  "usersTyping": "{{count}} пользователей печатают...",
+  "membersCount": "{{count}} участников",
+  "selectChatOrCreate": "Выберите чат или создайте новый",
+  "directChat": "Личный",
+  "groupChat": "Группа",
+  "groupName": "Название группы",
+  "enterGroupName": "Введите название группы",
+  "selectUser": "Выберите пользователя",
+  "selectMembers": "Выберите участников",
+  "searchUsers": "Поиск пользователей...",
+  "typeToSearch": "Введите минимум 2 символа для поиска",
+  "searching": "Поиск...",
+  "noUsersFound": "Пользователи не найдены",
+  "directChatHint": "Начните личную переписку с другим пользователем",
+  "groupChatHint": "Создайте групповой чат с несколькими участниками",
+  "cancel": "Отмена",
+  "create": "Создать",
+  "chatSettings": "Настройки чата",
+  "loading": "Загрузка...",
+  "chatName": "Название чата",
+  "enterChatName": "Введите название чата",
+  "description": "Описание",
+  "enterDescription": "Введите описание",
+  "members": "Участники",
+  "you": "вы",
+  "removeMember": "Удалить участника",
+  "dangerZone": "Опасная зона",
+  "save": "Сохранить",
+  "channel": "Канал",
+  "copyText": "Копировать текст",
+  "downloadFile": "Скачать файл",
+  "edit": "Редактировать",
+  "delete": "Удалить",
+  "pin": "Закрепить",
+  "unpin": "Открепить",
+  "markAsUnread": "Отметить как непрочитанное",
+  "forward": "Переслать",
+  "pinned": "Закреплено",
+  "edited": "изменено",
+  "textCopied": "Текст скопирован",
+  "messageEdited": "Сообщение отредактировано",
+  "messageDeleted": "Сообщение удалено",
+  "messagePinned": "Сообщение закреплено",
+  "messageUnpinned": "Сообщение откреплено",
+  "markedAsUnread": "Отмечено как непрочитанное",
+  "messageForwarded": "Сообщение переслано",
+  "errorEditingMessage": "Ошибка редактирования сообщения",
+  "errorDeletingMessage": "Ошибка удаления сообщения",
+  "errorPinningMessage": "Ошибка закрепления сообщения",
+  "errorMarkingUnread": "Ошибка отметки как непрочитанное",
+  "errorForwardingMessage": "Ошибка пересылки сообщения",
+  "errorAddingReaction": "Ошибка добавления реакции",
+  "editMessage": "Редактировать сообщение",
+  "messageText": "Текст сообщения",
+  "forwardMessage": "Переслать сообщение",
+  "selectChat": "Выберите чат",
+  "selectReaction": "Выберите реакцию",
+  "pinnedMessages": "Закреплённые сообщения",
+  "noPinnedMessages": "Нет закреплённых сообщений",
+  "read": "Прочитано",
+  "delivered": "Доставлено",
+  "openChat": "Открыть чаты",
+  "recordVoice": "Записать голосовое сообщение",
+  "stopRecording": "Остановить запись",
+  "attachedFiles": "Прикреплено: {{count}}",
+  "clearAll": "Очистить всё",
+  "all": "Все",
+  "internal": "Внутренние",
+  "telegram": "Telegram",
+  "whatsapp": "WhatsApp",
+
+  "permissions": {
+    "title": "Права доступа",
+    "canRead": "Может читать сообщения",
+    "canWrite": "Может отправлять сообщения",
+    "canInvite": "Может приглашать участников",
+    "canPin": "Может закреплять сообщения",
+    "canDeleteOthers": "Может удалять чужие сообщения",
+    "isAdmin": "Администратор",
+    "defaultPermissions": "Права по умолчанию для новых участников",
+    "memberPermissions": "Права участника",
+    "noPermission": "У вас нет прав для этого действия",
+    "readOnly": "Только чтение",
+    "cannotWrite": "Вы не можете отправлять сообщения в этот чат",
+    "cannotInvite": "Вы не можете приглашать участников в этот чат",
+    "cannotPin": "Вы не можете закреплять сообщения в этом чате",
+    "cannotDelete": "Вы не можете удалить это сообщение"
+  },
+  
+  "connector": {
+    "title": "Коннекторы чата",
+    "singular": "Коннектор",
+    "plural": "Коннекторы",
+    "menu": "Коннекторы",
+    
+    "fields": {
+      "name": "Название",
+      "active": "Активен",
+      "type": "Тип",
+      "category": "Категория",
+      "connectorUrl": "URL API",
+      "webhookUrl": "URL вебхука",
+      "webhookHash": "Секретный хеш",
+      "webhookState": "Статус вебхука",
+      "accessToken": "Access Token",
+      "accessTokenType": "Тип токена",
+      "accessTokenExpired": "Истекает",
+      "refreshToken": "Refresh Token",
+      "refreshTokenExpired": "Истекает",
+      "clientAppId": "ID приложения",
+      "externalAccountId": "ID внешнего аккаунта",
+      "telegramBotId": "Телеграм бот ID",
+      "telegramBotToken": "Телеграм бот токен",
+      "leadType": "Тип лида",
+      "lastResponse": "Последний ответ",
+      "createDate": "Дата создания",
+      "writeDate": "Дата изменения"
+    },
+    
+    "tabs": {
+      "connection": "Подключение",
+      "webhooks": "Webhooks",
+      "auth": "Авторизация",
+      "crm": "CRM",
+      "logs": "Логи"
+    },
+    
+    "groups": {
+      "api": "Настройки API",
+      "webhook": "Webhook",
+      "webhookSettings": "Настройки Webhook",
+      "accessToken": "Access Token",
+      "refreshToken": "Refresh Token",
+      "leadSettings": "Настройки лидов",
+      "lastResponse": "Последний ответ API",
+      "timestamps": "Временные метки",
+      "telegram": "Telegram Bot"
+    },
+    
+    "actions": {
+      "setWebhook": "Установить Webhook",
+      "unsetWebhook": "Удалить Webhook"
+    },
+    
+    "webhookSet": "Webhook установлен",
+    "webhookSetSuccess": "Webhook успешно зарегистрирован",
+    "webhookUnset": "Webhook удалён",
+    "webhookUnsetSuccess": "Webhook успешно удалён",
+    "error": "Ошибка",
+    
+    "types": {
+      "internal": "Внутренний",
+      "telegram": "Telegram",
+      "whatsapp": "WhatsApp",
+      "whatsapp_chatapp": "WhatsApp (ChatApp)",
+      "avito": "Avito",
+      "vk": "ВКонтакте"
+    },
+    
+    "categories": {
+      "messenger": "Мессенджер",
+      "phone": "Телефония",
+      "email": "Email",
+      "social": "Соц. сети"
+    },
+    
+    "webhookStates": {
+      "none": "Не установлен",
+      "successful": "Активен",
+      "failed": "Ошибка"
+    },
+    
+    "leadTypes": {
+      "lead": "Лид",
+      "opportunity": "Сделка"
+    },
+    
+    "telegram": {
+      "noAuthRequired": "Telegram использует Bot Token для авторизации. Настройте его во вкладке \"Подключение\"."
+    },
+    "email": {
+      "noAuthRequired": "Email использует логин и пароль для авторизации. Настройте его во вкладке \"Подключение\"."
+    }
+  },
+  
+  "member": {
+    "title": "Участники чата",
+    "singular": "Участник",
+    "plural": "Участники",
+    
+    "fields": {
+      "chatId": "Чат",
+      "userId": "Пользователь",
+      "partnerId": "Партнёр",
+      "isActive": "Активен",
+      "joinedAt": "Присоединился",
+      "leftAt": "Вышел",
+      "canRead": "Может читать",
+      "canWrite": "Может писать",
+      "canInvite": "Может приглашать",
+      "canPin": "Может закреплять",
+      "canDeleteOthers": "Может удалять чужие",
+      "isAdmin": "Администратор"
+    },
+    
+    "roles": {
+      "admin": "Админ",
+      "member": "Участник",
+      "readonly": "Только чтение"
+    }
+  },
+  
+  "chat": {
+    "fields": {
+      "defaultCanRead": "По умолчанию: Чтение",
+      "defaultCanWrite": "По умолчанию: Запись",
+      "defaultCanInvite": "По умолчанию: Приглашение",
+      "defaultCanPin": "По умолчанию: Закрепление",
+      "defaultCanDeleteOthers": "По умолчанию: Удаление чужих"
+    },
+    
+    "tabs": {
+      "main": "Основное",
+      "permissions": "Права",
+      "members": "Участники"
+    },
+    
+    "groups": {
+      "defaultPermissions": "Права по умолчанию для новых участников"
+    }
+  },
+  
+  "externalAccount": {
+    "title": "Внешние аккаунты",
+    "singular": "Внешний аккаунт",
+    "plural": "Внешние аккаунты",
+    "menu": "Внешние аккаунты",
+    
+    "fields": {
+      "name": "Название",
+      "active": "Активен",
+      "externalId": "Внешний ID",
+      "connectorId": "Коннектор",
+      "userId": "Пользователь",
+      "partnerId": "Партнёр",
+      "raw": "Сырые данные",
+      "sequence": "Порядок",
+      "createDate": "Дата создания",
+      "writeDate": "Дата изменения"
+    },
+    
+    "tabs": {
+      "main": "Основное",
+      "links": "Связи",
+      "data": "Данные"
+    },
+    
+    "groups": {
+      "info": "Информация об аккаунте",
+      "connection": "Подключение",
+      "links": "Связанные записи",
+      "rawData": "Сырые данные",
+      "timestamps": "Временные метки"
+    },
+    
+    "hints": {
+      "operator": "Оператор (сотрудник)",
+      "client": "Клиент (внешний пользователь)"
+    }
+  },
+  
+  "externalChat": {
+    "title": "Внешние чаты",
+    "singular": "Внешний чат",
+    "plural": "Внешние чаты",
+    "menu": "Внешние чаты",
+    
+    "fields": {
+      "externalId": "Внешний ID",
+      "connectorId": "Коннектор",
+      "chatId": "Внутренний чат",
+      "createDate": "Дата создания"
+    },
+    
+    "tabs": {
+      "main": "Основное"
+    },
+    
+    "groups": {
+      "connection": "Подключение",
+      "timestamps": "Временные метки"
+    }
+  },
+  
+  "externalMessage": {
+    "title": "Внешние сообщения",
+    "singular": "Внешнее сообщение",
+    "plural": "Внешние сообщения",
+    "menu": "Внешние сообщения",
+    
+    "fields": {
+      "externalId": "Внешний ID",
+      "externalChatId": "Внешний ID чата",
+      "connectorId": "Коннектор",
+      "messageId": "Внутреннее сообщение",
+      "createDate": "Дата создания"
+    },
+    
+    "tabs": {
+      "main": "Основное"
+    },
+    
+    "groups": {
+      "connection": "Подключение",
+      "timestamps": "Временные метки"
+    }
+  },
+
+  "fields": {
+    "id": "ID",
+    "name": "Название",
+    "active": "Активен",
+    "create_date": "Дата создания",
+    "external_id": "Внешний ID",
+    "connector_id": "Коннектор",
+    "type": "Тип",
+    "external_account_id": "Внешний ID аккаунта",
+    "operator_ids": "Операторы",
+    "webhook_url": "Webhook URL",
+    "contact_id": "Контакт",
+    "raw": "Сырые данные",
+    "external_chat_id": "Внешний ID чата",
+    "chat_id": "Внутренний чат",
+    "external_message_id": "Внешний ID сообщения",
+    "message_id": "Внутреннее сообщение"
+  },
+
+  "externalChat": {
+    "sections": {
+      "connection": "Связь чатов",
+      "relations": "Связи"
+    }
+  },
+
+  "externalMessage": {
+    "sections": {
+      "connection": "Связь сообщений",
+      "relations": "Связи"
+    }
+  }
+}
