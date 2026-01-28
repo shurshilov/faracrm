@@ -1,0 +1,1 @@
+import{j as s}from"./index-vK4T-B9h.js";import{F as e,a as m,b as r}from"./Form-DV-7_dTK.js";import"./use-form-1MgghPQc.js";import"./Button-kQItaDUP.js";import"./Actions-DltArpq0.js";function p(){return s.jsxs(e,{model:"users",children:[s.jsx(m,{name:"id"}),s.jsx(r,{name:"name"}),s.jsx(r,{name:"email"}),s.jsx(r,{name:"password_hash"})]})}export{p as default};

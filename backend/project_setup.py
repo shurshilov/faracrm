@@ -20,7 +20,8 @@ from backend.base.system.logger.settings import LoggerSettings
 #
 from backend.base.system.core.system_settings import SystemSettings
 from backend.base.system.cron.models.cron_job import CronJob
-from backend.base.system.mkdocs.app import MkdocsService
+
+# from backend.base.system.mkdocs.app import MkdocsService
 from backend.base.crm.languages.models.language import Language
 from backend.base.crm.users.models.users import User
 from backend.base.crm.security.models.acls import AccessList
@@ -203,7 +204,7 @@ class Apps(AppsCore):
     db = DotormDatabasesPostgresService()
     logger = LoggerService()
     swagger_offlain = SwaggerOfflainService()
-    mkdocs = MkdocsService()
+    # mkdocs = MkdocsService()
 
 
 # MONKEY PATCH TRICK
