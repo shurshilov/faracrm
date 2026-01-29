@@ -10,10 +10,10 @@ from backend.base.crm.attachments.models.attachments_storage import (
 from backend.base.system.dotorm.dotorm.decorators import onchange
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
-    Binary,
     Boolean,
     Selection,
     Text,
+    JSONField,
 )
 
 # Поддержка IDE - видны все атрибуты базового класса
@@ -38,9 +38,9 @@ class AttachmentStorageGoogleMixin(_Base):
     type: str = Selection(selection_add=[("google", "Google Drive")])
 
     # OAuth2 авторизация
-    google_json_credentials: bytes | None = Binary(
-        string="JSON Credentials File",
-        help="Upload the credentials.json file from Google Cloud Console",
+    google_json_credentials: dict | list | None = JSONField(
+        string="Credentials JSON",
+        help="Contents of credentials.json file from Google Cloud Console",
     )
 
     google_credentials: str | None = Text(

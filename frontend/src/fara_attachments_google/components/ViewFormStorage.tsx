@@ -1,24 +1,15 @@
 import { FieldChar } from '@/components/Form/Fields/FieldChar';
 import { FieldBoolean } from '@/components/Form/Fields/FieldBoolean';
-import { FieldFile } from '@/components/Form/Fields/FieldFile';
+import { FieldJson } from '@/components/Form/Fields/FieldJson';
 import { FieldSelection } from '@/components/Form/Fields/FieldSelection';
 import { FormRow, FormSection } from '@/components/Form/Layout';
 import { useFormContext } from '@/components/Form/FormContext';
 import { registerExtension } from '@/shared/extensions';
-import {
-  Button,
-  Group,
-  Badge,
-  Text,
-  Alert,
-  Anchor,
-  Stack,
-  Box,
-} from '@mantine/core';
-import {
-  IconBrandGoogleDrive,
-  IconLink,
-  IconAlertCircle,
+import { Button, Group, Badge, Text, Alert, Anchor, Stack, Box } from '@mantine/core';
+import { 
+  IconBrandGoogleDrive, 
+  IconLink, 
+  IconAlertCircle, 
   IconArrowRight,
   IconInfoCircle,
   IconExternalLink,
@@ -46,25 +37,17 @@ export function ViewFormStorageGoogle() {
     <FormSection
       title="Google Drive"
       icon={<IconBrandGoogleDrive size={18} />}
-      collapsible>
+      collapsible
+    >
       {/* Статус авторизации */}
       <Group mb="md" justify="space-between">
         <Group gap="sm">
-          <Text size="sm" fw={500}>
-            Статус авторизации:
-          </Text>
+          <Text size="sm" fw={500}>Статус авторизации:</Text>
           <Badge
-            color={
-              isAuthorized
-                ? 'green'
-                : isFailed
-                  ? 'red'
-                  : isPending
-                    ? 'yellow'
-                    : 'gray'
-            }
+            color={isAuthorized ? 'green' : isFailed ? 'red' : isPending ? 'yellow' : 'gray'}
             variant="filled"
-            size="lg">
+            size="lg"
+          >
             {isAuthorized && 'Авторизован'}
             {isPending && 'Ожидает авторизации'}
             {isFailed && 'Ошибка авторизации'}
@@ -75,10 +58,14 @@ export function ViewFormStorageGoogle() {
         <Group gap="sm">
           {!isAuthorized && (
             <Button
+              component="a"
+              href={form.values?.id ? `/attachments/google/auth/${form.values.id}` : undefined}
+              target="_blank"
               leftSection={<IconLink size={16} />}
               color="blue"
               variant="outline"
-              disabled={!form.values?.id}>
+              disabled={!form.values?.id || !form.values?.google_json_credentials}
+            >
               Авторизовать в Google
             </Button>
           )}
@@ -91,14 +78,23 @@ export function ViewFormStorageGoogle() {
         </Alert>
       )}
 
+      {form.values?.id && !form.values?.google_json_credentials && !isAuthorized && (
+        <Alert icon={<IconAlertCircle size={16} />} color="orange" mb="md">
+          Загрузите файл credentials.json для авторизации в Google Drive.
+        </Alert>
+      )}
+
       {/* Инструкции по настройке */}
       {!isAuthorized && (
-        <Alert
-          icon={<IconBrandGoogleDrive size={20} />}
-          title="Настройка Google Drive"
+        <Alert 
+          icon={<IconBrandGoogleDrive size={20} />} 
+          title="Настройка Google Drive" 
           color="blue"
-          mb="md">
-          <Text size="sm">Для настройки хранилища Google Drive:</Text>
+          mb="md"
+        >
+          <Text size="sm">
+            Для настройки хранилища Google Drive:
+          </Text>
           <ol style={{ margin: '8px 0', paddingLeft: '20px' }}>
             <li>Создайте проект в Google Cloud Console</li>
             <li>Включите Google Drive API</li>
@@ -106,13 +102,14 @@ export function ViewFormStorageGoogle() {
             <li>Скачайте credentials.json и загрузите его ниже</li>
             <li>Сохраните хранилище и нажмите "Авторизовать"</li>
           </ol>
-
+          
           {/* Ссылки на Google Cloud Console */}
           <Stack gap="xs" mt="sm">
             <Anchor
               href="https://console.cloud.google.com/apis/dashboard"
               target="_blank"
-              size="sm">
+              size="sm"
+            >
               <Group gap={6}>
                 <IconArrowRight size={14} />
                 <Text span>1. Enable Google Drive API</Text>
@@ -122,7 +119,8 @@ export function ViewFormStorageGoogle() {
             <Anchor
               href="https://console.cloud.google.com/apis/credentials"
               target="_blank"
-              size="sm">
+              size="sm"
+            >
               <Group gap={6}>
                 <IconArrowRight size={14} />
                 <Text span>2. Create Web App credentials</Text>
@@ -133,13 +131,15 @@ export function ViewFormStorageGoogle() {
         </Alert>
       )}
 
-      {/* Credentials файл */}
+      {/* Credentials JSON */}
       <FormRow cols={1}>
-        <FieldFile
+        <FieldJson
           name="google_json_credentials"
-          label="Файл credentials.json"
-          accept=".json"
-          description="Загрузите файл credentials.json из Google Cloud Console"
+          label="Credentials JSON"
+          description="Загрузите credentials.json или вставьте JSON вручную"
+          allowFileUpload
+          placeholder='{"web": {"client_id": "...", "client_secret": "..."}}'
+          minRows={6}
         />
       </FormRow>
 
@@ -175,12 +175,13 @@ export function ViewFormStorageGoogle() {
       </FormRow>
 
       {/* Напоминание про production mode - всегда видно, но ненавязчиво */}
-      <Box
-        mt="md"
-        pt="sm"
-        style={{
+      <Box 
+        mt="md" 
+        pt="sm" 
+        style={{ 
           borderTop: '1px solid var(--mantine-color-gray-2)',
-        }}>
+        }}
+      >
         <Group gap={6} c="dimmed">
           <IconInfoCircle size={14} style={{ flexShrink: 0 }} />
           <Text size="xs" c="dimmed">
@@ -190,11 +191,11 @@ export function ViewFormStorageGoogle() {
               target="_blank"
               size="xs"
               c="dimmed"
-              td="underline">
+              td="underline"
+            >
               production mode
             </Anchor>
-            . Иначе интеграция перестанет работать через 7 дней (только для
-            external).
+            . Иначе интеграция перестанет работать через 7 дней (только для external).
           </Text>
         </Group>
       </Box>
