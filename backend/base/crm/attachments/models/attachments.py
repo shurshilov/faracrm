@@ -192,8 +192,8 @@ class Attachment(DotModel):
             Содержимое файла в байтах или None если файл не найден
         """
         # Если контент уже загружен - возвращаем его
-        if self.content:
-            return self.content
+        # if self.content:
+        #     return self.content
 
         # Если нет хранилища - файл не сохранен
         if not self.storage_id:

@@ -100,9 +100,12 @@ class AttachmentStorage(DotModel):
         result = await env.models.attachment_storage.search(
             filter=[("active", "=", True)],
             limit=1,
-            fields=["id", "name", "type", "active"],
+            fields=["id"],
         )
-        return result[0] if result else None
+        if result:
+            return await env.models.attachment_storage.get(result[0].id)
+        else:
+            return None
 
     @classmethod
     async def get_or_create_default(cls) -> "AttachmentStorage":

@@ -11,7 +11,7 @@ from backend.base.crm.attachments.strategies.strategy import (
 )
 
 if TYPE_CHECKING:
-    from backend.base.crm.attachments.models.attachments_storage import (
+    from backend.project_setup import (
         AttachmentStorage,
     )
     from backend.base.crm.attachments.models.attachments import Attachment

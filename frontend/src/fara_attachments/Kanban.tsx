@@ -91,7 +91,7 @@ function AttachmentCard({
     e.stopPropagation();
     if (!attachment.id || !session?.token) return;
 
-    fetch(`${API_BASE_URL}/attachments/${attachment.id}/download`, {
+    fetch(`${API_BASE_URL}/attachments/${attachment.id}`, {
       headers: { Authorization: `Bearer ${session.token}` },
     })
       .then(res => res.blob())

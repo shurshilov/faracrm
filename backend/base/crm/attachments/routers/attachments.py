@@ -74,8 +74,12 @@ async def attachment_content(req: Request, attachment_id: Id):
             "res_id",
             "name",
             "storage_file_url",
+            "storage_file_id",
             "mimetype",
+            "storage_id",
+            "content",
         ],
+        fields_nested={"storage_id": ["id", "type", "google_credentials"]},
     )
     if not attach:
         return JSONResponse(
@@ -84,11 +88,12 @@ async def attachment_content(req: Request, attachment_id: Id):
 
     attach = attach[0]
 
-    async with aiofiles.open(
-        f"{attach.storage_file_url}",
-        "rb",
-    ) as file:
-        attachment_content = await file.read()
+    attachment_content = await attach.read_content()
+    # async with aiofiles.open(
+    #     f"{attach.storage_file_url}",
+    #     "rb",
+    # ) as file:
+    #     attachment_content = await file.read()
 
     return Response(
         headers={
@@ -120,10 +125,16 @@ async def attachment_preview(
         limit=1,
         fields=[
             "id",
+            "model",
+            "res_id",
             "name",
             "storage_file_url",
+            "storage_file_id",
             "mimetype",
+            "storage_id",
+            "content",
         ],
+        fields_nested={"storage_id": ["id", "type", "google_credentials"]},
     )
     if not attach:
         return JSONResponse(
@@ -131,20 +142,20 @@ async def attachment_preview(
         )
 
     attach = attach[0]
+    attachment_content = await attach.read_content()
+    # if not attach.storage_file_url or not os.path.exists(
+    #     attach.storage_file_url
+    # ):
+    #     return JSONResponse(
+    #         content={"error": "#FILE_NOT_FOUND"},
+    #         status_code=HTTP_404_NOT_FOUND,
+    #     )
 
-    if not attach.storage_file_url or not os.path.exists(
-        attach.storage_file_url
-    ):
-        return JSONResponse(
-            content={"error": "#FILE_NOT_FOUND"},
-            status_code=HTTP_404_NOT_FOUND,
-        )
-
-    async with aiofiles.open(
-        f"{attach.storage_file_url}",
-        "rb",
-    ) as file:
-        attachment_content = await file.read()
+    # async with aiofiles.open(
+    #     f"{attach.storage_file_url}",
+    #     "rb",
+    # ) as file:
+    #     attachment_content = await file.read()
 
     # Ресайз если указаны размеры и это изображение
     if (w or h) and attach.mimetype in RESIZABLE_MIMETYPES:
