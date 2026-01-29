@@ -5,11 +5,23 @@ import { FieldSelection } from '@/components/Form/Fields/FieldSelection';
 import { FormRow, FormSection } from '@/components/Form/Layout';
 import { useFormContext } from '@/components/Form/FormContext';
 import { registerExtension } from '@/shared/extensions';
-import { Button, Group, Badge, Text, Alert, Anchor, Stack, Box } from '@mantine/core';
-import { 
-  IconBrandGoogleDrive, 
-  IconLink, 
-  IconAlertCircle, 
+import { API_BASE_URL } from '@/services/baseQueryWithReauth';
+import {
+  Button,
+  Group,
+  Badge,
+  Text,
+  Alert,
+  Anchor,
+  Stack,
+  Box,
+} from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { useState } from 'react';
+import {
+  IconBrandGoogleDrive,
+  IconLink,
+  IconAlertCircle,
   IconArrowRight,
   IconInfoCircle,
   IconExternalLink,
@@ -22,6 +34,7 @@ import {
 export function ViewFormStorageGoogle() {
   const form = useFormContext();
   const storageType = form.values?.type;
+  const [isLoading, setIsLoading] = useState(false);
 
   // Показываем только для типа google
   if (storageType !== 'google') {
@@ -33,21 +46,61 @@ export function ViewFormStorageGoogle() {
   const isPending = authState === 'pending';
   const isFailed = authState === 'failed';
 
+  // Обработчик авторизации
+  const handleAuthorize = async () => {
+    if (!form.values?.id) return;
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/google/auth/${form.values.id}`,
+      );
+      const data = await response.json();
+
+      if (data.authorization_url) {
+        // Открываем Google OAuth в новом окне
+        window.open(data.authorization_url, '_blank', 'width=600,height=700');
+      } else if (data.error) {
+        notifications.show({
+          title: 'Ошибка',
+          message: data.error,
+          color: 'red',
+        });
+      }
+    } catch (error) {
+      notifications.show({
+        title: 'Ошибка',
+        message: 'Не удалось начать авторизацию',
+        color: 'red',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <FormSection
       title="Google Drive"
       icon={<IconBrandGoogleDrive size={18} />}
-      collapsible
-    >
+      collapsible>
       {/* Статус авторизации */}
       <Group mb="md" justify="space-between">
         <Group gap="sm">
-          <Text size="sm" fw={500}>Статус авторизации:</Text>
+          <Text size="sm" fw={500}>
+            Статус авторизации:
+          </Text>
           <Badge
-            color={isAuthorized ? 'green' : isFailed ? 'red' : isPending ? 'yellow' : 'gray'}
+            color={
+              isAuthorized
+                ? 'green'
+                : isFailed
+                  ? 'red'
+                  : isPending
+                    ? 'yellow'
+                    : 'gray'
+            }
             variant="filled"
-            size="lg"
-          >
+            size="lg">
             {isAuthorized && 'Авторизован'}
             {isPending && 'Ожидает авторизации'}
             {isFailed && 'Ошибка авторизации'}
@@ -58,14 +111,14 @@ export function ViewFormStorageGoogle() {
         <Group gap="sm">
           {!isAuthorized && (
             <Button
-              component="a"
-              href={form.values?.id ? `/attachments/google/auth/${form.values.id}` : undefined}
-              target="_blank"
+              onClick={handleAuthorize}
+              loading={isLoading}
               leftSection={<IconLink size={16} />}
               color="blue"
               variant="outline"
-              disabled={!form.values?.id || !form.values?.google_json_credentials}
-            >
+              disabled={
+                !form.values?.id || !form.values?.google_json_credentials
+              }>
               Авторизовать в Google
             </Button>
           )}
@@ -78,23 +131,22 @@ export function ViewFormStorageGoogle() {
         </Alert>
       )}
 
-      {form.values?.id && !form.values?.google_json_credentials && !isAuthorized && (
-        <Alert icon={<IconAlertCircle size={16} />} color="orange" mb="md">
-          Загрузите файл credentials.json для авторизации в Google Drive.
-        </Alert>
-      )}
+      {form.values?.id &&
+        !form.values?.google_json_credentials &&
+        !isAuthorized && (
+          <Alert icon={<IconAlertCircle size={16} />} color="orange" mb="md">
+            Загрузите файл credentials.json для авторизации в Google Drive.
+          </Alert>
+        )}
 
       {/* Инструкции по настройке */}
       {!isAuthorized && (
-        <Alert 
-          icon={<IconBrandGoogleDrive size={20} />} 
-          title="Настройка Google Drive" 
+        <Alert
+          icon={<IconBrandGoogleDrive size={20} />}
+          title="Настройка Google Drive"
           color="blue"
-          mb="md"
-        >
-          <Text size="sm">
-            Для настройки хранилища Google Drive:
-          </Text>
+          mb="md">
+          <Text size="sm">Для настройки хранилища Google Drive:</Text>
           <ol style={{ margin: '8px 0', paddingLeft: '20px' }}>
             <li>Создайте проект в Google Cloud Console</li>
             <li>Включите Google Drive API</li>
@@ -102,14 +154,13 @@ export function ViewFormStorageGoogle() {
             <li>Скачайте credentials.json и загрузите его ниже</li>
             <li>Сохраните хранилище и нажмите "Авторизовать"</li>
           </ol>
-          
+
           {/* Ссылки на Google Cloud Console */}
           <Stack gap="xs" mt="sm">
             <Anchor
               href="https://console.cloud.google.com/apis/dashboard"
               target="_blank"
-              size="sm"
-            >
+              size="sm">
               <Group gap={6}>
                 <IconArrowRight size={14} />
                 <Text span>1. Enable Google Drive API</Text>
@@ -119,8 +170,7 @@ export function ViewFormStorageGoogle() {
             <Anchor
               href="https://console.cloud.google.com/apis/credentials"
               target="_blank"
-              size="sm"
-            >
+              size="sm">
               <Group gap={6}>
                 <IconArrowRight size={14} />
                 <Text span>2. Create Web App credentials</Text>
@@ -175,13 +225,12 @@ export function ViewFormStorageGoogle() {
       </FormRow>
 
       {/* Напоминание про production mode - всегда видно, но ненавязчиво */}
-      <Box 
-        mt="md" 
-        pt="sm" 
-        style={{ 
+      <Box
+        mt="md"
+        pt="sm"
+        style={{
           borderTop: '1px solid var(--mantine-color-gray-2)',
-        }}
-      >
+        }}>
         <Group gap={6} c="dimmed">
           <IconInfoCircle size={14} style={{ flexShrink: 0 }} />
           <Text size="xs" c="dimmed">
@@ -191,11 +240,11 @@ export function ViewFormStorageGoogle() {
               target="_blank"
               size="xs"
               c="dimmed"
-              td="underline"
-            >
+              td="underline">
               production mode
             </Anchor>
-            . Иначе интеграция перестанет работать через 7 дней (только для external).
+            . Иначе интеграция перестанет работать через 7 дней (только для
+            external).
           </Text>
         </Group>
       </Box>

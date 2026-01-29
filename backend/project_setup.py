@@ -112,6 +112,7 @@ from backend.base.system.administration.app import AdministrationApp
 from backend.base.crm.users.app import UserApp
 from backend.base.crm.security.app import SecurityApp
 from backend.base.crm.attachments.app import AttachmentsApp
+from backend.base.crm.attachments_google.app import AttachmentsGoogleApp
 from backend.base.crm.leads.app import LeadsApp
 from backend.base.crm.partners.app import PartnersApp
 from backend.base.crm.sales.app import SalesApp
@@ -206,6 +207,7 @@ class Apps(AppsCore):
     users = UserApp()
     security = SecurityApp()
     attachments = AttachmentsApp()
+    attachments_google = AttachmentsGoogleApp()
     leads = LeadsApp()
     partners = PartnersApp()
     sales = SalesApp()

@@ -6,7 +6,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Request
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -22,7 +22,7 @@ SCOPES = [
 
 router_public = APIRouter(
     tags=["Attachments Google OAuth"],
-    prefix="/attachments/google",
+    prefix="/google",
 )
 
 
@@ -99,6 +99,8 @@ async def oauth2_callback(req: Request):
     env: "Environment" = req.app.state.env
 
     # Ищем storage по verify_code
+    # Specify the state when creating the flow in the callback so that it can
+    # verified in the authorization server response.
     storage_list = await env.models.attachment_storage.search(
         filter=[
             ("type", "=", "google"),
@@ -149,7 +151,7 @@ async def oauth2_callback(req: Request):
         )
 
     try:
-        # Декодируем credentials.json
+        # Получаем credentials.json (уже dict)
         credentials_json = storage.google_json_credentials
 
         # Создаём flow с state
@@ -161,15 +163,14 @@ async def oauth2_callback(req: Request):
 
         # Определяем redirect_uri
         base_url = str(req.base_url).rstrip("/")
-        redirect_uri = f"{base_url}/attachments/google/callback"
+        if base_url.startswith(r"http://127.0.0.1"):
+            base_url = "http://localhost" + base_url[16:]
 
         # Приводим к HTTPS если не localhost
-        if (
-            redirect_uri.startswith("http:")
-            and "localhost" not in redirect_uri
-            and "127.0.0.1" not in redirect_uri
-        ):
-            redirect_uri = "https:" + redirect_uri[5:]
+        elif base_url.startswith("http:") and "localhost" not in base_url:
+            base_url = "https:" + base_url[5:]
+
+        redirect_uri = f"{base_url}/google/callback"
 
         flow.redirect_uri = redirect_uri
 
@@ -180,12 +181,15 @@ async def oauth2_callback(req: Request):
         if (
             authorization_response.startswith("http:")
             and "localhost" not in authorization_response
-            and "127.0.0.1" not in authorization_response
         ):
             authorization_response = "https:" + authorization_response[5:]
 
         logger.info(f"Fetching token with redirect_uri: {redirect_uri}")
 
+        # Use the authorization server's response to fetch the OAuth 2.0 tokens.
+        # Add HTTPS for localhost test
+        if authorization_response.startswith("http:"):
+            authorization_response = "https:" + authorization_response[5:]
         # Обмениваем code на токены
         flow.fetch_token(authorization_response=authorization_response)
 
@@ -272,7 +276,7 @@ async def oauth2_start(req: Request, storage_id: int):
     """
     Начинает процесс OAuth2 авторизации для Google Drive.
 
-    Генерирует verify_code, сохраняет в storage и редиректит на Google.
+    Возвращает authorization_url для редиректа на Google.
 
     Path parameters:
     - storage_id: ID storage для авторизации
@@ -282,8 +286,8 @@ async def oauth2_start(req: Request, storage_id: int):
     try:
         from google_auth_oauthlib.flow import InstalledAppFlow
     except ImportError:
-        return HTMLResponse(
-            content="<h1>Error</h1><p>google-auth-oauthlib not installed</p>",
+        return JSONResponse(
+            content={"error": "google-auth-oauthlib not installed"},
             status_code=500,
         )
 
@@ -304,21 +308,21 @@ async def oauth2_start(req: Request, storage_id: int):
     )
 
     if not storage_list:
-        return HTMLResponse(
-            content="<h1>Error</h1><p>Storage not found</p>",
+        return JSONResponse(
+            content={"error": "Storage not found"},
             status_code=404,
         )
 
     storage = storage_list[0]
 
     if not storage.google_json_credentials:
-        return HTMLResponse(
-            content="<h1>Error</h1><p>Please upload credentials.json first</p>",
+        return JSONResponse(
+            content={"error": "Please upload credentials.json first"},
             status_code=400,
         )
 
     try:
-        # Декодируем credentials.json
+        # Получаем credentials.json (уже dict)
         credentials_json = storage.google_json_credentials
 
         # Генерируем verify_code
@@ -341,32 +345,43 @@ async def oauth2_start(req: Request, storage_id: int):
 
         # Определяем redirect_uri
         base_url = str(req.base_url).rstrip("/")
-        redirect_uri = f"{base_url}/attachments/google/callback"
+        if base_url.startswith(r"http://127.0.0.1"):
+            base_url = "http://localhost" + base_url[16:]
 
         # Приводим к HTTPS если не localhost
-        if (
-            redirect_uri.startswith("http:")
-            and "localhost" not in redirect_uri
-            and "127.0.0.1" not in redirect_uri
-        ):
-            redirect_uri = "https:" + redirect_uri[5:]
+        elif base_url.startswith("http:") and "localhost" not in base_url:
+            base_url = "https:" + base_url[5:]
+            # raise ValueError(
+            #     f"Please check, that system parameter web.base.url, \
+            #     should start 'HTTPS://' or be localhost (example - http://127.0.0.1:8069). \
+            #     Current web.base.url: {base_url}"
+            # )
 
-        flow.redirect_uri = redirect_uri
+        flow.redirect_uri = f"{base_url}/google/callback"
 
         # Генерируем URL авторизации
-        authorization_url, _ = flow.authorization_url(
+        authorization_url, state = flow.authorization_url(
+            # Enable offline access so that you can refresh an access token without
+            # re-prompting the user for permission. Recommended for web server apps.
             access_type="offline",
-            include_granted_scopes="true",
-            prompt="consent",  # Всегда запрашиваем consent для получения refresh_token
+            # Optional, set prompt to 'consent' will prompt the user for consent
+            # always request consent, for always get refresh token
+            prompt="consent",
+            # Enable incremental authorization. Recommended as a best practice.
+            # Disable for none-check scopes on callback
+            # include_granted_scopes="true",
         )
 
-        logger.info(f"Redirecting to Google OAuth: {authorization_url}")
+        logger.info(f"Generated Google OAuth URL for storage {storage_id}")
 
-        return RedirectResponse(url=authorization_url)
+        return JSONResponse(
+            content={"authorization_url": authorization_url},
+            status_code=200,
+        )
 
     except Exception as e:
-        logger.exception(f"Error starting OAuth: {e}")
-        return HTMLResponse(
-            content=f"<h1>Error</h1><p>{str(e)}</p>",
+        logger.exception(f"Error generating OAuth URL: {e}")
+        return JSONResponse(
+            content={"error": str(e)},
             status_code=500,
         )
