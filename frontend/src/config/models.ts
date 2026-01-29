@@ -237,6 +237,8 @@ export const modelsConfig: Record<string, ModelConfig> = {
       import('@/fara_attachments/Kanban').then(m => ({
         default: m.ViewKanbanAttachmentsStorage,
       })),
+    // Модули расширяющие форму хранилища
+    extensions: [() => import('@/fara_attachments_google')],
   },
 
   // === Settings ===
@@ -360,9 +362,13 @@ export const modelsConfig: Record<string, ModelConfig> = {
   saved_filters: {
     menu: MenuGroups.settings,
     list: () =>
-      import('@/fara_saved_filters/List').then(m => ({ default: m.ViewListSavedFilters })),
+      import('@/fara_saved_filters/List').then(m => ({
+        default: m.ViewListSavedFilters,
+      })),
     form: () =>
-      import('@/fara_saved_filters/Form').then(m => ({ default: m.ViewFormSavedFilters })),
+      import('@/fara_saved_filters/Form').then(m => ({
+        default: m.ViewFormSavedFilters,
+      })),
   },
 };
 

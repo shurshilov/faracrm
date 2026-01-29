@@ -35,6 +35,24 @@ export function ViewListAttachmentsStorage() {
       <Field name="id" />
       <Field name="name" />
       <Field name="type" />
+      <Field 
+        name="active" 
+        render={(value) => (
+          value ? (
+            <span style={{ 
+              color: 'green', 
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              ● Активно
+            </span>
+          ) : (
+            <span style={{ color: '#999' }}>—</span>
+          )
+        )}
+      />
     </List>
   );
 }

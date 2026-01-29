@@ -1,24 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { 
-  Paper, 
-  Group, 
-  Stack, 
-  Text, 
-  Badge, 
-  ActionIcon, 
+import {
+  Paper,
+  Group,
+  Stack,
+  Text,
+  Badge,
+  ActionIcon,
   Tooltip,
   Box,
   Image,
   Loader,
   Divider,
 } from '@mantine/core';
-import { 
-  IconDownload, 
-  IconEye, 
-  IconFolder, 
-  IconLock, 
+import {
+  IconDownload,
+  IconEye,
+  IconFolder,
+  IconLock,
   IconWorld,
   IconMicrophone,
   IconFile,
@@ -28,7 +28,10 @@ import {
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import { Attachment, SchemaAttachmentStorage } from '@/services/api/attachments';
+import {
+  Attachment,
+  SchemaAttachmentStorage,
+} from '@/services/api/attachments';
 import {
   FormRow,
   FormTabs,
@@ -37,7 +40,12 @@ import {
 } from '@/components/Form/Layout';
 import { FileIcon } from '@/components/Attachment/FileIcon';
 import { ImagePreviewModal } from '@/components/Attachment/ImagePreviewModal';
-import { isImageMimetype, isAudioMimetype, isVideoMimetype, formatFileSize } from '@/components/Attachment/fileIcons';
+import {
+  isImageMimetype,
+  isAudioMimetype,
+  isVideoMimetype,
+  formatFileSize,
+} from '@/components/Attachment/fileIcons';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
 import { selectCurrentSession } from '@/slices/authSlice';
 import classes from './Form.module.css';
@@ -64,13 +72,14 @@ function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
 
   // Загружаем превью для изображений
   useEffect(() => {
-    if (!attachment || !isImageMimetype(attachment.mimetype) || !session?.token) return;
+    if (!attachment || !isImageMimetype(attachment.mimetype) || !session?.token)
+      return;
 
     setIsLoading(true);
     fetch(`${API_BASE_URL}/attachments/${attachment.id}/preview`, {
       headers: { Authorization: `Bearer ${session.token}` },
     })
-      .then(res => res.ok ? res.blob() : Promise.reject())
+      .then(res => (res.ok ? res.blob() : Promise.reject()))
       .then(blob => {
         const reader = new FileReader();
         reader.onload = () => setImageSrc(reader.result as string);
@@ -102,7 +111,9 @@ function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
       <Paper className={classes.previewCard} withBorder p="xl" radius="md">
         <Stack align="center" gap="md">
           <Loader size="sm" />
-          <Text size="sm" c="dimmed">Загрузка...</Text>
+          <Text size="sm" c="dimmed">
+            Загрузка...
+          </Text>
         </Stack>
       </Paper>
     );
@@ -147,13 +158,19 @@ function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
             <Group gap="xs">
               {isImage && imageSrc && (
                 <Tooltip label="Просмотр">
-                  <ActionIcon variant="light" color="blue" onClick={() => setPreviewOpen(true)}>
+                  <ActionIcon
+                    variant="light"
+                    color="blue"
+                    onClick={() => setPreviewOpen(true)}>
                     <IconEye size={18} />
                   </ActionIcon>
                 </Tooltip>
               )}
               <Tooltip label="Скачать">
-                <ActionIcon variant="light" color="gray" onClick={handleDownload}>
+                <ActionIcon
+                  variant="light"
+                  color="gray"
+                  onClick={handleDownload}>
                   <IconDownload size={18} />
                 </ActionIcon>
               </Tooltip>
@@ -164,37 +181,54 @@ function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
             <Badge size="sm" variant="light" color="gray">
               {formatFileSize(attachment.size)}
             </Badge>
-            
+
             {attachment.folder && (
-              <Badge size="sm" color="yellow" leftSection={<IconFolder size={10} />}>
+              <Badge
+                size="sm"
+                color="yellow"
+                leftSection={<IconFolder size={10} />}>
                 Папка
               </Badge>
             )}
-            
+
             {attachment.is_voice && (
-              <Badge size="sm" color="pink" leftSection={<IconMicrophone size={10} />}>
+              <Badge
+                size="sm"
+                color="pink"
+                leftSection={<IconMicrophone size={10} />}>
                 Голосовое
               </Badge>
             )}
-            
+
             {isImage && (
-              <Badge size="sm" color="teal">Изображение</Badge>
-            )}
-            
-            {isVideo && (
-              <Badge size="sm" color="violet">Видео</Badge>
-            )}
-            
-            {isAudio && !attachment.is_voice && (
-              <Badge size="sm" color="pink">Аудио</Badge>
+              <Badge size="sm" color="teal">
+                Изображение
+              </Badge>
             )}
 
-            <Badge 
-              size="sm" 
-              variant="light" 
+            {isVideo && (
+              <Badge size="sm" color="violet">
+                Видео
+              </Badge>
+            )}
+
+            {isAudio && !attachment.is_voice && (
+              <Badge size="sm" color="pink">
+                Аудио
+              </Badge>
+            )}
+
+            <Badge
+              size="sm"
+              variant="light"
               color={attachment.public ? 'green' : 'gray'}
-              leftSection={attachment.public ? <IconWorld size={10} /> : <IconLock size={10} />}
-            >
+              leftSection={
+                attachment.public ? (
+                  <IconWorld size={10} />
+                ) : (
+                  <IconLock size={10} />
+                )
+              }>
               {attachment.public ? 'Публичный' : 'Приватный'}
             </Badge>
           </Group>
@@ -228,13 +262,14 @@ export function ViewFormAttachments(props: ViewFormProps) {
   return (
     <Form<Attachment> model="attachments" {...props}>
       {/* Превью карточка */}
-      {attachmentId && (
-        <AttachmentPreviewCard attachmentId={attachmentId} />
-      )}
+      {attachmentId && <AttachmentPreviewCard attachmentId={attachmentId} />}
 
       {/* Вкладки с информацией */}
       <FormTabs defaultTab="info">
-        <FormTab name="info" label="Основная информация" icon={<IconFile size={16} />}>
+        <FormTab
+          name="info"
+          label="Основная информация"
+          icon={<IconFile size={16} />}>
           <FormSection title="Файл">
             <FormRow cols={2}>
               <Field name="id" label="ID" />
@@ -257,7 +292,10 @@ export function ViewFormAttachments(props: ViewFormProps) {
           </FormSection>
         </FormTab>
 
-        <FormTab name="resource" label="Привязка к ресурсу" icon={<IconDatabase size={16} />}>
+        <FormTab
+          name="resource"
+          label="Привязка к ресурсу"
+          icon={<IconDatabase size={16} />}>
           <FormSection title="Связанный ресурс">
             <FormRow cols={3}>
               <Field name="res_model" label="Модель" />
@@ -276,7 +314,10 @@ export function ViewFormAttachments(props: ViewFormProps) {
             </FormRow>
             <FormRow cols={2}>
               <Field name="storage_parent_id" label="ID родительской папки" />
-              <Field name="storage_parent_name" label="Имя родительской папки" />
+              <Field
+                name="storage_parent_name"
+                label="Имя родительской папки"
+              />
             </FormRow>
           </FormSection>
         </FormTab>
@@ -288,12 +329,28 @@ export function ViewFormAttachments(props: ViewFormProps) {
 export function ViewFormAttachmentsStorage(props: ViewFormProps) {
   return (
     <Form<SchemaAttachmentStorage> model="attachments_storage" {...props}>
-      <FormSection title="Настройки хранилища">
+      {/* Основная информация */}
+      <FormSection title="Основные настройки">
         <FormRow cols={2}>
           <Field name="name" label="Название" />
-          <Field name="type" label="Тип" />
+          <Field name="type" label="Тип хранилища" />
+        </FormRow>
+        <FormRow cols={2}>
+          <Field name="active" label="Активное" />
+          <Field name="id" />
         </FormRow>
       </FormSection>
+
+      {/* Вкладки для расширений */}
+      <FormTabs defaultTab="connection">
+        {/* Подключение - контент добавляется через расширения */}
+        <FormTab
+          name="connection"
+          label="Подключение"
+          icon={<IconLink size={16} />}>
+          {/* Контент добавляется через расширения (Google Drive, Microsoft, etc.) */}
+        </FormTab>
+      </FormTabs>
     </Form>
   );
 }

@@ -30,11 +30,11 @@ from backend.base.crm.security.models.apps import App as AppModel
 from backend.base.crm.security.models.roles import Role
 from backend.base.crm.security.models.rules import Rule
 from backend.base.crm.security.models.sessions import Session
-from backend.base.crm.attachments.models.attachments_storage import (
-    AttachmentStorage,
+from backend.base.crm.attachments_google.mixins import (
+    AttachmentStorageGoogleMixin,
 )
-from backend.base.system.saved_filters.models.saved_filter import SavedFilter
 from backend.base.crm.attachments.models.attachments import Attachment
+from backend.base.system.saved_filters.models.saved_filter import SavedFilter
 from backend.base.crm.sales.models.sale import Sale
 from backend.base.crm.sales.models.sale_line import SaleLine
 from backend.base.crm.partners.models.partners import Partner
@@ -76,6 +76,23 @@ if TYPE_CHECKING:
 
 else:
     from backend.base.crm.chat.models.chat_connector import ChatConnector
+
+# когда есть расширение чтобы IDE видела все поля в модели делаем хак
+if TYPE_CHECKING:
+    from backend.base.crm.attachments.models.attachments_storage import (
+        AttachmentStorage as AttachmentStorageBase,
+    )
+
+    class AttachmentStorage(
+        AttachmentStorageGoogleMixin,
+        AttachmentStorageBase,
+    ): ...
+
+else:
+    from backend.base.crm.attachments.models.attachments_storage import (
+        AttachmentStorage,
+    )
+
 from backend.base.crm.chat.models.chat_external_account import (
     ChatExternalAccount,
 )
