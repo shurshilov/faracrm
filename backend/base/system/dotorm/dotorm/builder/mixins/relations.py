@@ -36,16 +36,14 @@ class RelationsMixin:
         for name, field in fields_relation:
             # TODO: взможно ошибка от дублирвоания полей
             # Default fields for relations
-            fields = ["id"]
             # добавить вложенные поля от пользователя
+            fields = []
             if fields_nested:
                 custom_fields = fields_nested.get(name)
                 if custom_fields:
                     fields += custom_fields
-            if field.relation_table and field.relation_table.get_fields().get(
-                "name"
-            ):
-                fields.append("name")
+            if field.relation_table:
+                fields = field.relation_table.get_store_fields()
 
             req: RequestBuilder | None = None
 

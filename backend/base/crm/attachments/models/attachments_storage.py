@@ -209,6 +209,32 @@ class AttachmentStorage(DotModel):
         )
 
     # ========================================================================
+    # CRUD with cascade activation
+    # ========================================================================
+
+    async def update(
+        self,
+        payload=None,
+        fields: list | None = None,
+        session=None,
+    ) -> None:
+        """Update storage with cascade activation/deactivation."""
+        # Check if active field is being changed
+        if (
+            payload
+            and payload.active is not None
+            and payload.active != self.active
+        ):
+            if payload.active:
+                await self.activate()
+            else:
+                await self.deactivate()
+            # Remove active from payload since activate/deactivate already handled it
+            # payload.active = False
+
+        await super().update(payload, fields, session)
+
+    # ========================================================================
     # Sync methods
     # ========================================================================
 

@@ -227,25 +227,41 @@ class AttachmentRoute(DotModel):
         res_model: str,
         res_id: int,
     ) -> Optional["AttachmentRoute"]:
-        """Find matching route using priority-based matching."""
-        routes = await cls.search(
+        """
+        Find matching route using priority-based matching.
+
+        Logic:
+        1. First check specific routes (model=res_model) by priority DESC
+        2. Then fallback routes (model=None) by priority DESC
+
+        This ensures specific routes always take precedence over fallback,
+        regardless of priority values.
+        """
+        # 1. Try specific routes first (model matches)
+        specific_routes = await cls.search(
             filter=[
                 ("active", "=", True),
-                [
-                    ("model", "=", res_model),
-                    "or",
-                    ("model", "=", None),
-                ],
+                ("model", "=", res_model),
+            ],
+            # fields_nested={"storage_id": ["id", "type", "active"]},
+            sort="priority DESC",
+        )
+
+        for route in specific_routes:
+            if await route._check_record_in_filter(res_id):
+                return route
+
+        # 2. Then try fallback routes (model=None)
+        fallback_routes = await cls.search(
+            filter=[
+                ("active", "=", True),
+                ("model", "=", None),
             ],
             sort="priority DESC",
         )
 
-        for route in routes:
-            if route.model == res_model:
-                if await route._check_record_in_filter(res_id):
-                    return route
-            elif route.model is None:
-                return route
+        if fallback_routes:
+            return fallback_routes[0]
 
         return None
 
