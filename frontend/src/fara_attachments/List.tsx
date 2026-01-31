@@ -1,12 +1,12 @@
 import { Badge } from '@mantine/core';
 import { IconCheck, IconX, IconArrowUp } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
 import { RelationCell } from '@/components/ListCells';
 import { Attachment } from '@/services/api/attachments';
 import { SchemaAttachmentStorage } from '@/services/api/attachments';
 
-// Тип для маршрута (UPDATED: removed is_default, folder_id; added priority)
 interface AttachmentRoute {
   id: number;
   name: string;
@@ -20,56 +20,53 @@ interface AttachmentRoute {
 }
 
 export function ViewListAttachments() {
+  const { t } = useTranslation('attachments');
+
   return (
     <List<Attachment> model="attachments" order="desc" sort="id">
-      <Field name="id" />
-      <Field name="name" />
-      <Field name="res_model" />
-      <Field name="res_field" />
-      <Field name="res_id" />
-
-      <Field name="mimetype" />
-
+      <Field name="id" label={t('fields.id')} />
+      <Field name="name" label={t('fields.name')} />
+      <Field name="res_model" label={t('fields.res_model')} />
+      <Field name="res_field" label={t('fields.res_field')} />
+      <Field name="res_id" label={t('fields.res_id')} />
+      <Field name="mimetype" label={t('fields.mimetype')} />
       <Field
         name="storage_id"
+        label={t('fields.storage_id')}
         render={value => (
           <RelationCell value={value} model="attachments_storage" />
         )}
       />
       <Field
         name="route_id"
+        label={t('fields.route_id')}
         render={value => (
           <RelationCell value={value} model="attachments_route" />
         )}
       />
-      <Field name="storage_file_url" />
     </List>
   );
 }
 
 export function ViewListAttachmentsStorage() {
+  const { t } = useTranslation('attachments');
+
   return (
     <List<SchemaAttachmentStorage>
       model="attachments_storage"
       order="desc"
       sort="id">
-      <Field name="id" />
-      <Field name="name" />
-      <Field name="type" />
+      <Field name="id" label={t('fields.id')} />
+      <Field name="name" label={t('fields.name')} />
+      <Field name="type" label={t('fields.type')} />
       <Field
         name="active"
+        label={t('fields.active')}
         render={value =>
           value ? (
-            <span
-              style={{
-                color: 'green',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}>
-              ● Активно
-            </span>
+            <Badge size="sm" color="green" variant="light">
+              {t('list.active')}
+            </Badge>
           ) : (
             <span style={{ color: '#999' }}>—</span>
           )
@@ -80,15 +77,18 @@ export function ViewListAttachmentsStorage() {
 }
 
 export function ViewListAttachmentsRoute() {
+  const { t } = useTranslation('attachments');
+
   return (
     <List<AttachmentRoute>
       model="attachments_route"
       order="desc"
       sort="priority">
-      <Field name="id" />
-      <Field name="name" />
+      <Field name="id" label={t('fields.id')} />
+      <Field name="name" label={t('fields.name')} />
       <Field
         name="priority"
+        label={t('fields.priority')}
         render={value => (
           <Badge
             size="sm"
@@ -100,6 +100,7 @@ export function ViewListAttachmentsRoute() {
       />
       <Field
         name="model"
+        label={t('fields.model')}
         render={value =>
           value ? (
             <Badge size="sm" variant="light" color="blue">
@@ -107,46 +108,49 @@ export function ViewListAttachmentsRoute() {
             </Badge>
           ) : (
             <Badge size="sm" variant="light" color="orange">
-              Все модели
+              {t('list.all_models')}
             </Badge>
           )
         }
       />
-      <Field name="pattern_root" />
-      <Field name="pattern_record" />
+      <Field name="pattern_root" label={t('fields.pattern_root')} />
+      <Field name="pattern_record" label={t('fields.pattern_record')} />
       <Field
         name="flat"
+        label={t('fields.flat')}
         render={value =>
           value ? (
             <Badge size="sm" color="yellow">
-              Плоская
+              {t('list.flat')}
             </Badge>
           ) : (
             <Badge size="sm" color="blue">
-              С подпапками
+              {t('list.with_subfolders')}
             </Badge>
           )
         }
       />
       <Field
         name="active"
+        label={t('fields.active')}
         render={value =>
           value ? (
             <Badge
               size="sm"
               color="green"
               leftSection={<IconCheck size={10} />}>
-              Активен
+              {t('list.active')}
             </Badge>
           ) : (
             <Badge size="sm" color="gray" leftSection={<IconX size={10} />}>
-              Неактивен
+              {t('list.inactive')}
             </Badge>
           )
         }
       />
       <Field
         name="storage_id"
+        label={t('fields.storage_id')}
         render={value => (
           <RelationCell value={value} model="attachments_storage" />
         )}

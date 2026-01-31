@@ -137,7 +137,7 @@ export function ViewListModels() {
 }
 
 export function ViewListSessions() {
-  const { t } = useTranslation();
+  const { t } = useTranslation('security');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [refetchFn, setRefetchFn] = useState<(() => void) | null>(null);
 

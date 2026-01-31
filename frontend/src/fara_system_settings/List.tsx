@@ -39,11 +39,8 @@ export function ViewListSystemSettings() {
   const { t } = useTranslation('system_settings');
 
   return (
-    <List<SystemSettingsRecord>
-      model="system_settings"
-      order="asc"
-      sort="key">
-      <Field name="id" label="ID" />
+    <List<SystemSettingsRecord> model="system_settings" order="asc" sort="key">
+      <Field name="id" label={t('fields.id')} />
       <Field
         name="key"
         label={t('fields.key')}
