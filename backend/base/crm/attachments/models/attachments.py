@@ -3,7 +3,7 @@
 
 import base64
 import logging
-from typing import Self, Optional, TYPE_CHECKING
+from typing import Self, TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
@@ -15,7 +15,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
-
+from backend.base.crm.attachments.strategies import get_strategy, has_strategy
 from .attachments_storage import AttachmentStorage
 
 if TYPE_CHECKING:
@@ -146,29 +146,13 @@ class Attachment(DotModel):
         Raises:
             ValueError: Если хранилище не настроено или стратегия не найдена
         """
-        from backend.base.crm.attachments.strategies import get_strategy
 
-        if not self.storage_id:
+        if not self.storage_id or not self.storage_id.type:
             raise ValueError(
                 f"Attachment {self.id} has no storage_id configured"
             )
 
-        storage_type = (
-            self.storage_id.type
-            if hasattr(self.storage_id, "type")
-            else "file"
-        )
-        return get_strategy(storage_type)
-
-    @classmethod
-    async def _get_active_storage(cls) -> AttachmentStorage | None:
-        """
-        Получить активное хранилище для новых файлов.
-
-        Returns:
-            Активное хранилище или None
-        """
-        return await AttachmentStorage.get_active_storage()
+        return get_strategy(self.storage_id.type)
 
     @classmethod
     async def _get_or_create_default_storage(cls) -> AttachmentStorage:
@@ -222,11 +206,6 @@ class Attachment(DotModel):
         Returns:
             ID созданного вложения
         """
-        from backend.base.crm.attachments.strategies import (
-            get_strategy,
-            has_strategy,
-        )
-
         # Если есть контент - сохраняем через стратегию
         if payload and payload.content:
             storage = await self._get_or_create_default_storage()
@@ -270,7 +249,7 @@ class Attachment(DotModel):
                 payload.storage_parent_name = result.get("storage_parent_name")
 
                 # Очищаем контент перед сохранением в БД
-                payload.content = None
+                # payload.content = None
 
                 logger.info(
                     f"Creating attachment '{payload.name}' "
@@ -292,7 +271,6 @@ class Attachment(DotModel):
             payload: Новые данные
             fields: Список полей для обновления
         """
-        from backend.base.crm.attachments.strategies import get_strategy
 
         if not fields:
             fields = []
@@ -307,7 +285,7 @@ class Attachment(DotModel):
                     raise ValueError("Invalid base64 content") from e
 
                 # Очищаем контент перед сохранением в БД
-                payload.content = None
+                # payload.content = None
 
                 # Обновляем размер
                 if not payload.size:
@@ -347,10 +325,6 @@ class Attachment(DotModel):
         Returns:
             Список ID созданных вложений
         """
-        from backend.base.crm.attachments.strategies import (
-            get_strategy,
-            has_strategy,
-        )
 
         async with env.apps.db.get_transaction():
             storage = await self._get_or_create_default_storage()
@@ -400,7 +374,7 @@ class Attachment(DotModel):
                     )
 
                     # Очищаем контент
-                    attachment.content = None
+                    # attachment.content = None
 
             return await super().create_bulk(payloads)
 
@@ -411,7 +385,6 @@ class Attachment(DotModel):
         Returns:
             True если успешно удалено
         """
-        from backend.base.crm.attachments.strategies import get_strategy
 
         # Удаляем файл из хранилища если есть
         if self.storage_id and (self.storage_file_url or self.storage_file_id):

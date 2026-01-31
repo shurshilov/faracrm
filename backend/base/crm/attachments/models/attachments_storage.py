@@ -8,6 +8,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
+from backend.base.system.core.enviroment import env
 
 
 class AttachmentStorage(DotModel):
@@ -51,21 +52,12 @@ class AttachmentStorage(DotModel):
         help="Only one storage can be active at a time. Active storage is used for new files.",
     )
 
-    # Примечание: Дополнительные поля для конкретных типов хранилищ
-    # добавляются через декоратор @extend в соответствующих модулях.
-    # Например, модуль attachments_google добавляет:
-    # - google_folder_id
-    # - google_credentials
-    # - google_team_enabled
-    # и т.д.
-
-    async def activate(self) -> None:
+    async def activate_single(self) -> None:
         """
         Активировать это хранилище и деактивировать остальные.
 
         Гарантирует, что только одно хранилище активно одновременно.
         """
-        from backend.base.system.core.enviroment import env
 
         async with env.apps.db.get_transaction():
             # Деактивируем все хранилища
@@ -73,10 +65,11 @@ class AttachmentStorage(DotModel):
                 filter=[("active", "=", True)],
                 fields=["id", "active"],
             )
-            for s in all_storages:
-                if s.id != self.id:
-                    s.active = False
-                    await s.update(s)
+            if all_storages:
+                await env.models.attachment_storage.update_bulk(
+                    [storage.id for storage in all_storages],
+                    env.models.attachment_storage(active=False),
+                )
 
             # Активируем текущее
             self.active = True
@@ -88,22 +81,21 @@ class AttachmentStorage(DotModel):
         await self.update(self)
 
     @classmethod
-    async def get_active_storage(cls) -> "AttachmentStorage | None":
+    async def get_active_storage(cls):
         """
         Получить активное хранилище.
 
         Returns:
             Активное хранилище или None если ни одно не активно
         """
-        from backend.base.system.core.enviroment import env
 
         result = await env.models.attachment_storage.search(
             filter=[("active", "=", True)],
-            limit=1,
             fields=["id"],
+            limit=1,
         )
         if result:
-            return await env.models.attachment_storage.get(result[0].id)
+            return env.models.attachment_storage(id=result[0].id)
         else:
             return None
 
@@ -115,7 +107,6 @@ class AttachmentStorage(DotModel):
         Returns:
             Активное хранилище
         """
-        from backend.base.system.core.enviroment import env
 
         # Ищем активное
         storage = await cls.get_active_storage()
@@ -125,16 +116,17 @@ class AttachmentStorage(DotModel):
         # Ищем любой filestore
         storages = await env.models.attachment_storage.search(
             filter=[("type", "=", "file")],
+            fields=["id"],
             limit=1,
         )
 
         if storages:
             storage = storages[0]
-            await storage.activate()
+            await storage.activate_single()
             return storage
 
         # Создаем новый filestore
-        new_storage = cls()
+        new_storage = env.models.attachment_storage()
         new_storage.name = "Default FileStore"
         new_storage.type = "file"
         new_storage.active = True
@@ -142,6 +134,7 @@ class AttachmentStorage(DotModel):
         storage_id = await env.models.attachment_storage.create(new_storage)
         result = await env.models.attachment_storage.search(
             filter=[("id", "=", storage_id)],
+            fields=["id"],
             limit=1,
         )
         return result[0] if result else new_storage

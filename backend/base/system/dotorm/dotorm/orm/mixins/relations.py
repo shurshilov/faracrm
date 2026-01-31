@@ -58,7 +58,7 @@ class OrmRelationsMixin(_Base):
     @hybridmethod
     async def search(
         self,
-        fields: list[str] = ["id"],
+        fields: list[str] | None = None,
         fields_nested: dict[str, list[str]] | None = None,
         start: int | None = None,
         end: int | None = None,
@@ -116,6 +116,8 @@ class OrmRelationsMixin(_Base):
         """
         cls = self.__class__
 
+        if fields is None:
+            fields = self.get_store_fields()
         # Access check + apply domain filter
         filter = await cls._check_access(Operation.READ, filter=filter)
 

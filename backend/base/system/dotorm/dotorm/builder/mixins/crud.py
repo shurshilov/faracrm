@@ -154,7 +154,7 @@ class CRUDMixin:
         store_fields = self.get_store_fields()
 
         if fields is None:
-            fields = ["id"]
+            fields = store_fields
 
         # поставить защиту, хотя по идее защита есть в ОРМ
         order_upper = order.upper()

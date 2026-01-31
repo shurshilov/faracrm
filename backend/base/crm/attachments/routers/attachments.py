@@ -1,5 +1,3 @@
-import aiofiles
-import os
 import io
 from typing import TYPE_CHECKING, Optional
 from fastapi import APIRouter, Depends, Request, Response, Query
@@ -87,13 +85,7 @@ async def attachment_content(req: Request, attachment_id: Id):
         )
 
     attach = attach[0]
-
     attachment_content = await attach.read_content()
-    # async with aiofiles.open(
-    #     f"{attach.storage_file_url}",
-    #     "rb",
-    # ) as file:
-    #     attachment_content = await file.read()
 
     return Response(
         headers={
@@ -143,19 +135,6 @@ async def attachment_preview(
 
     attach = attach[0]
     attachment_content = await attach.read_content()
-    # if not attach.storage_file_url or not os.path.exists(
-    #     attach.storage_file_url
-    # ):
-    #     return JSONResponse(
-    #         content={"error": "#FILE_NOT_FOUND"},
-    #         status_code=HTTP_404_NOT_FOUND,
-    #     )
-
-    # async with aiofiles.open(
-    #     f"{attach.storage_file_url}",
-    #     "rb",
-    # ) as file:
-    #     attachment_content = await file.read()
 
     # Ресайз если указаны размеры и это изображение
     if (w or h) and attach.mimetype in RESIZABLE_MIMETYPES:
@@ -174,22 +153,3 @@ async def attachment_preview(
         media_type=attach.mimetype,
         content=attachment_content,
     )
-
-
-# @router_public.get("/sw.js")
-# async def service_worker(req: Request):
-#     code = """
-#         self.addEventListener('fetch', function(event) {
-#             const session = JSON.parse(localStorage.getItem('session') || '{}')
-#             const newRequest = new Request(event.request, {
-#                 headers: {"Authorization": session.token},
-#                 mode: "cors"
-#             });
-#             return fetch(newRequest);
-#         }
-#     """
-#     return PlainTextResponse(
-#         # headers={"Content-Disposition": f"Attachment" f""";filename=sw.js"""},
-#         media_type="text/javascript",
-#         content=code,
-#     )
