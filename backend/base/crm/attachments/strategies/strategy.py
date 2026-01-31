@@ -43,6 +43,7 @@ class StorageStrategyBase(ABC):
         content: bytes,
         filename: str,
         mimetype: Optional[str] = None,
+        parent_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Создать файл в хранилище.
@@ -53,6 +54,7 @@ class StorageStrategyBase(ABC):
             content: Содержимое файла в байтах
             filename: Имя файла
             mimetype: MIME-тип файла
+            parent_id: ID родительской папки (для облачных хранилищ)
 
         Returns:
             Словарь с ключами:

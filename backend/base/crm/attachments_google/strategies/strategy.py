@@ -159,6 +159,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
         content: bytes,
         filename: str,
         mimetype: Optional[str] = None,
+        parent_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Создать файл в Google Drive.
@@ -169,6 +170,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             content: Содержимое файла
             filename: Имя файла
             mimetype: MIME-тип
+            parent_id: ID родительской папки (опционально)
 
         Returns:
             Словарь с storage_file_id, storage_file_url, etc.
@@ -183,9 +185,13 @@ class GoogleDriveStrategy(StorageStrategyBase):
         file_metadata = {"name": filename}
 
         # Устанавливаем родительскую папку
-        parent_id = self._get_parent_id(storage)
+        # Приоритет: переданный parent_id -> настройки storage
         if parent_id:
             file_metadata["parents"] = [parent_id]
+        else:
+            default_parent_id = self._get_parent_id(storage)
+            if default_parent_id:
+                file_metadata["parents"] = [default_parent_id]
 
         # Для Shared Drive
         if storage.google_team_enabled and storage.google_team_id:
@@ -217,7 +223,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             return {
                 "storage_file_id": file.get("id"),
                 "storage_file_url": file.get("webViewLink"),
-                "storage_parent_id": parent_id,
+                "storage_parent_id": parent_id or self._get_parent_id(storage),
                 "storage_parent_name": None,  # Можно получить отдельным запросом
             }
 

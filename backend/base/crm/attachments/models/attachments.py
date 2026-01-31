@@ -17,6 +17,7 @@ from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 from backend.base.crm.attachments.strategies import get_strategy, has_strategy
 from .attachments_storage import AttachmentStorage
+from .attachments_route import AttachmentRoute
 
 if TYPE_CHECKING:
     from backend.base.crm.attachments.strategies.strategy import (
@@ -97,6 +98,12 @@ class Attachment(DotModel):
         relation_table=AttachmentStorage,
         string="Storage",
         help="Storage where file is saved",
+    )
+
+    route_id: AttachmentRoute | None = Many2one(
+        relation_table=AttachmentRoute,
+        string="Route",
+        help="Route used to organize file in folders",
     )
 
     storage_file_id: str | None = Char(
@@ -248,6 +255,37 @@ class Attachment(DotModel):
                     ):
                         payload.show_preview = False
 
+                # Находим маршрут для вложения
+                route = None
+                parent_folder_id = None
+                parent_folder_name = None
+
+                if payload.res_model and payload.res_id:
+                    route = await AttachmentRoute.get_route_for_attachment(
+                        storage_id=storage.id,
+                        res_model=payload.res_model,
+                        res_id=payload.res_id,
+                    )
+
+                    if route:
+                        payload.route_id = route
+                        # Получаем или создаём папку для записи
+                        # Нужно получить запись для рендеринга имени папки
+                        record = await self._get_record(
+                            payload.res_model,
+                            payload.res_id,
+                        )
+                        parent_folder_id = (
+                            await route.get_or_create_record_folder(
+                                storage=storage,
+                                record=record,
+                                res_id=payload.res_id,
+                            )
+                        )
+                        parent_folder_name = route.render_record_folder_name(
+                            record
+                        )
+
                 # Получаем стратегию и создаем файл
                 strategy = get_strategy(storage.type)
                 result = await strategy.create_file(
@@ -256,13 +294,18 @@ class Attachment(DotModel):
                     content=content_bytes,
                     filename=payload.name or "unnamed",
                     mimetype=payload.mimetype,
+                    parent_id=parent_folder_id,
                 )
 
                 # Обновляем payload данными от стратегии
                 payload.storage_file_url = result.get("storage_file_url")
                 payload.storage_file_id = result.get("storage_file_id")
-                payload.storage_parent_id = result.get("storage_parent_id")
-                payload.storage_parent_name = result.get("storage_parent_name")
+                payload.storage_parent_id = (
+                    result.get("storage_parent_id") or parent_folder_id
+                )
+                payload.storage_parent_name = (
+                    result.get("storage_parent_name") or parent_folder_name
+                )
 
                 # Очищаем контент перед сохранением в БД
                 # payload.content = None
@@ -276,6 +319,37 @@ class Attachment(DotModel):
 
         # Без контента - просто создаем запись
         return await super().create(payload)
+
+    async def _get_record(
+        self,
+        res_model: str,
+        res_id: int,
+    ):
+        """
+        Получить запись по модели и ID.
+
+        Args:
+            res_model: Имя модели
+            res_id: ID записи
+
+        Returns:
+            Запись или простой объект с id
+        """
+        # Пробуем получить модель из env
+        try:
+            model_class = getattr(env.models, res_model, None)
+            if model_class:
+                records = await model_class.search(
+                    filters=[["id", "=", res_id]],
+                    fields=["id"],
+                    limit=1,
+                )
+                if records:
+                    return records[0]
+        except Exception as e:
+            logger.debug(f"Could not get record {res_model}/{res_id}: {e}")
+
+        return None
 
     async def update(
         self,
