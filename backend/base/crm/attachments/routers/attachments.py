@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Request, Response, Query
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_404_NOT_FOUND
 from PIL import Image
+from urllib.parse import quote
 
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.schemas.base_schema import Id
@@ -89,7 +90,8 @@ async def attachment_content(req: Request, attachment_id: Id):
 
     return Response(
         headers={
-            "Content-Disposition": f"Attachment" f""";filename={attach.name}"""
+            "Content-Disposition": f"Attachment"
+            f""";filename={quote(attach.name, safe="")}"""
         },
         media_type=attach.mimetype,
         content=attachment_content,
@@ -149,7 +151,9 @@ async def attachment_preview(
             pass
 
     return Response(
-        headers={"Content-Disposition": f"inline; filename={attach.name}"},
+        headers={
+            "Content-Disposition": f"inline; filename={quote(attach.name, safe="")}"
+        },
         media_type=attach.mimetype,
         content=attachment_content,
     )

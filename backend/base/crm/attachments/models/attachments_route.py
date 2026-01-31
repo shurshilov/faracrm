@@ -52,7 +52,7 @@ class AttachmentRoute(DotModel):
         help="Human readable name for the route",
     )
 
-    model: str = Char(
+    model: str | None = Char(
         string="Model",
         help="Model name (e.g., 'sale', 'lead', 'partner')",
     )
@@ -90,7 +90,7 @@ class AttachmentRoute(DotModel):
 
     filter: dict | list = JSONField(
         string="Filter",
-        default={},
+        default=None,
         help="""JSON filter for records to sync.
         Example: [["active", "=", true], ["state", "=", "done"]]
         """,
@@ -123,6 +123,13 @@ class AttachmentRoute(DotModel):
         default=True,
     )
 
+    is_default: bool = Boolean(
+        string="Default route",
+        default=False,
+        help="Use as fallback when no specific route matches the model. "
+        "Default route should have model=None.",
+    )
+
     # ========================================================================
     # Template rendering
     # ========================================================================
@@ -151,9 +158,14 @@ class AttachmentRoute(DotModel):
         if not template:
             return ""
 
+        # Для дефолтного маршрута model берём из extra_context (res_model)
+        model_name = self.model
+        if not model_name and extra_context:
+            model_name = extra_context.get("res_model")
+
         context = {
-            "model": self.model,
-            "table": self.model.replace(".", "_") if self.model else "",
+            "model": model_name or "",
+            "table": model_name.replace(".", "_") if model_name else "",
             "route_id": self.id,
         }
 
@@ -194,13 +206,21 @@ class AttachmentRoute(DotModel):
 
         return result
 
-    def render_root_folder_name(self) -> str:
+    def render_root_folder_name(self, res_model: Optional[str] = None) -> str:
         """Render the root folder name for this route."""
-        return self._render_template(self.pattern_root)
+        extra_context = {"res_model": res_model} if res_model else None
+        return self._render_template(
+            self.pattern_root, extra_context=extra_context
+        )
 
-    def render_record_folder_name(self, record: Any) -> str:
+    def render_record_folder_name(
+        self, record: Any, res_model: Optional[str] = None
+    ) -> str:
         """Render the record folder name for a specific record."""
-        return self._render_template(self.pattern_record, record)
+        extra_context = {"res_model": res_model} if res_model else None
+        return self._render_template(
+            self.pattern_record, record, extra_context
+        )
 
     # ========================================================================
     # Route matching
@@ -216,6 +236,10 @@ class AttachmentRoute(DotModel):
         """
         Find matching route for an attachment.
 
+        Priority:
+        1. Specific route for the model (model = res_model) with filter check
+        2. Default route (is_default = True) - no filter check
+
         Args:
             storage_id: Storage ID
             res_model: Resource model name
@@ -224,32 +248,34 @@ class AttachmentRoute(DotModel):
         Returns:
             Matching route or None
         """
-        # Find route for this model and storage
+        # 1. Find specific route for this model and storage
         routes = await cls.search(
             filter=[
                 ("model", "=", res_model),
                 ("storage_id", "=", storage_id),
                 ("active", "=", True),
+                ("is_default", "=", False),
             ],
         )
 
         for route in routes:
-            # TODO: gather
             # Check if record matches filter
             if await route._check_record_in_filter(res_id):
                 return route
 
-        routes_global = await cls.search(
+        # 2. Fallback to default route (no filter check)
+        default_routes = await cls.search(
             filter=[
+                ("is_default", "=", True),
                 ("storage_id", "=", storage_id),
                 ("active", "=", True),
             ],
+            limit=1,
         )
-        for route in routes_global:
-            # TODO: gather
-            # Check if record matches filter
-            if await route._check_record_in_filter(res_id):
-                return route
+
+        if default_routes:
+            return default_routes[0]
+
         return None
 
     async def _check_record_in_filter(self, res_id: int) -> bool:
@@ -288,26 +314,27 @@ class AttachmentRoute(DotModel):
     async def get_or_create_root_folder(
         self,
         storage: "AttachmentStorage",
-    ) -> Optional[str]:
+        res_model: str | None = None,
+    ) -> str | None:
         """
         Get or create root folder for this route.
 
         Args:
             storage: Storage to create folder in
+            res_model: Model name from attachment (for default routes)
 
         Returns:
             Folder ID
         """
 
-        # Return cached folder_id if exists
-        if self.folder_id:
+        # Return cached folder_id if exists (only for non-default routes)
+        if self.folder_id and not self.is_default:
             return self.folder_id
 
-        # Render folder name
-        folder_name = self.render_root_folder_name()
+        # Render folder name (uses res_model for default routes)
+        folder_name = self.render_root_folder_name(res_model)
         if not folder_name:
-            raise ValueError("Cant render folder_name")
-            # folder_name = self.model
+            folder_name = self.model or res_model
 
         # Cache the name
         self.folder_model_name = folder_name
@@ -323,7 +350,7 @@ class AttachmentRoute(DotModel):
         # Create folder with metadata
         metadata = {
             "route_id": str(self.id),
-            "res_model": self.model,
+            "res_model": self.model or res_model,
             "storage_id": str(storage.id),
         }
 
@@ -334,8 +361,8 @@ class AttachmentRoute(DotModel):
             metadata=metadata,
         )
 
-        if folder_id:
-            # Save folder_id
+        if folder_id and not self.is_default:
+            # Save folder_id (only for non-default routes)
             update_data = AttachmentRoute()
             update_data.folder_id = folder_id
             update_data.folder_model_name = folder_name
@@ -358,6 +385,7 @@ class AttachmentRoute(DotModel):
             storage: Storage
             record: Record object
             res_id: Record ID
+            res_model: Model name
 
         Returns:
             Folder ID for the record
@@ -365,15 +393,17 @@ class AttachmentRoute(DotModel):
 
         # For flat structure, return root folder
         if self.flat:
-            return await self.get_or_create_root_folder(storage)
+            return await self.get_or_create_root_folder(storage, res_model)
 
         # Ensure root folder exists
-        root_folder_id = await self.get_or_create_root_folder(storage)
+        root_folder_id = await self.get_or_create_root_folder(
+            storage, res_model
+        )
         if not root_folder_id:
             return None
 
         # Render record folder name
-        folder_name = self.render_record_folder_name(record)
+        folder_name = self.render_record_folder_name(record, res_model)
         if not folder_name:
             folder_name = str(res_id)
 
@@ -465,3 +495,49 @@ class AttachmentRoute(DotModel):
         )
 
         return [a.id for a in attachments]
+
+    # ========================================================================
+    # Default route management
+    # ========================================================================
+
+    @classmethod
+    async def ensure_default_route_for_storage(
+        cls,
+        storage_id: int,
+    ) -> "AttachmentRoute":
+        """
+        Ensure a default route exists for a storage.
+
+        Creates a default route if one doesn't exist.
+
+        Args:
+            storage_id: Storage ID
+
+        Returns:
+            Default route for the storage
+        """
+        # Check if default route already exists
+        existing = await cls.search(
+            filter=[
+                ("storage_id", "=", storage_id),
+                ("is_default", "=", True),
+            ],
+            limit=1,
+        )
+
+        if existing:
+            return existing[0]
+
+        # Create default route
+        default_route = AttachmentRoute()
+        default_route.name = "Default Route"
+        default_route.model = None
+        default_route.is_default = True
+        default_route.pattern_root = "{model}"
+        default_route.pattern_record = "{id}-{name}"
+        default_route.flat = False
+        default_route.storage_id = env.models.attachment_storage(id=storage_id)
+        default_route.active = True
+
+        default_route.id = await cls.create(default_route)
+        return default_route

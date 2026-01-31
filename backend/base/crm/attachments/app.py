@@ -27,6 +27,7 @@ class AttachmentsApp(App):
     BASE_USER_ACL = {
         "attachment": ACL.FULL,
         "attachment_storage": ACL.FULL,
+        "attachment_route": ACL.FULL,
     }
 
     async def post_init(self, app: FastAPI):
@@ -34,6 +35,7 @@ class AttachmentsApp(App):
         env: "Environment" = app.state.env
 
         await self._init_default_storage(env)
+        await self._init_default_routes(env)
 
     async def _init_default_storage(self, env: "Environment"):
         """Создаёт дефолтное хранилище типа file (id=1)."""
@@ -51,3 +53,13 @@ class AttachmentsApp(App):
                     type="file",
                 ),
             )
+
+    async def _init_default_routes(self, env: "Environment"):
+        """Создаёт дефолтные маршруты для всех хранилищ."""
+        from backend.base.crm.attachments.models.attachments_route import (
+            AttachmentRoute,
+        )
+
+        storages = await env.models.attachment_storage.search(filter=[])
+        for storage in storages:
+            await AttachmentRoute.ensure_default_route_for_storage(storage.id)
