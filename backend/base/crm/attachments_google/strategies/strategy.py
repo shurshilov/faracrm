@@ -1,6 +1,7 @@
 # Copyright 2025 FARA CRM
 # Attachments Google Drive module - storage strategy
 
+from datetime import datetime, timezone, timedelta
 import io
 import json
 import logging
@@ -71,15 +72,36 @@ class GoogleDriveStrategy(StorageStrategyBase):
 
         try:
             credentials_data = json.loads(storage.google_credentials)
+
+            # Извлекаем expiry отдельно (не передаём в Credentials)
+            expiry_value = credentials_data.pop("expiry", None)
+
             credentials = google.oauth2.credentials.Credentials(
                 **credentials_data
             )
 
-            # Превентивно обновляем токен если он истёк или скоро истечёт
-            if credentials.expired and credentials.refresh_token:
-                logger.debug(
-                    "Access token expired, refreshing before request..."
+            # Проверяем нужно ли обновить токен
+            needs_refresh = False
+            now = datetime.now(timezone.utc)
+
+            if expiry_value is None:
+                needs_refresh = True
+                logger.debug("Token expiry unknown, refreshing")
+            else:
+                # Парсим expiry (может быть timestamp или ISO строка)
+                expiry = datetime.fromisoformat(
+                    expiry_value.replace("Z", "+00:00")
                 )
+
+                if expiry <= now:
+                    needs_refresh = True
+                    logger.debug("Token expired")
+                elif expiry < now + timedelta(minutes=5):
+                    needs_refresh = True
+                    logger.debug("Token expires soon, refreshing preventively")
+
+            if needs_refresh and credentials.refresh_token:
+                logger.debug("Refreshing access token...")
                 credentials.refresh(Request())
 
                 # Сохраняем обновлённые credentials обратно в storage
@@ -104,21 +126,12 @@ class GoogleDriveStrategy(StorageStrategyBase):
         """
         from backend.base.system.core.enviroment import env
 
-        new_credentials_data = {
-            "token": credentials.token,
-            "refresh_token": credentials.refresh_token,
-            "token_uri": credentials.token_uri,
-            "client_id": credentials.client_id,
-            "client_secret": credentials.client_secret,
-            "scopes": credentials.scopes,
-        }
-
         # Обновляем в памяти
-        storage.google_credentials = json.dumps(new_credentials_data)
+        storage.google_credentials = credentials.to_json()
 
         # Асинхронно сохраняем в БД
         updated_storage = env.models.attachment_storage()
-        updated_storage.google_credentials = json.dumps(new_credentials_data)
+        updated_storage.google_credentials = credentials.to_json()
         await storage.update(
             updated_storage,
         )
