@@ -381,6 +381,17 @@ export const modelsConfig: Record<string, ModelConfig> = {
         default: m.ViewFormSavedFilters,
       })),
   },
+  system_settings: {
+    menu: MenuGroups.settings,
+    list: () =>
+      import('@/fara_system_settings/List').then(m => ({
+        default: m.ViewListSystemSettings,
+      })),
+    form: () =>
+      import('@/fara_system_settings/Form').then(m => ({
+        default: m.ViewFormSystemSettings,
+      })),
+  },
 };
 
 // Хелпер для получения конфига

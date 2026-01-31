@@ -107,7 +107,7 @@ export function ViewListAttachmentsRoute() {
             </Badge>
           ) : (
             <Badge size="sm" variant="light" color="orange">
-              Все модели (fallback)
+              Все модели
             </Badge>
           )
         }

@@ -1,45 +1,67 @@
 # Copyright 2025 FARA CRM
 # Core module - system settings model
 
-from typing import Any
-from backend.base.system.dotorm.dotorm.fields import Integer, Char, Text
+from backend.base.system.dotorm.dotorm.fields import (
+    Integer,
+    Char,
+    Text,
+    JSONField,
+    Boolean,
+)
 from backend.base.system.dotorm.dotorm.model import DotModel
 
 
 class SystemSettings(DotModel):
     """
-    Модель для хранения системных настроек.
-    
-    Хранит настройки в формате ключ-значение.
-    Примеры ключей:
-        - base_url: базовый URL сервера
-        - default_language: язык по умолчанию
-        - и др.
+    Системные настройки (key-value, JSON).
+
+    Хранит бизнес-конфигурацию, которую можно менять на лету
+    без перезапуска сервера. Инфраструктурные параметры
+    (DATABASE_URL, SECRET_KEY и т.д.) остаются в .env.
+
+    Примеры:
+        key="attachments.filestore_path"  value="/data/filestore"     module="attachments"
+        key="mail.smtp_host"              value="smtp.gmail.com"      module="mail"
+        key="auth.session_timeout"        value=3600                  module="auth"
     """
 
     __table__ = "system_settings"
-    __auto_crud__ = True
-    __auto_crud_prefix__ = "/system"
 
     id: int = Integer(primary_key=True)
-    key: str = Char(max_length=255, description="Уникальный ключ настройки")
-    value: str | None = Text(description="Значение настройки")
-    description: str | None = Char(
-        max_length=500, description="Описание настройки"
+    key: str = Char(
+        max_length=255,
+        required=True,
+        unique=True,
+        string="Key",
+        description="Уникальный ключ настройки (формат: module.param_name)",
+    )
+    value: dict | list | None = JSONField(
+        default=None,
+        string="Value",
+        description="Значение настройки (JSON: строка, число, объект, массив, bool)",
+    )
+    description: str | None = Text(
+        default=None,
+        string="Description",
+        description="Описание настройки",
+    )
+    module: str = Char(
+        max_length=128,
+        default="general",
+        string="Module",
+        description="Модуль к которому относится настройка",
+    )
+    is_system: bool = Boolean(
+        default=False,
+        string="System",
+        description="Системная настройка (нельзя удалить через UI)",
     )
 
+    # ==================== API ====================
+
     @classmethod
-    async def get_value(cls, key: str, default: Any = None) -> Any:
-        """
-        Получить значение настройки по ключу.
-        
-        Args:
-            key: Ключ настройки
-            default: Значение по умолчанию если ключ не найден
-            
-        Returns:
-            Значение настройки или default
-        """
+    async def get_value(cls, key: str, default=None):
+        """Получить значение по ключу."""
         try:
             records = await cls.search(
                 filter=[("key", "=", key)],
@@ -53,72 +75,83 @@ class SystemSettings(DotModel):
             return default
 
     @classmethod
-    async def set_value(cls, key: str, value: str, description: str | None = None):
+    async def set_value(
+        cls,
+        key: str,
+        value: dict,
+        description: str | None = None,
+        module: str = "general",
+    ):
         """
-        Установить значение настройки.
-        
-        Если ключ существует - обновляет, иначе создаёт новую запись.
-        
-        Args:
-            key: Ключ настройки
-            value: Значение
-            description: Описание (опционально)
+        Установить значение (upsert).
+        Если ключ есть — обновляет, иначе создаёт.
         """
-        try:
-            records = await cls.search(
-                filter=[("key", "=", key)],
-                fields=["id"],
-                limit=1,
+        records = await cls.search(
+            filter=[("key", "=", key)],
+            fields=["id"],
+            limit=1,
+        )
+
+        if records:
+            record = records[0]
+            record.value = value
+            record.description = description
+            await record.update()
+        else:
+            setting = cls(
+                key=key,
+                value=value,
+                description=description,
+                module=module,
             )
-            
-            if records:
-                # Обновляем существующую
-                record = await cls.get(records[0].id)
-                record.value = value
-                if description:
-                    record.description = description
-                await record.update()
-            else:
-                # Создаём новую
-                setting = cls(key=key, value=value, description=description)
-                await cls.create(setting)
-        except Exception:
-            # Если таблица ещё не существует, пропускаем
-            pass
+            await cls.create(setting)
 
     @classmethod
-    async def get_base_url(cls) -> str:
-        """
-        Получить базовый URL сервера.
-        
-        Returns:
-            URL или пустая строка если не установлен
-        """
-        return await cls.get_value("base_url", "")
+    async def get_by_module(cls, module: str):
+        """Получить все настройки модуля."""
+        return await cls.search(
+            filter=[("module", "=", module)],
+            fields=[
+                "id",
+                "key",
+                "value",
+                "description",
+                "module",
+                "is_system",
+            ],
+        )
 
     @classmethod
-    async def ensure_defaults(cls, default_base_url: str = "http://localhost:8000"):
+    async def ensure_defaults(cls, defaults: list[dict]):
         """
         Создать настройки по умолчанию если они не существуют.
-        
         Вызывается при старте сервера.
-        
+
         Args:
-            default_base_url: URL по умолчанию
+            defaults: [{"key": "...", "value": ..., "description": "...", "module": "..."}]
         """
         try:
-            # base_url
-            existing = await cls.search(
-                filter=[("key", "=", "base_url")],
-                fields=["id"],
-                limit=1,
-            )
-            if not existing:
-                await cls.set_value(
-                    key="base_url",
-                    value=default_base_url,
-                    description="Базовый URL сервера для webhook и внешних ссылок",
+            for item in defaults:
+                existing = await cls.search(
+                    filter=[("key", "=", item["key"])],
+                    fields=["id"],
+                    limit=1,
                 )
+                if not existing:
+                    setting = cls(
+                        key=item["key"],
+                        value=item.get("value"),
+                        description=item.get("description", ""),
+                        module=item.get("module", "general"),
+                        is_system=item.get("is_system", False),
+                    )
+                    await cls.create(setting)
         except Exception:
-            # Таблица ещё не создана
             pass
+
+    # ==================== Обратная совместимость ====================
+
+    @classmethod
+    async def get_base_url(cls):
+        """Получить базовый URL сервера."""
+        return await cls.get_value("base_url", "")

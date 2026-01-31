@@ -104,6 +104,8 @@ const modelToNamespace: Record<string, string> = {
   cron_job: 'cron',
   // Saved Filters
   saved_filters: 'saved_filters',
+  // System Settings
+  system_settings: 'system_settings',
 };
 
 // Кастомные лейблы для моделей (вместо автогенерации)
@@ -143,7 +145,7 @@ const settingsCategories: Record<
     label: 'Прочее',
     labelKey: 'security:menu.other',
     Icon: IconComponents,
-    models: ['apps', 'language', 'models', 'cron_job', 'saved_filters'],
+    models: ['apps', 'language', 'models', 'cron_job', 'saved_filters', 'system_settings'],
   },
 };
 

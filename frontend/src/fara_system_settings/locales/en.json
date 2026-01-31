@@ -1,0 +1,23 @@
+{
+  "fields": {
+    "id": "ID",
+    "key": "Key",
+    "value": "Value",
+    "description": "Description",
+    "module": "Module",
+    "is_system": "System"
+  },
+  "menu": {
+    "system_settings": "System Settings"
+  },
+  "sections": {
+    "main": "Setting"
+  },
+  "alerts": {
+    "key_format": "Key format is module.parameter. Value is stored as JSON — string, number, object, array or boolean.",
+    "key_examples": "Examples:"
+  },
+  "list": {
+    "system": "System"
+  }
+}
