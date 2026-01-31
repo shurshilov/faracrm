@@ -37,6 +37,10 @@ from backend.base.crm.attachments.models.attachments import Attachment
 from backend.base.crm.attachments.models.attachments_route import (
     AttachmentRoute,
 )
+from backend.base.crm.attachments.models.attachments_cache import (
+    AttachmentCache,
+)
+
 from backend.base.system.saved_filters.models.saved_filter import SavedFilter
 from backend.base.crm.sales.models.sale import Sale
 from backend.base.crm.sales.models.sale_line import SaleLine
@@ -179,6 +183,7 @@ class Models(ModelsCore, ExtensibleMixin):
     attachment = Attachment
     attachment_storage = AttachmentStorage
     attachment_route = AttachmentRoute
+    attachment_cache = AttachmentCache
     # crm
     sale_line = SaleLine
     sale = Sale

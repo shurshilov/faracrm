@@ -1,23 +1,22 @@
 import { Badge } from '@mantine/core';
-import { IconCheck, IconX, IconStar } from '@tabler/icons-react';
+import { IconCheck, IconX, IconArrowUp } from '@tabler/icons-react';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
 import { RelationCell } from '@/components/ListCells';
 import { Attachment } from '@/services/api/attachments';
 import { SchemaAttachmentStorage } from '@/services/api/attachments';
 
-// Тип для маршрута
+// Тип для маршрута (UPDATED: removed is_default, folder_id; added priority)
 interface AttachmentRoute {
   id: number;
   name: string;
   model: string | null;
-  is_default: boolean;
+  priority: number;
   pattern_root: string;
   pattern_record: string;
   flat: boolean;
   active: boolean;
   storage_id: number;
-  folder_id?: string;
 }
 
 export function ViewListAttachments() {
@@ -82,21 +81,22 @@ export function ViewListAttachmentsStorage() {
 
 export function ViewListAttachmentsRoute() {
   return (
-    <List<AttachmentRoute> model="attachments_route" order="desc" sort="id">
+    <List<AttachmentRoute>
+      model="attachments_route"
+      order="desc"
+      sort="priority">
       <Field name="id" />
       <Field name="name" />
       <Field
-        name="is_default"
-        render={value =>
-          value ? (
-            <Badge
-              size="sm"
-              color="orange"
-              leftSection={<IconStar size={10} />}>
-              По умолчанию
-            </Badge>
-          ) : null
-        }
+        name="priority"
+        render={value => (
+          <Badge
+            size="sm"
+            color={value === 0 ? 'gray' : value >= 100 ? 'green' : 'blue'}
+            leftSection={<IconArrowUp size={10} />}>
+            {value}
+          </Badge>
+        )}
       />
       <Field
         name="model"
@@ -106,9 +106,9 @@ export function ViewListAttachmentsRoute() {
               {value}
             </Badge>
           ) : (
-            <span style={{ color: '#999', fontStyle: 'italic' }}>
-              Все модели
-            </span>
+            <Badge size="sm" variant="light" color="orange">
+              Все модели (fallback)
+            </Badge>
           )
         }
       />

@@ -1,5 +1,6 @@
 # Copyright 2025 FARA CRM
 # Attachments module - Storage model
+# OPTIMIZED: cascade deactivation of routes, cache clearing
 
 import logging
 from typing import TYPE_CHECKING, List, Optional
@@ -10,7 +11,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     One2many,
     Selection,
     Boolean,
-    Many2many,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
@@ -44,16 +44,9 @@ class AttachmentStorage(DotModel):
     )
 
     type: str = Selection(
-        options=[
-            ("file", "FileStore (local)"),
-            # Дополнительные типы добавляются через @extend в модулях:
-            # ("google", "Google Drive") - добавляется модулем attachments_google
-            # ("microsoft", "Microsoft OneDrive") - добавляется модулем attachments_microsoft
-            # и т.д.
-        ],
+        options=[("file", "FileStore (local)")],
         default="file",
         string="Storage Type",
-        help="Type of storage backend. Additional types can be added by installing extension modules.",
     )
 
     active: bool = Boolean(
@@ -112,101 +105,90 @@ class AttachmentStorage(DotModel):
         store=False,
         relation_table=lambda: env.models.attachment_route,
         relation_table_field="storage_id",
-        description="Маршруты, работающие с этим хранилищем",
     )
-    # route_ids: list["AttachmentRoute"] = Many2many(
-    #     store=False,
-    #     relation_table=lambda: env.models.attachment_route,
-    #     many2many_table="storage_route_many2many",
-    #     column1="route_id",
-    #     column2="storage_id",
-    #     ondelete="cascade",
-    #     description="Маршруты, работающие с этим хранилищем",
-    #     default=[],
-    # )
 
-    async def activate_single(self) -> None:
-        """
-        Активировать это хранилище и деактивировать остальные.
+    # ========================================================================
+    # Activation / Deactivation with cascade
+    # ========================================================================
 
-        Гарантирует, что только одно хранилище активно одновременно.
-        """
+    async def activate(self) -> None:
+        """Активировать хранилище и все его маршруты."""
+        from .attachments_route import AttachmentRoute
 
         async with env.apps.db.get_transaction():
-            # Деактивируем все хранилища
-            all_storages = await env.models.attachment_storage.search(
-                filter=[("active", "=", True)],
-                fields=["id", "active"],
-            )
-            if all_storages:
-                await env.models.attachment_storage.update_bulk(
-                    [storage.id for storage in all_storages],
-                    env.models.attachment_storage(active=False),
-                )
-
-            # Активируем текущее
             self.active = True
             await self.update(self)
 
+            routes = await AttachmentRoute.search(
+                filter=[("storage_id", "=", self.id)],
+                fields=["id"],
+            )
+            if routes:
+                await AttachmentRoute.update_bulk(
+                    [route.id for route in routes],
+                    AttachmentRoute(active=True),
+                )
+
+            logger.info(
+                f"Storage '{self.name}' activated with {len(routes)} routes"
+            )
+
     async def deactivate(self) -> None:
-        """Деактивировать хранилище."""
-        self.active = False
-        await self.update(self)
+        """Деактивировать хранилище, его маршруты и очистить кеш."""
+        from .attachments_route import AttachmentRoute
+        from .attachments_cache import AttachmentCache
+
+        async with env.apps.db.get_transaction():
+            # Деактивируем routes
+            routes = await AttachmentRoute.search(
+                filter=[("storage_id", "=", self.id), ("active", "=", True)],
+                fields=["id"],
+            )
+            if routes:
+                await AttachmentRoute.update_bulk(
+                    [route.id for route in routes],
+                    AttachmentRoute(active=False),
+                )
+
+            # Очищаем кеш
+            await AttachmentCache.clear_storage_cache(self.id)
+
+            # Деактивируем storage
+            self.active = False
+            await self.update(self)
+
+            logger.info(
+                f"Storage '{self.name}' deactivated with {len(routes)} routes"
+            )
+
+    # ========================================================================
+    # Default storage
+    # ========================================================================
 
     @classmethod
-    async def get_active_storage(cls):
-        """
-        Получить активное хранилище.
-
-        Returns:
-            Активное хранилище или None если ни одно не активно
-        """
-
-        result = await env.models.attachment_storage.search(
-            filter=[("active", "=", True)],
-            limit=1,
-        )
-        if result:
-            return result[0]
-        else:
-            return None
+    async def get_active_storage(cls) -> Optional["AttachmentStorage"]:
+        result = await cls.search(filter=[("active", "=", True)], limit=1)
+        return result[0] if result else None
 
     @classmethod
     async def get_or_create_default(cls) -> "AttachmentStorage":
-        """
-        Получить активное хранилище или создать FileStore по умолчанию.
-
-        Returns:
-            Активное хранилище
-        """
-
-        # Ищем активное
         storage = await cls.get_active_storage()
         if storage:
             return storage
 
-        # Ищем любой filestore
-        storages = await env.models.attachment_storage.search(
-            filter=[("type", "=", "file")],
-            limit=1,
-        )
-
+        storages = await cls.search(filter=[("type", "=", "file")], limit=1)
         if storages:
             storage = storages[0]
-            await storage.activate_single()
+            await storage.activate()
             return storage
 
-        # Создаем новый filestore
-        new_storage = env.models.attachment_storage()
+        new_storage = cls()
         new_storage.name = "Default FileStore"
         new_storage.type = "file"
         new_storage.active = True
 
-        storage_id = await env.models.attachment_storage.create(new_storage)
-        result = await env.models.attachment_storage.search(
-            filter=[("id", "=", storage_id)],
-            limit=1,
-        )
+        storage_id = await cls.create(new_storage)
+        result = await cls.search(filter=[("id", "=", storage_id)], limit=1)
         return result[0] if result else new_storage
 
     # ========================================================================
@@ -223,68 +205,30 @@ class AttachmentStorage(DotModel):
         from .attachments_route import AttachmentRoute
 
         return await AttachmentRoute.search(
-            filter=[
-                ("storage_id", "=", self.id),
-                ("active", "=", True),
-            ],
-        )
-
-    async def get_route_for_model(
-        self,
-        res_model: str,
-        res_id: Optional[int] = None,
-    ) -> Optional["AttachmentRoute"]:
-        """
-        Get route for a specific model.
-
-        Args:
-            res_model: Model name
-            res_id: Record ID (optional, for filter checking)
-
-        Returns:
-            Matching route or None
-        """
-        from .attachments_route import AttachmentRoute
-
-        return await AttachmentRoute.get_route_for_attachment(
-            storage_id=self.id,
-            res_model=res_model,
-            res_id=res_id,
+            filter=[("storage_id", "=", self.id), ("active", "=", True)],
         )
 
     # ========================================================================
-    # Sync methods (called by cron jobs)
+    # Sync methods
     # ========================================================================
 
     @classmethod
     async def start_one_way_sync(cls) -> None:
-        """
-        One-way sync: FARA -> Cloud.
-        Syncs all attachments that match routes but are not yet in cloud.
-        """
         logger.info("Starting one-way sync (FARA -> Cloud)")
-
-        # Get all storages with one-way sync enabled
         storages = await cls.search(
-            filter=[("enable_one_way_cron", "=", True)],
+            filter=[("enable_one_way_cron", "=", True), ("active", "=", True)],
         )
-
         for storage in storages:
             await storage._sync_one_way()
 
     async def _sync_one_way(self) -> None:
-        """Sync this storage one-way (FARA -> Cloud)."""
         from .attachments import Attachment
 
         logger.info(f"One-way sync for storage {self.id}: {self.name}")
-
-        # Get all routes for this storage
         routes = await self.get_routes()
 
         for route in routes:
-            # Get attachments that should be synced
             attachment_ids = await route.get_attachments_to_sync(self.id)
-
             for attach_id in attachment_ids:
                 try:
                     attachments = await Attachment.search(
@@ -294,29 +238,19 @@ class AttachmentStorage(DotModel):
                     )
                     if attachments:
                         attach = attachments[0]
-                        # Trigger migration by setting storage_id
                         update_data = Attachment()
                         update_data.storage_id = self
                         update_data.route_id = route
                         await attach.update(update_data)
-
-                        logger.debug(f"Synced attachment {attach_id} to cloud")
                 except Exception as e:
                     logger.error(f"Failed to sync attachment {attach_id}: {e}")
 
     @classmethod
     async def start_two_way_sync(cls) -> None:
-        """
-        Two-way sync: FARA <-> Cloud.
-        Syncs files in both directions based on settings.
-        """
-        logger.info("Starting two-way sync (FARA <-> Cloud)")
-
-        # Get all storages with two-way sync enabled
+        logger.info("Starting two-way sync")
         storages = await cls.search(
-            filter=[("enable_two_way_cron", "=", True)],
+            filter=[("enable_two_way_cron", "=", True), ("active", "=", True)],
         )
-
         for storage in storages:
             await storage._sync_two_way()
 
@@ -429,12 +363,9 @@ class AttachmentStorage(DotModel):
         Routes sync: Update folder names and move files between routes.
         """
         logger.info("Starting routes sync")
-
-        # Get all storages with routes sync enabled
         storages = await cls.search(
-            filter=[("enable_routes_cron", "=", True)],
+            filter=[("enable_routes_cron", "=", True), ("active", "=", True)],
         )
-
         for storage in storages:
             await storage._sync_routes()
 

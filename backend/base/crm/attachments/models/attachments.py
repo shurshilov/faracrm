@@ -1,6 +1,6 @@
 # Copyright 2025 FARA CRM
 # Attachments module - Attachment model with Strategy pattern
-# OPTIMIZED: Added caching of parent_folder_id via existing attachments lookup
+# OPTIMIZED: priority-based routing, folder cache in separate table
 
 import base64
 import logging
@@ -166,161 +166,86 @@ class Attachment(DotModel):
             raise ValueError(
                 f"Attachment {self.id} has no storage_id configured"
             )
-
         return get_strategy(self.storage_id.type)
 
-    @classmethod
-    async def _get_or_create_default_storage(cls) -> AttachmentStorage:
-        """
-        Получить активное хранилище или создать FileStore по умолчанию.
-
-        Returns:
-            Хранилище для использования
-        """
-        return await AttachmentStorage.get_or_create_default()
-
     # ========================================================================
-    # Route and folder resolution (unified logic)
+    # Route and folder resolution
     # ========================================================================
 
-    async def _get_record(
-        self,
-        res_model: str,
-        res_id: int,
-    ):
-        """
-        Получить запись по модели и ID.
-
-        Args:
-            res_model: Имя модели
-            res_id: ID записи
-
-        Returns:
-            Запись или None
-        """
+    async def _get_record(self, res_model: str, res_id: int):
         try:
             model_name = env.models._get_model_name_by_table(res_model)
             model_class = env.models._get_model(model_name)
             if model_class:
                 records = await model_class.search(
-                    filter=[("id", "=", res_id)],
-                    limit=1,
+                    filter=[("id", "=", res_id)], limit=1
                 )
                 if records:
                     return records[0]
         except Exception as e:
             logger.debug(f"Could not get record {res_model}/{res_id}: {e}")
-
         return None
-
-    @classmethod
-    async def _get_cached_parent_folder(
-        cls,
-        res_model: str,
-        res_id: int,
-        route_id: int,
-    ) -> Tuple[Optional[str], Optional[str]]:
-        """
-        Найти закешированный parent_folder_id из существующих attachments.
-
-        OPTIMIZATION: Вместо вызова API для проверки/создания папки,
-        ищем существующий attachment с таким же res_model + res_id + route_id,
-        у которого уже заполнен storage_parent_id.
-
-        Args:
-            res_model: Модель записи
-            res_id: ID записи
-            route_id: ID маршрута
-
-        Returns:
-            Tuple (storage_parent_id, storage_parent_name) или (None, None)
-        """
-        existing = await cls.search(
-            filter=[
-                ("res_model", "=", res_model),
-                ("res_id", "=", res_id),
-                ("route_id", "=", route_id),
-                ("storage_parent_id", "!=", None),
-            ],
-            limit=1,
-            fields=["storage_parent_id", "storage_parent_name"],
-        )
-
-        if existing:
-            return existing[0].storage_parent_id, existing[0].storage_parent_name
-
-        return None, None
 
     async def _resolve_route_and_folder(
         self,
-        storage: AttachmentStorage,
         res_model: Optional[str],
         res_id: Optional[int],
         folder_cache: Optional[dict] = None,
-    ) -> Tuple[Optional[AttachmentRoute], Optional[str], Optional[str]]:
+    ) -> Tuple[
+        Optional[AttachmentRoute],
+        Optional[AttachmentStorage],
+        Optional[str],
+        Optional[str],
+    ]:
         """
-        Единая логика определения маршрута и parent folder для вложения.
-
-        OPTIMIZED: Сначала ищет folder_id в существующих attachments,
-        только потом обращается к API облачного хранилища.
+        Единая логика определения маршрута, хранилища и parent folder.
 
         Args:
-            storage: Хранилище
             res_model: Модель записи
             res_id: ID записи
-            folder_cache: Опциональный кеш для batch операций
-                          {(res_model, res_id, route_id): (folder_id, folder_name)}
+            folder_cache: Локальный кеш для batch операций
 
         Returns:
-            Tuple (route, parent_folder_id, parent_folder_name)
+            Tuple (route, storage, parent_folder_id, parent_folder_name)
         """
         if not res_model or not res_id:
-            return None, None, None
+            return None, None, None, None
 
-        # 1. Находим маршрут
+        # 1. Находим маршрут (priority-based)
         route = await AttachmentRoute.get_route_for_attachment(
-            storage_id=storage.id,
             res_model=res_model,
             res_id=res_id,
         )
 
         if not route:
-            return None, None, None
+            return None, None, None, None
 
-        # 2. Проверяем локальный кеш batch'а (для create_bulk)
+        # 2. Получаем storage из route
+        storage = route.storage_id
+        if not storage or not storage.active:
+            logger.warning(f"Route {route.id} has no active storage")
+            return route, None, None, None
+
+        # 3. Проверяем локальный кеш batch'а (только для create_bulk)
         cache_key = (res_model, res_id, route.id)
         if folder_cache is not None and cache_key in folder_cache:
             folder_id, folder_name = folder_cache[cache_key]
-            return route, folder_id, folder_name
+            return route, storage, folder_id, folder_name
 
-        # 3. Проверяем кеш в БД (существующие attachments)
-        folder_id, folder_name = await self._get_cached_parent_folder(
-            res_model=res_model,
-            res_id=res_id,
-            route_id=route.id,
-        )
-
-        if folder_id:
-            # Сохраняем в локальный кеш если есть
-            if folder_cache is not None:
-                folder_cache[cache_key] = (folder_id, folder_name)
-            return route, folder_id, folder_name
-
-        # 4. Кеш не найден — создаём папку через API
+        # 4. Создаём папку через API (root folders кешируются в attachments_cache)
         record = await self._get_record(res_model, res_id)
-        folder_id = await route.get_or_create_record_folder(
+        folder_id, folder_name = await route.get_or_create_record_folder(
             storage=storage,
             record=record,
             res_id=res_id,
             res_model=res_model,
         )
-        folder_name = route.render_record_folder_name(record)
 
-        # Сохраняем в локальный кеш если есть
+        # Сохраняем в локальный кеш batch'а
         if folder_cache is not None:
             folder_cache[cache_key] = (folder_id, folder_name)
 
-        return route, folder_id, folder_name
+        return route, storage, folder_id, folder_name
 
     # ========================================================================
     # CRUD методы с использованием стратегий
@@ -347,92 +272,68 @@ class Attachment(DotModel):
 
     @hybridmethod
     async def create(self, payload: Self, session=None) -> int:
-        """
-        Создать вложение с сохранением файла через стратегию.
+        if not payload or isinstance(payload.content, Binary):
+            return await super().create(payload)
 
-        Args:
-            payload: Данные для создания вложения
+        async with env.apps.db.get_transaction():
+            try:
+                content_bytes = base64.b64decode(payload.content)
+            except Exception as e:
+                logger.error(f"Failed to decode content: {e}")
+                raise ValueError("Invalid base64 content") from e
 
-        Returns:
-            ID созданного вложения
-        """
-        # Если есть контент - сохраняем через стратегию
-        if payload and not isinstance(payload.content, Binary):
-            storage = await self._get_or_create_default_storage()
+            if not payload.size:
+                payload.size = len(content_bytes)
 
-            # Проверяем что стратегия зарегистрирована
+            route, storage, parent_folder_id, parent_folder_name = (
+                await self._resolve_route_and_folder(
+                    res_model=payload.res_model,
+                    res_id=payload.res_id,
+                )
+            )
+
+            if not storage:
+                storage = await AttachmentStorage.get_or_create_default()
+
             if not has_strategy(storage.type):
-                logger.warning(
-                    f"Strategy '{storage.type}' not found, "
-                    f"falling back to basic create"
-                )
+                logger.warning(f"Strategy '{storage.type}' not found")
                 return await super().create(payload, session)
 
-            async with env.apps.db.get_transaction():
-                # Декодируем контент из base64
-                try:
-                    content_bytes = base64.b64decode(payload.content)
-                except Exception as e:
-                    logger.error(f"Failed to decode content: {e}")
-                    raise ValueError("Invalid base64 content") from e
+            payload.storage_id = storage
+            if route:
+                payload.route_id = route
 
-                # Устанавливаем хранилище
-                payload.storage_id = storage
+            if storage.type != "file":
+                if (
+                    payload.show_preview is None
+                    or payload.show_preview is True
+                ):
+                    payload.show_preview = False
 
-                # Устанавливаем размер если не задан
-                if not payload.size:
-                    payload.size = len(content_bytes)
+            strategy = get_strategy(storage.type)
+            result = await strategy.create_file(
+                storage=storage,
+                attachment=payload,
+                content=content_bytes,
+                filename=payload.name or "unnamed",
+                mimetype=payload.mimetype,
+                parent_id=parent_folder_id,
+            )
 
-                # Для облачных хранилищ (не file) - отключаем превью по умолчанию
-                if storage.type != "file":
-                    if (
-                        payload.show_preview is None
-                        or payload.show_preview is True
-                    ):
-                        payload.show_preview = False
+            payload.storage_file_url = result.get("storage_file_url")
+            payload.storage_file_id = result.get("storage_file_id")
+            payload.storage_parent_id = (
+                result.get("storage_parent_id") or parent_folder_id
+            )
+            payload.storage_parent_name = (
+                result.get("storage_parent_name") or parent_folder_name
+            )
 
-                # Находим маршрут и папку (единая логика)
-                route, parent_folder_id, parent_folder_name = (
-                    await self._resolve_route_and_folder(
-                        storage=storage,
-                        res_model=payload.res_model,
-                        res_id=payload.res_id,
-                    )
-                )
+            logger.info(
+                f"Creating attachment '{payload.name}' in storage '{storage.name}'"
+            )
 
-                if route:
-                    payload.route_id = route
-
-                # Получаем стратегию и создаем файл
-                strategy = get_strategy(storage.type)
-                result = await strategy.create_file(
-                    storage=storage,
-                    attachment=payload,
-                    content=content_bytes,
-                    filename=payload.name or "unnamed",
-                    mimetype=payload.mimetype,
-                    parent_id=parent_folder_id,
-                )
-
-                # Обновляем payload данными от стратегии
-                payload.storage_file_url = result.get("storage_file_url")
-                payload.storage_file_id = result.get("storage_file_id")
-                payload.storage_parent_id = (
-                    result.get("storage_parent_id") or parent_folder_id
-                )
-                payload.storage_parent_name = (
-                    result.get("storage_parent_name") or parent_folder_name
-                )
-
-                logger.info(
-                    f"Creating attachment '{payload.name}' "
-                    f"in storage '{storage.name}' ({storage.type})"
-                )
-
-                return await super().create(payload, session)
-
-        # Без контента - просто создаем запись
-        return await super().create(payload)
+            return await super().create(payload, session)
 
     async def update(
         self,
@@ -440,18 +341,9 @@ class Attachment(DotModel):
         fields: list | None = None,
         session=None,
     ) -> None:
-        """
-        Обновить вложение с возможным обновлением файла через стратегию.
-
-        Args:
-            payload: Новые данные
-            fields: Список полей для обновления
-        """
-
         if not fields:
             fields = []
 
-        # Если обновляется контент - используем стратегию
         if (
             payload
             and not isinstance(payload.content, Binary)
@@ -464,11 +356,9 @@ class Attachment(DotModel):
                     logger.error(f"Failed to decode content: {e}")
                     raise ValueError("Invalid base64 content") from e
 
-                # Обновляем размер
                 if not payload.size:
                     payload.size = len(content_bytes)
 
-                # Обновляем файл через стратегию
                 strategy = get_strategy(self.storage_id.type)
                 result = await strategy.update_file(
                     storage=self.storage_id,
@@ -480,7 +370,6 @@ class Attachment(DotModel):
                     mimetype=payload.mimetype,
                 )
 
-                # Обновляем данные из результата
                 if result.get("storage_file_url"):
                     payload.storage_file_url = result["storage_file_url"]
 
@@ -504,74 +393,66 @@ class Attachment(DotModel):
         """
 
         async with env.apps.db.get_transaction():
-            storage = await self._get_or_create_default_storage()
-
-            # Если стратегия не найдена - базовое создание
-            if not has_strategy(storage.type):
-                return await super().create_bulk(payloads, session)
-
-            strategy = get_strategy(storage.type)
-
-            # Локальный кеш для batch - избегаем повторных API вызовов
             folder_cache: dict = {}
 
-            # Обрабатываем каждое вложение
             for attachment in payloads:
-                if not isinstance(attachment.content, Binary):
-                    try:
-                        content_bytes = base64.b64decode(attachment.content)
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to decode content for "
-                            f"'{attachment.name}': {e}"
-                        )
-                        continue
+                if isinstance(attachment.content, Binary):
+                    continue
 
-                    # Устанавливаем хранилище и размер
-                    attachment.storage_id = storage
-                    if not attachment.size:
-                        attachment.size = len(content_bytes)
-
-                    # Для облачных хранилищ (не file) - отключаем превью по умолчанию
-                    if storage.type != "file":
-                        if (
-                            attachment.show_preview is None
-                            or attachment.show_preview is True
-                        ):
-                            attachment.show_preview = False
-
-                    # Находим маршрут и папку (единая логика с кешем)
-                    route, parent_folder_id, parent_folder_name = (
-                        await self._resolve_route_and_folder(
-                            storage=storage,
-                            res_model=attachment.res_model,
-                            res_id=attachment.res_id,
-                            folder_cache=folder_cache,
-                        )
+                try:
+                    content_bytes = base64.b64decode(attachment.content)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to decode content for '{attachment.name}': {e}"
                     )
+                    continue
 
-                    if route:
-                        attachment.route_id = route
+                if not attachment.size:
+                    attachment.size = len(content_bytes)
 
-                    # Создаем файл через стратегию
-                    result = await strategy.create_file(
-                        storage=storage,
-                        attachment=attachment,
-                        content=content_bytes,
-                        filename=attachment.name or "unnamed",
-                        mimetype=attachment.mimetype,
-                        parent_id=parent_folder_id,
+                route, storage, parent_folder_id, parent_folder_name = (
+                    await self._resolve_route_and_folder(
+                        res_model=attachment.res_model,
+                        res_id=attachment.res_id,
+                        folder_cache=folder_cache,
                     )
+                )
 
-                    # Обновляем данными от стратегии
-                    attachment.storage_file_url = result.get("storage_file_url")
-                    attachment.storage_file_id = result.get("storage_file_id")
-                    attachment.storage_parent_id = (
-                        result.get("storage_parent_id") or parent_folder_id
-                    )
-                    attachment.storage_parent_name = (
-                        result.get("storage_parent_name") or parent_folder_name
-                    )
+                if not storage:
+                    storage = await AttachmentStorage.get_or_create_default()
+
+                if not has_strategy(storage.type):
+                    continue
+
+                attachment.storage_id = storage
+                if route:
+                    attachment.route_id = route
+
+                if storage.type != "file":
+                    if (
+                        attachment.show_preview is None
+                        or attachment.show_preview is True
+                    ):
+                        attachment.show_preview = False
+
+                strategy = get_strategy(storage.type)
+                result = await strategy.create_file(
+                    storage=storage,
+                    attachment=attachment,
+                    content=content_bytes,
+                    filename=attachment.name or "unnamed",
+                    mimetype=attachment.mimetype,
+                    parent_id=parent_folder_id,
+                )
+
+                attachment.storage_file_url = result.get("storage_file_url")
+                attachment.storage_file_id = result.get("storage_file_id")
+                attachment.storage_parent_id = (
+                    result.get("storage_parent_id") or parent_folder_id
+                )
+                attachment.storage_parent_name = (
+                    result.get("storage_parent_name") or parent_folder_name
+                )
 
             return await super().create_bulk(payloads, session)
 

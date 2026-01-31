@@ -29,6 +29,7 @@ import {
   IconRoute,
   IconInfoCircle,
   IconSettings,
+  IconArrowUp,
 } from '@tabler/icons-react';
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
@@ -56,17 +57,16 @@ import { selectCurrentSession } from '@/slices/authSlice';
 import classes from './Form.module.css';
 import { FieldOne2many } from '@/components/Form/Fields/FieldOne2many';
 
-// Тип для маршрута
+// Тип для маршрута (UPDATED: removed is_default, folder_id, folder_model_name; added priority)
 interface AttachmentRoute {
   id: number;
   name: string;
-  model: string;
+  model: string | null;
+  priority: number;
   pattern_root: string;
   pattern_record: string;
   flat: boolean;
   filter: string;
-  folder_id?: string;
-  folder_model_name?: string;
   need_sync_root_name: boolean;
   storage_id: number;
   active: boolean;
@@ -254,23 +254,16 @@ function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
               {attachment.public ? 'Публичный' : 'Приватный'}
             </Badge>
           </Group>
-
-          {attachment.mimetype && (
-            <Text size="xs" c="dimmed">
-              MIME: {attachment.mimetype}
-            </Text>
-          )}
         </Stack>
       </Paper>
 
-      {/* Модалка просмотра */}
-      {isImage && imageSrc && (
+      {/* Модальное окно для просмотра изображений */}
+      {imageSrc && (
         <ImagePreviewModal
           opened={previewOpen}
           onClose={() => setPreviewOpen(false)}
           src={imageSrc}
-          filename={attachment.name || undefined}
-          onDownload={handleDownload}
+          alt={attachment.name || ''}
         />
       )}
     </>
@@ -381,37 +374,28 @@ export function ViewFormAttachmentsStorage(props: ViewFormProps) {
 
         <FormTab name="routes" label="Маршруты" icon={<IconRoute size={16} />}>
           <FormSection title="Маршруты организации файлов">
+            <Alert
+              icon={<IconInfoCircle size={16} />}
+              title="Приоритеты маршрутов"
+              color="blue"
+              mb="md">
+              <Text size="sm">
+                Маршруты проверяются в порядке приоритета (высший первым).
+                Маршрут с <Code>model=null</Code> и <Code>priority=0</Code>{' '}
+                используется как fallback для всех моделей.
+              </Text>
+            </Alert>
+
             <Field name="route_ids">
               <Field name="id" />
               <Field name="name" />
               <Field name="model" />
+              <Field name="priority" />
               <Field name="storage_id" />
               <Field name="pattern_root" />
               <Field name="pattern_record" />
               <Field name="active" />
             </Field>
-
-            {/* <Alert
-              icon={<IconInfoCircle size={16} />}
-              title="Маршруты"
-              color="blue"
-              mb="md">
-              <Text size="sm">
-                Маршруты определяют как файлы организуются в папки в облачном
-                хранилище. Каждый маршрут привязан к определённой модели и
-                создаёт структуру папок.
-              </Text>
-              <Text size="sm" mt="xs">
-                Для управления маршрутами перейдите в{' '}
-                <Text
-                  component="a"
-                  href="/attachments_route"
-                  c="blue"
-                  style={{ cursor: 'pointer' }}>
-                  Файлы → Маршруты
-                </Text>
-              </Text>
-            </Alert> */}
           </FormSection>
         </FormTab>
 
@@ -449,10 +433,21 @@ export function ViewFormAttachmentsRoute(props: ViewFormProps) {
       <FormSection title="Основные настройки">
         <FormRow cols={2}>
           <Field name="name" label="Название маршрута" />
-          <Field name="is_default" label="Маршрут по умолчанию" />
+          <Field name="priority" label="Приоритет" />
         </FormRow>
+        <Alert
+          icon={<IconArrowUp size={16} />}
+          color="gray"
+          mb="md"
+          variant="light">
+          <Text size="xs">
+            Высший приоритет проверяется первым. Fallback маршрут (для всех
+            моделей) должен иметь <Code>priority=0</Code> и{' '}
+            <Code>model=пусто</Code>
+          </Text>
+        </Alert>
         <FormRow cols={2}>
-          <Field name="model" label="Модель (пусто для дефолтного)" />
+          <Field name="model" label="Модель (пусто = все модели)" />
           <Field name="storage_id" label="Хранилище" />
         </FormRow>
         <Field name="active" label="Активен" />
@@ -514,15 +509,14 @@ export function ViewFormAttachmentsRoute(props: ViewFormProps) {
           name="status"
           label="Статус"
           icon={<IconInfoCircle size={16} />}>
-          <FormSection title="Статус в облаке">
-            <FormRow cols={2}>
-              <Field name="folder_id" label="ID папки в облаке" />
-              <Field name="folder_model_name" label="Имя папки (кэш)" />
-            </FormRow>
+          <FormSection title="Синхронизация">
             <Field
               name="need_sync_root_name"
               label="Требуется синхронизация имени"
             />
+            <Text size="xs" c="dimmed" mt="xs">
+              Кеш папок хранится в отдельной таблице attachments_cache
+            </Text>
           </FormSection>
         </FormTab>
       </FormTabs>

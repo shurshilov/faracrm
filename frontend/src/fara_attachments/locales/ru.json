@@ -1,41 +1,70 @@
 {
-  "fields": {
-    "id": "ID",
-    "name": "Название",
-    "filename": "Имя файла",
-    "mimetype": "Тип MIME",
-    "filesize": "Размер",
-    "res_id": "ID ресурса",
-    "res_model": "Модель ресурса",
-    "storage_id": "Хранилище",
-    "route_id": "Маршрут",
-    "url": "URL",
-    "type": "Тип",
-    "show_preview": "Показывать превью",
-    "pattern_root": "Шаблон корневой папки",
-    "pattern_record": "Шаблон папки записи",
-    "flat": "Плоская структура",
-    "filter": "Фильтр",
-    "folder_id": "ID папки в облаке",
-    "active": "Активен",
-    "model": "Модель",
-    "is_default": "По умолчанию",
-    "enable_realtime": "Real-time синхронизация",
-    "enable_one_way_cron": "Односторонняя синхронизация",
-    "enable_two_way_cron": "Двусторонняя синхронизация",
-    "enable_routes_cron": "Синхронизация маршрутов"
+  "attachments": {
+    "title": "Вложения",
+    "fields": {
+      "id": "ID",
+      "name": "Название",
+      "res_model": "Модель",
+      "res_field": "Поле",
+      "res_id": "ID записи",
+      "public": "Публичный",
+      "folder": "Папка",
+      "access_token": "Токен доступа",
+      "size": "Размер",
+      "checksum": "Контрольная сумма",
+      "mimetype": "MIME тип",
+      "storage_id": "Хранилище",
+      "route_id": "Маршрут",
+      "storage_file_id": "ID файла в хранилище",
+      "storage_parent_id": "ID родительской папки",
+      "storage_parent_name": "Имя родительской папки",
+      "storage_file_url": "URL файла",
+      "is_voice": "Голосовое сообщение",
+      "show_preview": "Показывать превью"
+    }
   },
-  "menu": {
-    "title": "Файлы",
-    "attachments": "Все файлы",
-    "attachments_storage": "Хранилища",
-    "attachments_route": "Маршруты"
+  "attachments_storage": {
+    "title": "Хранилища",
+    "fields": {
+      "id": "ID",
+      "name": "Название",
+      "type": "Тип",
+      "active": "Активно",
+      "enable_realtime": "Real-time синхронизация",
+      "enable_one_way_cron": "Односторонняя синхронизация",
+      "enable_two_way_cron": "Двусторонняя синхронизация",
+      "enable_routes_cron": "Синхронизация маршрутов",
+      "file_missing_cloud": "Если файл отсутствует в облаке",
+      "file_missing_local": "Если файл отсутствует в FARA",
+      "route_ids": "Маршруты"
+    }
   },
-  "preview_settings": "Настройки превью",
-  "show_all_previews": "Показать все превью",
-  "load_preview": "Загрузить превью",
-  "cloud_storage": "Облачное хранилище",
-  "route_patterns": "Шаблоны папок",
-  "route_filter": "Фильтрация",
-  "route_status": "Статус"
+  "attachments_route": {
+    "title": "Маршруты",
+    "fields": {
+      "id": "ID",
+      "name": "Название",
+      "model": "Модель",
+      "priority": "Приоритет",
+      "pattern_root": "Шаблон корневой папки",
+      "pattern_record": "Шаблон папки записи",
+      "flat": "Плоская структура",
+      "filter": "Фильтр",
+      "need_sync_root_name": "Требуется синхронизация имени",
+      "storage_id": "Хранилище",
+      "active": "Активен"
+    },
+    "priority_hint": "Высший приоритет проверяется первым. Fallback маршрут должен иметь priority=0",
+    "fallback": "Все модели (fallback)"
+  },
+  "attachments_cache": {
+    "title": "Кеш папок",
+    "fields": {
+      "id": "ID",
+      "route_id": "Маршрут",
+      "res_model": "Модель",
+      "folder_id": "ID папки",
+      "folder_name": "Имя папки"
+    }
+  }
 }

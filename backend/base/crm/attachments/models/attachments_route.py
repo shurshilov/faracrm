@@ -1,9 +1,10 @@
 # Copyright 2025 FARA CRM
 # Attachments module - Route model for organizing files in folders
+# OPTIMIZED: priority-based routing, folder cache in separate table
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
@@ -54,7 +55,13 @@ class AttachmentRoute(DotModel):
 
     model: str | None = Char(
         string="Model",
-        help="Model name (e.g., 'sale', 'lead', 'partner')",
+        help="Model name (e.g., 'sale', 'lead'). None = fallback route",
+    )
+
+    priority: int = Integer(
+        string="Priority",
+        default=10,
+        help="Higher priority routes are checked first. Fallback = 0",
     )
 
     pattern_root: str = Char(
@@ -88,22 +95,12 @@ class AttachmentRoute(DotModel):
         """,
     )
 
-    filter: dict | list = JSONField(
+    filter: dict | list | None = JSONField(
         string="Filter",
         default=None,
         help="""JSON filter for records to sync.
         Example: [["active", "=", true], ["state", "=", "done"]]
         """,
-    )
-
-    folder_id: str | None = Char(
-        string="Cloud folder ID",
-        help="ID of the root folder in cloud storage. Set automatically.",
-    )
-
-    folder_model_name: str | None = Char(
-        string="Folder model name",
-        help="Cached rendered name of the root folder.",
     )
 
     need_sync_root_name: bool = Boolean(
@@ -115,19 +112,11 @@ class AttachmentRoute(DotModel):
     storage_id: "AttachmentStorage" = Many2one(
         relation_table=lambda: env.models.attachment_storage,
         string="Storage",
-        help="Storage where file is saved",
     )
 
     active: bool = Boolean(
         string="Active",
         default=True,
-    )
-
-    is_default: bool = Boolean(
-        string="Default route",
-        default=False,
-        help="Use as fallback when no specific route matches the model. "
-        "Default route should have model=None.",
     )
 
     # ========================================================================
@@ -214,98 +203,100 @@ class AttachmentRoute(DotModel):
         )
 
     def render_record_folder_name(
-        self, record: Any, res_model: Optional[str] = None
+        self,
+        record: Any,
+        res_model: Optional[str] = None,
+        res_id: Optional[int] = None,
     ) -> str:
-        """Render the record folder name for a specific record."""
-        extra_context = {"res_model": res_model} if res_model else None
+        extra_context = {}
+        if res_model:
+            extra_context["res_model"] = res_model
+        if res_id:
+            extra_context["id"] = res_id
         return self._render_template(
-            self.pattern_record, record, extra_context
+            self.pattern_record, record, extra_context or None
         )
 
     # ========================================================================
-    # Route matching
+    # Route matching - priority based
     # ========================================================================
 
     @classmethod
     async def get_route_for_attachment(
         cls,
-        storage_id: int,
         res_model: str,
         res_id: int,
     ) -> Optional["AttachmentRoute"]:
-        """
-        Find matching route for an attachment.
-
-        Priority:
-        1. Specific route for the model (model = res_model) with filter check
-        2. Default route (is_default = True) - no filter check
-
-        Args:
-            storage_id: Storage ID
-            res_model: Resource model name
-            res_id: Resource record ID
-
-        Returns:
-            Matching route or None
-        """
-        # 1. Find specific route for this model and storage
+        """Find matching route using priority-based matching."""
         routes = await cls.search(
             filter=[
-                ("model", "=", res_model),
-                ("storage_id", "=", storage_id),
                 ("active", "=", True),
-                ("is_default", "=", False),
+                [
+                    ("model", "=", res_model),
+                    "or",
+                    ("model", "=", None),
+                ],
             ],
+            sort="priority DESC",
         )
 
         for route in routes:
-            # Check if record matches filter
-            if await route._check_record_in_filter(res_id):
+            if route.model == res_model:
+                if await route._check_record_in_filter(res_id):
+                    return route
+            elif route.model is None:
                 return route
-
-        # 2. Fallback to default route (no filter check)
-        default_routes = await cls.search(
-            filter=[
-                ("is_default", "=", True),
-                ("storage_id", "=", storage_id),
-                ("active", "=", True),
-            ],
-            limit=1,
-        )
-
-        if default_routes:
-            return default_routes[0]
 
         return None
 
     async def _check_record_in_filter(self, res_id: int) -> bool:
-        """
-        Check if record matches route filter.
-
-        Args:
-            res_id: Record ID to check
-
-        Returns:
-            True if record matches filter or filter is empty
-        """
-
         if isinstance(self.filter, list) and self.filter and self.model:
             ids = await env.models._get_model(self.model).search(
                 filter=self.filter
             )
             return res_id in ids
-        else:
-            return True
+        return True
 
-    async def _get_records_ids(self):
-        """Return records for process sync"""
+    async def _get_records_ids(self) -> List[int]:
         if isinstance(self.filter, list) and self.filter and self.model:
             record_ids = await env.models._get_model(self.model).search(
                 filter=self.filter, fields=["id"]
             )
             return [record.id for record in record_ids]
-        else:
-            return []
+        return []
+
+    # ========================================================================
+    # Folder cache (uses separate table)
+    # ========================================================================
+
+    def _get_cache_key(self, res_model: Optional[str] = None) -> str:
+        if self.model is not None:
+            return "_default"
+        return res_model or "_default"
+
+    async def _get_cached_root_folder(
+        self, res_model: Optional[str] = None
+    ) -> Tuple[Optional[str], Optional[str]]:
+        from .attachments_cache import AttachmentCache
+
+        cache_key = self._get_cache_key(res_model)
+        return await AttachmentCache.get_folder(self.id, cache_key)
+
+    async def _save_root_folder_to_cache(
+        self,
+        folder_id: str,
+        folder_name: str,
+        res_model: Optional[str] = None,
+    ) -> None:
+        from .attachments_cache import AttachmentCache
+
+        cache_key = self._get_cache_key(res_model)
+        await AttachmentCache.set_folder(
+            route_id=self.id,
+            res_model=cache_key,
+            folder_id=folder_id,
+            folder_name=folder_name,
+        )
 
     # ========================================================================
     # Folder management
@@ -315,39 +306,27 @@ class AttachmentRoute(DotModel):
         self,
         storage: "AttachmentStorage",
         res_model: str | None = None,
-    ) -> str | None:
-        """
-        Get or create root folder for this route.
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Get or create root folder for this route."""
+        # Check cache first
+        folder_id, folder_name = await self._get_cached_root_folder(res_model)
+        if folder_id:
+            return folder_id, folder_name
 
-        Args:
-            storage: Storage to create folder in
-            res_model: Model name from attachment (for default routes)
-
-        Returns:
-            Folder ID
-        """
-
-        # Return cached folder_id if exists (only for non-default routes)
-        if self.folder_id and not self.is_default:
-            return self.folder_id
-
-        # Render folder name (uses res_model for default routes)
+        # Render folder name
         folder_name = self.render_root_folder_name(res_model)
         if not folder_name:
             folder_name = self.model or res_model
-
-        # Cache the name
-        self.folder_model_name = folder_name
+            if not folder_name:
+                raise ValueError("Cant setup empty folder_name")
 
         # Get strategy and create folder
         strategy = get_strategy(storage.type)
 
-        # Get parent folder from storage
         parent_id = None
         if hasattr(strategy, "_get_parent_id"):
             parent_id = strategy._get_parent_id(storage)
 
-        # Create folder with metadata
         metadata = {
             "route_id": str(self.id),
             "res_model": self.model or res_model,
@@ -361,15 +340,13 @@ class AttachmentRoute(DotModel):
             metadata=metadata,
         )
 
-        if folder_id and not self.is_default:
-            # Save folder_id (only for non-default routes)
-            update_data = AttachmentRoute()
-            update_data.folder_id = folder_id
-            update_data.folder_model_name = folder_name
-            await self.update(update_data)
-            self.folder_id = folder_id
+        # Save to cache
+        if folder_id:
+            await self._save_root_folder_to_cache(
+                folder_id, folder_name, res_model
+            )
 
-        return folder_id
+        return folder_id, folder_name
 
     async def get_or_create_record_folder(
         self,
@@ -377,7 +354,7 @@ class AttachmentRoute(DotModel):
         record: Any,
         res_id: int,
         res_model: str,
-    ) -> Optional[str]:
+    ):
         """
         Get or create record folder within route's root folder.
 
@@ -395,22 +372,18 @@ class AttachmentRoute(DotModel):
         if self.flat:
             return await self.get_or_create_root_folder(storage, res_model)
 
-        # Ensure root folder exists
-        root_folder_id = await self.get_or_create_root_folder(
+        root_folder_id, _ = await self.get_or_create_root_folder(
             storage, res_model
         )
         if not root_folder_id:
-            return None
+            return None, None
 
-        # Render record folder name
-        folder_name = self.render_record_folder_name(record, res_model)
+        folder_name = self.render_record_folder_name(record, res_model, res_id)
         if not folder_name:
             folder_name = str(res_id)
 
-        # Get strategy and create folder
         strategy = get_strategy(storage.type)
 
-        # Create folder with metadata
         metadata = {
             "route_id": str(self.id),
             "res_model": res_model,
@@ -425,7 +398,7 @@ class AttachmentRoute(DotModel):
             metadata=metadata,
         )
 
-        return folder_id
+        return folder_id, folder_name
 
     # ========================================================================
     # Sync methods
@@ -434,30 +407,27 @@ class AttachmentRoute(DotModel):
     async def sync_root_folder_name(
         self, storage: "AttachmentStorage"
     ) -> None:
-        """
-        Sync root folder name if it was changed.
+        if not self.need_sync_root_name:
+            return
 
-        Args:
-            storage: Storage
-        """
-        if not self.need_sync_root_name or not self.folder_id:
+        folder_id, old_name = await self._get_cached_root_folder()
+        if not folder_id:
             return
 
         new_name = self.render_root_folder_name()
-        if new_name and new_name != self.folder_model_name:
+        if new_name and new_name != old_name:
             strategy = get_strategy(storage.type)
 
-            # Update folder name in cloud
             if hasattr(strategy, "rename_folder"):
                 await strategy.rename_folder(
                     storage=storage,
-                    folder_id=self.folder_id,
+                    folder_id=folder_id,
                     new_name=new_name,
                 )
 
-            # Update cached name and reset flag
+            await self._save_root_folder_to_cache(folder_id, new_name)
+
             update_data = AttachmentRoute()
-            update_data.folder_model_name = new_name
             update_data.need_sync_root_name = False
             await self.update(update_data)
 
@@ -502,8 +472,7 @@ class AttachmentRoute(DotModel):
 
     @classmethod
     async def ensure_default_route_for_storage(
-        cls,
-        storage_id: int,
+        cls, storage_id: int
     ) -> "AttachmentRoute":
         """
         Ensure a default route exists for a storage.
@@ -518,21 +487,17 @@ class AttachmentRoute(DotModel):
         """
         # Check if default route already exists
         existing = await cls.search(
-            filter=[
-                ("storage_id", "=", storage_id),
-                ("is_default", "=", True),
-            ],
+            filter=[("storage_id", "=", storage_id), ("model", "=", None)],
             limit=1,
         )
 
         if existing:
             return existing[0]
 
-        # Create default route
         default_route = AttachmentRoute()
         default_route.name = "Default Route"
         default_route.model = None
-        default_route.is_default = True
+        default_route.priority = 0
         default_route.pattern_root = "{model}"
         default_route.pattern_record = "{id}-{name}"
         default_route.flat = False
@@ -541,3 +506,12 @@ class AttachmentRoute(DotModel):
 
         default_route.id = await cls.create(default_route)
         return default_route
+
+    # ========================================================================
+    # Hooks
+    # ========================================================================
+
+    async def after_delete(self) -> None:
+        from .attachments_cache import AttachmentCache
+
+        await AttachmentCache.clear_route_cache(self.id)
