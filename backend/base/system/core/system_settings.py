@@ -69,7 +69,10 @@ class SystemSettings(DotModel):
                 limit=1,
             )
             if records:
-                return records[0].value
+                if records[0].value and isinstance(records[0].value, dict):
+                    return records[0].value["value"]
+                elif isinstance(records[0].value, list):
+                    return records[0].value
             return default
         except Exception:
             return default

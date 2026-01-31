@@ -72,8 +72,25 @@ class SecurityApp(App):
         await self._init_base_role(env)
         await self._init_security_rules(env)
 
+        # Системные настройки auth
+        await self._init_system_settings(env)
+
         # Теперь вызываем родительский post_init, который создаст ACL
         await super().post_init(app)
+
+    async def _init_system_settings(self, env: Environment):
+        """Создаёт настройки по умолчанию для модуля auth."""
+        await env.models.system_settings.ensure_defaults(
+            [
+                {
+                    "key": "auth.session_ttl",
+                    "value": {"value": 60 * 60 * 24},
+                    "description": "Время жизни сессии в секундах (по умолчанию 24 часа)",
+                    "module": "auth",
+                    "is_system": True,
+                },
+            ]
+        )
 
     async def _init_app_icons(self, env: Environment):
         """Сканирует модули и регистрирует иконки приложений."""

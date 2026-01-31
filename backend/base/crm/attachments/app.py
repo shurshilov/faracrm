@@ -34,8 +34,25 @@ class AttachmentsApp(App):
         await super().post_init(app)
         env: "Environment" = app.state.env
 
+        await self._init_system_settings(env)
         await self._init_default_storage(env)
         await self._init_default_routes(env)
+
+    async def _init_system_settings(self, env: "Environment"):
+        """Создаёт настройки по умолчанию для модуля attachments."""
+        import os
+
+        await env.models.system_settings.ensure_defaults(
+            [
+                {
+                    "key": "attachments.filestore_path",
+                    "value": {"value": os.path.join(os.getcwd(), "filestore")},
+                    "description": "Путь к локальному хранилищу файлов",
+                    "module": "attachments",
+                    "is_system": False,
+                },
+            ]
+        )
 
     async def _init_default_storage(self, env: "Environment"):
         """Создаёт дефолтное хранилище типа file (id=1)."""

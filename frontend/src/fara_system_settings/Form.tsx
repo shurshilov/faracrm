@@ -26,9 +26,7 @@ export function ViewFormSystemSettings(props: ViewFormProps) {
           color="blue"
           mb="md"
           variant="light">
-          <Text size="sm">
-            {t('alerts.key_format')}
-          </Text>
+          <Text size="sm">{t('alerts.key_format')}</Text>
           <Text size="xs" c="dimmed" mt="xs">
             {t('alerts.key_examples')} <Code>mail.smtp_host</Code>,{' '}
             <Code>auth.session_timeout</Code>,{' '}
@@ -39,7 +37,7 @@ export function ViewFormSystemSettings(props: ViewFormProps) {
           <Field name="key" label={t('fields.key')} />
           <Field name="module" label={t('fields.module')} />
         </FormRow>
-        <Field name="value" label={t('fields.value')} />
+        <Field name="value" label={t('fields.value')} allowFileUpload />
         <Field name="description" label={t('fields.description')} />
         <Field name="is_system" label={t('fields.is_system')} />
       </FormSection>

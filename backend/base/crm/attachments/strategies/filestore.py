@@ -34,15 +34,30 @@ class FileStoreStrategy(StorageStrategyBase):
 
     strategy_type = "file"
 
-    def _get_base_path(self, storage: "AttachmentStorage") -> str:
-        """Get base path for file storage from settings."""
-        return env.settings.attachments.filestore_path
+    # Путь по умолчанию (fallback если system_settings недоступен)
+    DEFAULT_FILESTORE_PATH = os.path.join(os.getcwd(), "filestore")
+
+    # Кеш пути — чтобы не ходить в БД на каждый файл
+    _cached_path: str | None = None
+
+    async def _get_base_path(self, storage: "AttachmentStorage") -> str:
+        """Get base path for file storage from system_settings."""
+        if self._cached_path is not None:
+            return self._cached_path
+        try:
+            path = await env.models.system_settings.get_value(
+                "attachments.filestore_path", self.DEFAULT_FILESTORE_PATH
+            )
+            self._cached_path = str(path)
+            return self._cached_path
+        except Exception:
+            return self.DEFAULT_FILESTORE_PATH
 
     def _compute_checksum(self, content: bytes) -> str:
         """Compute SHA1 checksum of content."""
         return hashlib.sha1(content).hexdigest()
 
-    def _get_file_path(
+    async def _get_file_path(
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
@@ -54,7 +69,7 @@ class FileStoreStrategy(StorageStrategyBase):
 
         Structure: filestore/<res_model>/<res_id>/<filename>
         """
-        base_path = self._get_base_path(storage)
+        base_path = await self._get_base_path(storage)
         parts = [base_path]
 
         # Add model folder
@@ -99,7 +114,7 @@ class FileStoreStrategy(StorageStrategyBase):
         checksum = self._compute_checksum(content)
 
         # Build file path
-        file_path = self._get_file_path(
+        file_path = await self._get_file_path(
             storage, attachment, filename, checksum
         )
 
@@ -187,7 +202,7 @@ class FileStoreStrategy(StorageStrategyBase):
             new_filename = filename or attachment.name
 
             # Build new path
-            new_path = self._get_file_path(
+            new_path = await self._get_file_path(
                 storage, attachment, new_filename, checksum
             )
 
@@ -266,7 +281,7 @@ class FileStoreStrategy(StorageStrategyBase):
         Args:
             dir_path: Directory path to start from
         """
-        base_path = env.settings.attachments.filestore_path
+        base_path = self._cached_path or self.DEFAULT_FILESTORE_PATH
         try:
             while dir_path and dir_path != base_path:
                 if os.path.isdir(dir_path) and not os.listdir(dir_path):
@@ -299,7 +314,7 @@ class FileStoreStrategy(StorageStrategyBase):
         Returns:
             Folder path
         """
-        base_path = self._get_base_path(storage)
+        base_path = await self._get_base_path(storage)
 
         if parent_id:
             folder_path = os.path.join(parent_id, folder_name)
@@ -322,7 +337,7 @@ class FileStoreStrategy(StorageStrategyBase):
         Returns:
             True if path is accessible
         """
-        base_path = self._get_base_path(storage)
+        base_path = await self._get_base_path(storage)
 
         try:
             os.makedirs(base_path, exist_ok=True)

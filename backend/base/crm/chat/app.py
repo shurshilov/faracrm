@@ -50,6 +50,21 @@ class ChatApp(App):
         env: "Environment" = app.state.env
 
         await self._init_chat_rules(env)
+        await self._init_system_settings(env)
+
+    async def _init_system_settings(self, env: "Environment"):
+        """Создаёт настройки по умолчанию для модуля chat."""
+        await env.models.system_settings.ensure_defaults(
+            [
+                {
+                    "key": "chat.max_file_size",
+                    "value": {"value": 10 * 1024 * 1024},
+                    "description": "Максимальный размер файла в чате в байтах (по умолчанию 10 МБ)",
+                    "module": "chat",
+                    "is_system": False,
+                },
+            ]
+        )
 
     async def _init_chat_rules(self, env: "Environment"):
         """Создаёт правила безопасности для чатов и сообщений."""

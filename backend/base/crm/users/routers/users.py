@@ -187,14 +187,15 @@ async def signin(req: Request, payload: UserSigninInput):
 
         # создать сессию
         now = datetime.now(timezone.utc)
+        ttl = await Session.get_ttl()
         # оставить только поля id, name
         # чтобы не хранить хеш и соль в сессии на фронте для безопасности
         clear_user_id = User(**user_id.json(include={"id", "name"}))
         session = Session(
             user_id=clear_user_id,
             token=token,
-            ttl=Session._ttl,
-            expired_datetime=now + timedelta(seconds=Session._ttl),
+            ttl=ttl,
+            expired_datetime=now + timedelta(seconds=ttl),
             create_user_id=clear_user_id,
             update_user_id=clear_user_id,
         )

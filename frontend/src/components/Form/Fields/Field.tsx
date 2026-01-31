@@ -35,6 +35,7 @@ export const FieldComponents: Record<
   FieldDate,
   FieldTime,
   FieldJson,
+  FieldJSONField: FieldJson, // алиас: бэкенд отдаёт type="JSONField"
   FieldMany2one,
   FieldMany2many,
   FieldOne2many,

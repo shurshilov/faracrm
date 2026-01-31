@@ -43,8 +43,8 @@ class SystemSession:
 class Session(DotModel):
     __table__ = "sessions"
 
-    # 1 день
-    _ttl = 60 * 60 * 24 * 1
+    # Значение по умолчанию — 1 день (используется если system_settings недоступен)
+    DEFAULT_TTL = 60 * 60 * 24 * 1
 
     id: int = Integer(primary_key=True)
     active: bool = Boolean(default=True)
@@ -57,6 +57,17 @@ class Session(DotModel):
     create_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
     update_datetime: datetime = Datetime(default=datetime.now(timezone.utc))
     update_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
+
+    @classmethod
+    async def get_ttl(cls) -> int:
+        """Получить TTL сессии из системных настроек."""
+        try:
+            value = await env.models.system_settings.get_value(
+                "auth.session_ttl", cls.DEFAULT_TTL
+            )
+            return int(value)
+        except Exception:
+            return cls.DEFAULT_TTL
 
     @hybridmethod
     async def session_check(self, token: str):
