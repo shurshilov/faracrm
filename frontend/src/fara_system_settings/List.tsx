@@ -11,6 +11,28 @@ interface SystemSettingsRecord {
   description: string;
   module: string;
   is_system: boolean;
+  cache_ttl: number;
+}
+
+/**
+ * Форматирует TTL в читаемый вид:
+ *  0  → «—»
+ * -1  → «∞»
+ * 60  → «1м»
+ * 3600 → «1ч»
+ */
+function formatTtl(seconds: number): string {
+  if (seconds === 0) return '—';
+  if (seconds < 0) return '∞';
+  if (seconds < 60) return `${seconds}с`;
+  if (seconds < 3600) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return s ? `${m}м ${s}с` : `${m}м`;
+  }
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return m ? `${h}ч ${m}м` : `${h}ч`;
 }
 
 export function ViewListSystemSettings() {
@@ -49,6 +71,19 @@ export function ViewListSystemSettings() {
         )}
       />
       <Field name="description" label={t('fields.description')} />
+      <Field
+        name="cache_ttl"
+        label={t('fields.cache_ttl')}
+        render={(value: number) => {
+          const label = formatTtl(value ?? 0);
+          const color = value === 0 ? 'gray' : value < 0 ? 'green' : 'blue';
+          return (
+            <Badge size="sm" variant="light" color={color}>
+              {label}
+            </Badge>
+          );
+        }}
+      />
       <Field
         name="is_system"
         label={t('fields.is_system')}

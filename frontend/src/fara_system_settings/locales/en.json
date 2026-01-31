@@ -5,7 +5,8 @@
     "value": "Value",
     "description": "Description",
     "module": "Module",
-    "is_system": "System"
+    "is_system": "System",
+    "cache_ttl": "Cache (sec)"
   },
   "menu": {
     "system_settings": "System Settings"

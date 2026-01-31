@@ -1,5 +1,9 @@
 # Copyright 2025 FARA CRM
-# Core module - system settings model
+# Core module - system settings model with in-memory cache
+
+import time
+import logging
+from typing import Any
 
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
@@ -10,19 +14,71 @@ from backend.base.system.dotorm.dotorm.fields import (
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 
+log = logging.getLogger(__name__)
+
+
+class _SettingsCache:
+    """
+    Простой in-memory кеш для системных настроек.
+
+    Хранит пары key → (value, expires_at).
+    TTL берётся из поля cache_ttl каждой настройки:
+        0  — не кешировать (всегда читать из БД)
+       -1  — кешировать навсегда (до перезагрузки)
+       >0  — кешировать N секунд
+    """
+
+    def __init__(self) -> None:
+        self._store: dict[str, tuple[Any, float]] = {}
+
+    def get(self, key: str) -> tuple[bool, Any]:
+        """Вернуть (found, value). found=False если нет или протухло."""
+        entry = self._store.get(key)
+        if entry is None:
+            return False, None
+
+        value, expires_at = entry
+        # expires_at == 0 означает «навсегда»
+        if expires_at != 0 and time.monotonic() > expires_at:
+            del self._store[key]
+            return False, None
+
+        return True, value
+
+    def put(self, key: str, value: Any, ttl: int) -> None:
+        """Положить в кеш. ttl: 0=не кешировать, -1=навсегда, >0=секунды."""
+        if ttl == 0:
+            self._store.pop(key, None)
+            return
+        expires_at = 0 if ttl < 0 else time.monotonic() + ttl
+        self._store[key] = (value, expires_at)
+
+    def invalidate(self, key: str) -> None:
+        """Удалить ключ из кеша."""
+        self._store.pop(key, None)
+
+
+# Один экземпляр на процесс
+_cache = _SettingsCache()
+
 
 class SystemSettings(DotModel):
     """
-    Системные настройки (key-value, JSON).
+    Системные настройки (key-value, JSON) с кешированием.
 
     Хранит бизнес-конфигурацию, которую можно менять на лету
     без перезапуска сервера. Инфраструктурные параметры
     (DATABASE_URL, SECRET_KEY и т.д.) остаются в .env.
 
+    Поле cache_ttl управляет кешированием:
+        0  — не кешировать (каждый раз из БД)
+       -1  — кешировать навсегда (до перезагрузки сервера)
+       >0  — кешировать на N секунд
+
     Примеры:
-        key="attachments.filestore_path"  value="/data/filestore"     module="attachments"
-        key="mail.smtp_host"              value="smtp.gmail.com"      module="mail"
-        key="auth.session_timeout"        value=3600                  module="auth"
+        key="attachments.filestore_path"  value={"value":"/data/filestore"}  cache_ttl=-1
+        key="mail.smtp_host"              value={"value":"smtp.gmail.com"}   cache_ttl=600
+        key="auth.session_ttl"            value={"value":86400}              cache_ttl=0
     """
 
     __table__ = "system_settings"
@@ -56,23 +112,48 @@ class SystemSettings(DotModel):
         string="System",
         description="Системная настройка (нельзя удалить через UI)",
     )
+    cache_ttl: int = Integer(
+        default=0,
+        string="Cache TTL",
+        description="Кеш: 0 — не кешировать, -1 — навсегда, >0 — секунды",
+    )
 
     # ==================== API ====================
 
     @classmethod
     async def get_value(cls, key: str, default=None):
-        """Получить значение по ключу."""
+        """
+        Получить значение по ключу.
+        Сначала проверяет кеш, при промахе — БД.
+        """
+        # 1. кеш
+        found, cached = _cache.get(key)
+        if found:
+            return cached
+
+        # 2. БД
         try:
             records = await cls.search(
                 filter=[("key", "=", key)],
-                fields=["value"],
+                fields=["value", "cache_ttl"],
                 limit=1,
             )
             if records:
-                if records[0].value and isinstance(records[0].value, dict):
-                    return records[0].value["value"]
-                elif isinstance(records[0].value, list):
-                    return records[0].value
+                raw = records[0].value
+                ttl = getattr(records[0], "cache_ttl", 0) or 0
+
+                # Извлекаем значение
+                if raw and isinstance(raw, dict):
+                    result = raw.get("value", raw)
+                elif isinstance(raw, list):
+                    result = raw
+                else:
+                    result = raw
+
+                # Кладём в кеш
+                _cache.put(key, result, ttl)
+                return result
+
             return default
         except Exception:
             return default
@@ -84,11 +165,14 @@ class SystemSettings(DotModel):
         value: dict,
         description: str | None = None,
         module: str = "general",
+        cache_ttl: int = 0,
     ):
         """
         Установить значение (upsert).
-        Если ключ есть — обновляет, иначе создаёт.
+        Инвалидирует кеш при записи.
         """
+        _cache.invalidate(key)
+
         records = await cls.search(
             filter=[("key", "=", key)],
             fields=["id"],
@@ -99,6 +183,8 @@ class SystemSettings(DotModel):
             record = records[0]
             record.value = value
             record.description = description
+            if cache_ttl is not None:
+                record.cache_ttl = cache_ttl
             await record.update()
         else:
             setting = cls(
@@ -106,6 +192,7 @@ class SystemSettings(DotModel):
                 value=value,
                 description=description,
                 module=module,
+                cache_ttl=cache_ttl,
             )
             await cls.create(setting)
 
@@ -121,6 +208,7 @@ class SystemSettings(DotModel):
                 "description",
                 "module",
                 "is_system",
+                "cache_ttl",
             ],
         )
 
@@ -131,7 +219,8 @@ class SystemSettings(DotModel):
         Вызывается при старте сервера.
 
         Args:
-            defaults: [{"key": "...", "value": ..., "description": "...", "module": "..."}]
+            defaults: [{"key": "...", "value": ..., "description": "...",
+                        "module": "...", "cache_ttl": 0}]
         """
         try:
             for item in defaults:
@@ -147,6 +236,7 @@ class SystemSettings(DotModel):
                         description=item.get("description", ""),
                         module=item.get("module", "general"),
                         is_system=item.get("is_system", False),
+                        cache_ttl=item.get("cache_ttl", 0),
                     )
                     await cls.create(setting)
         except Exception:

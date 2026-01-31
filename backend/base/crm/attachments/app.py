@@ -50,6 +50,7 @@ class AttachmentsApp(App):
                     "description": "Путь к локальному хранилищу файлов",
                     "module": "attachments",
                     "is_system": False,
+                    "cache_ttl": -1,
                 },
             ]
         )

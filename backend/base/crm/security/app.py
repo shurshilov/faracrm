@@ -88,6 +88,7 @@ class SecurityApp(App):
                     "description": "Время жизни сессии в секундах (по умолчанию 24 часа)",
                     "module": "auth",
                     "is_system": True,
+                    "cache_ttl": -1,
                 },
             ]
         )

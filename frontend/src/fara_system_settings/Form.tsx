@@ -11,6 +11,7 @@ interface SystemSettingsRecord {
   description: string;
   module: string;
   is_system: boolean;
+  cache_ttl: number;
 }
 
 export function ViewFormSystemSettings(props: ViewFormProps) {
@@ -25,7 +26,10 @@ export function ViewFormSystemSettings(props: ViewFormProps) {
         </FormRow>
         <Field name="value" />
         <Field name="description" />
-        <Field name="is_system" />
+        <FormRow cols={2}>
+          <Field name="cache_ttl" />
+          <Field name="is_system" />
+        </FormRow>
       </FormSection>
     </Form>
   );

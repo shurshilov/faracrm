@@ -62,6 +62,7 @@ class ChatApp(App):
                     "description": "Максимальный размер файла в чате в байтах (по умолчанию 10 МБ)",
                     "module": "chat",
                     "is_system": False,
+                    "cache_ttl": -1,
                 },
             ]
         )

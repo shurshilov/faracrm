@@ -5,7 +5,8 @@
     "value": "Значение",
     "description": "Описание",
     "module": "Модуль",
-    "is_system": "Системная"
+    "is_system": "Системная",
+    "cache_ttl": "Кеш (сек)"
   },
   "menu": {
     "system_settings": "Системные настройки"
