@@ -605,6 +605,7 @@ export interface MessageAttachment {
   mimetype: string;
   size: number;
   is_voice?: boolean;
+  show_preview?: boolean;
 }
 
 export interface ChatMessage {

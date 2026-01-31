@@ -81,7 +81,15 @@ async def get_messages(
                 ("res_model", "=", "chat_message"),
                 ("res_id", "in", message_ids),
             ],
-            fields=["id", "name", "mimetype", "size", "res_id", "is_voice"],
+            fields=[
+                "id",
+                "name",
+                "mimetype",
+                "size",
+                "res_id",
+                "is_voice",
+                "show_preview",
+            ],
         )
         for att in attachments:
             msg_id = att.res_id
@@ -96,6 +104,7 @@ async def get_messages(
                     "mimetype": att.mimetype,
                     "size": att.size,
                     "is_voice": att.is_voice or False,
+                    "show_preview": att.show_preview,
                 }
             )
 
@@ -209,11 +218,13 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
             if not connector or not connector.active:
                 return False
 
-            # Собираем recipients_ids - контакты партнёров чата, 
+            # Собираем recipients_ids - контакты партнёров чата,
             # которые подходят под тип коннектора
             # Маппинг connector_type → contact_type
             connector_to_contact = {
-                "whatsapp": "phone", "viber": "phone", "sms": "phone",
+                "whatsapp": "phone",
+                "viber": "phone",
+                "sms": "phone",
                 "email": "email",
                 "telegram": "telegram",
                 "avito": "avito",
@@ -221,7 +232,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                 "instagram": "instagram",
             }
             contact_type = connector_to_contact.get(connector.type)
-            
+
             recipients_ids = []
             if contact_type:
                 # Находим контакты партнёров-участников чата
@@ -240,7 +251,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                     recipients_query, (contact_type, chat_id)
                 )
                 recipients_ids = [
-                    {"id": r["id"], "contact_value": r["contact_value"]} 
+                    {"id": r["id"], "contact_value": r["contact_value"]}
                     for r in recipients_raw
                 ]
 

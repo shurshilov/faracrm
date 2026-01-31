@@ -152,8 +152,8 @@ export const List = <RecordType extends FaraRecord>({
     start: (page - 1) * pageSize,
     end: (page - 1) * pageSize + pageSize,
     limit: 80,
-    sort: sortStatus?.sortKey || 'id',
-    order: sortStatus?.direction || 'asc',
+    sort: (sortStatus?.columnAccessor as string) || props.sort || 'id',
+    order: sortStatus?.direction || props.order || 'asc',
     fields: fieldsList,
     filter: combinedFilters.length > 0 ? combinedFilters : undefined,
   }) as TypedUseQueryHookResult<

@@ -1,70 +1,103 @@
 {
-  "attachments": {
-    "title": "Attachments",
-    "fields": {
-      "id": "ID",
-      "name": "Name",
-      "res_model": "Model",
-      "res_field": "Field",
-      "res_id": "Record ID",
-      "public": "Public",
-      "folder": "Folder",
-      "access_token": "Access Token",
-      "size": "Size",
-      "checksum": "Checksum",
-      "mimetype": "MIME Type",
-      "storage_id": "Storage",
-      "route_id": "Route",
-      "storage_file_id": "Storage File ID",
-      "storage_parent_id": "Parent Folder ID",
-      "storage_parent_name": "Parent Folder Name",
-      "storage_file_url": "File URL",
-      "is_voice": "Voice Message",
-      "show_preview": "Show Preview"
-    }
+  "title": "Files",
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "filename": "Filename",
+    "mimetype": "MIME Type",
+    "filesize": "Size",
+    "res_id": "Resource ID",
+    "res_model": "Resource Model",
+    "res_field": "Field",
+    "storage_id": "Storage",
+    "route_id": "Route",
+    "url": "URL",
+    "type": "Type",
+    "show_preview": "Show Preview",
+    "pattern_root": "Root Folder Pattern",
+    "pattern_record": "Record Folder Pattern",
+    "flat": "Flat Structure",
+    "filter": "Filter",
+    "folder_id": "Cloud Folder ID",
+    "active": "Active",
+    "model": "Model",
+    "model_hint": "Model (empty = all models)",
+    "priority": "Priority",
+    "enable_realtime": "Real-time Sync",
+    "enable_one_way_cron": "One-way Sync",
+    "enable_two_way_cron": "Two-way Sync",
+    "enable_routes_cron": "Routes Sync",
+    "file_missing_cloud": "Missing in Cloud",
+    "file_missing_local": "Missing in FARA",
+    "need_sync_root_name": "Needs Name Sync",
+    "checksum": "Checksum",
+    "public": "Public",
+    "folder": "Folder",
+    "is_voice": "Voice Message",
+    "access_token": "Access Token",
+    "storage_file_id": "Storage File ID",
+    "storage_parent_id": "Parent Folder ID",
+    "storage_parent_name": "Parent Folder Name"
   },
-  "attachments_storage": {
-    "title": "Storages",
-    "fields": {
-      "id": "ID",
-      "name": "Name",
-      "type": "Type",
-      "active": "Active",
-      "enable_realtime": "Real-time Sync",
-      "enable_one_way_cron": "One-way Sync",
-      "enable_two_way_cron": "Two-way Sync",
-      "enable_routes_cron": "Routes Sync",
-      "file_missing_cloud": "If file missing in cloud",
-      "file_missing_local": "If file missing in FARA",
-      "route_ids": "Routes"
-    }
+  "menu": {
+    "title": "Files",
+    "attachments": "All Files",
+    "attachments_storage": "Storages",
+    "attachments_route": "Routes"
   },
-  "attachments_route": {
-    "title": "Routes",
-    "fields": {
-      "id": "ID",
-      "name": "Name",
-      "model": "Model",
-      "priority": "Priority",
-      "pattern_root": "Root Folder Pattern",
-      "pattern_record": "Record Folder Pattern",
-      "flat": "Flat Structure",
-      "filter": "Filter",
-      "need_sync_root_name": "Needs Name Sync",
-      "storage_id": "Storage",
-      "active": "Active"
-    },
-    "priority_hint": "Higher priority is checked first. Fallback route should have priority=0",
-    "fallback": "All models (fallback)"
+  "tabs": {
+    "info": "General Information",
+    "resource": "Resource Binding",
+    "storage": "Storage",
+    "connection": "Connection",
+    "routes": "Routes",
+    "sync": "Synchronization"
   },
-  "attachments_cache": {
-    "title": "Folder Cache",
-    "fields": {
-      "id": "ID",
-      "route_id": "Route",
-      "res_model": "Model",
-      "folder_id": "Folder ID",
-      "folder_name": "Folder Name"
-    }
-  }
+  "sections": {
+    "main": "Main Settings",
+    "file": "File",
+    "access": "Access",
+    "resource": "Related Resource",
+    "storage": "Storage Settings",
+    "routes": "File Organization Routes",
+    "sync_modes": "Sync Modes",
+    "missing_files": "Missing Files Actions",
+    "pattern_root": "Root Folder Pattern",
+    "pattern_record": "Record Folder Pattern",
+    "filter": "Record Filter",
+    "sync": "Synchronization"
+  },
+  "alerts": {
+    "priority_title": "Route Priorities",
+    "priority_desc": "Routes are checked by priority (highest first). Route with model=null and priority=0 is used as fallback for all models.",
+    "priority_hint": "Higher priority is checked first. Fallback route (for all models) should have priority=0 and model=empty",
+    "variables_title": "Available Variables",
+    "root_folder": "For root folder",
+    "record_folder": "For record folder",
+    "with_zeros": "(zero-padded)",
+    "and_fields": "and any record fields",
+    "etc": "etc.",
+    "file_storage_patterns": "Folder patterns are not applied for local file storage. Files are saved in structure: filestore/model/record_id/file"
+  },
+  "hints": {
+    "pattern_root": "Example: \"Sales Orders\" or \"{model}\" → creates folder with model name",
+    "pattern_record": "Example: \"{zfill(id)}-{name}\" → \"0000001-John Doe\"",
+    "filter": "Example: [[\"active\", \"=\", true], [\"state\", \"=\", \"done\"]]",
+    "cache": "Folder cache is stored in separate table attachments_cache"
+  },
+  "list": {
+    "all_models": "All Models",
+    "fallback": "All Models (fallback)",
+    "flat": "Flat",
+    "with_subfolders": "With Subfolders",
+    "active": "Active",
+    "inactive": "Inactive"
+  },
+  "preview_settings": "Preview Settings",
+  "show_all_previews": "Show All Previews",
+  "load_preview": "Load Preview",
+  "cloud_storage": "Cloud Storage",
+  "route_patterns": "Folder Patterns",
+  "route_filter": "Filtering",
+  "route_status": "Status"
 }
