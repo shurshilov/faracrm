@@ -9,11 +9,16 @@
     "res_model": "Модель ресурса",
     "storage_id": "Хранилище",
     "url": "URL",
-    "type": "Тип"
+    "type": "Тип",
+    "show_preview": "Показывать превью"
   },
   "menu": {
     "title": "Файлы",
     "attachments": "Все файлы",
     "attachments_storage": "Хранилища"
-  }
+  },
+  "preview_settings": "Настройки превью",
+  "show_all_previews": "Показать все превью",
+  "load_preview": "Загрузить превью",
+  "cloud_storage": "Облачное хранилище"
 }

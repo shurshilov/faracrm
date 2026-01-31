@@ -125,6 +125,13 @@ class Attachment(DotModel):
         help="True if attachment is a voice recording from chat",
     )
 
+    show_preview: bool = Boolean(
+        default=True,
+        string="Show preview",
+        help="Show preview in kanban by default. "
+        "For cloud storages (type != 'file') defaults to False.",
+    )
+
     # Виртуальное поле для содержимого (не сохраняется в БД)
     content: bytes | None = Binary(
         string="Binary content",
@@ -193,7 +200,7 @@ class Attachment(DotModel):
             return None
 
     @hybridmethod
-    async def create(self, payload: Self) -> int:
+    async def create(self, payload: Self, session=None) -> int:
         """
         Создать вложение с сохранением файла через стратегию.
 
@@ -207,7 +214,7 @@ class Attachment(DotModel):
             ID созданного вложения
         """
         # Если есть контент - сохраняем через стратегию
-        if payload and payload.content:
+        if payload and not isinstance(payload.content, Binary):
             storage = await self._get_or_create_default_storage()
 
             # Проверяем что стратегия зарегистрирована
@@ -216,7 +223,7 @@ class Attachment(DotModel):
                     f"Strategy '{storage.type}' not found, "
                     f"falling back to basic create"
                 )
-                return await super().create(payload)
+                return await super().create(payload, session)
 
             async with env.apps.db.get_transaction():
                 # Декодируем контент из base64
@@ -231,6 +238,15 @@ class Attachment(DotModel):
                 # Устанавливаем размер если не задан
                 if not payload.size:
                     payload.size = len(content_bytes)
+
+                # Для облачных хранилищ (не file) - отключаем превью по умолчанию
+                if storage.type != "file":
+                    # Устанавливаем show_preview=False только если не было явно задано
+                    if (
+                        payload.show_preview is None
+                        or payload.show_preview is True
+                    ):
+                        payload.show_preview = False
 
                 # Получаем стратегию и создаем файл
                 strategy = get_strategy(storage.type)
@@ -256,13 +272,16 @@ class Attachment(DotModel):
                     f"in storage '{storage.name}' ({storage.type})"
                 )
 
-                return await super().create(payload)
+                return await super().create(payload, session)
 
         # Без контента - просто создаем запись
         return await super().create(payload)
 
     async def update(
-        self, payload: Self | None = None, fields: list | None = None
+        self,
+        payload: Self | None = None,
+        fields: list | None = None,
+        session=None,
     ) -> None:
         """
         Обновить вложение с возможным обновлением файла через стратегию.
@@ -276,7 +295,11 @@ class Attachment(DotModel):
             fields = []
 
         # Если обновляется контент - используем стратегию
-        if payload and payload.content and self.storage_id:
+        if (
+            payload
+            and not isinstance(payload.content, Binary)
+            and self.storage_id
+        ):
             async with env.apps.db.get_transaction():
                 try:
                     content_bytes = base64.b64decode(payload.content)
@@ -307,9 +330,9 @@ class Attachment(DotModel):
                 if result.get("storage_file_url"):
                     payload.storage_file_url = result["storage_file_url"]
 
-                await super().update(payload)
+                await super().update(payload, fields, session)
         else:
-            await super().update(payload, fields)
+            await super().update(payload, fields, session)
 
     @hybridmethod
     async def create_bulk(
@@ -331,13 +354,13 @@ class Attachment(DotModel):
 
             # Если стратегия не найдена - базовое создание
             if not has_strategy(storage.type):
-                return await super().create_bulk(payloads)
+                return await super().create_bulk(payloads, session)
 
             strategy = get_strategy(storage.type)
 
             # Обрабатываем каждое вложение
             for attachment in payloads:
-                if attachment.content:
+                if not isinstance(attachment.content, Binary):
                     try:
                         content_bytes = base64.b64decode(attachment.content)
                     except Exception as e:
@@ -351,6 +374,14 @@ class Attachment(DotModel):
                     attachment.storage_id = storage
                     if not attachment.size:
                         attachment.size = len(content_bytes)
+
+                    # Для облачных хранилищ (не file) - отключаем превью по умолчанию
+                    if storage.type != "file":
+                        if (
+                            attachment.show_preview is None
+                            or attachment.show_preview is True
+                        ):
+                            attachment.show_preview = False
 
                     # Создаем файл через стратегию
                     result = await strategy.create_file(
@@ -376,7 +407,7 @@ class Attachment(DotModel):
                     # Очищаем контент
                     # attachment.content = None
 
-            return await super().create_bulk(payloads)
+            return await super().create_bulk(payloads, session)
 
     async def delete(self) -> bool:
         """

@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Text,
@@ -11,6 +11,8 @@ import {
   SimpleGrid,
   Image,
   Loader,
+  Switch,
+  Paper,
 } from '@mantine/core';
 import {
   IconDownload,
@@ -19,6 +21,8 @@ import {
   IconLock,
   IconWorld,
   IconMicrophone,
+  IconCloud,
+  IconPhoto,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -46,7 +50,52 @@ import {
 } from '@/components/Attachment/fileIcons';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
 import { selectCurrentSession } from '@/slices/authSlice';
+import { useTranslation } from 'react-i18next';
 import classes from './Kanban.module.css';
+
+// ==================== CLOUD PLACEHOLDER ====================
+
+interface CloudPlaceholderProps {
+  mimetype?: string | null;
+  onLoadPreview: () => void;
+  isLoading: boolean;
+}
+
+function CloudPlaceholder({
+  mimetype,
+  onLoadPreview,
+  isLoading,
+}: CloudPlaceholderProps) {
+  const { t } = useTranslation('attachments');
+  const isImage = isImageMimetype(mimetype);
+
+  return (
+    <Box className={classes.cloudPlaceholder}>
+      {isLoading ? (
+        <Loader size="sm" />
+      ) : (
+        <>
+          <IconCloud size={32} className={classes.cloudIcon} />
+          {isImage && (
+            <Tooltip label={t('load_preview', 'Загрузить превью')}>
+              <ActionIcon
+                variant="light"
+                color="blue"
+                size="sm"
+                className={classes.loadPreviewBtn}
+                onClick={e => {
+                  e.stopPropagation();
+                  onLoadPreview();
+                }}>
+                <IconEye size={14} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+        </>
+      )}
+    </Box>
+  );
+}
 
 // ==================== ATTACHMENT CARD ====================
 
@@ -54,24 +103,59 @@ interface AttachmentCardProps {
   attachment: Attachment;
   onClick: () => void;
   onOpenGallery: () => void;
+  showAllPreviews: boolean;
 }
 
 function AttachmentCard({
   attachment,
   onClick,
   onOpenGallery,
+  showAllPreviews,
 }: AttachmentCardProps) {
   const session = useSelector(selectCurrentSession);
   const [thumbSrc, setThumbSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [manuallyLoaded, setManuallyLoaded] = useState(false);
 
   const isImage = isImageMimetype(attachment.mimetype);
   const isAudio = isAudioMimetype(attachment.mimetype);
   const isVideo = isVideoMimetype(attachment.mimetype);
 
+  // Определяем, является ли хранилище облачным (type != 'file')
+  const isCloudStorage = useMemo(() => {
+    const storageType = attachment.storage_id?.type;
+    return storageType && storageType !== 'file';
+  }, [attachment.storage_id?.type]);
+
+  // Определяем, нужно ли показывать превью
+  const shouldShowPreview = useMemo(() => {
+    // Если show_preview явно установлено в true - показываем
+    if (attachment.show_preview === true) return true;
+    // Если show_preview явно установлено в false и нет ручной загрузки - не показываем
+    if (attachment.show_preview === false && !manuallyLoaded && !showAllPreviews)
+      return false;
+    // Если глобальная галочка включена - показываем
+    if (showAllPreviews) return true;
+    // Если файл был загружен вручную - показываем
+    if (manuallyLoaded) return true;
+    // Для локального хранилища - показываем по умолчанию
+    if (!isCloudStorage) return true;
+    // Для облачного хранилища без явного show_preview - не показываем
+    return false;
+  }, [
+    attachment.show_preview,
+    isCloudStorage,
+    manuallyLoaded,
+    showAllPreviews,
+  ]);
+
   // Загрузка превью для карточки
   useEffect(() => {
     if (!isImage || !attachment.id || !session?.token) return;
+    if (!shouldShowPreview) {
+      setThumbSrc(null);
+      return;
+    }
 
     setIsLoading(true);
     fetch(`${API_BASE_URL}/attachments/${attachment.id}/preview?w=200&h=200`, {
@@ -85,7 +169,7 @@ function AttachmentCard({
       })
       .catch(() => setThumbSrc(null))
       .finally(() => setIsLoading(false));
-  }, [attachment.id, isImage, session?.token]);
+  }, [attachment.id, isImage, session?.token, shouldShowPreview]);
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -110,6 +194,10 @@ function AttachmentCard({
     if (isImage) {
       onOpenGallery();
     }
+  };
+
+  const handleLoadCloudPreview = () => {
+    setManuallyLoaded(true);
   };
 
   // Определяем тип бейджа
@@ -164,6 +252,45 @@ function AttachmentCard({
     return null;
   };
 
+  // Рендер области превью
+  const renderPreviewArea = () => {
+    // Показываем плейсхолдер для облачных файлов без превью
+    if (isCloudStorage && !shouldShowPreview && isImage) {
+      return (
+        <CloudPlaceholder
+          mimetype={attachment.mimetype}
+          onLoadPreview={handleLoadCloudPreview}
+          isLoading={isLoading}
+        />
+      );
+    }
+
+    // Показываем загрузку
+    if (isLoading) {
+      return <Loader size="sm" />;
+    }
+
+    // Показываем изображение
+    if (isImage && thumbSrc) {
+      return (
+        <Image
+          src={thumbSrc}
+          alt={attachment.name || ''}
+          fit="cover"
+          h="100%"
+          w="100%"
+        />
+      );
+    }
+
+    // Показываем иконку файла
+    return (
+      <Box className={classes.iconArea}>
+        <FileIcon mimetype={attachment.mimetype} size={48} />
+      </Box>
+    );
+  };
+
   return (
     <>
       <Card
@@ -174,39 +301,39 @@ function AttachmentCard({
         withBorder
         onClick={onClick}>
         {/* Превью область */}
-        <Box className={classes.previewArea}>
-          {isLoading ? (
-            <Loader size="sm" />
-          ) : isImage && thumbSrc ? (
-            <Image
-              src={thumbSrc}
-              alt={attachment.name || ''}
-              fit="cover"
-              h="100%"
-              w="100%"
-            />
-          ) : (
-            <Box className={classes.iconArea}>
-              <FileIcon mimetype={attachment.mimetype} size={48} />
-            </Box>
-          )}
+        <Box className={classes.previewArea}>{renderPreviewArea()}</Box>
 
-          {/* Бейдж публичности */}
-          <Box className={classes.accessBadge}>
-            <Tooltip label={attachment.public ? 'Публичный' : 'Приватный'}>
+        {/* Бейджи сверху справа */}
+        <Box className={classes.topBadges}>
+          {/* Бейдж облачного хранилища */}
+          {isCloudStorage && (
+            <Tooltip
+              label={`${attachment.storage_id?.type || 'Cloud'} storage`}>
               <ActionIcon
                 size="xs"
                 variant="filled"
-                color={attachment.public ? 'green' : 'gray'}
-                radius="xl">
-                {attachment.public ? (
-                  <IconWorld size={12} />
-                ) : (
-                  <IconLock size={12} />
-                )}
+                color="blue"
+                radius="xl"
+                mr={4}>
+                <IconCloud size={12} />
               </ActionIcon>
             </Tooltip>
-          </Box>
+          )}
+
+          {/* Бейдж публичности */}
+          <Tooltip label={attachment.public ? 'Публичный' : 'Приватный'}>
+            <ActionIcon
+              size="xs"
+              variant="filled"
+              color={attachment.public ? 'green' : 'gray'}
+              radius="xl">
+              {attachment.public ? (
+                <IconWorld size={12} />
+              ) : (
+                <IconLock size={12} />
+              )}
+            </ActionIcon>
+          </Tooltip>
         </Box>
 
         {/* Информация */}
@@ -263,8 +390,10 @@ function AttachmentCard({
 
 export function ViewKanbanAttachments() {
   const navigate = useNavigate();
+  const { t } = useTranslation('attachments');
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [showAllPreviews, setShowAllPreviews] = useState(false);
 
   const { data } = useSearchQuery({
     model: 'attachments',
@@ -276,8 +405,10 @@ export function ViewKanbanAttachments() {
       'public',
       'folder',
       'is_voice',
+      'show_preview',
       'res_model',
       'res_id',
+      'storage_id',
     ],
     limit: 50,
     order: 'desc',
@@ -317,8 +448,34 @@ export function ViewKanbanAttachments() {
     [imageAttachments],
   );
 
+  // Проверяем, есть ли облачные файлы
+  const hasCloudFiles = useMemo(() => {
+    return attachments.some(att => {
+      const storageType = att.storage_id?.type;
+      return storageType && storageType !== 'file';
+    });
+  }, [attachments]);
+
   return (
     <>
+      {/* Панель управления превью */}
+      {hasCloudFiles && (
+        <Paper p="sm" mb="md" withBorder>
+          <Group justify="space-between">
+            <Group gap="xs">
+              <IconPhoto size={18} />
+              <Text size="sm">{t('preview_settings', 'Настройки превью')}</Text>
+            </Group>
+            <Switch
+              label={t('show_all_previews', 'Показать все превью')}
+              checked={showAllPreviews}
+              onChange={e => setShowAllPreviews(e.currentTarget.checked)}
+              size="sm"
+            />
+          </Group>
+        </Paper>
+      )}
+
       <SimpleGrid
         cols={{ base: 2, sm: 3, md: 4, lg: 5, xl: 6 }}
         spacing="md"
@@ -329,6 +486,7 @@ export function ViewKanbanAttachments() {
             attachment={att}
             onClick={() => handleClick(att.id)}
             onOpenGallery={() => handleOpenGallery(att.id)}
+            showAllPreviews={showAllPreviews}
           />
         ))}
       </SimpleGrid>

@@ -9,11 +9,16 @@
     "res_model": "Resource Model",
     "storage_id": "Storage",
     "url": "URL",
-    "type": "Type"
+    "type": "Type",
+    "show_preview": "Show preview"
   },
   "menu": {
     "title": "Files",
     "attachments": "All Files",
     "attachments_storage": "Storages"
-  }
+  },
+  "preview_settings": "Preview settings",
+  "show_all_previews": "Show all previews",
+  "load_preview": "Load preview",
+  "cloud_storage": "Cloud storage"
 }

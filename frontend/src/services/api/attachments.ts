@@ -309,6 +309,8 @@ export type AttachmentReadSearchOutput = {
   storage_parent_id?: string | null;
   storage_parent_name?: string | null;
   storage_file_url?: string | null;
+  is_voice?: boolean | null;
+  show_preview?: boolean | null;
   content?: Blob | null;
 };
 export type GetListField = {
@@ -339,6 +341,8 @@ export type AttachmentSearchInput = {
     | 'storage_parent_id'
     | 'storage_parent_name'
     | 'storage_file_url'
+    | 'is_voice'
+    | 'show_preview'
     | 'content'
   )[];
   end?: number | null;
@@ -431,6 +435,8 @@ export type Attachment = {
   storage_parent_id: string | null;
   storage_parent_name: string | null;
   storage_file_url: string | null;
+  is_voice: boolean | null;
+  show_preview: boolean | null;
   content: Blob | null;
 };
 export type GetFormField = {

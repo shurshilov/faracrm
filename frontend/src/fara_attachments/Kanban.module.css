@@ -33,11 +33,59 @@
   height: 100%;
 }
 
-/* Access Badge (публичность) */
+/* Access Badge (публичность) - deprecated, use topBadges */
 .accessBadge {
   position: absolute;
   top: 8px;
   right: 8px;
+}
+
+/* Top Badges container */
+.topBadges {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+}
+
+/* Cloud Placeholder */
+.cloudPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  gap: 8px;
+  background: linear-gradient(
+    135deg,
+    var(--mantine-color-blue-0) 0%,
+    var(--mantine-color-blue-1) 100%
+  );
+}
+
+[data-mantine-color-scheme='dark'] .cloudPlaceholder {
+  background: linear-gradient(
+    135deg,
+    var(--mantine-color-dark-7) 0%,
+    var(--mantine-color-dark-6) 100%
+  );
+}
+
+.cloudIcon {
+  color: var(--mantine-color-blue-5);
+  opacity: 0.6;
+}
+
+[data-mantine-color-scheme='dark'] .cloudIcon {
+  color: var(--mantine-color-blue-4);
+}
+
+.loadPreviewBtn {
+  margin-top: 4px;
 }
 
 /* Hover overlay для изображений */

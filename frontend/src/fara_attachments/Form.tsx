@@ -285,6 +285,9 @@ export function ViewFormAttachments(props: ViewFormProps) {
               <Field name="folder" label="Папка" />
               <Field name="is_voice" label="Голосовое сообщение" />
             </FormRow>
+            <FormRow cols={2}>
+              <Field name="show_preview" label="Показывать превью" />
+            </FormRow>
           </FormSection>
 
           <FormSection title="Доступ">
