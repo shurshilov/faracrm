@@ -494,7 +494,7 @@ export function ChatMessages({
                               onDownload={() =>
                                 handleDownloadAttachment(att.id)
                               }
-                              showPreview={true}
+                              showPreview={att.show_preview !== false}
                               previewSize={
                                 message.attachments!.length === 1 ? 250 : 120
                               }

@@ -52,7 +52,7 @@ class FileStoreStrategy(StorageStrategyBase):
         """
         Build file path for storage.
 
-        Structure: filestore/<res_model>/<res_id>/<checksum[:2]>/<filename>
+        Structure: filestore/<res_model>/<res_id>/<filename>
         """
         base_path = self._get_base_path(storage)
         parts = [base_path]
@@ -64,10 +64,6 @@ class FileStoreStrategy(StorageStrategyBase):
         # Add record ID folder
         if attachment.res_id:
             parts.append(str(attachment.res_id))
-
-        # Add checksum prefix folder for better distribution
-        if checksum:
-            parts.append(checksum[:2])
 
         # Add filename
         parts.append(filename)

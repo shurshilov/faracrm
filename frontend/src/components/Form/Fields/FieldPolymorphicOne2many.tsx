@@ -338,7 +338,7 @@ export const FieldPolymorphicOne2many = <RecordType extends FaraRecord>({
                   ? () => handleOpenGallery(index)
                   : undefined
               }
-              showPreview={showPreview}
+              showPreview={file.show_preview !== false && showPreview}
               previewSize={previewSize}
               showActions={true}
             />

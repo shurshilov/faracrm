@@ -213,6 +213,7 @@ export const FieldPolymorphicMany2one = <RecordType extends FaraRecord>({
           onDelete={handleDelete}
           onReplace={handleReplace}
           onDownload={handleDownload}
+          showPreview={currentValue.show_preview !== false}
           showActions={true}
         />
       )}
