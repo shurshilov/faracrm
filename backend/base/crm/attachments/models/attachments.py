@@ -280,6 +280,7 @@ class Attachment(DotModel):
                                 storage=storage,
                                 record=record,
                                 res_id=payload.res_id,
+                                res_model=payload.res_model,
                             )
                         )
                         parent_folder_name = route.render_record_folder_name(
@@ -337,11 +338,11 @@ class Attachment(DotModel):
         """
         # Пробуем получить модель из env
         try:
-            model_class = getattr(env.models, res_model, None)
+            model_name = env.models._get_model_name_by_table(res_model)
+            model_class = env.models._get_model(model_name)
             if model_class:
                 records = await model_class.search(
-                    filters=[["id", "=", res_id]],
-                    fields=["id"],
+                    filter=[("id", "=", res_id)],
                     limit=1,
                 )
                 if records:

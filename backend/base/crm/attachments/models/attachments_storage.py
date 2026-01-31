@@ -2,14 +2,15 @@
 # Attachments module - Storage model
 
 import logging
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
+    One2many,
     Selection,
     Boolean,
-    Text,
+    Many2many,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
@@ -107,6 +108,23 @@ class AttachmentStorage(DotModel):
         help="Action when file exists in cloud but not in FARA",
     )
 
+    route_ids: list["AttachmentRoute"] = One2many(
+        store=False,
+        relation_table=lambda: env.models.attachment_route,
+        relation_table_field="storage_id",
+        description="Маршруты, работающие с этим хранилищем",
+    )
+    # route_ids: list["AttachmentRoute"] = Many2many(
+    #     store=False,
+    #     relation_table=lambda: env.models.attachment_route,
+    #     many2many_table="storage_route_many2many",
+    #     column1="route_id",
+    #     column2="storage_id",
+    #     ondelete="cascade",
+    #     description="Маршруты, работающие с этим хранилищем",
+    #     default=[],
+    # )
+
     async def activate_single(self) -> None:
         """
         Активировать это хранилище и деактивировать остальные.
@@ -146,11 +164,10 @@ class AttachmentStorage(DotModel):
 
         result = await env.models.attachment_storage.search(
             filter=[("active", "=", True)],
-            fields=["id"],
             limit=1,
         )
         if result:
-            return env.models.attachment_storage(id=result[0].id)
+            return result[0]
         else:
             return None
 
@@ -171,7 +188,6 @@ class AttachmentStorage(DotModel):
         # Ищем любой filestore
         storages = await env.models.attachment_storage.search(
             filter=[("type", "=", "file")],
-            fields=["id"],
             limit=1,
         )
 
@@ -189,7 +205,6 @@ class AttachmentStorage(DotModel):
         storage_id = await env.models.attachment_storage.create(new_storage)
         result = await env.models.attachment_storage.search(
             filter=[("id", "=", storage_id)],
-            fields=["id"],
             limit=1,
         )
         return result[0] if result else new_storage

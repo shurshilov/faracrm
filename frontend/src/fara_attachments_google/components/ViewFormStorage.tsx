@@ -194,10 +194,7 @@ export function ViewFormStorageGoogle() {
         <FieldChar
           name="google_credentials"
           label="Credentials JSON"
-          description="Загрузите credentials.json или вставьте JSON вручную"
-          allowFileUpload
           placeholder='{"web": {"client_id": "...", "client_secret": "..."}}'
-          minRows={6}
         />
       </FormRow>
 
@@ -212,7 +209,7 @@ export function ViewFormStorageGoogle() {
         <FieldSelection
           name="google_auth_state"
           label="Статус авторизации"
-          readonly
+          readOnly
         />
       </FormRow>
 

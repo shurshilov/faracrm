@@ -25,12 +25,14 @@ interface WebhookSectionProps {
 /**
  * Универсальный компонент секции Webhook.
  * Используется модулями коннекторов которые поддерживают webhook.
- * 
+ *
  * @example
  * // В fara_chat_telegram
  * registerExtension('chat_connector', () => <WebhookSection sourceName="Telegram" />, ...);
  */
-export function WebhookSection({ sourceName = 'сервера' }: WebhookSectionProps) {
+export function WebhookSection({
+  sourceName = 'сервера',
+}: WebhookSectionProps) {
   const { t } = useTranslation('chat');
   const form = useFormContext();
   const [setWebhook, { isLoading: isSettingWebhook }] =
@@ -41,7 +43,10 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
     useLazyGetConnectorWebhookInfoQuery();
 
   const [webhookState, setWebhookState] = useState<string | null>(null);
-  const [webhookInfo, setWebhookInfo] = useState<Record<string, unknown> | null>(null);
+  const [webhookInfo, setWebhookInfo] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [infoModalOpened, { open: openInfoModal, close: closeInfoModal }] =
     useDisclosure(false);
 
@@ -55,7 +60,10 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
     if (!connectorId) {
       notifications.show({
         title: t('common.error', 'Ошибка'),
-        message: t('connector.webhook.saveFirst', 'Сначала сохраните коннектор'),
+        message: t(
+          'connector.webhook.saveFirst',
+          'Сначала сохраните коннектор',
+        ),
         color: 'red',
       });
       return;
@@ -120,7 +128,10 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
         title: t('common.error', 'Ошибка'),
         message:
           error?.data?.detail ||
-          t('connector.webhook.infoError', 'Не удалось получить информацию о webhook'),
+          t(
+            'connector.webhook.infoError',
+            'Не удалось получить информацию о webhook',
+          ),
         color: 'red',
       });
     }
@@ -180,7 +191,10 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
 
         {isNewRecord && (
           <Text size="sm" c="dimmed" mb="md">
-            {t('connector.webhook.saveFirst', 'Сначала сохраните коннектор, чтобы настроить webhook')}
+            {t(
+              'connector.webhook.saveFirst',
+              'Сначала сохраните коннектор, чтобы настроить webhook',
+            )}
           </Text>
         )}
 
@@ -188,7 +202,7 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
           <FieldChar
             name="connector_url"
             label={t('connector.fields.connectorUrl', 'URL коннектора')}
-            readonly={isWebhookSet}
+            readOnly={isWebhookSet}
           />
         </FormRow>
 
@@ -196,12 +210,12 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
           <FieldChar
             name="webhook_url"
             label={t('connector.fields.webhookUrl', 'Webhook URL')}
-            readonly={isWebhookSet}
+            readOnly={isWebhookSet}
           />
           <FieldChar
             name="webhook_hash"
             label={t('connector.fields.webhookHash', 'Секретный хеш')}
-            readonly={isWebhookSet}
+            readOnly={isWebhookSet}
           />
         </FormRow>
       </FormSection>
@@ -210,18 +224,25 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
       <Modal
         opened={infoModalOpened}
         onClose={closeInfoModal}
-        title={t('connector.webhook.serverInfo', `Информация о Webhook от ${sourceName}`)}
+        title={t(
+          'connector.webhook.serverInfo',
+          `Информация о Webhook от ${sourceName}`,
+        )}
         size="lg">
         {webhookInfo && (
           <Stack gap="md">
             <div>
-              <Text size="sm" fw={500} mb={4}>URL:</Text>
+              <Text size="sm" fw={500} mb={4}>
+                URL:
+              </Text>
               <Code block>{(webhookInfo as any).url || '—'}</Code>
             </div>
 
             <Group>
               <div>
-                <Text size="sm" fw={500}>Pending updates:</Text>
+                <Text size="sm" fw={500}>
+                  Pending updates:
+                </Text>
                 <Badge color="blue" variant="light" size="lg">
                   {(webhookInfo as any).pending_update_count ?? 0}
                 </Badge>
@@ -229,9 +250,13 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
 
               {(webhookInfo as any).last_error_date && (
                 <div>
-                  <Text size="sm" fw={500}>Last error:</Text>
+                  <Text size="sm" fw={500}>
+                    Last error:
+                  </Text>
                   <Badge color="red" variant="light" size="lg">
-                    {new Date((webhookInfo as any).last_error_date * 1000).toLocaleString()}
+                    {new Date(
+                      (webhookInfo as any).last_error_date * 1000,
+                    ).toLocaleString()}
                   </Badge>
                 </div>
               )}
@@ -239,8 +264,12 @@ export function WebhookSection({ sourceName = 'сервера' }: WebhookSection
 
             {(webhookInfo as any).last_error_message && (
               <div>
-                <Text size="sm" fw={500} mb={4}>Last error message:</Text>
-                <Code block color="red">{(webhookInfo as any).last_error_message}</Code>
+                <Text size="sm" fw={500} mb={4}>
+                  Last error message:
+                </Text>
+                <Code block color="red">
+                  {(webhookInfo as any).last_error_message}
+                </Code>
               </div>
             )}
 

@@ -219,8 +219,8 @@ const Logo = () => (
         x2="1"
         y1="0.5"
         y2="0.5">
-        <stop offset="0" stop-color="#009982" />
-        <stop offset="1" stop-color="#009982" />
+        <stop offset="0" stopColor="#009982" />
+        <stop offset="1" stopColor="#009982" />
       </linearGradient>
       <filter
         id="editing-gradow-filter"
@@ -228,7 +228,7 @@ const Logo = () => (
         y="-100%"
         width="300%"
         height="300%">
-        <feFlood flood-color="rgba(253,253,253,0)" result="flood" />
+        <feFlood floodColor="rgba(253,253,253,0)" result="flood" />
         <feComposite
           operator="in"
           in2="SourceAlpha"
@@ -247,11 +247,11 @@ const Logo = () => (
       <text
         x="50%"
         y="55%"
-        dominant-baseline="middle"
-        text-anchor="middle"
-        font-weight="100"
-        font-family="Arial Black, sans-serif"
-        font-size="62px"
+        dominantBaseline="middle"
+        textAnchor="middle"
+        fontWeight="100"
+        fontFamily="Arial Black, sans-serif"
+        fontSize="62px"
         fill="url(#editing-gradow-gradient)">
         FARA
       </text>

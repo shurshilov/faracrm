@@ -13,6 +13,8 @@ import {
   Image,
   Loader,
   Divider,
+  Alert,
+  Code,
 } from '@mantine/core';
 import {
   IconDownload,
@@ -24,6 +26,9 @@ import {
   IconFile,
   IconDatabase,
   IconLink,
+  IconRoute,
+  IconInfoCircle,
+  IconSettings,
 } from '@tabler/icons-react';
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
@@ -49,6 +54,23 @@ import {
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
 import { selectCurrentSession } from '@/slices/authSlice';
 import classes from './Form.module.css';
+import { FieldOne2many } from '@/components/Form/Fields/FieldOne2many';
+
+// Тип для маршрута
+interface AttachmentRoute {
+  id: number;
+  name: string;
+  model: string;
+  pattern_root: string;
+  pattern_record: string;
+  flat: boolean;
+  filter: string;
+  folder_id?: string;
+  folder_model_name?: string;
+  need_sync_root_name: boolean;
+  storage_id: number;
+  active: boolean;
+}
 
 // Компонент превью файла для формы
 function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
@@ -310,7 +332,10 @@ export function ViewFormAttachments(props: ViewFormProps) {
 
         <FormTab name="storage" label="Хранилище" icon={<IconLink size={16} />}>
           <FormSection title="Настройки хранилища">
-            <Field name="storage_id" label="Хранилище" />
+            <FormRow cols={2}>
+              <Field name="storage_id" label="Хранилище" />
+              <Field name="route_id" label="Маршрут" />
+            </FormRow>
             <FormRow cols={2}>
               <Field name="storage_file_id" label="ID файла в хранилище" />
               <Field name="storage_file_url" label="URL файла" />
@@ -352,6 +377,152 @@ export function ViewFormAttachmentsStorage(props: ViewFormProps) {
           label="Подключение"
           icon={<IconLink size={16} />}>
           {/* Контент добавляется через расширения (Google Drive, Microsoft, etc.) */}
+        </FormTab>
+
+        <FormTab name="routes" label="Маршруты" icon={<IconRoute size={16} />}>
+          <FormSection title="Маршруты организации файлов">
+            <Field name="route_ids">
+              <Field name="id" />
+              <Field name="name" />
+              <Field name="model" />
+              <Field name="storage_id" />
+              <Field name="pattern_root" />
+              <Field name="pattern_record" />
+              <Field name="active" />
+            </Field>
+
+            {/* <Alert
+              icon={<IconInfoCircle size={16} />}
+              title="Маршруты"
+              color="blue"
+              mb="md">
+              <Text size="sm">
+                Маршруты определяют как файлы организуются в папки в облачном
+                хранилище. Каждый маршрут привязан к определённой модели и
+                создаёт структуру папок.
+              </Text>
+              <Text size="sm" mt="xs">
+                Для управления маршрутами перейдите в{' '}
+                <Text
+                  component="a"
+                  href="/attachments_route"
+                  c="blue"
+                  style={{ cursor: 'pointer' }}>
+                  Файлы → Маршруты
+                </Text>
+              </Text>
+            </Alert> */}
+          </FormSection>
+        </FormTab>
+
+        <FormTab
+          name="sync"
+          label="Синхронизация"
+          icon={<IconSettings size={16} />}>
+          <FormSection title="Режимы синхронизации">
+            <FormRow cols={2}>
+              <Field name="enable_realtime" label="Real-time" />
+              <Field name="enable_one_way_cron" label="Односторонняя (cron)" />
+            </FormRow>
+            <FormRow cols={2}>
+              <Field name="enable_two_way_cron" label="Двусторонняя (cron)" />
+              <Field name="enable_routes_cron" label="Маршруты (cron)" />
+            </FormRow>
+          </FormSection>
+
+          <FormSection title="Действия при отсутствии файлов">
+            <FormRow cols={2}>
+              <Field name="file_missing_cloud" label="Нет в облаке" />
+              <Field name="file_missing_local" label="Нет в FARA" />
+            </FormRow>
+          </FormSection>
+        </FormTab>
+      </FormTabs>
+    </Form>
+  );
+}
+
+export function ViewFormAttachmentsRoute(props: ViewFormProps) {
+  return (
+    <Form<AttachmentRoute> model="attachments_route" {...props}>
+      {/* Основная информация */}
+      <FormSection title="Основные настройки">
+        <FormRow cols={2}>
+          <Field name="name" label="Название маршрута" />
+          <Field name="model" label="Модель" />
+        </FormRow>
+        <FormRow cols={2}>
+          <Field name="storage_id" label="Хранилище" />
+          <Field name="active" label="Активен" />
+        </FormRow>
+      </FormSection>
+
+      <FormTabs defaultTab="patterns">
+        <FormTab
+          name="patterns"
+          label="Шаблоны папок"
+          icon={<IconFolder size={16} />}>
+          <Alert
+            icon={<IconInfoCircle size={16} />}
+            title="Доступные переменные"
+            color="blue"
+            mb="md">
+            <Text size="sm">
+              <strong>Для корневой папки:</strong> <Code>{'{model}'}</Code>,{' '}
+              <Code>{'{table}'}</Code>
+            </Text>
+            <Text size="sm" mt="xs">
+              <strong>Для папки записи:</strong> <Code>{'{id}'}</Code>,{' '}
+              <Code>{'{zfill(id)}'}</Code> (с нулями), и любые поля записи:{' '}
+              <Code>{'{name}'}</Code>, <Code>{'{code}'}</Code> и т.д.
+            </Text>
+          </Alert>
+
+          <FormSection title="Шаблон корневой папки">
+            <Field name="pattern_root" label="Шаблон имени корневой папки" />
+            <Text size="xs" c="dimmed" mt="xs">
+              Пример: "Sales Orders" или "{'{model}'}" → создаст папку с именем
+              модели
+            </Text>
+          </FormSection>
+
+          <FormSection title="Шаблон папки записи">
+            <FormRow cols={2}>
+              <Field name="pattern_record" label="Шаблон имени папки записи" />
+              <Field name="flat" label="Плоская структура (без подпапок)" />
+            </FormRow>
+            <Text size="xs" c="dimmed" mt="xs">
+              Пример: "{'{zfill(id)}'}-{'{name}'}" → "0000001-John Doe"
+            </Text>
+          </FormSection>
+        </FormTab>
+
+        <FormTab
+          name="filter"
+          label="Фильтрация"
+          icon={<IconRoute size={16} />}>
+          <FormSection title="Фильтр записей">
+            <Field name="filter" label="JSON фильтр" />
+            <Text size="xs" c="dimmed" mt="xs">
+              Пример: [["active", "=", true], ["state", "=", "done"]]
+            </Text>
+          </FormSection>
+        </FormTab>
+
+        <FormTab
+          name="status"
+          label="Статус"
+          icon={<IconInfoCircle size={16} />}>
+          <FormSection title="Статус в облаке">
+            <FormRow cols={2}>
+              <Field name="folder_id" label="ID папки в облаке" />
+              <Field name="folder_model_name" label="Имя папки (кэш)" />
+            </FormRow>
+            <Field
+              name="need_sync_root_name"
+              label="Требуется синхронизация имени"
+            />
+          </FormSection>
         </FormTab>
       </FormTabs>
     </Form>

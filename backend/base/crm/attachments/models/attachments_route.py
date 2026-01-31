@@ -10,6 +10,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
     JSONField,
+    Many2one,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
@@ -111,9 +112,10 @@ class AttachmentRoute(DotModel):
         help="Flag to sync root folder name on next sync.",
     )
 
-    storage_id: int | None = Integer(
-        string="Storage ID",
-        help="Link to attachment storage",
+    storage_id: "AttachmentStorage" = Many2one(
+        relation_table=lambda: env.models.attachment_storage,
+        string="Storage",
+        help="Storage where file is saved",
     )
 
     active: bool = Boolean(
@@ -208,8 +210,8 @@ class AttachmentRoute(DotModel):
     async def get_route_for_attachment(
         cls,
         storage_id: int,
-        res_model: str | None,
-        res_id: int | None,
+        res_model: str,
+        res_id: int,
     ) -> Optional["AttachmentRoute"]:
         """
         Find matching route for an attachment.
@@ -222,9 +224,6 @@ class AttachmentRoute(DotModel):
         Returns:
             Matching route or None
         """
-        if not res_model:
-            return None
-
         # Find route for this model and storage
         routes = await cls.search(
             filter=[
@@ -232,19 +231,28 @@ class AttachmentRoute(DotModel):
                 ("storage_id", "=", storage_id),
                 ("active", "=", True),
             ],
-            # limit=1,
         )
 
         for route in routes:
-            # route = routes[0]
             # TODO: gather
             # Check if record matches filter
             if await route._check_record_in_filter(res_id):
                 return route
 
+        routes_global = await cls.search(
+            filter=[
+                ("storage_id", "=", storage_id),
+                ("active", "=", True),
+            ],
+        )
+        for route in routes_global:
+            # TODO: gather
+            # Check if record matches filter
+            if await route._check_record_in_filter(res_id):
+                return route
         return None
 
-    async def _check_record_in_filter(self, res_id: Optional[int]) -> bool:
+    async def _check_record_in_filter(self, res_id: int) -> bool:
         """
         Check if record matches route filter.
 
@@ -254,10 +262,8 @@ class AttachmentRoute(DotModel):
         Returns:
             True if record matches filter or filter is empty
         """
-        if not res_id:
-            return True
 
-        if isinstance(self.filter, list):
+        if isinstance(self.filter, list) and self.filter and self.model:
             ids = await env.models._get_model(self.model).search(
                 filter=self.filter
             )
@@ -267,7 +273,7 @@ class AttachmentRoute(DotModel):
 
     async def _get_records_ids(self):
         """Return records for process sync"""
-        if isinstance(self.filter, list):
+        if isinstance(self.filter, list) and self.filter and self.model:
             record_ids = await env.models._get_model(self.model).search(
                 filter=self.filter, fields=["id"]
             )
@@ -300,7 +306,8 @@ class AttachmentRoute(DotModel):
         # Render folder name
         folder_name = self.render_root_folder_name()
         if not folder_name:
-            folder_name = self.model
+            raise ValueError("Cant render folder_name")
+            # folder_name = self.model
 
         # Cache the name
         self.folder_model_name = folder_name
@@ -342,6 +349,7 @@ class AttachmentRoute(DotModel):
         storage: "AttachmentStorage",
         record: Any,
         res_id: int,
+        res_model: str,
     ) -> Optional[str]:
         """
         Get or create record folder within route's root folder.
@@ -375,7 +383,7 @@ class AttachmentRoute(DotModel):
         # Create folder with metadata
         metadata = {
             "route_id": str(self.id),
-            "res_model": self.model,
+            "res_model": res_model,
             "res_id": str(res_id),
             "storage_id": str(storage.id),
         }

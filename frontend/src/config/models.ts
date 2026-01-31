@@ -240,6 +240,17 @@ export const modelsConfig: Record<string, ModelConfig> = {
     // Модули расширяющие форму хранилища
     extensions: [() => import('@/fara_attachments_google')],
   },
+  attachments_route: {
+    menu: MenuGroups.files,
+    list: () =>
+      import('@/fara_attachments/List').then(m => ({
+        default: m.ViewListAttachmentsRoute,
+      })),
+    form: () =>
+      import('@/fara_attachments/Form').then(m => ({
+        default: m.ViewFormAttachmentsRoute,
+      })),
+  },
 
   // === Settings ===
   company: {
