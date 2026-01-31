@@ -304,11 +304,7 @@ class Attachment(DotModel):
                 payload.route_id = route
 
             if storage.type != "file":
-                if (
-                    payload.show_preview is None
-                    or payload.show_preview is True
-                ):
-                    payload.show_preview = False
+                payload.show_preview = False
 
             strategy = get_strategy(storage.type)
             result = await strategy.create_file(
@@ -429,11 +425,7 @@ class Attachment(DotModel):
                     attachment.route_id = route
 
                 if storage.type != "file":
-                    if (
-                        attachment.show_preview is None
-                        or attachment.show_preview is True
-                    ):
-                        attachment.show_preview = False
+                    attachment.show_preview = False
 
                 strategy = get_strategy(storage.type)
                 result = await strategy.create_file(
