@@ -11,10 +11,13 @@ import {
 } from '@mantine/core';
 import { IconUpload, IconCheck, IconX } from '@tabler/icons-react';
 import { useFormContext } from '../FormContext';
+import { FieldWrapper } from './FieldWrapper';
+import { LabelPosition } from '../FormSettingsContext';
 
 interface FieldJsonProps {
   name: string;
   label?: string;
+  labelPosition?: LabelPosition;
   description?: string;
   placeholder?: string;
   /** Разрешить загрузку из файла */
@@ -25,6 +28,8 @@ interface FieldJsonProps {
   maxRows?: number;
   readOnly?: boolean;
   formatOnBlur?: boolean;
+  required?: boolean;
+  [key: string]: any;
 }
 
 export const FieldJson = ({
@@ -32,7 +37,10 @@ export const FieldJson = ({
   allowFileUpload = false,
   accept = '.json,application/json',
   label,
+  labelPosition,
   description,
+  required,
+  model,
   ...props
 }: FieldJsonProps) => {
   const form = useFormContext();
@@ -41,10 +49,11 @@ export const FieldJson = ({
   const resetRef = useRef<() => void>(null);
 
   const currentValue = form.values?.[name];
+  const displayLabel = label ?? name;
 
   // Преобразуем объект в строку для отображения
   const displayValue = (() => {
-    if (!currentValue) return '';
+    if (currentValue === null || currentValue === undefined) return '';
     if (typeof currentValue === 'string') return currentValue;
     // Если пришёл объект с бэкенда - сериализуем
     try {
@@ -99,34 +108,32 @@ export const FieldJson = ({
   // Простой режим без загрузки файла
   if (!allowFileUpload) {
     return (
-      <JsonInput
-        label={label}
-        description={description}
-        {...props}
-        {...form.getInputProps(name)}
-        key={form.key(name)}
-      />
+      <FieldWrapper
+        label={displayLabel}
+        labelPosition={labelPosition}
+        required={required}>
+        <JsonInput
+          description={description}
+          {...props}
+          value={displayValue}
+          onChange={handleChange}
+          error={form.errors?.[name]}
+          key={form.key(name)}
+          autosize
+          styles={{ input: { fontFamily: 'monospace', fontSize: '13px' } }}
+        />
+      </FieldWrapper>
     );
   }
 
   // Режим с загрузкой файла
   return (
-    <Stack gap="xs">
-      <Group justify="space-between" align="flex-end">
-        <div>
-          {label && (
-            <Text size="sm" fw={500}>
-              {label}
-            </Text>
-          )}
-          {description && (
-            <Text size="xs" c="dimmed">
-              {description}
-            </Text>
-          )}
-        </div>
-
-        <Group gap="xs">
+    <FieldWrapper
+      label={displayLabel}
+      labelPosition={labelPosition}
+      required={required}>
+      <Stack gap="xs" style={{ flex: 1 }}>
+        <Group justify="flex-end" gap="xs">
           {/* Индикатор валидности */}
           {isValid !== null && (
             <Tooltip label={isValid ? 'Valid JSON' : 'Invalid JSON'}>
@@ -155,22 +162,22 @@ export const FieldJson = ({
             )}
           </FileButton>
         </Group>
-      </Group>
 
-      {fileName && (
-        <Text size="xs" c="dimmed">
-          Loaded: {fileName}
-        </Text>
-      )}
+        {fileName && (
+          <Text size="xs" c="dimmed">
+            Loaded: {fileName}
+          </Text>
+        )}
 
-      <JsonInput
-        {...props}
-        autosize
-        value={displayValue}
-        onChange={handleChange}
-        error={form.errors?.[name]}
-        styles={{ input: { fontFamily: 'monospace', fontSize: '12px' } }}
-      />
-    </Stack>
+        <JsonInput
+          {...props}
+          autosize
+          value={displayValue}
+          onChange={handleChange}
+          error={form.errors?.[name]}
+          styles={{ input: { fontFamily: 'monospace', fontSize: '13px' } }}
+        />
+      </Stack>
+    </FieldWrapper>
   );
 };
