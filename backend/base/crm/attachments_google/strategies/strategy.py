@@ -47,7 +47,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
     folder_url = "https://drive.google.com/drive/folders/"
     file_url = "https://drive.google.com/file/d/"
 
-    def _get_service(self, storage: "AttachmentStorage"):
+    async def _get_service(self, storage: "AttachmentStorage"):
         """
         Создать Google Drive API service.
 
@@ -61,6 +61,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             ValueError: Если credentials не настроены
         """
         import google.oauth2.credentials
+        from google.auth.transport.requests import Request
         from googleapiclient.discovery import build
 
         if not storage.google_credentials:
@@ -73,10 +74,55 @@ class GoogleDriveStrategy(StorageStrategyBase):
             credentials = google.oauth2.credentials.Credentials(
                 **credentials_data
             )
+
+            # Превентивно обновляем токен если он истёк или скоро истечёт
+            if credentials.expired and credentials.refresh_token:
+                logger.debug(
+                    "Access token expired, refreshing before request..."
+                )
+                credentials.refresh(Request())
+
+                # Сохраняем обновлённые credentials обратно в storage
+                await self._save_refreshed_credentials(storage, credentials)
+
             return build("drive", "v3", credentials=credentials)
         except Exception as e:
             logger.error(f"Failed to create Google Drive service: {e}")
             raise ValueError(f"Invalid Google credentials: {e}") from e
+
+    async def _save_refreshed_credentials(
+        self,
+        storage: "AttachmentStorage",
+        credentials,
+    ) -> None:
+        """
+        Сохранить обновлённые credentials в storage.
+
+        Args:
+            storage: Хранилище
+            credentials: Обновлённые Google credentials
+        """
+        from backend.base.system.core.enviroment import env
+
+        new_credentials_data = {
+            "token": credentials.token,
+            "refresh_token": credentials.refresh_token,
+            "token_uri": credentials.token_uri,
+            "client_id": credentials.client_id,
+            "client_secret": credentials.client_secret,
+            "scopes": credentials.scopes,
+        }
+
+        # Обновляем в памяти
+        storage.google_credentials = json.dumps(new_credentials_data)
+
+        # Асинхронно сохраняем в БД
+        updated_storage = env.models.attachment_storage()
+        updated_storage.google_credentials = json.dumps(new_credentials_data)
+        await storage.update(
+            updated_storage,
+        )
+        logger.debug(f"Refreshed credentials saved to storage {storage.id}")
 
     def _get_parent_id(self, storage: "AttachmentStorage") -> Optional[str]:
         """
@@ -118,7 +164,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
 
         self._log_operation("create_file", attachment, filename=filename)
 
-        service = self._get_service(storage)
+        service = await self._get_service(storage)
 
         # Метаданные файла
         file_metadata = {"name": filename}
@@ -193,7 +239,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             "read_file", attachment, file_id=attachment.storage_file_id
         )
 
-        service = self._get_service(storage)
+        service = await self._get_service(storage)
 
         try:
             request = service.files().get_media(
@@ -260,7 +306,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             new_filename=filename,
         )
 
-        service = self._get_service(storage)
+        service = await self._get_service(storage)
 
         try:
             file_metadata = {}
@@ -336,7 +382,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             "delete_file", attachment, file_id=attachment.storage_file_id
         )
 
-        service = self._get_service(storage)
+        service = await self._get_service(storage)
 
         try:
             service.files().delete(
@@ -381,7 +427,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             f"[google] create_folder: {folder_name}, parent={parent_id}"
         )
 
-        service = self._get_service(storage)
+        service = await self._get_service(storage)
 
         # Определяем родителя
         if not parent_id:
@@ -470,7 +516,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             return False
 
         try:
-            service = self._get_service(storage)
+            service = await self._get_service(storage)
 
             # Пробуем получить информацию о пользователе
             about = service.about().get(fields="user").execute()
@@ -537,7 +583,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             new_parent=new_parent_id,
         )
 
-        service = self._get_service(storage)
+        service = await self._get_service(storage)
 
         try:
             # Получаем текущих родителей
