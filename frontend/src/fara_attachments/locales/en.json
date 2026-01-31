@@ -19,6 +19,7 @@
     "folder_id": "Cloud folder ID",
     "active": "Active",
     "model": "Model",
+    "is_default": "Default",
     "enable_realtime": "Real-time sync",
     "enable_one_way_cron": "One-way sync",
     "enable_two_way_cron": "Two-way sync",

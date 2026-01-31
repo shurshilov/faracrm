@@ -1,5 +1,5 @@
 import { Badge } from '@mantine/core';
-import { IconRoute, IconCheck, IconX } from '@tabler/icons-react';
+import { IconCheck, IconX, IconStar } from '@tabler/icons-react';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
 import { RelationCell } from '@/components/ListCells';
@@ -10,7 +10,8 @@ import { SchemaAttachmentStorage } from '@/services/api/attachments';
 interface AttachmentRoute {
   id: number;
   name: string;
-  model: string;
+  model: string | null;
+  is_default: boolean;
   pattern_root: string;
   pattern_record: string;
   flat: boolean;
@@ -56,23 +57,24 @@ export function ViewListAttachmentsStorage() {
       <Field name="id" />
       <Field name="name" />
       <Field name="type" />
-      <Field 
-        name="active" 
-        render={(value) => (
+      <Field
+        name="active"
+        render={value =>
           value ? (
-            <span style={{ 
-              color: 'green', 
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
+            <span
+              style={{
+                color: 'green',
+                fontWeight: 'bold',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}>
               ● Активно
             </span>
           ) : (
             <span style={{ color: '#999' }}>—</span>
           )
-        )}
+        }
       />
     </List>
   );
@@ -80,30 +82,60 @@ export function ViewListAttachmentsStorage() {
 
 export function ViewListAttachmentsRoute() {
   return (
-    <List<AttachmentRoute>
-      model="attachments_route"
-      order="desc"
-      sort="id">
+    <List<AttachmentRoute> model="attachments_route" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
-      <Field name="model" />
+      <Field
+        name="is_default"
+        render={value =>
+          value ? (
+            <Badge
+              size="sm"
+              color="orange"
+              leftSection={<IconStar size={10} />}>
+              По умолчанию
+            </Badge>
+          ) : null
+        }
+      />
+      <Field
+        name="model"
+        render={value =>
+          value ? (
+            <Badge size="sm" variant="light" color="blue">
+              {value}
+            </Badge>
+          ) : (
+            <span style={{ color: '#999', fontStyle: 'italic' }}>
+              Все модели
+            </span>
+          )
+        }
+      />
       <Field name="pattern_root" />
       <Field name="pattern_record" />
       <Field
         name="flat"
-        render={(value) => (
+        render={value =>
           value ? (
-            <Badge size="sm" color="yellow">Плоская</Badge>
+            <Badge size="sm" color="yellow">
+              Плоская
+            </Badge>
           ) : (
-            <Badge size="sm" color="blue">С подпапками</Badge>
+            <Badge size="sm" color="blue">
+              С подпапками
+            </Badge>
           )
-        )}
+        }
       />
       <Field
         name="active"
-        render={(value) => (
+        render={value =>
           value ? (
-            <Badge size="sm" color="green" leftSection={<IconCheck size={10} />}>
+            <Badge
+              size="sm"
+              color="green"
+              leftSection={<IconCheck size={10} />}>
               Активен
             </Badge>
           ) : (
@@ -111,24 +143,12 @@ export function ViewListAttachmentsRoute() {
               Неактивен
             </Badge>
           )
-        )}
+        }
       />
       <Field
         name="storage_id"
         render={value => (
           <RelationCell value={value} model="attachments_storage" />
-        )}
-      />
-      <Field
-        name="folder_id"
-        render={(value) => (
-          value ? (
-            <Badge size="sm" color="teal" variant="light">
-              {String(value).substring(0, 12)}...
-            </Badge>
-          ) : (
-            <span style={{ color: '#999' }}>—</span>
-          )
         )}
       />
     </List>

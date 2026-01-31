@@ -19,6 +19,7 @@
     "folder_id": "ID папки в облаке",
     "active": "Активен",
     "model": "Модель",
+    "is_default": "По умолчанию",
     "enable_realtime": "Real-time синхронизация",
     "enable_one_way_cron": "Односторонняя синхронизация",
     "enable_two_way_cron": "Двусторонняя синхронизация",

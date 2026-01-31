@@ -449,12 +449,13 @@ export function ViewFormAttachmentsRoute(props: ViewFormProps) {
       <FormSection title="Основные настройки">
         <FormRow cols={2}>
           <Field name="name" label="Название маршрута" />
-          <Field name="model" label="Модель" />
+          <Field name="is_default" label="Маршрут по умолчанию" />
         </FormRow>
         <FormRow cols={2}>
+          <Field name="model" label="Модель (пусто для дефолтного)" />
           <Field name="storage_id" label="Хранилище" />
-          <Field name="active" label="Активен" />
         </FormRow>
+        <Field name="active" label="Активен" />
       </FormSection>
 
       <FormTabs defaultTab="patterns">
