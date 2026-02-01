@@ -216,13 +216,21 @@ function ActivityItem({
           </Group>
         </Stack>
 
-        {!activity.done && (
+        {!activity.done && activity.state !== 'done' && (
           <Tooltip label={t('state.done')}>
             <ActionIcon
-              variant="light"
-              color="green"
+              variant="outline"
+              color="gray"
               size="sm"
               onClick={() => onMarkDone(activity.id)}>
+              <IconCheck size={14} />
+            </ActionIcon>
+          </Tooltip>
+        )}
+
+        {(activity.done || activity.state === 'done') && (
+          <Tooltip label={t('state.done')}>
+            <ActionIcon variant="filled" color="green" size="sm" disabled>
               <IconCheck size={14} />
             </ActionIcon>
           </Tooltip>
