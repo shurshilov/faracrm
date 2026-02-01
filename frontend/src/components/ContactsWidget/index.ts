@@ -3,10 +3,9 @@
 export { ContactsWidget } from './ContactsWidget';
 export { FieldContacts } from './FieldContacts';
 export { 
-  CONTACT_TYPE_CONFIG, 
+  useContactTypes,
   detectContactType, 
   getContactTypeConfig,
-  getAllContactTypes,
 } from './config';
 export type { 
   Contact, 

@@ -1,99 +1,96 @@
-// Contact type configurations
-// Should match backend CONTACT_TYPE_CONFIG
+// Contact type configurations — loaded from API (table contact_type)
 
 import { ContactType, ContactTypeConfig } from './types';
-
-export const CONTACT_TYPE_CONFIG: Record<ContactType, Omit<ContactTypeConfig, 'name'>> = {
-  phone: {
-    label: 'Телефон',
-    icon: 'phone',
-    placeholder: '+7 999 123-45-67',
-    pattern: '^[\\+]?[0-9\\s\\-\\(\\)]{10,20}$',
-    sequence: 1,
-    connectorTypes: ['whatsapp', 'viber', 'sms'],
-  },
-  email: {
-    label: 'Email',
-    icon: 'mail',
-    placeholder: 'example@mail.com',
-    pattern: '^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$',
-    sequence: 2,
-    connectorTypes: ['email'],
-  },
-  telegram: {
-    label: 'Telegram',
-    icon: 'send',
-    placeholder: '@username',
-    pattern: '^@?[a-zA-Z][a-zA-Z0-9_]{4,31}$',
-    sequence: 3,
-    connectorTypes: ['telegram'],
-  },
-  avito: {
-    label: 'Avito',
-    icon: 'shopping-bag',
-    placeholder: 'ID пользователя',
-    pattern: '^\\d+$',
-    sequence: 4,
-    connectorTypes: ['avito'],
-  },
-  vk: {
-    label: 'ВКонтакте',
-    icon: 'message-circle',
-    placeholder: 'vk.com/username',
-    pattern: '^(vk\\.com\\/)?[a-zA-Z0-9_\\.]+$',
-    sequence: 5,
-    connectorTypes: ['vk'],
-  },
-  instagram: {
-    label: 'Instagram',
-    icon: 'camera',
-    placeholder: '@username',
-    pattern: '^@?[a-zA-Z0-9_\\.]{1,30}$',
-    sequence: 6,
-    connectorTypes: ['instagram'],
-  },
-};
+import { useSearchQuery } from '@/services/api/crudApi';
 
 /**
- * Определить тип контакта по значению
+ * Hook: загрузить все типы контактов из БД
+ * connector_ids — One2many на chat_connector (через contact_type_id FK)
  */
-export function detectContactType(value: string): ContactType | null {
-  const trimmed = value.trim();
-  
-  // Сортируем по sequence
-  const sortedTypes = (Object.entries(CONTACT_TYPE_CONFIG) as [ContactType, Omit<ContactTypeConfig, 'name'>][])
-    .sort((a, b) => a[1].sequence - b[1].sequence);
-  
-  for (const [type, config] of sortedTypes) {
-    try {
-      const regex = new RegExp(config.pattern);
-      if (regex.test(trimmed)) {
-        return type;
+export function useContactTypes(): {
+  contactTypes: ContactTypeConfig[];
+  isLoading: boolean;
+} {
+  const { data, isLoading } = useSearchQuery({
+    model: 'contact_type',
+    fields: [
+      'id',
+      'name',
+      'label',
+      'icon',
+      'color',
+      'placeholder',
+      'pattern',
+      'sequence',
+      'connector_ids',
+    ],
+    filter: [['active', '=', true]],
+    sort: 'sequence',
+    limit: 100,
+  });
+
+  const contactTypes: ContactTypeConfig[] = (data?.data || []).map(
+    (ct: any) => {
+      // connector_ids — массив объектов коннекторов
+      const connectorTypes: string[] = [];
+      if (Array.isArray(ct.connector_ids)) {
+        for (const conn of ct.connector_ids) {
+          if (conn?.type && conn?.active !== false) {
+            connectorTypes.push(conn.type);
+          }
+        }
       }
-    } catch {
-      // Invalid regex, skip
+
+      return {
+        id: ct.id,
+        name: ct.name,
+        label: ct.label || ct.name,
+        icon: ct.icon || '',
+        color: ct.color || 'gray',
+        placeholder: ct.placeholder || '',
+        pattern: ct.pattern || '',
+        sequence: ct.sequence || 10,
+        connectorTypes,
+      };
+    },
+  );
+
+  return { contactTypes, isLoading };
+}
+
+/**
+ * Определить тип контакта по значению (клиентская логика с regex)
+ */
+export function detectContactType(
+  value: string,
+  contactTypes: ContactTypeConfig[],
+): ContactType | null {
+  const trimmed = value.trim();
+
+  const sorted = [...contactTypes].sort((a, b) => a.sequence - b.sequence);
+
+  for (const ct of sorted) {
+    if (ct.pattern) {
+      try {
+        const regex = new RegExp(ct.pattern);
+        if (regex.test(trimmed)) {
+          return ct.name;
+        }
+      } catch {
+        // Invalid regex, skip
+      }
     }
   }
-  
+
   return null;
 }
 
 /**
- * Получить конфиг типа контакта
+ * Получить конфиг конкретного типа из массива
  */
-export function getContactTypeConfig(type: ContactType): ContactTypeConfig {
-  const config = CONTACT_TYPE_CONFIG[type];
-  return {
-    name: type,
-    ...config,
-  };
-}
-
-/**
- * Получить все типы контактов отсортированные по sequence
- */
-export function getAllContactTypes(): ContactTypeConfig[] {
-  return (Object.entries(CONTACT_TYPE_CONFIG) as [ContactType, Omit<ContactTypeConfig, 'name'>][])
-    .sort((a, b) => a[1].sequence - b[1].sequence)
-    .map(([name, config]) => ({ name, ...config }));
+export function getContactTypeConfig(
+  type: ContactType,
+  contactTypes: ContactTypeConfig[],
+): ContactTypeConfig | undefined {
+  return contactTypes.find(ct => ct.name === type);
 }

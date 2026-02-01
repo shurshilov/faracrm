@@ -1,17 +1,14 @@
 // ContactsWidget types
 
-export type ContactType =
-  | 'phone'
-  | 'email'
-  | 'telegram'
-  | 'avito'
-  | 'vk'
-  | 'instagram';
+/** Тип контакта — динамический строковый код (name из contact_type) */
+export type ContactType = string;
 
 export interface ContactTypeConfig {
-  name: ContactType;
+  id?: number;
+  name: string;
   label: string;
   icon: string;
+  color: string;
   placeholder: string;
   pattern: string;
   sequence: number;
@@ -20,7 +17,10 @@ export interface ContactTypeConfig {
 
 export interface Contact {
   id?: number;
+  /** Строковый код типа (для отображения) */
   contact_type: ContactType;
+  /** ID записи contact_type (для сохранения в БД) */
+  contact_type_id?: number;
   name: string;
   is_primary: boolean;
   _isNew?: boolean;

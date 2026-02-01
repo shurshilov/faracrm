@@ -45,6 +45,7 @@ from backend.base.crm.sales.models.sale import Sale
 from backend.base.crm.sales.models.sale_line import SaleLine
 from backend.base.crm.partners.models.partners import Partner
 from backend.base.crm.partners.models.contact import Contact
+from backend.base.crm.partners.models.contact_type import ContactType
 from backend.base.crm.company.models.company import Company
 from backend.base.crm.products.models.product import Product
 from backend.base.crm.products.models.category import Category
@@ -183,6 +184,7 @@ class Models(ModelsCore, ExtensibleMixin):
     company = Company
     partner = Partner
     contact = Contact
+    contact_type = ContactType
     # security
     role = Role
     rule = Rule

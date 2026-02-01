@@ -63,7 +63,7 @@ export function NewChatModal({
     useSearchQuery(
       {
         model: 'contact',
-        fields: ['id', 'name', 'contact_type', 'partner_id', 'user_id'],
+        fields: ['id', 'name', 'contact_type_id', 'partner_id', 'user_id'],
         filter:
           searchQuery.length > 0 ? [['name', 'ilike', `%${searchQuery}%`]] : [],
         limit: 50,
@@ -137,7 +137,7 @@ export function NewChatModal({
           type: isPartner ? ('partner' as const) : ('user' as const),
           sourceId: isPartner ? contact.partner_id.id : contact.user_id.id,
           contactValue: contact.name,
-          contactType: contact.contact_type,
+          contactType: contact.contact_type_id?.name,
         };
       }) || [];
 

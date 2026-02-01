@@ -220,21 +220,18 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
 
             # Собираем recipients_ids - контакты партнёров чата,
             # которые подходят под тип коннектора
-            # Маппинг connector_type → contact_type
-            connector_to_contact = {
-                "whatsapp": "phone",
-                "viber": "phone",
-                "sms": "phone",
-                "email": "email",
-                "telegram": "telegram",
-                "avito": "avito",
-                "vk": "vk",
-                "instagram": "instagram",
-            }
-            contact_type = connector_to_contact.get(connector.type)
+            # Используем contact_type_id коннектора (integer FK)
+            connector_contact_type_id = None
+            if connector.contact_type_id:
+                connector_contact_type_id = connector.contact_type_id.id
+
+            if not connector_contact_type_id:
+                connector_contact_type_id = await env.models.contact_type.get_contact_type_id_for_connector(
+                    connector.type
+                )
 
             recipients_ids = []
-            if contact_type:
+            if connector_contact_type_id:
                 # Находим контакты партнёров-участников чата
                 session = env.apps.db.get_session()
                 recipients_query = """
@@ -242,13 +239,13 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                     FROM chat_member cm
                     JOIN contact c ON c.partner_id = cm.partner_id 
                         AND c.active = true
-                        AND c.contact_type = %s
+                        AND c.contact_type_id = %s
                     WHERE cm.chat_id = %s 
                       AND cm.partner_id IS NOT NULL
                       AND cm.is_active = true
                 """
                 recipients_raw = await session.execute(
-                    recipients_query, (contact_type, chat_id)
+                    recipients_query, (connector_contact_type_id, chat_id)
                 )
                 recipients_ids = [
                     {"id": r["id"], "contact_value": r["contact_value"]}

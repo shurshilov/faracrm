@@ -41,7 +41,7 @@ interface FieldContactsProps {
  * ```tsx
  * <Field name="contact_ids" widget="contacts" label="Контакты">
  *   <Field name="id" />
- *   <Field name="contact_type" />
+ *   <Field name="contact_type_id" />
  *   <Field name="name" />
  *   <Field name="is_primary" />
  * </Field>
@@ -70,7 +70,7 @@ export function FieldContacts({
   const { data, isFetching } = useSearchQuery(
     {
       model: fieldsServer[name]?.relatedModel || 'contact',
-      fields: ['id', 'contact_type', 'name', 'is_primary'],
+      fields: ['id', 'contact_type_id', 'name', 'is_primary'],
       filter: [
         [fieldsServer[name]?.relatedField || 'partner_id', '=', Number(id)],
       ],
@@ -90,7 +90,7 @@ export function FieldContacts({
     if (data?.data && !isFetching) {
       const initialContacts: Contact[] = data.data.map((item: any) => ({
         id: item.id,
-        contact_type: item.contact_type,
+        contact_type: item.contact_type_id?.name || item.contact_type_id,
         name: item.name,
         is_primary: item.is_primary || false,
         _isNew: false,
@@ -118,7 +118,7 @@ export function FieldContacts({
     for (const contact of newContacts) {
       if (contact._isNew && !contact._isDeleted) {
         created.push({
-          contact_type: contact.contact_type,
+          contact_type_id: contact.contact_type_id,
           name: contact.name,
           is_primary: contact.is_primary,
           // Если запись уже существует - используем её ID, иначе VirtualId

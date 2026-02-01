@@ -17,6 +17,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Datetime,
     Selection,
+    Many2one,
     One2many,
     Many2many,
 )
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
         ChatExternalAccount,
     )
     from backend.base.crm.users.models.users import User
+    from backend.base.crm.partners.models.contact_type import ContactType
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,15 @@ class ChatConnector(DotModel):
         default="messenger",
         required=True,
         description="Категория: messenger, phone, email, social",
+    )
+
+    # Тип контакта, с которым работает коннектор
+    # WhatsApp → phone, Telegram → telegram, Email → email, и т.д.
+    contact_type_id: "ContactType | None" = Many2one(
+        relation_table=lambda: env.models.contact_type,
+        ondelete="set null",
+        description="Тип контакта, с которым работает коннектор",
+        index=True,
     )
 
     # URL для API коннектора
@@ -243,15 +254,25 @@ class ChatConnector(DotModel):
 
         # Получаем данные коннектора
         connector = await self.get(
-            connector_id, fields=["id", "name", "type", "external_account_id"]
+            connector_id,
+            fields=[
+                "id",
+                "name",
+                "type",
+                "external_account_id",
+                "contact_type_id",
+            ],
         )
 
-        # Определяем тип контакта для этого коннектора
-        contact_type = env.models.contact.get_contact_type_for_connector(
-            connector.type
-        )
-        if not contact_type:
-            contact_type = connector.type
+        # Определяем тип контакта для этого коннектора (Many2one → contact_type)
+        contact_type_id = connector.contact_type_id
+        if not contact_type_id:
+            # Fallback: ищем по типу коннектора
+            ct_id = await env.models.contact_type.get_contact_type_id_for_connector(
+                connector.type
+            )
+            if ct_id:
+                contact_type_id = ct_id
 
         # Значение контакта — ID аккаунта из коннектора
         contact_value = connector.external_account_id or connector.name
@@ -267,11 +288,11 @@ class ChatConnector(DotModel):
 
         # Batch: получаем существующие контакты для добавляемых операторов
         existing_contacts_map = {}
-        if added:
+        if added and contact_type_id:
             existing_contacts = await env.models.contact.search(
                 filter=[
                     ("user_id", "in", list(added)),
-                    ("contact_type", "=", contact_type),
+                    ("contact_type_id", "=", contact_type_id),
                 ],
             )
             existing_contacts_map = {
@@ -303,7 +324,9 @@ class ChatConnector(DotModel):
                 new_contacts.append(
                     env.models.contact(
                         user_id=user,
-                        contact_type=contact_type,
+                        contact_type_id=env.models.contact_type(
+                            id=contact_type_id
+                        ),
                         name=contact_value,
                         is_primary=True,
                     )
@@ -314,11 +337,11 @@ class ChatConnector(DotModel):
             logger.info(f"Created {len(new_contacts)} contacts for operators")
 
         # Batch: деактивируем Contact для удалённых операторов
-        if removed:
+        if removed and contact_type_id:
             contacts_to_deactivate = await env.models.contact.search(
                 filter=[
                     ("user_id", "in", list(removed)),
-                    ("contact_type", "=", contact_type),
+                    ("contact_type_id", "=", contact_type_id),
                     ("active", "=", True),
                 ],
             )

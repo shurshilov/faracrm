@@ -27,7 +27,7 @@ export function ViewFormPartners(props: ViewFormProps) {
           {/* Контакты - компактно в основном блоке */}
           <Field name="contact_ids" widget="contacts" label="Контакты">
             <Field name="id" />
-            <Field name="contact_type" />
+            <Field name="contact_type_id" />
             <Field name="name" />
             <Field name="is_primary" />
           </Field>

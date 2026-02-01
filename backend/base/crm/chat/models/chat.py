@@ -547,8 +547,7 @@ class Chat(DotModel):
 
         if not self.is_internal:
             session = self._get_db_session()
-            # Новая логика: коннекторы на основе контактов партнёра
-            # Маппинг contact_type → connector_type
+            # Маппинг contact ↔ connector через общий contact_type_id (integer FK)
             query = """
                 SELECT DISTINCT
                     cc.id as connector_id,
@@ -558,14 +557,8 @@ class Chat(DotModel):
                     c.name as contact_value
                 FROM chat_member cm
                 JOIN contact c ON c.partner_id = cm.partner_id AND c.active = true
-                JOIN chat_connector cc ON cc.active = true AND (
-                    (c.contact_type = 'phone' AND cc.type IN ('whatsapp', 'viber', 'sms'))
-                    OR (c.contact_type = 'email' AND cc.type = 'email')
-                    OR (c.contact_type = 'telegram' AND cc.type = 'telegram')
-                    OR (c.contact_type = 'avito' AND cc.type = 'avito')
-                    OR (c.contact_type = 'vk' AND cc.type = 'vk')
-                    OR (c.contact_type = 'instagram' AND cc.type = 'instagram')
-                )
+                JOIN chat_connector cc ON cc.active = true 
+                    AND cc.contact_type_id = c.contact_type_id
                 WHERE cm.chat_id = %s 
                   AND cm.partner_id IS NOT NULL
                   AND cm.is_active = true

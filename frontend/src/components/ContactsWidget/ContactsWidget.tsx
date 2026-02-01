@@ -16,24 +16,38 @@ import {
   IconPlus,
   IconPhone,
   IconMail,
-  IconSend,
+  IconBrandTelegram,
+  IconBrandWhatsapp,
+  IconBrandInstagram,
   IconShoppingBag,
   IconMessageCircle,
   IconCamera,
+  IconWorld,
   IconAddressBook,
   IconX,
+  IconSend,
 } from '@tabler/icons-react';
 import { Contact, ContactType, ContactsWidgetProps } from './types';
 import {
-  CONTACT_TYPE_CONFIG,
+  useContactTypes,
   detectContactType,
-  getAllContactTypes,
   getContactTypeConfig,
 } from './config';
 import classes from './ContactsWidget.module.css';
 
-// Маппинг иконок
+// Маппинг иконок (tabler icon name → component)
 const ICON_MAP: Record<string, React.ElementType> = {
+  IconPhone,
+  IconMail,
+  IconBrandTelegram,
+  IconBrandWhatsapp,
+  IconBrandInstagram,
+  IconShoppingBag,
+  IconMessageCircle,
+  IconCamera,
+  IconWorld,
+  IconSend,
+  // Легаси маппинг (для старых данных)
   phone: IconPhone,
   mail: IconMail,
   send: IconSend,
@@ -49,11 +63,7 @@ function getIcon(iconName: string): React.ElementType {
 /**
  * Виджет для управления контактами партнёра/пользователя.
  *
- * Особенности:
- * - Автоопределение типа контакта при вводе
- * - Единый инпут для добавления
- * - Пометка основного контакта
- * - Soft delete (помечает как удалённые)
+ * Типы контактов загружаются из API (таблица contact_type).
  */
 export function ContactsWidget({
   name,
@@ -72,27 +82,28 @@ export function ContactsWidget({
   const [inputValue, setInputValue] = useState('');
   const [selectedType, setSelectedType] = useState<ContactType | null>(null);
 
+  // Загружаем типы контактов из БД
+  const { contactTypes, isLoading: typesLoading } = useContactTypes();
+
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
   });
 
   // Фильтруем типы если указаны allowedTypes
   const availableTypes = useMemo(() => {
-    const allTypes = getAllContactTypes();
-    if (!allowedTypes) return allTypes;
-    return allTypes.filter(t => allowedTypes.includes(t.name));
-  }, [allowedTypes]);
+    if (!allowedTypes) return contactTypes;
+    return contactTypes.filter(t => allowedTypes.includes(t.name));
+  }, [allowedTypes, contactTypes]);
 
   // Автоопределение типа при вводе
   const detectedType = useMemo(() => {
-    if (!inputValue.trim()) return null;
-    const detected = detectContactType(inputValue);
-    // Если тип не в списке доступных, возвращаем null
+    if (!inputValue.trim() || contactTypes.length === 0) return null;
+    const detected = detectContactType(inputValue, contactTypes);
     if (detected && allowedTypes && !allowedTypes.includes(detected)) {
       return null;
     }
     return detected;
-  }, [inputValue, allowedTypes]);
+  }, [inputValue, allowedTypes, contactTypes]);
 
   // Тип для добавления (выбранный или определённый)
   const typeToAdd = selectedType || detectedType;
@@ -110,10 +121,14 @@ export function ContactsWidget({
   const handleAdd = useCallback(() => {
     if (!inputValue.trim() || !typeToAdd || disabled || !canAdd) return;
 
+    // Получаем id типа контакта для сохранения в БД
+    const typeConfig = contactTypes.find(ct => ct.name === typeToAdd);
+
     const newContact: Contact = {
       contact_type: typeToAdd,
+      contact_type_id: typeConfig?.id,
       name: inputValue.trim(),
-      is_primary: activeContacts.length === 0, // Первый контакт — основной
+      is_primary: activeContacts.length === 0,
       _isNew: true,
     };
 
@@ -138,27 +153,10 @@ export function ContactsWidget({
       const updated = value
         .map((c, i) => {
           if (i !== index) return c;
-          // Если это новый контакт — удаляем полностью
           if (c._isNew) return null;
-          // Иначе помечаем как удалённый
           return { ...c, _isDeleted: true };
         })
         .filter(Boolean) as Contact[];
-
-      onChange(updated);
-    },
-    [disabled, value, onChange],
-  );
-
-  // Восстановить удалённый контакт
-  const handleRestore = useCallback(
-    (index: number) => {
-      if (disabled) return;
-
-      const updated = value.map((c, i) => {
-        if (i !== index) return c;
-        return { ...c, _isDeleted: false };
-      });
 
       onChange(updated);
     },
@@ -172,7 +170,6 @@ export function ContactsWidget({
 
       const contact = value[index];
       const updated = value.map((c, i) => {
-        // Сбрасываем is_primary для контактов того же типа
         if (c.contact_type === contact.contact_type) {
           return { ...c, is_primary: i === index };
         }
@@ -195,16 +192,15 @@ export function ContactsWidget({
   return (
     <Box className={classes.container} pos="relative">
       <LoadingOverlay
-        // visible={loading}
+        visible={typesLoading}
         zIndex={10}
         overlayProps={{ blur: 2 }}
       />
 
-      {/* Input area - всегда сверху */}
+      {/* Input area */}
       {!disabled && canAdd && (
         <Box className={classes.inputArea}>
           <Box className={classes.inputWrapper}>
-            {/* Type selector - показываем если есть текст или showTypeButton */}
             {(showTypeButton || inputValue.trim()) && (
               <Combobox
                 store={combobox}
@@ -222,8 +218,11 @@ export function ContactsWidget({
                     className={classes.typeButton}>
                     {typeToAdd ? (
                       (() => {
-                        const config = getContactTypeConfig(typeToAdd);
-                        const Icon = getIcon(config.icon);
+                        const config = getContactTypeConfig(
+                          typeToAdd,
+                          contactTypes,
+                        );
+                        const Icon = getIcon(config?.icon || '');
                         return <Icon size={18} />;
                       })()
                     ) : (
@@ -258,7 +257,8 @@ export function ContactsWidget({
               className={classes.input}
               placeholder={
                 typeToAdd
-                  ? getContactTypeConfig(typeToAdd).placeholder
+                  ? getContactTypeConfig(typeToAdd, contactTypes)
+                      ?.placeholder || 'Введите значение...'
                   : 'Телефон, email, Telegram...'
               }
               value={inputValue}
@@ -283,7 +283,8 @@ export function ContactsWidget({
           {inputValue && detectedType && !selectedType && (
             <Box className={classes.detectedType}>
               {(() => {
-                const config = getContactTypeConfig(detectedType);
+                const config = getContactTypeConfig(detectedType, contactTypes);
+                if (!config) return null;
                 const Icon = getIcon(config.icon);
                 return (
                   <>
@@ -303,8 +304,11 @@ export function ContactsWidget({
           {value.map((contact, index) => {
             if (contact._isDeleted) return null;
 
-            const config = getContactTypeConfig(contact.contact_type);
-            const IconComponent = getIcon(config.icon);
+            const config = getContactTypeConfig(
+              contact.contact_type,
+              contactTypes,
+            );
+            const IconComponent = getIcon(config?.icon || '');
 
             return (
               <Box
@@ -318,10 +322,11 @@ export function ContactsWidget({
 
                 <Text className={classes.contactValue}>{contact.name}</Text>
 
-                <Text className={classes.contactType}>{config.label}</Text>
+                <Text className={classes.contactType}>
+                  {config?.label || contact.contact_type}
+                </Text>
 
                 <Group className={classes.contactActions} gap={2}>
-                  {/* Primary toggle */}
                   {!hidePrimary && (
                     <Tooltip
                       label={
@@ -343,7 +348,6 @@ export function ContactsWidget({
                     </Tooltip>
                   )}
 
-                  {/* Delete */}
                   <Tooltip label="Удалить" withArrow>
                     <ActionIcon
                       size="xs"

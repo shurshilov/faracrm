@@ -126,7 +126,7 @@ async def copy_user(req: Request, payload: CopyUserInput):
             new_contacts = [
                 env.models.contact(
                     name=contact.name,
-                    contact_type=contact.contact_type,
+                    contact_type_id=contact.contact_type_id,
                     user_id=new_user,
                     is_primary=contact.is_primary,
                 )

@@ -173,19 +173,22 @@ class ChatExternalAccount(DotModel):
             )
             return existing, contact[0], False
 
-        # 2. Определяем тип контакта для этого коннектора
-        contact_type = env.models.contact.get_contact_type_for_connector(
-            connector.type
-        )
-        if not contact_type:
-            contact_type = connector.type
+        # 2. Определяем тип контакта для этого коннектора (через contact_type_id на коннекторе)
+        contact_type_id = None
+        if connector.contact_type_id:
+            contact_type_id = connector.contact_type_id.id
+
+        if not contact_type_id:
+            contact_type_id = await env.models.contact_type.get_contact_type_id_for_connector(
+                connector.type
+            )
 
         # 3. Ищем Contact по name (значению контакта)
         contact = None
-        if contact_value:
+        if contact_value and contact_type_id:
             contacts = await env.models.contact.search(
                 filter=[
-                    ("contact_type", "=", contact_type),
+                    ("contact_type_id", "=", contact_type_id),
                     ("name", "=", contact_value),
                     ("active", "=", True),
                 ],
@@ -195,23 +198,30 @@ class ChatExternalAccount(DotModel):
             if contacts:
                 contact = contacts[0]
 
-        # 4. Если Contact не найден — ищем по связанному типу (phone -> whatsapp)
-        if (
-            not contact
-            and contact_value
-            and connector.type in ("whatsapp", "viber", "sms")
-        ):
-            phone_contacts = await env.models.contact.search(
-                filter=[
-                    ("contact_type", "=", "phone"),
-                    ("name", "=", contact_value),
-                    ("active", "=", True),
-                ],
-                fields=["id", "name", "user_id", "partner_id"],
-                limit=1,
+        # 4. Если Contact не найден — ищем по родительскому типу
+        # (например whatsapp-коннектор → ищем контакт типа phone)
+        if not contact and contact_value and contact_type_id:
+            # Получаем name текущего contact_type
+            ct_name = (
+                await env.models.contact_type.get_contact_type_for_connector(
+                    connector.type
+                )
             )
-            if phone_contacts:
-                contact = phone_contacts[0]
+            if ct_name:
+                # Ищем контакт по name типа (phone для whatsapp)
+                ct_obj = await env.models.contact_type.get_by_name(ct_name)
+                if ct_obj and ct_obj.id != contact_type_id:
+                    fallback_contacts = await env.models.contact.search(
+                        filter=[
+                            ("contact_type_id", "=", ct_obj.id),
+                            ("name", "=", contact_value),
+                            ("active", "=", True),
+                        ],
+                        fields=["id", "name", "user_id", "partner_id"],
+                        limit=1,
+                    )
+                    if fallback_contacts:
+                        contact = fallback_contacts[0]
 
         # 5. Если Contact не найден — создаём Partner + Contact
         created = False
@@ -223,7 +233,7 @@ class ChatExternalAccount(DotModel):
             contact = env.models.contact(
                 user_id=None,
                 partner_id=partner,
-                contact_type=contact_type,
+                contact_type_id=contact_type_id,
                 name=contact_value or external_id,
                 is_primary=True,
             )

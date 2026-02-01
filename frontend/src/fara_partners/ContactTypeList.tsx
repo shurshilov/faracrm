@@ -1,4 +1,14 @@
-import { Box, Table, Badge, Text, Title, Paper, Group } from '@mantine/core';
+import {
+  Box,
+  Table,
+  Badge,
+  Text,
+  Title,
+  Paper,
+  Group,
+  Loader,
+  Center,
+} from '@mantine/core';
 import {
   IconPhone,
   IconMail,
@@ -7,73 +17,51 @@ import {
   IconBrandInstagram,
   IconWorld,
   IconMessageCircle,
+  IconShoppingBag,
+  IconSend,
+  IconAddressBook,
 } from '@tabler/icons-react';
+import { useContactTypes } from '@/components/ContactsWidget';
 
-// Конфиг типов контактов
-const CONTACT_TYPES = [
-  {
-    name: 'phone',
-    label: 'Телефон',
-    icon: IconPhone,
-    color: 'green',
-    placeholder: '+7 999 123-45-67',
-    connectors: ['whatsapp', 'viber', 'sms'],
-  },
-  {
-    name: 'email',
-    label: 'Email',
-    icon: IconMail,
-    color: 'blue',
-    placeholder: 'example@mail.com',
-    connectors: ['email'],
-  },
-  {
-    name: 'telegram',
-    label: 'Telegram',
-    icon: IconBrandTelegram,
-    color: 'cyan',
-    placeholder: '@username',
-    connectors: ['telegram'],
-  },
-  {
-    name: 'whatsapp',
-    label: 'WhatsApp',
-    icon: IconBrandWhatsapp,
-    color: 'teal',
-    placeholder: '+7 999 123-45-67',
-    connectors: ['whatsapp'],
-  },
-  {
-    name: 'viber',
-    label: 'Viber',
-    icon: IconMessageCircle,
-    color: 'violet',
-    placeholder: '+7 999 123-45-67',
-    connectors: ['viber'],
-  },
-  {
-    name: 'instagram',
-    label: 'Instagram',
-    icon: IconBrandInstagram,
-    color: 'pink',
-    placeholder: '@username',
-    connectors: ['instagram'],
-  },
-  {
-    name: 'website',
-    label: 'Сайт',
-    icon: IconWorld,
-    color: 'indigo',
-    placeholder: 'https://example.com',
-    connectors: [],
-  },
-];
+// Маппинг icon name → React component
+const ICON_MAP: Record<string, React.ElementType> = {
+  IconPhone,
+  IconMail,
+  IconBrandTelegram,
+  IconBrandWhatsapp,
+  IconBrandInstagram,
+  IconWorld,
+  IconMessageCircle,
+  IconShoppingBag,
+  IconSend,
+  // Легаси
+  phone: IconPhone,
+  mail: IconMail,
+  send: IconSend,
+  'shopping-bag': IconShoppingBag,
+  'message-circle': IconMessageCircle,
+  camera: IconBrandInstagram,
+};
+
+function getIcon(iconName: string): React.ElementType {
+  return ICON_MAP[iconName] || IconAddressBook;
+}
 
 /**
  * Справочник типов контактов.
- * Отображает все доступные типы из конфига (не из БД).
+ * Данные загружаются из таблицы contact_type.
  */
 export function ViewListContactTypes() {
+  const { contactTypes, isLoading } = useContactTypes();
+
+  if (isLoading) {
+    return (
+      <Center p="xl">
+        <Loader />
+      </Center>
+    );
+  }
+
   return (
     <Box p="md">
       <Group mb="lg" justify="space-between">
@@ -94,17 +82,16 @@ export function ViewListContactTypes() {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {CONTACT_TYPES.map((type) => {
-              const Icon = type.icon;
+            {contactTypes.map(type => {
+              const Icon = getIcon(type.icon);
               return (
                 <Table.Tr key={type.name}>
                   <Table.Td>
                     <Group gap="sm">
                       <Badge
                         size="lg"
-                        color={type.color}
-                        leftSection={<Icon size={14} />}
-                      >
+                        color={type.color || 'gray'}
+                        leftSection={<Icon size={14} />}>
                         {type.label}
                       </Badge>
                     </Group>
@@ -121,14 +108,16 @@ export function ViewListContactTypes() {
                   </Table.Td>
                   <Table.Td>
                     <Group gap={4}>
-                      {type.connectors.length > 0 ? (
-                        type.connectors.map((connector) => (
+                      {type.connectorTypes.length > 0 ? (
+                        type.connectorTypes.map(connector => (
                           <Badge key={connector} size="sm" variant="outline">
                             {connector}
                           </Badge>
                         ))
                       ) : (
-                        <Text size="sm" c="dimmed">—</Text>
+                        <Text size="sm" c="dimmed">
+                          —
+                        </Text>
                       )}
                     </Group>
                   </Table.Td>

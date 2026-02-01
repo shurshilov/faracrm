@@ -11,50 +11,59 @@ import {
   IconBrandWhatsapp,
   IconBrandInstagram,
   IconWorld,
+  IconMessageCircle,
+  IconShoppingBag,
+  IconSend,
+  IconAddressBook,
 } from '@tabler/icons-react';
+import {
+  useContactTypes,
+  getContactTypeConfig,
+} from '@/components/ContactsWidget';
 
-// Конфиг типов контактов для отображения
-const CONTACT_TYPE_CONFIG: Record<
-  string,
-  { label: string; color: string; icon: React.ReactNode }
-> = {
-  phone: { label: 'Телефон', color: 'green', icon: <IconPhone size={14} /> },
-  email: { label: 'Email', color: 'blue', icon: <IconMail size={14} /> },
-  telegram: {
-    label: 'Telegram',
-    color: 'cyan',
-    icon: <IconBrandTelegram size={14} />,
-  },
-  whatsapp: {
-    label: 'WhatsApp',
-    color: 'teal',
-    icon: <IconBrandWhatsapp size={14} />,
-  },
-  instagram: {
-    label: 'Instagram',
-    color: 'pink',
-    icon: <IconBrandInstagram size={14} />,
-  },
-  viber: { label: 'Viber', color: 'violet', icon: null },
-  website: { label: 'Сайт', color: 'indigo', icon: <IconWorld size={14} /> },
+// Маппинг icon name → React component
+const ICON_MAP: Record<string, React.ElementType> = {
+  IconPhone,
+  IconMail,
+  IconBrandTelegram,
+  IconBrandWhatsapp,
+  IconBrandInstagram,
+  IconWorld,
+  IconMessageCircle,
+  IconShoppingBag,
+  IconSend,
+  phone: IconPhone,
+  mail: IconMail,
+  send: IconSend,
+  'shopping-bag': IconShoppingBag,
+  'message-circle': IconMessageCircle,
+  camera: IconBrandInstagram,
 };
+
+function getIcon(iconName: string): React.ElementType {
+  return ICON_MAP[iconName] || IconAddressBook;
+}
 
 // ============ LIST ============
 export function ViewListContacts() {
+  const { contactTypes } = useContactTypes();
+
   return (
     <List model="contact">
       <Field name="id" label="ID" />
       <Field
-        name="contact_type"
+        name="contact_type_id"
         label="Тип"
         render={value => {
-          const config = CONTACT_TYPE_CONFIG[value] || {
-            label: value,
-            color: 'gray',
-          };
+          const typeName = value?.name || value;
+          const config = getContactTypeConfig(typeName, contactTypes);
+          const Icon = getIcon(config?.icon || '');
           return (
-            <Badge size="sm" color={config.color} leftSection={config.icon}>
-              {config.label}
+            <Badge
+              size="sm"
+              color={config?.color || 'gray'}
+              leftSection={<Icon size={14} />}>
+              {config?.label || typeName}
             </Badge>
           );
         }}
@@ -83,7 +92,7 @@ export function ViewListContacts() {
 // ============ FORM ============
 interface Contact {
   id?: number;
-  contact_type: string;
+  contact_type_id?: { id: number; name: string } | number | null;
   name: string;
   partner_id?: { id: number; name: string } | null;
   user_id?: { id: number; name: string } | null;
@@ -95,7 +104,7 @@ export function ViewFormContacts(props: ViewFormProps) {
   return (
     <Form<Contact> model="contact" {...props}>
       <FormRow cols={2}>
-        <Field name="contact_type" label="Тип контакта" />
+        <Field name="contact_type_id" label="Тип контакта" />
         <Field name="name" label="Значение" />
       </FormRow>
       <FormRow cols={2}>

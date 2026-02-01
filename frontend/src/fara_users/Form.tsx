@@ -134,7 +134,7 @@ export default function ViewFormUsers(props: ViewFormProps) {
               widget="contacts"
               label={t('fields.contact_ids', 'Контакты')}>
               <Field name="id" />
-              <Field name="contact_type" />
+              <Field name="contact_type_id" />
               <Field name="name" />
               <Field name="is_primary" />
             </Field>

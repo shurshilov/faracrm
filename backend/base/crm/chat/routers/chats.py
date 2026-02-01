@@ -79,21 +79,14 @@ async def get_chats(
     join_params: list = []
 
     if connector_type:
-        # Определяем contact_type для данного connector_type
-        # Обратный маппинг: connector_type → contact_type
-        connector_to_contact = {
-            "whatsapp": "phone",
-            "viber": "phone",
-            "sms": "phone",
-            "email": "email",
-            "telegram": "telegram",
-            "avito": "avito",
-            "vk": "vk",
-            "instagram": "instagram",
-        }
-        contact_type_for_filter = connector_to_contact.get(connector_type)
+        # Получаем contact_type_id из коннектора (integer FK)
+        contact_type_id_for_filter = (
+            await env.models.contact_type.get_contact_type_id_for_connector(
+                connector_type
+            )
+        )
 
-        if contact_type_for_filter:
+        if contact_type_id_for_filter:
             base_query += """
             JOIN chat_member cm_filter ON c.id = cm_filter.chat_id 
                 AND cm_filter.partner_id IS NOT NULL AND cm_filter.is_active = true
@@ -101,9 +94,9 @@ async def get_chats(
                 AND contact_filter.active = true
             JOIN chat_connector cc_filter ON cc_filter.active = true AND cc_filter.type = %s
             """
-            conditions.append("contact_filter.contact_type = %s")
+            conditions.append("contact_filter.contact_type_id = %s")
             join_params.append(connector_type)
-            params.append(contact_type_for_filter)
+            params.append(contact_type_id_for_filter)
 
     where_clause = " AND ".join(conditions)
     chat_ids_query = f"""
@@ -177,15 +170,8 @@ async def get_chats(
 
     # Запрос информации о коннекторах
     # Новая логика: получаем коннекторы на основе контактов партнёров-участников чата
-    # Это позволяет показывать доступные коннекторы даже если ещё не было внешней переписки
-    #
-    # Маппинг contact_type → connector_type:
-    # - phone → whatsapp, viber, sms
-    # - email → email
-    # - telegram → telegram
-    # - avito → avito
-    # - vk → vk
-    # - instagram → instagram
+    # Маппинг contact → connector через общий contact_type_id (integer FK)
+    # contact.contact_type_id = chat_connector.contact_type_id
     connectors_query = """
         SELECT DISTINCT 
             cm.chat_id,
@@ -196,15 +182,8 @@ async def get_chats(
             c.name as contact_value
         FROM chat_member cm
         JOIN contact c ON c.partner_id = cm.partner_id AND c.active = true
-        JOIN chat_connector cc ON cc.active = true AND (
-            -- Маппинг contact_type → connector_type
-            (c.contact_type = 'phone' AND cc.type IN ('whatsapp', 'viber', 'sms'))
-            OR (c.contact_type = 'email' AND cc.type = 'email')
-            OR (c.contact_type = 'telegram' AND cc.type = 'telegram')
-            OR (c.contact_type = 'avito' AND cc.type = 'avito')
-            OR (c.contact_type = 'vk' AND cc.type = 'vk')
-            OR (c.contact_type = 'instagram' AND cc.type = 'instagram')
-        )
+        JOIN chat_connector cc ON cc.active = true 
+            AND cc.contact_type_id = c.contact_type_id
         WHERE cm.chat_id = ANY(%s) 
           AND cm.partner_id IS NOT NULL 
           AND cm.is_active = true
