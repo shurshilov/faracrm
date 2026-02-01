@@ -381,6 +381,73 @@ export const modelsConfig: Record<string, ModelConfig> = {
         default: m.ViewFormSavedFilters,
       })),
   },
+  // === Projects & Tasks ===
+  task: {
+    menu: MenuGroups.projects,
+    list: () =>
+      import('@/fara_tasks/List').then(m => ({ default: m.ViewListTasks })),
+    form: () =>
+      import('@/fara_tasks/Form').then(m => ({ default: m.ViewFormTask })),
+    kanban: () =>
+      import('@/fara_tasks/Kanban').then(m => ({
+        default: m.ViewKanbanTasks,
+      })),
+    gantt: () =>
+      import('@/fara_tasks/Gantt').then(m => ({
+        default: m.ViewGanttTasks,
+      })),
+  },
+  project: {
+    menu: MenuGroups.projects,
+    list: () =>
+      import('@/fara_tasks/List').then(m => ({
+        default: m.ViewListProjects,
+      })),
+    form: () =>
+      import('@/fara_tasks/Form').then(m => ({
+        default: m.ViewFormProject,
+      })),
+    kanban: () =>
+      import('@/fara_tasks/Kanban').then(m => ({
+        default: m.ViewKanbanProjects,
+      })),
+    gantt: () =>
+      import('@/fara_tasks/Gantt').then(m => ({
+        default: m.ViewGanttProjects,
+      })),
+  },
+  task_stage: {
+    menu: MenuGroups.projects,
+    list: () =>
+      import('@/fara_tasks/List').then(m => ({
+        default: m.ViewListTaskStages,
+      })),
+    form: () =>
+      import('@/fara_tasks/Form').then(m => ({
+        default: m.ViewFormTaskStage,
+      })),
+    kanban: () =>
+      import('@/fara_tasks/Kanban').then(m => ({
+        default: m.ViewKanbanTaskStages,
+      })),
+  },
+  task_tag: {
+    menu: MenuGroups.projects,
+    list: () =>
+      import('@/fara_tasks/List').then(m => ({
+        default: m.ViewListTaskTags,
+      })),
+    form: () =>
+      import('@/fara_tasks/Form').then(m => ({
+        default: m.ViewFormTaskTag,
+      })),
+    kanban: () =>
+      import('@/fara_tasks/Kanban').then(m => ({
+        default: m.ViewKanbanTaskTags,
+      })),
+  },
+
+  // === Settings ===
   system_settings: {
     menu: MenuGroups.settings,
     list: () =>

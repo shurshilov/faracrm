@@ -7,6 +7,7 @@ import {
   IconHeartHandshake,
   IconMessage,
   IconPhoneCall,
+  IconCheckupList,
 } from '@tabler/icons-react';
 
 export const MenuGroups = {
@@ -37,6 +38,13 @@ export const MenuGroups = {
     labelKey: 'common:menu.crm',
     Icon: IconHeartHandshake,
     order: 40,
+  },
+  projects: {
+    id: 'category_projects',
+    label: 'Проекты',
+    labelKey: 'common:menu.projects',
+    Icon: IconCheckupList,
+    order: 45,
   },
   sales: {
     id: 'category_sales',

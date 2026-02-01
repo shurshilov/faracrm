@@ -1,0 +1,58 @@
+{
+  "menu": {
+    "task": "Tasks",
+    "project": "Projects",
+    "task_stage": "Task Stages",
+    "task_tag": "Task Tags"
+  },
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "active": "Active",
+    "sequence": "Sequence",
+    "description": "Description",
+    "project_id": "Project",
+    "stage_id": "Stage",
+    "parent_id": "Parent Task",
+    "child_ids": "Subtasks",
+    "user_id": "Assignee",
+    "manager_id": "Manager",
+    "priority": "Priority",
+    "tag_ids": "Tags",
+    "task_ids": "Tasks",
+    "date_start": "Start Date",
+    "date_end": "End Date",
+    "date_deadline": "Deadline",
+    "planned_hours": "Planned (h)",
+    "effective_hours": "Spent (h)",
+    "progress": "Progress %",
+    "color": "Color",
+    "fold": "Folded",
+    "is_closed": "Closing",
+    "status": "Status"
+  },
+  "sections": {
+    "general": "General",
+    "description": "Description",
+    "assignment": "Assignment",
+    "dates": "Dates",
+    "time": "Time Tracking",
+    "subtasks": "Subtasks",
+    "appearance": "Appearance",
+    "stage": "Stage",
+    "tag": "Tag",
+    "tasks": "Tasks"
+  },
+  "priority": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent"
+  },
+  "status": {
+    "active": "Active",
+    "on_hold": "On Hold",
+    "done": "Done",
+    "cancelled": "Cancelled"
+  }
+}

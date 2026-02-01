@@ -67,6 +67,12 @@ from backend.base.crm.chat_whatsapp_chatapp.mixins import (
     ChatConnectorWhatsAppChatAppMixin,
 )
 
+# Project and task
+from backend.base.crm.tasks.models.project import Project
+from backend.base.crm.tasks.models.task_stage import TaskStage
+from backend.base.crm.tasks.models.task_tag import TaskTag
+from backend.base.crm.tasks.models.task import Task
+
 # когда есть расширение чтобы IDE видела все поля в модели делаем хак
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat_connector import (
@@ -128,6 +134,7 @@ from backend.base.crm.company.app import CompanyApp
 from backend.base.crm.chat.app import ChatApp
 from backend.base.crm.chat_telegram.app import ChatTelegramApp
 from backend.base.crm.chat_email.app import ChatEmailApp
+from backend.base.crm.tasks.app import TasksApp
 
 
 # services
@@ -204,6 +211,11 @@ class Models(ModelsCore, ExtensibleMixin):
     chat_external_chat = ChatExternalChat
     chat_external_message = ChatExternalMessage
     chat_message_reaction = ChatMessageReaction
+    # project and task
+    task = Task
+    task_tag = TaskTag
+    task_stage = TaskStage
+    project = Project
 
 
 class Apps(AppsCore):
@@ -225,6 +237,7 @@ class Apps(AppsCore):
     chat = ChatApp()
     chat_telegram = ChatTelegramApp()
     chat_email = ChatEmailApp()
+    task = TasksApp()
 
     dotorm_crud_auto = DotormCrudAutoService()
     # dotorm_databases_postgres = DotormDatabasesPostgresService()

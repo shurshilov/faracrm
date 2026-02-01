@@ -1,0 +1,58 @@
+{
+  "menu": {
+    "task": "Задачи",
+    "project": "Проекты",
+    "task_stage": "Стадии задач",
+    "task_tag": "Теги задач"
+  },
+  "fields": {
+    "id": "ID",
+    "name": "Название",
+    "active": "Активен",
+    "sequence": "Порядок",
+    "description": "Описание",
+    "project_id": "Проект",
+    "stage_id": "Стадия",
+    "parent_id": "Родительская задача",
+    "child_ids": "Подзадачи",
+    "user_id": "Ответственный",
+    "manager_id": "Руководитель",
+    "priority": "Приоритет",
+    "tag_ids": "Теги",
+    "task_ids": "Задачи",
+    "date_start": "Начало",
+    "date_end": "Окончание",
+    "date_deadline": "Дедлайн",
+    "planned_hours": "Запланировано (ч)",
+    "effective_hours": "Затрачено (ч)",
+    "progress": "Прогресс %",
+    "color": "Цвет",
+    "fold": "Свёрнута",
+    "is_closed": "Закрывающая",
+    "status": "Статус"
+  },
+  "sections": {
+    "general": "Основное",
+    "description": "Описание",
+    "assignment": "Назначение",
+    "dates": "Даты",
+    "time": "Трекинг времени",
+    "subtasks": "Подзадачи",
+    "appearance": "Оформление",
+    "stage": "Стадия",
+    "tag": "Тег",
+    "tasks": "Задачи"
+  },
+  "priority": {
+    "low": "Низкий",
+    "medium": "Средний",
+    "high": "Высокий",
+    "urgent": "Срочный"
+  },
+  "status": {
+    "active": "Активен",
+    "on_hold": "Приостановлен",
+    "done": "Завершён",
+    "cancelled": "Отменён"
+  }
+}

@@ -106,6 +106,11 @@ const modelToNamespace: Record<string, string> = {
   saved_filters: 'saved_filters',
   // System Settings
   system_settings: 'system_settings',
+  // Tasks & Projects
+  task: 'tasks',
+  project: 'tasks',
+  task_stage: 'tasks',
+  task_tag: 'tasks',
 };
 
 // Кастомные лейблы для моделей (вместо автогенерации)
@@ -170,6 +175,26 @@ const communicationCategories: Record<
       'chat_external_chat',
       'chat_external_message',
     ],
+    defaultCollapsed: true,
+  },
+};
+
+// Категории для Projects (вложенные подменю)
+const projectsCategories: Record<
+  string,
+  {
+    label: string;
+    labelKey: string;
+    Icon: IconType;
+    models: string[];
+    defaultCollapsed?: boolean;
+  }
+> = {
+  settings: {
+    label: 'Настройки',
+    labelKey: 'tasks:menu.task_stage',
+    Icon: IconSettings,
+    models: ['task_stage', 'task_tag'],
     defaultCollapsed: true,
   },
 };
@@ -315,6 +340,11 @@ function generateMenuItems(): MenuGroup[] {
     Object.values(communicationCategories).flatMap(cat => cat.models),
   );
 
+  // Собираем модели Projects settings отдельно
+  const projectsSettingsModels = new Set(
+    Object.values(projectsCategories).flatMap(cat => cat.models),
+  );
+
   // Добавляем модели в группы
   Object.entries(modelsConfig).forEach(([modelName, config]) => {
     if (!config.menu) return;
@@ -328,6 +358,14 @@ function generateMenuItems(): MenuGroup[] {
     if (
       config.menu.id === MenuGroups.communication.id &&
       communicationModels.has(modelName)
+    ) {
+      return;
+    }
+
+    // Projects settings модели пропускаем - добавим через категории
+    if (
+      config.menu.id === MenuGroups.projects.id &&
+      projectsSettingsModels.has(modelName)
     ) {
       return;
     }
@@ -394,6 +432,34 @@ function generateMenuItems(): MenuGroup[] {
     communicationGroup.submenus = [
       ...(communicationGroup.submenus || []),
       ...categories,
+    ];
+  }
+
+  // Формируем Projects с категориями (task_stage, task_tag в свёрнутом подменю)
+  const projectsGroup = groupsMap.get(MenuGroups.projects.id);
+  if (projectsGroup) {
+    const projectCategories = Object.entries(projectsCategories).map(
+      ([catId, catConfig]) => ({
+        type: 'category' as const,
+        label: catConfig.label,
+        labelKey: catConfig.labelKey,
+        id: `category_proj_${catId}`,
+        Icon: catConfig.Icon,
+        defaultCollapsed: catConfig.defaultCollapsed,
+        submenus: catConfig.models
+          .filter(modelName => modelsConfig[modelName])
+          .map(modelName => ({
+            type: 'simple' as const,
+            label: getModelLabel(modelName),
+            labelKey: getMenuLabelKey(modelName),
+            id: `menu_${modelName}`,
+            to: `/${modelName}`,
+          })),
+      }),
+    );
+    projectsGroup.submenus = [
+      ...(projectsGroup.submenus || []),
+      ...projectCategories,
     ];
   }
 

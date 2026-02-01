@@ -3,8 +3,6 @@
 """
 Модуль cron - управление запланированными задачами.
 
-Аналог ir.cron в Odoo.
-
 Настройки в .env:
     CRON__ENABLED=true
     CRON__CHECK_INTERVAL=60
@@ -51,7 +49,7 @@ class CronApp(Service):
 
     info = {
         "name": "Cron",
-        "summary": "Scheduled tasks management (like Odoo ir.cron)",
+        "summary": "Scheduled tasks management",
         "author": "FARA ERP",
         "category": "System",
         "version": "1.0.0",

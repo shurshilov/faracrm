@@ -3,7 +3,7 @@
 """
 Модель cron_job - запланированные задачи.
 
-Архитектура как в Odoo ir.cron:
+Архитектура:
 - Задачи хранятся в БД
 - Можно указать код напрямую (поле code) или метод модели (model_name + method_name)
 - Код выполняется через exec() с доступом к env
@@ -58,8 +58,6 @@ logger = logging.getLogger("cron")
 class CronJob(DotModel):
     """
     Запланированная задача (cron job).
-
-    Аналог ir.cron в Odoo.
     """
 
     __table__ = "cron_job"
@@ -77,12 +75,12 @@ class CronJob(DotModel):
         string="Активна",
     )
 
-    # === Вариант 1: Код напрямую (как в Odoo) ===
+    # Вариант 1: Код напрямую
     code: str = Text(
         string="Код (Python)",
     )
 
-    # === Вариант 2: Метод модели ===
+    # Вариант 2: Метод модели
     # model_name - имя модели в env.models (например "user", "chat_message")
     model_name: str = Char(
         size=255,
@@ -101,7 +99,6 @@ class CronJob(DotModel):
         default="{}",
     )
 
-    # Расписание (как в Odoo)
     interval_number: int = Integer(
         default=1,
         string="Интервал",

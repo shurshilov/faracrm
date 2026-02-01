@@ -110,14 +110,18 @@ class TestFilterParserInOperators:
 
     def test_in_operator_tuple(self):
         """Test IN operator with tuple."""
-        clause, values = self.parser.parse(("status", "in", ("active", "pending")))
+        clause, values = self.parser.parse(
+            ("status", "in", ("active", "pending"))
+        )
 
         assert clause == '"status" IN (%s, %s)'
         assert values == ("active", "pending")
 
     def test_not_in_operator(self):
         """Test NOT IN operator."""
-        clause, values = self.parser.parse(("role", "not in", ["admin", "guest"]))
+        clause, values = self.parser.parse(
+            ("role", "not in", ["admin", "guest"])
+        )
 
         assert clause == '"role" NOT IN (%s, %s)'
         assert values == ("admin", "guest")
@@ -184,14 +188,14 @@ class TestFilterParserLikeOperators:
         assert values == ("%spam%",)
 
     def test_equals_like_operator(self):
-        """Test =like operator (Odoo style)."""
+        """Test =like operator"""
         clause, values = self.parser.parse(("code", "=like", "ABC"))
 
         assert clause == '"code" =LIKE %s'
         assert values == ("%ABC%",)
 
     def test_equals_ilike_operator(self):
-        """Test =ilike operator (Odoo style)."""
+        """Test =ilike operator"""
         clause, values = self.parser.parse(("code", "=ilike", "abc"))
 
         assert clause == '"code" =ILIKE %s'
@@ -315,10 +319,12 @@ class TestFilterParserComplexExpressions:
 
     def test_two_conditions_implicit_and(self):
         """Test two conditions with implicit AND."""
-        clause, values = self.parser.parse([
-            ("active", "=", True),
-            ("age", ">", 18),
-        ])
+        clause, values = self.parser.parse(
+            [
+                ("active", "=", True),
+                ("age", ">", 18),
+            ]
+        )
 
         assert '"active" = %s' in clause
         assert '"age" > %s' in clause
@@ -327,11 +333,13 @@ class TestFilterParserComplexExpressions:
 
     def test_two_conditions_explicit_and(self):
         """Test two conditions with explicit AND."""
-        clause, values = self.parser.parse([
-            ("active", "=", True),
-            "and",
-            ("age", ">", 18),
-        ])
+        clause, values = self.parser.parse(
+            [
+                ("active", "=", True),
+                "and",
+                ("age", ">", 18),
+            ]
+        )
 
         assert '"active" = %s' in clause
         assert '"age" > %s' in clause
@@ -340,11 +348,13 @@ class TestFilterParserComplexExpressions:
 
     def test_two_conditions_or(self):
         """Test two conditions with OR."""
-        clause, values = self.parser.parse([
-            ("role", "=", "admin"),
-            "or",
-            ("role", "=", "superuser"),
-        ])
+        clause, values = self.parser.parse(
+            [
+                ("role", "=", "admin"),
+                "or",
+                ("role", "=", "superuser"),
+            ]
+        )
 
         assert '"role" = %s' in clause
         assert "OR" in clause
@@ -352,13 +362,15 @@ class TestFilterParserComplexExpressions:
 
     def test_three_conditions_mixed(self):
         """Test three conditions with mixed operators."""
-        clause, values = self.parser.parse([
-            ("active", "=", True),
-            "and",
-            ("role", "=", "admin"),
-            "or",
-            ("is_superuser", "=", True),
-        ])
+        clause, values = self.parser.parse(
+            [
+                ("active", "=", True),
+                "and",
+                ("role", "=", "admin"),
+                "or",
+                ("is_superuser", "=", True),
+            ]
+        )
 
         assert "AND" in clause
         assert "OR" in clause
@@ -366,15 +378,17 @@ class TestFilterParserComplexExpressions:
 
     def test_nested_or_in_and(self):
         """Test nested OR within AND."""
-        clause, values = self.parser.parse([
-            ("active", "=", True),
-            "and",
+        clause, values = self.parser.parse(
             [
-                ("role", "=", "admin"),
-                "or",
-                ("role", "=", "moderator"),
-            ],
-        ])
+                ("active", "=", True),
+                "and",
+                [
+                    ("role", "=", "admin"),
+                    "or",
+                    ("role", "=", "moderator"),
+                ],
+            ]
+        )
 
         assert "AND" in clause
         assert "OR" in clause
@@ -384,14 +398,16 @@ class TestFilterParserComplexExpressions:
 
     def test_nested_and_in_or(self):
         """Test nested AND within OR."""
-        clause, values = self.parser.parse([
+        clause, values = self.parser.parse(
             [
-                ("active", "=", True),
-                ("verified", "=", True),
-            ],
-            "or",
-            ("is_admin", "=", True),
-        ])
+                [
+                    ("active", "=", True),
+                    ("verified", "=", True),
+                ],
+                "or",
+                ("is_admin", "=", True),
+            ]
+        )
 
         assert "AND" in clause
         assert "OR" in clause
@@ -399,17 +415,19 @@ class TestFilterParserComplexExpressions:
 
     def test_multiple_nested_groups(self):
         """Test multiple nested groups."""
-        clause, values = self.parser.parse([
+        clause, values = self.parser.parse(
             [
-                ("country", "=", "US"),
-                ("state", "=", "CA"),
-            ],
-            "or",
-            [
-                ("country", "=", "UK"),
-                ("city", "=", "London"),
-            ],
-        ])
+                [
+                    ("country", "=", "US"),
+                    ("state", "=", "CA"),
+                ],
+                "or",
+                [
+                    ("country", "=", "UK"),
+                    ("city", "=", "London"),
+                ],
+            ]
+        )
 
         # Should have two groups with parentheses
         assert clause.count("(") >= 2
@@ -488,8 +506,8 @@ class TestFilterParserDialects:
 
 
 @pytest.mark.unit
-class TestFilterParserOdooCompatibility:
-    """Tests for Odoo-style filter expressions."""
+class TestFilterParserCompatibility:
+    """Tests filter expressions."""
 
     def setup_method(self):
         """Setup test fixtures."""
@@ -498,34 +516,34 @@ class TestFilterParserOdooCompatibility:
 
         self.parser = FilterParser(POSTGRES)
 
-    def test_odoo_style_domain(self):
-        """Test Odoo-style domain expression."""
-        # Odoo: [('active', '=', True), ('name', 'ilike', 'test')]
-        clause, values = self.parser.parse([
-            ("active", "=", True),
-            ("name", "ilike", "test"),
-        ])
+    def test_style_domain(self):
+        """Test domain expression."""
+        clause, values = self.parser.parse(
+            [
+                ("active", "=", True),
+                ("name", "ilike", "test"),
+            ]
+        )
 
         assert '"active" = %s' in clause
         assert '"name" ILIKE %s' in clause
         assert "AND" in clause
 
-    def test_odoo_style_or_domain(self):
-        """Test Odoo-style OR domain."""
-        # Odoo: ['|', ('state', '=', 'draft'), ('state', '=', 'confirmed')]
-        clause, values = self.parser.parse([
-            ("state", "=", "draft"),
-            "or",
-            ("state", "=", "confirmed"),
-        ])
+    def test_style_or_domain(self):
+        """Test OR domain."""
+        clause, values = self.parser.parse(
+            [
+                ("state", "=", "draft"),
+                "or",
+                ("state", "=", "confirmed"),
+            ]
+        )
 
         assert "OR" in clause
 
-    def test_odoo_style_not_domain(self):
-        """Test Odoo-style NOT domain."""
-        clause, values = self.parser.parse(
-            ("not", ("active", "=", False))
-        )
+    def test_style_not_domain(self):
+        """Test NOT domain."""
+        clause, values = self.parser.parse(("not", ("active", "=", False)))
 
         assert "NOT" in clause
 
@@ -552,7 +570,9 @@ class TestFilterParserIsTriplet:
     def test_invalid_triplet_wrong_length(self):
         """Test invalid triplet with wrong length."""
         assert self.parser._is_triplet(("field", "=")) is False
-        assert self.parser._is_triplet(("field", "=", "value", "extra")) is False
+        assert (
+            self.parser._is_triplet(("field", "=", "value", "extra")) is False
+        )
 
     def test_invalid_triplet_non_string_field(self):
         """Test invalid triplet with non-string field."""
