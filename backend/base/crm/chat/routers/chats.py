@@ -75,11 +75,16 @@ async def get_chats(
             params.append(chat_type)
 
     # Фильтр connector_type - через контакты партнёров
+    # ВАЖНО: params для JOIN добавляются в join_params (идут перед WHERE params)
+    join_params: list = []
+
     if connector_type:
         # Определяем contact_type для данного connector_type
         # Обратный маппинг: connector_type → contact_type
         connector_to_contact = {
-            "whatsapp": "phone", "viber": "phone", "sms": "phone",
+            "whatsapp": "phone",
+            "viber": "phone",
+            "sms": "phone",
             "email": "email",
             "telegram": "telegram",
             "avito": "avito",
@@ -87,7 +92,7 @@ async def get_chats(
             "instagram": "instagram",
         }
         contact_type_for_filter = connector_to_contact.get(connector_type)
-        
+
         if contact_type_for_filter:
             base_query += """
             JOIN chat_member cm_filter ON c.id = cm_filter.chat_id 
@@ -97,7 +102,7 @@ async def get_chats(
             JOIN chat_connector cc_filter ON cc_filter.active = true AND cc_filter.type = %s
             """
             conditions.append("contact_filter.contact_type = %s")
-            params.append(connector_type)
+            join_params.append(connector_type)
             params.append(contact_type_for_filter)
 
     where_clause = " AND ".join(conditions)
@@ -107,9 +112,10 @@ async def get_chats(
         ORDER BY c.last_message_date DESC NULLS LAST
         LIMIT %s OFFSET %s
     """
-    params.extend([limit, offset])
+    # Порядок params: join_params (для JOIN %s) + params (для WHERE %s) + limit/offset
+    all_params = join_params + params + [limit, offset]
 
-    chat_id_rows = await session.execute(chat_ids_query, tuple(params))
+    chat_id_rows = await session.execute(chat_ids_query, tuple(all_params))
 
     if not chat_id_rows:
         return {"data": [], "total": 0}
@@ -175,7 +181,7 @@ async def get_chats(
     #
     # Маппинг contact_type → connector_type:
     # - phone → whatsapp, viber, sms
-    # - email → email  
+    # - email → email
     # - telegram → telegram
     # - avito → avito
     # - vk → vk
