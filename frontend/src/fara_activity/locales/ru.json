@@ -1,0 +1,39 @@
+{
+  "menu": {
+    "activity": "Активности",
+    "activity_type": "Типы активностей"
+  },
+  "notifications": "Уведомления",
+  "markAllRead": "Прочитать все",
+  "noNotifications": "Нет уведомлений",
+  "viewAll": "Показать все активности",
+  "fields": {
+    "name": "Название",
+    "summary": "Описание",
+    "note": "Заметка",
+    "activity_type_id": "Тип",
+    "res_model": "Модель",
+    "res_id": "ID записи",
+    "user_id": "Ответственный",
+    "create_user_id": "Создал",
+    "date_deadline": "Дедлайн",
+    "state": "Состояние",
+    "done": "Выполнена",
+    "done_datetime": "Дата выполнения",
+    "active": "Активна",
+    "icon": "Иконка",
+    "color": "Цвет",
+    "default_days": "Дней по умолчанию",
+    "sequence": "Порядок"
+  },
+  "sections": {
+    "note": "Заметка"
+  },
+  "state": {
+    "planned": "Запланировано",
+    "today": "Сегодня",
+    "overdue": "Просрочено",
+    "done": "Выполнено",
+    "cancelled": "Отменено"
+  }
+}

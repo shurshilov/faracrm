@@ -1,4 +1,5 @@
 import {
+  IconBell,
   IconChartBar,
   IconUsers,
   IconGridScan,
@@ -44,6 +45,13 @@ export const MenuGroups = {
     label: 'Проекты',
     labelKey: 'common:menu.projects',
     Icon: IconCheckupList,
+    order: 45,
+  },
+  activity: {
+    id: 'category_activity',
+    label: 'Активности',
+    labelKey: 'common:menu.activity',
+    Icon: IconBell,
     order: 45,
   },
   sales: {

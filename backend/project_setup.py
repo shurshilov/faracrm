@@ -3,7 +3,6 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-
 from backend.base.system.core.apps import AppsCore
 from backend.base.system.core.models import ModelsCore
 from backend.base.system.core.extensions import ExtensibleMixin
@@ -73,6 +72,10 @@ from backend.base.crm.tasks.models.task_stage import TaskStage
 from backend.base.crm.tasks.models.task_tag import TaskTag
 from backend.base.crm.tasks.models.task import Task
 
+# Activity
+from backend.base.crm.activity.models.activity_type import ActivityType
+from backend.base.crm.activity.models.activity import Activity
+
 # когда есть расширение чтобы IDE видела все поля в модели делаем хак
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat_connector import (
@@ -135,6 +138,7 @@ from backend.base.crm.chat.app import ChatApp
 from backend.base.crm.chat_telegram.app import ChatTelegramApp
 from backend.base.crm.chat_email.app import ChatEmailApp
 from backend.base.crm.tasks.app import TasksApp
+from backend.base.crm.activity.app import ActivityApp
 
 
 # services
@@ -216,6 +220,9 @@ class Models(ModelsCore, ExtensibleMixin):
     task_tag = TaskTag
     task_stage = TaskStage
     project = Project
+    # activity
+    activity = Activity
+    activity_type = ActivityType
 
 
 class Apps(AppsCore):
@@ -238,6 +245,7 @@ class Apps(AppsCore):
     chat_telegram = ChatTelegramApp()
     chat_email = ChatEmailApp()
     task = TasksApp()
+    activity = ActivityApp()
 
     dotorm_crud_auto = DotormCrudAutoService()
     # dotorm_databases_postgres = DotormDatabasesPostgresService()

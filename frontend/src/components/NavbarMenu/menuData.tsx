@@ -111,6 +111,9 @@ const modelToNamespace: Record<string, string> = {
   project: 'tasks',
   task_stage: 'tasks',
   task_tag: 'tasks',
+  // Activity
+  activity: 'activity',
+  activity_type: 'activity',
 };
 
 // Кастомные лейблы для моделей (вместо автогенерации)
@@ -150,7 +153,14 @@ const settingsCategories: Record<
     label: 'Прочее',
     labelKey: 'security:menu.other',
     Icon: IconComponents,
-    models: ['apps', 'language', 'models', 'cron_job', 'saved_filters', 'system_settings'],
+    models: [
+      'apps',
+      'language',
+      'models',
+      'cron_job',
+      'saved_filters',
+      'system_settings',
+    ],
   },
 };
 
@@ -195,6 +205,26 @@ const projectsCategories: Record<
     labelKey: 'tasks:menu.task_stage',
     Icon: IconSettings,
     models: ['task_stage', 'task_tag'],
+    defaultCollapsed: true,
+  },
+};
+
+// Категории для Activity (вложенные подменю)
+const activityCategories: Record<
+  string,
+  {
+    label: string;
+    labelKey: string;
+    Icon: IconType;
+    models: string[];
+    defaultCollapsed?: boolean;
+  }
+> = {
+  settings: {
+    label: 'Настройки',
+    labelKey: 'common:menu.settings',
+    Icon: IconSettings,
+    models: ['activity_type'],
     defaultCollapsed: true,
   },
 };
@@ -345,6 +375,11 @@ function generateMenuItems(): MenuGroup[] {
     Object.values(projectsCategories).flatMap(cat => cat.models),
   );
 
+  // Собираем модели Activity settings отдельно
+  const activityModels = new Set(
+    Object.values(activityCategories).flatMap(cat => cat.models),
+  );
+
   // Добавляем модели в группы
   Object.entries(modelsConfig).forEach(([modelName, config]) => {
     if (!config.menu) return;
@@ -366,6 +401,14 @@ function generateMenuItems(): MenuGroup[] {
     if (
       config.menu.id === MenuGroups.projects.id &&
       projectsSettingsModels.has(modelName)
+    ) {
+      return;
+    }
+
+    // Activity модели из категорий пропускаем - добавим их через категории
+    if (
+      config.menu.id === MenuGroups.activity.id &&
+      activityModels.has(modelName)
     ) {
       return;
     }
@@ -461,6 +504,31 @@ function generateMenuItems(): MenuGroup[] {
       ...(projectsGroup.submenus || []),
       ...projectCategories,
     ];
+  }
+
+  // Формируем Activity с категориями (добавляем в конец)
+  const activityGroup = groupsMap.get(MenuGroups.activity.id);
+  if (activityGroup) {
+    const categories = Object.entries(activityCategories).map(
+      ([catId, catConfig]) => ({
+        type: 'category' as const,
+        label: catConfig.label,
+        labelKey: catConfig.labelKey,
+        id: `category_activity_${catId}`,
+        Icon: catConfig.Icon,
+        defaultCollapsed: catConfig.defaultCollapsed,
+        submenus: catConfig.models
+          .filter(modelName => modelsConfig[modelName])
+          .map(modelName => ({
+            type: 'simple' as const,
+            label: getModelLabel(modelName),
+            labelKey: getMenuLabelKey(modelName),
+            id: `menu_${modelName}`,
+            to: `/${modelName}`,
+          })),
+      }),
+    );
+    activityGroup.submenus = [...(activityGroup.submenus || []), ...categories];
   }
 
   // Фильтруем пустые группы и сортируем

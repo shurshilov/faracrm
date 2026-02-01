@@ -88,6 +88,15 @@ class ChatMessage(DotModel):
         description="Автор - партнёр (для внешних клиентов)",
     )
 
+    # иногда сообщение может быть привязано к записи модели
+    res_model: str | None = Char(
+        description="Модель записи к которой привязано сообщение (lead, task, partner...)",
+    )
+
+    res_id: int | None = Integer(
+        description="ID записи к которой привязано сообщение",
+    )
+
     # Временные метки
     create_date: datetime = Datetime(
         default=lambda: datetime.now(timezone.utc), description="Дата создания"

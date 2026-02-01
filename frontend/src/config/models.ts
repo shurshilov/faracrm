@@ -97,6 +97,38 @@ export const modelsConfig: Record<string, ModelConfig> = {
       import('@/fara_leads/Kanban').then(m => ({ default: m.ViewKanbanLeads })),
   },
 
+  // === Activity ===
+  activity: {
+    menu: MenuGroups.activity,
+    list: () =>
+      import('@/fara_activity/List').then(m => ({
+        default: m.ViewListActivity,
+      })),
+    form: () =>
+      import('@/fara_activity/Form').then(m => ({
+        default: m.ViewFormActivity,
+      })),
+    kanban: () =>
+      import('@/fara_activity/Kanban').then(m => ({
+        default: m.ViewKanbanActivity,
+      })),
+  },
+  activity_type: {
+    menu: MenuGroups.activity,
+    list: () =>
+      import('@/fara_activity/List').then(m => ({
+        default: m.ViewListActivityType,
+      })),
+    form: () =>
+      import('@/fara_activity/Form').then(m => ({
+        default: m.ViewFormActivityType,
+      })),
+    kanban: () =>
+      import('@/fara_activity/Kanban').then(m => ({
+        default: m.ViewKanbanActivityType,
+      })),
+  },
+
   // === Communication ===
   chat_connector: {
     menu: MenuGroups.communication,

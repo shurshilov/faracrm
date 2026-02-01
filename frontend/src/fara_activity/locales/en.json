@@ -1,0 +1,39 @@
+{
+  "menu": {
+    "activity": "Activities",
+    "activity_type": "Activity Types"
+  },
+  "notifications": "Notifications",
+  "markAllRead": "Mark all read",
+  "noNotifications": "No notifications",
+  "viewAll": "View all activities",
+  "fields": {
+    "name": "Name",
+    "summary": "Summary",
+    "note": "Note",
+    "activity_type_id": "Type",
+    "res_model": "Model",
+    "res_id": "Record ID",
+    "user_id": "Assigned to",
+    "create_user_id": "Created by",
+    "date_deadline": "Deadline",
+    "state": "State",
+    "done": "Done",
+    "done_datetime": "Done at",
+    "active": "Active",
+    "icon": "Icon",
+    "color": "Color",
+    "default_days": "Default days",
+    "sequence": "Sequence"
+  },
+  "sections": {
+    "note": "Note"
+  },
+  "state": {
+    "planned": "Planned",
+    "today": "Today",
+    "overdue": "Overdue",
+    "done": "Done",
+    "cancelled": "Cancelled"
+  }
+}

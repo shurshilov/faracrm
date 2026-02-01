@@ -16,6 +16,7 @@ import Logo from '@/components/Logo';
 import { items, MenuGroup } from '@/components/NavbarMenu/menuData';
 import UserMenu from '@/components/UserMenu';
 import { ChatNotification } from '@/components/ChatNotification';
+import { ActivityNotification } from '@/fara_activity/ActivityNotification';
 import { ChatWebSocketProvider } from '@/fara_chat/context';
 import { AppLauncher } from './AppLauncher';
 import { HorizontalMenu } from './HorizontalMenu';
@@ -104,6 +105,7 @@ export function ModernLayout() {
             {/* Правая часть */}
             <Group h="100%" px="md" gap="sm" style={{ marginLeft: 'auto' }}>
               <ThemeToggle />
+              <ActivityNotification />
               <ChatNotification />
               <UserMenu />
             </Group>

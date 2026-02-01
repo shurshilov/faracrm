@@ -59,6 +59,10 @@ import ruSystemSettings from './fara_system_settings/locales/ru.json';
 import enTasks from './fara_tasks/locales/en.json';
 import ruTasks from './fara_tasks/locales/ru.json';
 
+// fara_activity
+import enActivity from './fara_activity/locales/en.json';
+import ruActivity from './fara_activity/locales/ru.json';
+
 // ============ Функция слияния переводов ============
 type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
@@ -113,6 +117,7 @@ const resources = {
     chat: enChat,
     cron: enCron,
     system_settings: enSystemSettings,
+    activity: enActivity,
     tasks: enTasks,
   },
   ru: {
@@ -129,6 +134,7 @@ const resources = {
     chat: ruChat,
     cron: ruCron,
     system_settings: ruSystemSettings,
+    activity: ruActivity,
     tasks: ruTasks,
   },
 };
@@ -155,6 +161,7 @@ i18n
       'cron',
       'system_settings',
       'tasks',
+      'activity',
     ],
 
     interpolation: {
