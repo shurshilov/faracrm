@@ -46,7 +46,7 @@ class Task(DotModel):
     sequence: int = Integer(default=10, string="Sequence")
 
     #  Описание
-    description: str = Text(string="Description")
+    description: str | None = Text(string="Description")
 
     #  Связь с проектом
     project_id: "Project" = Many2one(
@@ -65,7 +65,7 @@ class Task(DotModel):
     )
 
     #  Подзадачи: self-referencing
-    parent_id: "Task" = Many2one(
+    parent_id: "Task | None" = Many2one(
         lambda: env.models.task,
         string="Parent Task",
         index=True,
@@ -113,14 +113,14 @@ class Task(DotModel):
     #  Даты (для Ганта)
     date_start: datetime = Datetime(string="Start Date")
     date_end: datetime = Datetime(string="End Date")
-    date_deadline: datetime = Datetime(string="Deadline")
+    date_deadline: datetime | None = Datetime(string="Deadline")
 
     #  Трекинг времени
-    planned_hours: float = Float(string="Planned Hours", default=0)
-    effective_hours: float = Float(string="Spent Hours", default=0)
+    planned_hours: float | None = Float(string="Planned Hours", default=0)
+    effective_hours: float | None = Float(string="Spent Hours", default=0)
 
     #  Прогресс (0-100)
-    progress: int = Integer(string="Progress %", default=0)
+    progress: int | None = Integer(string="Progress %", default=0)
 
     #  Цвет (для канбана/ганта)
     color: str = Char(string="Color", default="#1c7ed6")

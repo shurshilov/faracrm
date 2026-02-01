@@ -33,7 +33,7 @@ class Project(DotModel):
     id: Id = Integer(primary_key=True)
     name: str = Char(string="Project Name", required=True)
     active: bool = Boolean(default=True)
-    description: str = Text(string="Description")
+    description: str | None = Text(string="Description")
     color: str = Char(string="Color", default="#1c7ed6")
 
     status: str = Selection(
@@ -53,8 +53,8 @@ class Project(DotModel):
         ondelete="restrict",
     )
 
-    date_start: datetime = Datetime(string="Start Date")
-    date_end: datetime = Datetime(string="End Date")
+    date_start: datetime | None = Datetime(string="Start Date")
+    date_end: datetime | None = Datetime(string="End Date")
 
     task_ids: list["Task"] = One2many(
         lambda: env.models.task,
