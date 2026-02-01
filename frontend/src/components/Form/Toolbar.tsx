@@ -8,6 +8,7 @@ import { useFormContext } from './FormContext';
 import { UseFormReturnType } from '@mantine/form';
 import { ViewSwitcher, ViewType } from '@/components/ViewSwitcher';
 import { useCallback, useMemo, ReactNode } from 'react';
+import { FormPanelsBadges, PanelType } from './Panels';
 
 export const Toolbar = <RecordType extends FaraRecord>({
   model,
@@ -20,6 +21,8 @@ export const Toolbar = <RecordType extends FaraRecord>({
   relatedFieldO2M,
   modalClose,
   actions,
+  activePanel,
+  onTogglePanel,
 }: {
   model: string;
   id?: string;
@@ -31,6 +34,8 @@ export const Toolbar = <RecordType extends FaraRecord>({
   relatedFieldO2M?: string;
   modalClose?: () => void;
   actions?: ReactNode;
+  activePanel?: PanelType;
+  onTogglePanel?: (panel: PanelType) => void;
 }) => {
   const form = useFormContext();
   const navigate = useNavigate();
@@ -48,66 +53,78 @@ export const Toolbar = <RecordType extends FaraRecord>({
     return ['list', 'form'];
   }, [model]);
 
-  const handleViewChange = useCallback((newView: ViewType) => {
-    if (newView === 'list' || newView === 'kanban') {
-      // Сохраняем выбранный view и переходим к списку
-      localStorage.setItem(`viewType_${model}`, newView);
-      navigate(`/${model}`);
-    }
-    // Если form - ничего не делаем, мы уже в форме
-  }, [navigate, model]);
+  const handleViewChange = useCallback(
+    (newView: ViewType) => {
+      if (newView === 'list' || newView === 'kanban') {
+        localStorage.setItem(`viewType_${model}`, newView);
+        navigate(`/${model}`);
+      }
+    },
+    [navigate, model],
+  );
 
   // Не показываем ViewSwitcher если это модальная форма или вложенная форма
   const showViewSwitcher = !modalClose && !parentForm;
 
+  // Показываем панели (активности, сообщения, вложения) для существующих записей
+  const showPanels =
+    !isCreateForm && id && !modalClose && !parentForm && onTogglePanel;
+
   return (
-    <>
-      <Flex
-        mih={50}
-        gap="xs"
-        justify="space-between"
-        align="center"
-        direction="row"
-        wrap="nowrap"
-        px="xs"
-      >
-        <Group gap="xs">
-          {form.isDirty() &&
-            (!!isCreateForm ? (
-              <ButtonCreate
+    <Flex
+      mih={50}
+      gap="xs"
+      justify="space-between"
+      align="center"
+      direction="row"
+      wrap="nowrap"
+      px="xs">
+      <Group gap="xs">
+        {form.isDirty() &&
+          (!!isCreateForm ? (
+            <ButtonCreate
+              model={model}
+              parentFieldName={parentFieldName}
+              parentForm={parentForm}
+              modalClose={modalClose}
+              parentId={parentId}
+              relatedFieldO2M={relatedFieldO2M}
+            />
+          ) : (
+            !!id && (
+              <ButtonUpdate
                 model={model}
-                parentFieldName={parentFieldName}
-                parentForm={parentForm}
-                modalClose={modalClose}
+                id={id}
+                fields={fieldsClient}
                 parentId={parentId}
                 relatedFieldO2M={relatedFieldO2M}
               />
-            ) : (
-              !!id && (
-                <ButtonUpdate
-                  model={model}
-                  id={id}
-                  fields={fieldsClient}
-                  parentId={parentId}
-                  relatedFieldO2M={relatedFieldO2M}
-                />
-              )
-            ))}
-        </Group>
+            )
+          ))}
+      </Group>
 
-        <Group gap="xs">
-          {/* Actions dropdown - показываем только для существующих записей */}
-          {!isCreateForm && id && actions}
-          
-          {showViewSwitcher && (
-            <ViewSwitcher
-              value="form"
-              onChange={handleViewChange}
-              availableViews={availableViews}
-            />
-          )}
-        </Group>
-      </Flex>
-    </>
+      <Group gap="xs">
+        {/* Полиморфные панели: иконки-бейджи */}
+        {showPanels && (
+          <FormPanelsBadges
+            resModel={model}
+            resId={Number(id)}
+            activePanel={activePanel!}
+            onToggle={onTogglePanel!}
+          />
+        )}
+
+        {/* Custom actions from individual forms */}
+        {!isCreateForm && id && actions}
+
+        {showViewSwitcher && (
+          <ViewSwitcher
+            value="form"
+            onChange={handleViewChange}
+            availableViews={availableViews}
+          />
+        )}
+      </Group>
+    </Flex>
   );
 };

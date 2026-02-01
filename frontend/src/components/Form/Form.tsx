@@ -5,7 +5,15 @@ import {
 import { useLocation, useParams } from 'react-router-dom';
 import { useForm, UseFormReturnType } from '@mantine/form';
 
-import { Children, isValidElement, useEffect, useMemo, useState } from 'react';
+import {
+  Children,
+  isValidElement,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from 'react';
+import { Box } from '@mantine/core';
 import {
   useReadDefaultValuesQuery,
   useReadQuery,
@@ -26,6 +34,7 @@ import { Toolbar } from './Toolbar';
 import { useOnchange } from './hooks/useOnchange';
 import { getExtensionFields, ExtensionsContext } from '@/shared/extensions';
 import { modelsConfig } from '@/config/models';
+import { FormPanelSide, PanelType } from './Panels';
 
 /**
  * Генерирует функции валидации для обязательных полей
@@ -141,7 +150,7 @@ export const Form = <RecordType extends FaraRecord>({
     id,
     fields: fieldsList,
   } as ReadParams;
-  
+
   // Ждём загрузки расширений перед запросом данных,
   // чтобы fieldsList содержал все поля включая поля из расширений
   const { data } = useReadQuery(
@@ -190,6 +199,18 @@ export const Form = <RecordType extends FaraRecord>({
     form,
     setFieldsServer,
   );
+
+  // Panel state (активности / сообщения / вложения)
+  const [activePanel, setActivePanel] = useState<PanelType>(null);
+  const showPanels = !isCreateForm && id && !modalClose && !parentForm;
+
+  const handleTogglePanel = useCallback((panel: PanelType) => {
+    setActivePanel(prev => (prev === panel ? null : panel));
+  }, []);
+
+  const handleClosePanel = useCallback(() => {
+    setActivePanel(null);
+  }, []);
 
   // console.log(form.getValues(), 'form.getValues()');
   useEffect(() => {
@@ -240,21 +261,39 @@ export const Form = <RecordType extends FaraRecord>({
         labelWidth={labelWidth}>
         <FormProvider form={form}>
           <ExtensionsContext.Provider value={model}>
-            <Toolbar
-              model={model}
-              id={id}
-              isCreateForm={isCreateForm}
-              fieldsClient={fieldsClient}
-              relatedFieldO2M={relatedFieldO2M}
-              parentFieldName={parentFieldName}
-              parentForm={parentForm}
-              parentId={parentId}
-              modalClose={modalClose}
-              actions={actions}
-            />
-            {!!Object.keys(fieldsServer).length && !!childrenNew.length && (
-              <form>{childrenNew}</form>
-            )}
+            <Box
+              style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+              {/* Main form area */}
+              <Box style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
+                <Toolbar
+                  model={model}
+                  id={id}
+                  isCreateForm={isCreateForm}
+                  fieldsClient={fieldsClient}
+                  relatedFieldO2M={relatedFieldO2M}
+                  parentFieldName={parentFieldName}
+                  parentForm={parentForm}
+                  parentId={parentId}
+                  modalClose={modalClose}
+                  actions={actions}
+                  activePanel={activePanel}
+                  onTogglePanel={showPanels ? handleTogglePanel : undefined}
+                />
+                {!!Object.keys(fieldsServer).length && !!childrenNew.length && (
+                  <form>{childrenNew}</form>
+                )}
+              </Box>
+
+              {/* Side panel (resizable) */}
+              {showPanels && activePanel && (
+                <FormPanelSide
+                  resModel={model}
+                  resId={Number(id)}
+                  activePanel={activePanel}
+                  onClose={handleClosePanel}
+                />
+              )}
+            </Box>
           </ExtensionsContext.Provider>
         </FormProvider>
       </FormSettingsProvider>
