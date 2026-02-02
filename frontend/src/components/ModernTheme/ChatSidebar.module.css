@@ -1,4 +1,12 @@
-.chatItem {
+/* ═══════════════════════════════════════════════════════════════════════════
+   ChatSidebar.module.css
+   
+   .internal — left accent bar (Все / Личные / Группы)
+   .external — colored pills через CSS custom properties (коннекторы)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Общий базовый стиль пункта ───────────────────────────────────────────── */
+.item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6,32 +14,94 @@
   padding: 10px 12px;
   border-radius: var(--mantine-radius-md);
   transition: all 150ms ease;
+  cursor: pointer;
+}
+
+/* ── Internal: left accent bar ────────────────────────────────────────────── */
+.internal {
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--mantine-radius-md) var(--mantine-radius-md) 0;
+  padding-left: 14px;
 
   @mixin light {
-    color: var(--mantine-color-gray-7);
-    
+    color: var(--mantine-color-gray-8);
+
     &:hover {
       background-color: var(--mantine-color-gray-1);
     }
-    
+
     &[data-active] {
-      background: linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
+      border-left-color: var(--mantine-color-blue-5);
+      background: linear-gradient(
+        90deg,
+        rgba(59, 130, 246, 0.12) 0%,
+        rgba(59, 130, 246, 0.03) 100%
+      );
       color: var(--mantine-color-blue-7);
-      border-left: 3px solid var(--mantine-color-blue-5);
     }
   }
 
   @mixin dark {
     color: var(--mantine-color-gray-3);
-    
+
     &:hover {
       background-color: var(--mantine-color-dark-5);
     }
-    
+
     &[data-active] {
-      background: linear-gradient(90deg, rgba(59, 130, 246, 0.25) 0%, rgba(59, 130, 246, 0.08) 100%);
+      border-left-color: var(--mantine-color-blue-5);
+      background: linear-gradient(
+        90deg,
+        rgba(59, 130, 246, 0.2) 0%,
+        rgba(59, 130, 246, 0.05) 100%
+      );
       color: var(--mantine-color-blue-4);
-      border-left: 3px solid var(--mantine-color-blue-5);
+    }
+  }
+}
+
+/* ── External: colored pills через CSS custom props ───────────────────────── */
+/* Компонент устанавливает: --c-icon, --c-active-bg, --c-active-text         */
+.external {
+  @mixin light {
+    color: var(--mantine-color-gray-8);
+
+    & svg {
+      color: var(--c-icon);
+    }
+
+    &:hover {
+      background-color: var(--mantine-color-gray-1);
+    }
+
+    &[data-active] {
+      background-color: var(--c-active-bg);
+      color: var(--c-active-text);
+    }
+
+    &[data-active] svg {
+      color: var(--c-active-text);
+    }
+  }
+
+  @mixin dark {
+    color: var(--mantine-color-gray-3);
+
+    & svg {
+      color: var(--c-icon);
+    }
+
+    &:hover {
+      background-color: var(--mantine-color-dark-5);
+    }
+
+    &[data-active] {
+      background-color: var(--c-active-bg);
+      color: var(--c-active-text);
+    }
+
+    &[data-active] svg {
+      color: var(--c-active-text);
     }
   }
 }

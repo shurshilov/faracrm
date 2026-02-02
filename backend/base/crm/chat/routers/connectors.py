@@ -18,6 +18,7 @@ from backend.base.system.core.exceptions.environment import FaraException
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
+    from backend.base.crm.security.models.sessions import Session
 
 
 router_private = APIRouter(
@@ -116,3 +117,40 @@ async def get_connector_webhook_info(req: Request, connector_id: int):
 #     from backend.base.crm.chat.strategies import list_strategies
 
 #     return {"types": list_strategies()}
+
+
+# ============================================================================
+# Мои коннекторы (для sidebar)
+# ============================================================================
+
+
+@router_private.get("/connectors/my")
+async def get_my_connectors(req: Request):
+    """
+    Активные коннекторы, где текущий пользователь — оператор.
+
+    Возвращает уникальные типы коннекторов для построения
+    динамического меню в ChatSidebar.
+    """
+    env: "Environment" = req.app.state.env
+    auth_session: "Session" = req.state.session
+    user_id = auth_session.user_id.id
+
+    session = env.apps.db.get_session()
+    query = """
+        SELECT DISTINCT cc.type, cc.name
+        FROM chat_connector cc
+        JOIN chat_connector_operator_many2many op
+            ON op.connector_id = cc.id
+        WHERE cc.active = true
+            AND op.user_id = %s
+        ORDER BY cc.type
+    """
+    result = await session.execute(query, [user_id])
+
+    return {
+        "data": [
+            {"type": row["type"], "name": row["name"]}
+            for row in result
+        ]
+    }

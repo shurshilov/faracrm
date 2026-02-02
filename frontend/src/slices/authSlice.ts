@@ -25,7 +25,7 @@ const slice = createSlice({
       const sessionPersist = JSON.parse(
         localStorage.getItem('session') || '{}',
       ) as Session;
-      console.log(sessionPersist);
+      // console.log(sessionPersist);
       if (sessionPersist) {
         state.session = sessionPersist;
       }

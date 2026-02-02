@@ -24,7 +24,7 @@ export function Layout() {
   const dispatch = useDispatch();
   const authenticated = useSelector(selectIsLoggedIn);
   // navigator.serviceWorker.register('/sw.js');
-  console.log(authenticated, 'authenticated');
+  // console.log(authenticated, 'authenticated');
 
   useLayoutEffect(() => {
     dispatch(getSession());

@@ -405,6 +405,14 @@ const chatApi = api.injectEndpoints({
 
     // ============= CONNECTORS API =============
 
+    // Get active connectors where current user is operator (for sidebar menu)
+    getMyConnectors: build.query<
+      { data: { type: string; name: string }[] },
+      void
+    >({
+      query: () => '/connectors/my',
+    }),
+
     // Get list of connectors
     getConnectors: build.query<
       { data: ConnectorInfo[] },
@@ -757,6 +765,7 @@ export const {
   useAddReactionMutation,
   useGetReactionsQuery,
   // Connectors
+  useGetMyConnectorsQuery,
   useGetConnectorsQuery,
   useGetConnectorQuery,
   useCreateConnectorMutation,
