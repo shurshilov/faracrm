@@ -74,10 +74,9 @@ async def get_chats(
             conditions.append("c.chat_type = %s")
             params.append(chat_type)
 
-    # Фильтр connector_type - через контакты партнёров
-    # ВАЖНО: params для JOIN добавляются в join_params (идут перед WHERE params)
-    join_params: list = []
-
+    # Фильтр connector_type — через контакты партнёров-участников чата.
+    # Логика: connector.contact_type_id → contact.contact_type_id → partner → chat_member.
+    # Ищем чаты где у партнёра есть контакт с тем же contact_type_id что у коннектора.
     if connector_type:
         # Получаем contact_type_id из коннектора (integer FK)
         contact_type_id_for_filter = (
@@ -92,11 +91,9 @@ async def get_chats(
                 AND cm_filter.partner_id IS NOT NULL AND cm_filter.is_active = true
             JOIN contact contact_filter ON contact_filter.partner_id = cm_filter.partner_id 
                 AND contact_filter.active = true
-            JOIN chat_connector cc_filter ON cc_filter.active = true AND cc_filter.type = %s
+                AND contact_filter.contact_type_id = %s
             """
-            conditions.append("contact_filter.contact_type_id = %s")
-            join_params.append(connector_type)
-            params.append(contact_type_id_for_filter.id)
+            params.insert(0, contact_type_id_for_filter.id)
 
     where_clause = " AND ".join(conditions)
     chat_ids_query = f"""
@@ -105,8 +102,7 @@ async def get_chats(
         ORDER BY c.last_message_date DESC NULLS LAST
         LIMIT %s OFFSET %s
     """
-    # Порядок params: join_params (для JOIN %s) + params (для WHERE %s) + limit/offset
-    all_params = join_params + params + [limit, offset]
+    all_params = params + [limit, offset]
 
     chat_id_rows = await session.execute(chat_ids_query, tuple(all_params))
 
