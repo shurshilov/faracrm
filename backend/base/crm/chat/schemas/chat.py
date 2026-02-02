@@ -83,6 +83,7 @@ class ChatLastMessage(BaseModel):
 
     id: int
     body: Optional[str] = None
+    message_type: str = "comment"
     author_id: int
     create_date: Optional[datetime] = None
 

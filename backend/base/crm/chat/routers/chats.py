@@ -150,7 +150,7 @@ async def get_chats(
 
     last_messages_query = """
         SELECT DISTINCT ON (chat_id) 
-            id, chat_id, body, author_user_id, author_partner_id, create_date
+            id, chat_id, body, message_type, author_user_id, author_partner_id, create_date
         FROM chat_message
         WHERE chat_id = ANY(%s) AND is_deleted = false
         ORDER BY chat_id, id DESC
@@ -316,6 +316,7 @@ async def get_chats(
             chat_data["last_message"] = {
                 "id": last_msg["id"],
                 "body": last_msg["body"],
+                "message_type": last_msg.get("message_type", "comment"),
                 "author_id": author_user_id or author_partner_id,
                 "author_name": author_name,
                 "create_date": (

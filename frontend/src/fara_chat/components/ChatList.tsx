@@ -14,8 +14,32 @@ import {
 } from '@mantine/core';
 import { IconSearch, IconPlus, IconMessage } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
-import { useGetChatsQuery, Chat } from '@/services/api/chat';
+import DOMPurify from 'dompurify';
+import { useGetChatsQuery, Chat, ChatLastMessage } from '@/services/api/chat';
 import styles from './ChatList.module.css';
+
+/**
+ * Извлекает чистый текст из HTML через DOMPurify санитизацию.
+ * Используется для превью email сообщений в списке чатов.
+ */
+function stripHtml(html: string): string {
+  const clean = DOMPurify.sanitize(html, { ALLOWED_TAGS: [] });
+  const div = document.createElement('div');
+  div.innerHTML = clean;
+  return (div.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Возвращает текст превью последнего сообщения.
+ * Для email (по message_type) — очищает через DOMPurify.
+ */
+function getMessagePreview(lastMessage?: ChatLastMessage | null): string | null {
+  if (!lastMessage?.body) return null;
+  if (lastMessage.message_type === 'email') {
+    return stripHtml(lastMessage.body);
+  }
+  return lastMessage.body;
+}
 
 interface ChatFilter {
   is_internal?: boolean;
@@ -186,7 +210,7 @@ export function ChatList({
 
                     <Group justify="space-between" wrap="nowrap">
                       <Text size="sm" c="dimmed" truncate style={{ flex: 1 }}>
-                        {chat.last_message?.body || t('noMessages')}
+                        {getMessagePreview(chat.last_message) || t('noMessages')}
                       </Text>
                       {chat.unread_count > 0 && (
                         <Badge size="sm" variant="filled" color="blue" circle>
