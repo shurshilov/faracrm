@@ -623,18 +623,13 @@ class ChatStrategyBase(ABC):
                 return False
 
             # Находим контакт оператора по contact_type_id коннектора
-            operator_ct_id = None
-            if connector_id.contact_type_id:
-                operator_ct_id = connector_id.contact_type_id.id
-
-            if not operator_ct_id:
-                operator_ct_id = await env.models.contact_type.get_contact_type_id_for_connector(
-                    connector_id.type
-                )
+            operator_ct_id = connector_id.contact_type_id
+            if operator_ct_id is None:
+                raise ValueError("Contact type must be set")
 
             operator_contact = await env.models.contact.search(
                 filter=[
-                    ("contact_type_id", "=", operator_ct_id),
+                    ("contact_type_id", "=", operator_ct_id.id),
                     ("user_id", "=", user_id),
                     ("active", "=", True),
                 ],

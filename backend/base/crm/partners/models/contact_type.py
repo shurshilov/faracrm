@@ -96,38 +96,7 @@ class ContactType(DotModel):
         return results[0] if results else None
 
     @classmethod
-    async def get_all_active(cls):
-        """Получить все активные типы отсортированные по sequence."""
-        return await cls.search(
-            filter=[("active", "=", True)],
-            sort="sequence",
-        )
-
-    @classmethod
-    async def get_contact_type_for_connector(
-        cls, connector_type: str
-    ) -> str | None:
-        """
-        Получить name типа контакта для данного типа коннектора.
-
-        Ищет chat_connector с type=connector_type, берёт его contact_type_id.name.
-        """
-        connectors = await env.models.chat_connector.search(
-            filter=[
-                ("type", "=", connector_type),
-                ("active", "=", True),
-            ],
-            fields=["id", "contact_type_id"],
-            limit=1,
-        )
-        if connectors and connectors[0].contact_type_id:
-            return connectors[0].contact_type_id.name
-        return None
-
-    @classmethod
-    async def get_contact_type_id_for_connector(
-        cls, connector_type: str
-    ) -> int | None:
+    async def get_contact_type_id_for_connector(cls, connector_type: str):
         """
         Получить ID типа контакта для данного типа коннектора.
         """
@@ -140,7 +109,7 @@ class ContactType(DotModel):
             limit=1,
         )
         if connectors and connectors[0].contact_type_id:
-            return connectors[0].contact_type_id.id
+            return connectors[0].contact_type_id
         return None
 
     @classmethod
@@ -154,7 +123,10 @@ class ContactType(DotModel):
         import re
 
         value = value.strip()
-        all_types = await cls.get_all_active()
+        all_types = await cls.search(
+            filter=[("active", "=", True)],
+            sort="sequence",
+        )
 
         for ct in all_types:
             if ct.pattern:

@@ -266,13 +266,8 @@ class ChatConnector(DotModel):
 
         # Определяем тип контакта для этого коннектора (Many2one → contact_type)
         contact_type_id = connector.contact_type_id
-        if not contact_type_id:
-            # Fallback: ищем по типу коннектора
-            ct_id = await env.models.contact_type.get_contact_type_id_for_connector(
-                connector.type
-            )
-            if ct_id:
-                contact_type_id = ct_id
+        if contact_type_id is None:
+            raise ValueError("Contact type must be set")
 
         # Значение контакта — ID аккаунта из коннектора
         contact_value = connector.external_account_id or connector.name
@@ -288,11 +283,11 @@ class ChatConnector(DotModel):
 
         # Batch: получаем существующие контакты для добавляемых операторов
         existing_contacts_map = {}
-        if added and contact_type_id:
+        if added:
             existing_contacts = await env.models.contact.search(
                 filter=[
                     ("user_id", "in", list(added)),
-                    ("contact_type_id", "=", contact_type_id),
+                    ("contact_type_id", "=", contact_type_id.id),
                 ],
             )
             existing_contacts_map = {
@@ -324,9 +319,7 @@ class ChatConnector(DotModel):
                 new_contacts.append(
                     env.models.contact(
                         user_id=user,
-                        contact_type_id=env.models.contact_type(
-                            id=contact_type_id
-                        ),
+                        contact_type_id=contact_type_id,
                         name=contact_value,
                         is_primary=True,
                     )
@@ -337,11 +330,11 @@ class ChatConnector(DotModel):
             logger.info(f"Created {len(new_contacts)} contacts for operators")
 
         # Batch: деактивируем Contact для удалённых операторов
-        if removed and contact_type_id:
+        if removed:
             contacts_to_deactivate = await env.models.contact.search(
                 filter=[
                     ("user_id", "in", list(removed)),
-                    ("contact_type_id", "=", contact_type_id),
+                    ("contact_type_id", "=", contact_type_id.id),
                     ("active", "=", True),
                 ],
             )

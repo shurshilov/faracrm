@@ -96,7 +96,7 @@ async def get_chats(
             """
             conditions.append("contact_filter.contact_type_id = %s")
             join_params.append(connector_type)
-            params.append(contact_type_id_for_filter)
+            params.append(contact_type_id_for_filter.id)
 
     where_clause = " AND ".join(conditions)
     chat_ids_query = f"""

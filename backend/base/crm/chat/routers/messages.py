@@ -221,14 +221,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
             # Собираем recipients_ids - контакты партнёров чата,
             # которые подходят под тип коннектора
             # Используем contact_type_id коннектора (integer FK)
-            connector_contact_type_id = None
-            if connector.contact_type_id:
-                connector_contact_type_id = connector.contact_type_id.id
-
-            if not connector_contact_type_id:
-                connector_contact_type_id = await env.models.contact_type.get_contact_type_id_for_connector(
-                    connector.type
-                )
+            connector_contact_type_id = connector.contact_type_id
 
             recipients_ids = []
             if connector_contact_type_id:
@@ -245,7 +238,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                       AND cm.is_active = true
                 """
                 recipients_raw = await session.execute(
-                    recipients_query, (connector_contact_type_id, chat_id)
+                    recipients_query, (connector_contact_type_id.id, chat_id)
                 )
                 recipients_ids = [
                     {"id": r["id"], "contact_value": r["contact_value"]}
