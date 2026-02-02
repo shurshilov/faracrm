@@ -9,6 +9,7 @@ from email.header import decode_header
 from typing import TYPE_CHECKING
 
 from backend.base.crm.chat.strategies.adapter import ChatMessageAdapter
+from backend.base.crm.chat_email.sanitizer import sanitize_email_html
 
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat_connector import ChatConnector
@@ -154,35 +155,34 @@ class EmailMessageAdapter(ChatMessageAdapter):
 
     @property
     def text(self) -> str | None:
-        """Текст сообщения (предпочтительно plaintext)."""
+        """Текст сообщения (предпочтительно plaintext, всегда санитизируется)."""
         if self._is_webhook:
-            # Mailgun
-            text = self.raw.get("body-plain") or self.raw.get(
-                "stripped-text", ""
+            text = (
+                self.raw.get("body-plain")
+                or self.raw.get("stripped-text")
+                or self.raw.get("text")
+                or self.raw.get("body-html")
+                or self.raw.get("html")
+                or ""
             )
-            # SendGrid
-            if not text:
-                text = self.raw.get("text", "")
-            # Fallback to HTML
-            if not text:
-                text = self.raw.get("body-html") or self.raw.get("html", "")
-            return text or None
+        elif self._parsed_email:
+            text = self._get_email_body()
+        else:
+            return None
 
-        if self._parsed_email:
-            return self._get_email_body()
-
-        return None
+        return sanitize_email_html(text) if text else None
 
     @property
     def html(self) -> str | None:
-        """HTML версия сообщения."""
+        """HTML версия сообщения (санитизированная)."""
         if self._is_webhook:
-            return self.raw.get("body-html") or self.raw.get("html")
+            raw_html = self.raw.get("body-html") or self.raw.get("html")
+        elif self._parsed_email:
+            raw_html = self._get_email_body(prefer_html=True)
+        else:
+            return None
 
-        if self._parsed_email:
-            return self._get_email_body(prefer_html=True)
-
-        return None
+        return sanitize_email_html(raw_html) if raw_html else None
 
     def _get_email_body(self, prefer_html: bool = False) -> str:
         """Извлечь тело письма из email.message.Message."""
