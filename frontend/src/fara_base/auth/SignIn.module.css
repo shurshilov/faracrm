@@ -1,23 +1,127 @@
-.form {
-    border-right: rem(1px) solid light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-7));
-    min-height: 100vh;
-    max-width: rem(600px);
-    padding-top: rem(80px);
-
-    @media (max-width: $mantine-breakpoint-sm) {
-        max-width: 100%;
-    }
-}
-
-.title {
-    color: light-dark(var(--mantine-color-black), var(--mantine-color-white));
-    font-family:
-            Greycliff CF,
-            var(--mantine-font-family);
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   SignIn.module.css — страница входа FARA CRM
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 .wrapper {
-    min-height: rem(800px);
-    background-size: cover;
-    background-image: url(https://images.unsplash.com/photo-1484242857719-4b9144542727?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1280&q=80);
+  display: flex;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Форма (левая часть) ───────────────────────────────────────────────── */
+.form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100vh;
+  width: rem(520px);
+  flex-shrink: 0;
+  z-index: 1;
+
+  @mixin light {
+    border-right: rem(1px) solid var(--mantine-color-gray-2);
+    background: rgba(255, 255, 255, 0.98);
+  }
+
+  @mixin dark {
+    border-right: rem(1px) solid var(--mantine-color-dark-5);
+    background: rgba(26, 27, 30, 0.98);
+  }
+
+  @media (max-width: $mantine-breakpoint-sm) {
+    width: 100%;
+  }
+}
+
+.formInner {
+  padding: rem(48px);
+  max-width: rem(420px);
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ── Анимированный фон (правая часть) ──────────────────────────────────── */
+.background {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+
+  @media (max-width: $mantine-breakpoint-sm) {
+    display: none;
+  }
+}
+
+/* ── Лого ──────────────────────────────────────────────────────────────── */
+.logoBlock {
+  text-align: center;
+  margin-bottom: rem(8px);
+
+  & svg {
+    margin: 0 auto;
+  }
+}
+
+/* ── Заголовок ─────────────────────────────────────────────────────────── */
+.title {
+  font-size: rem(24px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+
+  @mixin light {
+    color: var(--mantine-color-gray-9);
+  }
+
+  @mixin dark {
+    color: var(--mantine-color-gray-0);
+  }
+}
+
+/* ── Лейблы инпутов ────────────────────────────────────────────────────── */
+.inputLabel {
+  font-weight: 500;
+  font-size: rem(14px);
+  margin-bottom: rem(4px);
+}
+
+/* ── Кнопка входа ──────────────────────────────────────────────────────── */
+.submitBtn {
+  background: #009982;
+  transition: background 150ms ease;
+
+  &:hover {
+    background: #00806d;
+  }
+}
+
+/* ── Иконки соцсетей ───────────────────────────────────────────────────── */
+.socialIcon {
+  transition: all 200ms ease;
+  border-radius: var(--mantine-radius-xl);
+
+  @mixin light {
+    color: var(--mantine-color-gray-6);
+  }
+
+  @mixin dark {
+    color: var(--mantine-color-gray-5);
+  }
+
+  &:hover {
+    color: var(--social-color);
+    transform: translateY(-2px);
+
+    @mixin light {
+      background: var(--mantine-color-gray-0);
+    }
+
+    @mixin dark {
+      background: var(--mantine-color-dark-5);
+    }
+  }
+}
+
+/* ── Версия ────────────────────────────────────────────────────────────── */
+.version {
+  opacity: 0.5;
+  margin-top: rem(8px);
 }

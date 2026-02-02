@@ -3,26 +3,72 @@ import {
   TextInput,
   PasswordInput,
   Button,
-  Title,
   Text,
+  Group,
+  ActionIcon,
+  Tooltip,
+  Stack,
+  Divider,
 } from '@mantine/core';
 import * as yup from 'yup';
 import { useForm, yupResolver } from '@mantine/form';
 import { useDispatch } from 'react-redux';
+import {
+  IconBrandTelegram,
+  IconBrandYoutube,
+  IconBrandGithub,
+} from '@tabler/icons-react';
 import classes from './SignIn.module.css';
 import { UserInput } from '@/services/auth/types';
 import { useLoginMutation } from '@/services/auth/auth';
 import { storeSession } from '@/slices/authSlice';
+import Logo from '@/components/Logo';
+import AnimatedBackground from './AnimatedBackground';
+
+// RuTube icon
+const IconRuTube = ({ size = 20 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
+  </svg>
+);
+
+const SOCIAL_LINKS = [
+  {
+    icon: IconBrandTelegram,
+    label: 'Telegram',
+    href: 'https://t.me/fara_crm',
+    color: '#2AABEE',
+  },
+  {
+    icon: IconBrandGithub,
+    label: 'GitHub',
+    href: 'https://github.com/fara-crm',
+    color: '#333',
+  },
+  {
+    icon: IconBrandYoutube,
+    label: 'YouTube',
+    href: 'https://youtube.com/@fara_crm',
+    color: '#FF0000',
+  },
+  {
+    icon: IconRuTube,
+    label: 'RuTube',
+    href: 'https://rutube.ru/channel/fara_crm',
+    color: '#1B1F3B',
+  },
+];
 
 export default function SignIn() {
   const dispatch = useDispatch();
   const [login, { isLoading: loading }] = useLoginMutation();
+
   const validationSchema = yup.object({
     login: yup
       .string()
-      .required('Login is required')
-      .max(120, 'Login is too long'),
-    password: yup.string().required('Password is required'),
+      .required('Введите логин')
+      .max(120, 'Логин слишком длинный'),
+    password: yup.string().required('Введите пароль'),
   });
 
   const form = useForm({
@@ -35,63 +81,107 @@ export default function SignIn() {
 
   const onSubmitHandler = async (values: UserInput) => {
     try {
-      // Using a query hook automatically fetches data and returns query values
       const session = await login(values).unwrap();
       dispatch(storeSession({ session }));
-    } catch (err) {
-      // Toast.error('Error login', JSON.stringify(err));
-    } finally {
-      // setLoading(false);
+    } catch {
+      // handled by error modal
     }
   };
 
   return (
-    <div>
-      <form onSubmit={form.onSubmit(onSubmitHandler)}>
-        <div className={classes.wrapper}>
-          <Paper className={classes.form} radius={0} p={30}>
-            <Title
-              order={2}
-              className={classes.title}
-              ta="center"
-              mt="md"
-              mb={50}>
-              Welcome to FARA CRM
-            </Title>
-            <Text ta="center" mt="md" mb={50}>
-              To get more information about the template please check the{' '}
-              <a href="https://github.com/auronvila/mantine-template/wiki">
-                documentation
-              </a>
-            </Text>
-            <TextInput
-              {...form.getInputProps('login')}
-              name="login"
-              label="Login"
-              withAsterisk
-              placeholder="admin"
+    <div className={classes.wrapper}>
+      {/* Левая часть — форма */}
+      <Paper className={classes.form} radius={0}>
+        <form onSubmit={form.onSubmit(onSubmitHandler)}>
+          <Stack gap="xl" className={classes.formInner}>
+            {/* Лого */}
+            <div className={classes.logoBlock}>
+              <Logo />
+              <Text size="sm" c="dimmed" mt={8}>
+                Платформа для управления бизнесом
+              </Text>
+            </div>
+
+            {/* Заголовок */}
+            <div>
+              <Text className={classes.title}>Вход в систему</Text>
+              <Text size="sm" c="dimmed" mt={4}>
+                Введите данные для доступа к CRM
+              </Text>
+            </div>
+
+            {/* Поля */}
+            <Stack gap="md">
+              <TextInput
+                {...form.getInputProps('login')}
+                name="login"
+                label="Логин"
+                withAsterisk
+                placeholder="Имя пользователя"
+                size="md"
+                classNames={{ label: classes.inputLabel }}
+              />
+              <PasswordInput
+                {...form.getInputProps('password')}
+                name="password"
+                label="Пароль"
+                placeholder="••••••••"
+                size="md"
+                classNames={{ label: classes.inputLabel }}
+              />
+            </Stack>
+
+            {/* Кнопка */}
+            <Button
+              loading={loading}
+              type="submit"
+              fullWidth
               size="md"
-            />
-            <PasswordInput
-              {...form.getInputProps('password')}
-              name="password"
-              label="Password"
-              placeholder="123"
-              mt="md"
-              size="md"
-            />
-            <Button loading={loading} type="submit" fullWidth mt="xl" size="md">
-              Login
+              className={classes.submitBtn}>
+              Войти
             </Button>
-            {/*<Text ta="center" mt="md">*/}
-            {/*  Don&apos;t have an account?{' '}*/}
-            {/*  <Anchor<'a'> href="#" fw={700} onClick={(event) => event.preventDefault()}>*/}
-            {/*    Register*/}
-            {/*  </Anchor>*/}
-            {/*</Text>*/}
-          </Paper>
-        </div>
-      </form>
+
+            {/* Соцсети */}
+            <Divider
+              label={
+                <Text size="xs" c="dimmed">
+                  Сообщество
+                </Text>
+              }
+              labelPosition="center"
+            />
+
+            <Group justify="center" gap="lg">
+              {SOCIAL_LINKS.map(link => (
+                <Tooltip key={link.label} label={link.label} withArrow>
+                  <ActionIcon
+                    component="a"
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="subtle"
+                    size="lg"
+                    className={classes.socialIcon}
+                    style={
+                      { '--social-color': link.color } as React.CSSProperties
+                    }>
+                    <link.icon size={22} />
+                  </ActionIcon>
+                </Tooltip>
+              ))}
+            </Group>
+
+            <Text ta="center" size="xs" c="dimmed" className={classes.version}>
+              FARA CRM v1.0
+            </Text>
+          </Stack>
+        </form>
+      </Paper>
+
+      {/* Правая часть — анимированный фон */}
+      <div className={classes.background}>
+        <AnimatedBackground />
+      </div>
     </div>
   );
 }
