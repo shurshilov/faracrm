@@ -75,5 +75,18 @@
     "today": "Today",
     "name": "Name",
     "duration": "Duration"
+  },
+  "auth": {
+    "title": "Sign In",
+    "subtitle": "Business management platform",
+    "description": "Enter your credentials to access CRM",
+    "login": "Login",
+    "loginPlaceholder": "Username",
+    "loginRequired": "Login is required",
+    "loginTooLong": "Login is too long",
+    "password": "Password",
+    "passwordRequired": "Password is required",
+    "signIn": "Sign In",
+    "community": "Community"
   }
 }

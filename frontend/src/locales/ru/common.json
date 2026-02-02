@@ -75,5 +75,18 @@
     "today": "Сегодня",
     "name": "Название",
     "duration": "Время"
+  },
+  "auth": {
+    "title": "Вход в систему",
+    "subtitle": "Платформа для управления бизнесом",
+    "description": "Введите данные для доступа к CRM",
+    "login": "Логин",
+    "loginPlaceholder": "Имя пользователя",
+    "loginRequired": "Введите логин",
+    "loginTooLong": "Логин слишком длинный",
+    "password": "Пароль",
+    "passwordRequired": "Введите пароль",
+    "signIn": "Войти",
+    "community": "Сообщество"
   }
 }

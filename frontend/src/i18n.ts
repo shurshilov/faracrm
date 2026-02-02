@@ -144,7 +144,7 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'en',
+    fallbackLng: 'ru',
     defaultNS: 'common',
     ns: [
       'common',
