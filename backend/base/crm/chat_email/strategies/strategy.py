@@ -341,51 +341,30 @@ class EmailStrategy(ChatStrategyBase):
             is_first_run = last_uid <= 1
 
             if is_first_run:
-                # Получаем все сообщения и берём последний UID
-                response = await imap.search("ALL")
-                logger.debug(f"IMAP search ALL response: {response}")
+                # Получаем UID последнего сообщения напрямую
+                # FETCH * (UID) — '*' означает последнее сообщение в mailbox
+                # Это O(1) вместо SEARCH ALL который возвращает все seq numbers
+                fetch_resp = await imap.fetch("*", "(UID)")
+                logger.debug(f"IMAP fetch * UID response: {fetch_resp}")
 
-                if response.result == "OK" and response.lines:
-                    # Парсим sequence numbers
-                    # Ответ в формате [b'1 2 3 ...', b'SEARCH completed (Success)']
-                    seq_str = ""
-                    for line in response.lines:
+                if fetch_resp.result == "OK" and fetch_resp.lines:
+                    # Парсим UID из ответа типа "1 FETCH (UID 12345)"
+                    for line in fetch_resp.lines:
                         if isinstance(line, bytes):
                             line = line.decode()
-                        # Ищем строку с числами (не содержит SEARCH/completed)
-                        if (
-                            line
-                            and line.strip()
-                            and "SEARCH" not in line
-                            and "completed" not in line.lower()
-                        ):
-                            seq_str = line
-                            break
+                        if "UID" in line:
+                            import re
 
-                    seq_list = seq_str.strip().split() if seq_str else []
-                    if seq_list:
-                        # Берём последний sequence number и получаем его UID
-                        last_seq = seq_list[-1]
-                        fetch_resp = await imap.fetch(last_seq, "(UID)")
-                        logger.debug(f"IMAP fetch UID response: {fetch_resp}")
+                            match = re.search(r"UID\s+(\d+)", line)
+                            if match:
+                                max_uid = int(match.group(1))
+                                connector.imap_last_uid = max_uid
+                                await connector.update()
+                                logger.info(
+                                    f"Email first run: set last_uid to {max_uid}"
+                                )
+                                break
 
-                        if fetch_resp.result == "OK" and fetch_resp.lines:
-                            # Парсим UID из ответа типа "1 FETCH (UID 12345)"
-                            for line in fetch_resp.lines:
-                                if isinstance(line, bytes):
-                                    line = line.decode()
-                                if "UID" in line:
-                                    import re
-
-                                    match = re.search(r"UID\s+(\d+)", line)
-                                    if match:
-                                        max_uid = int(match.group(1))
-                                        connector.imap_last_uid = max_uid
-                                        await connector.update()
-                                        logger.info(
-                                            f"Email first run: set last_uid to {max_uid}"
-                                        )
-                                        break
                 await imap.logout()
                 return []
 
