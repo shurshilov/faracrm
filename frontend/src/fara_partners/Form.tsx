@@ -5,6 +5,7 @@ import { Partner } from '@/services/api/partner';
 import {
   FormSection,
   FormRow,
+  FormCol,
   FormTabs,
   FormTab,
   FormSheet,
@@ -22,19 +23,16 @@ export function ViewFormPartners(props: ViewFormProps) {
       {/* Основная информация */}
       <FormSheet avatar={<Field name="image" />}>
         <FormRow cols={2}>
-          <Field name="name" label="Название" />
-          <Field name="active" label="Активен" />
-        </FormRow>
-
-        {/* Контакты — половина ширины */}
-        <FormRow cols={2}>
+          <FormCol gap="sm">
+            <Field name="name" label="Название" />
+            <Field name="active" label="Активен" />
+          </FormCol>
           <Field name="contact_ids" widget="contacts" label="Контакты">
             <Field name="id" />
             <Field name="contact_type_id" />
             <Field name="name" />
             <Field name="is_primary" />
           </Field>
-          <div />
         </FormRow>
       </FormSheet>
 
