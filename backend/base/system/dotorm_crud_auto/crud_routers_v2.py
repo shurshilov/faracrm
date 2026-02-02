@@ -185,7 +185,7 @@ class CRUDRouterGenerator(APIRouter):
 
             records, count_total = await asyncio.gather(
                 Model.search(**payload.model_dump()),
-                Model.table_len(),
+                Model.search_count(filter=payload.filter),
             )
 
             if not payload.raw:
