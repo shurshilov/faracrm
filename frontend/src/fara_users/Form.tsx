@@ -7,6 +7,7 @@ import { ViewFormProps } from '@/route/type';
 import { SchemaUser } from '@/services/api/users';
 import {
   FormRow,
+  FormCol,
   FormTabs,
   FormTab,
   FormSheet,
@@ -107,6 +108,7 @@ export default function ViewFormUsers(props: ViewFormProps) {
     <>
       <Form<SchemaUser>
         model="users"
+        labelWidth={160}
         {...props}
         actions={
           <UserFormActions
@@ -126,9 +128,13 @@ export default function ViewFormUsers(props: ViewFormProps) {
             />
           </FormRow>
           <FormRow cols={2}>
-            <Field name="login" label={t('fields.login')} />
-
-            {/* Контакты - компактно в основном блоке */}
+            <FormCol gap="sm">
+              <Field name="login" label={t('fields.login')} />
+              <Field
+                name="is_admin"
+                label={t('fields.is_admin', 'Суперпользователь')}
+              />
+            </FormCol>
             <Field
               name="contact_ids"
               widget="contacts"
@@ -138,10 +144,6 @@ export default function ViewFormUsers(props: ViewFormProps) {
               <Field name="name" />
               <Field name="is_primary" />
             </Field>
-            <Field
-              name="is_admin"
-              label={t('fields.is_admin', 'Суперпользователь')}
-            />
           </FormRow>
         </FormSheet>
 

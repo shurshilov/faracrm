@@ -73,7 +73,7 @@ export const Form = <RecordType extends FaraRecord>({
   parentId,
   relatedFieldO2M,
   labelPosition = 'left',
-  labelWidth = 140,
+  labelWidth = 160,
   actions,
 }: {
   model: string;

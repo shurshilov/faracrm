@@ -22,16 +22,19 @@ export function ViewFormPartners(props: ViewFormProps) {
       {/* Основная информация */}
       <FormSheet avatar={<Field name="image" />}>
         <FormRow cols={2}>
-          image
           <Field name="name" label="Название" />
-          {/* Контакты - компактно в основном блоке */}
+          <Field name="active" label="Активен" />
+        </FormRow>
+
+        {/* Контакты — половина ширины */}
+        <FormRow cols={2}>
           <Field name="contact_ids" widget="contacts" label="Контакты">
             <Field name="id" />
             <Field name="contact_type_id" />
             <Field name="name" />
             <Field name="is_primary" />
           </Field>
-          <Field name="active" label="Активен" />
+          <div />
         </FormRow>
       </FormSheet>
 

@@ -26,6 +26,8 @@ import {
   IconAddressBook,
   IconX,
   IconSend,
+  IconPencil,
+  IconCheck,
 } from '@tabler/icons-react';
 import { Contact, ContactType, ContactsWidgetProps } from './types';
 import {
@@ -81,6 +83,8 @@ export function ContactsWidget({
 }) {
   const [inputValue, setInputValue] = useState('');
   const [selectedType, setSelectedType] = useState<ContactType | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   // Загружаем типы контактов из БД
   const { contactTypes, isLoading: typesLoading } = useContactTypes();
@@ -181,11 +185,52 @@ export function ContactsWidget({
     [disabled, hidePrimary, value, onChange],
   );
 
+  // Начать редактирование
+  const handleStartEdit = useCallback(
+    (index: number) => {
+      if (disabled) return;
+      setEditingIndex(index);
+      setEditValue(value[index].name);
+    },
+    [disabled, value],
+  );
+
+  // Сохранить редактирование
+  const handleSaveEdit = useCallback(() => {
+    if (editingIndex === null || !editValue.trim()) return;
+
+    const updated = value.map((c, i) => {
+      if (i !== editingIndex) return c;
+      return { ...c, name: editValue.trim() };
+    });
+
+    onChange(updated);
+    setEditingIndex(null);
+    setEditValue('');
+  }, [editingIndex, editValue, value, onChange]);
+
+  // Отменить редактирование
+  const handleCancelEdit = useCallback(() => {
+    setEditingIndex(null);
+    setEditValue('');
+  }, []);
+
   // Обработка Enter
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && typeToAdd) {
       e.preventDefault();
       handleAdd();
+    }
+  };
+
+  // Обработка Enter/Escape в режиме редактирования
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancelEdit();
     }
   };
 
@@ -309,56 +354,92 @@ export function ContactsWidget({
               contactTypes,
             );
             const IconComponent = getIcon(config?.icon || '');
+            const isEditing = editingIndex === index;
 
             return (
               <Box
                 key={contact.id || `new-${index}`}
-                className={`${classes.contactItem} ${contact._isNew ? classes.contactItemNew : ''}`}>
+                className={`${classes.contactItem} ${contact._isNew ? classes.contactItemNew : ''} ${isEditing ? classes.contactItemEditing : ''}`}>
                 <Box
                   className={classes.contactIcon}
                   data-type={contact.contact_type}>
                   <IconComponent size={14} />
                 </Box>
 
-                <Text className={classes.contactValue}>{contact.name}</Text>
-
-                <Text className={classes.contactType}>
-                  {config?.label || contact.contact_type}
-                </Text>
-
-                <Group className={classes.contactActions} gap={2}>
-                  {!hidePrimary && (
-                    <Tooltip
-                      label={
-                        contact.is_primary ? 'Основной' : 'Сделать основным'
-                      }
-                      withArrow>
+                {isEditing ? (
+                  <TextInput
+                    className={classes.editInput}
+                    size="xs"
+                    value={editValue}
+                    onChange={e => setEditValue(e.currentTarget.value)}
+                    onKeyDown={handleEditKeyDown}
+                    onBlur={handleSaveEdit}
+                    autoFocus
+                    rightSection={
                       <ActionIcon
                         size="xs"
                         variant="subtle"
-                        color={contact.is_primary ? 'yellow' : 'gray'}
-                        onClick={() => handleTogglePrimary(index)}
-                        disabled={disabled}>
-                        {contact.is_primary ? (
-                          <IconStarFilled size={12} />
-                        ) : (
-                          <IconStar size={12} />
-                        )}
+                        color="green"
+                        onClick={handleSaveEdit}>
+                        <IconCheck size={12} />
                       </ActionIcon>
-                    </Tooltip>
-                  )}
+                    }
+                  />
+                ) : (
+                  <>
+                    <Text className={classes.contactValue}>{contact.name}</Text>
 
-                  <Tooltip label="Удалить" withArrow>
-                    <ActionIcon
-                      size="xs"
-                      variant="subtle"
-                      color="red"
-                      onClick={() => handleDelete(index)}
-                      disabled={disabled}>
-                      <IconX size={12} />
-                    </ActionIcon>
-                  </Tooltip>
-                </Group>
+                    <Text className={classes.contactType}>
+                      {config?.label || contact.contact_type}
+                    </Text>
+
+                    <Group className={classes.contactActions} gap={2}>
+                      {!disabled && (
+                        <Tooltip label="Редактировать" withArrow>
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            color="blue"
+                            onClick={() => handleStartEdit(index)}>
+                            <IconPencil size={12} />
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+
+                      {!hidePrimary && (
+                        <Tooltip
+                          label={
+                            contact.is_primary ? 'Основной' : 'Сделать основным'
+                          }
+                          withArrow>
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            color={contact.is_primary ? 'yellow' : 'gray'}
+                            onClick={() => handleTogglePrimary(index)}
+                            disabled={disabled}>
+                            {contact.is_primary ? (
+                              <IconStarFilled size={12} />
+                            ) : (
+                              <IconStar size={12} />
+                            )}
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+
+                      <Tooltip label="Удалить" withArrow>
+                        <ActionIcon
+                          size="xs"
+                          variant="subtle"
+                          color="red"
+                          onClick={() => handleDelete(index)}
+                          disabled={disabled}>
+                          <IconX size={12} />
+                        </ActionIcon>
+                      </Tooltip>
+                    </Group>
+                  </>
+                )}
               </Box>
             );
           })}

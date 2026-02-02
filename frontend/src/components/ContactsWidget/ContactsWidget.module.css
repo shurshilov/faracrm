@@ -1,6 +1,7 @@
 /* Container */
 .container {
   width: 100%;
+  align-self: start;
 }
 
 /* Header - опциональный */
@@ -104,6 +105,12 @@
   border-color: var(--mantine-color-green-2);
 }
 
+.contactItemEditing {
+  padding-right: 6px;
+  border-color: var(--mantine-color-blue-4);
+  background: var(--mantine-color-blue-0);
+}
+
 /* Contact icon */
 .contactIcon {
   width: 22px;
@@ -167,6 +174,20 @@
   white-space: nowrap;
 }
 
+/* Inline edit input */
+.editInput {
+  flex: 1;
+  min-width: 120px;
+}
+
+.editInput input {
+  height: 24px;
+  min-height: 24px;
+  font-size: 13px;
+  padding: 0 6px;
+  border-radius: 12px;
+}
+
 /* Contact actions */
 .contactActions {
   display: flex;
@@ -190,6 +211,11 @@
   .contactItem:hover {
     background: var(--mantine-color-dark-5);
     border-color: var(--mantine-color-dark-3);
+  }
+
+  .contactItemEditing {
+    background: var(--mantine-color-dark-7);
+    border-color: var(--mantine-color-blue-7);
   }
 
   .contactValue {
