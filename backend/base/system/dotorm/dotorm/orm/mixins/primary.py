@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING, Self, TypeVar
 
+from ...fields import Field
+
 from ...access import Operation
 from ...components.dialect import POSTGRES
 from ...model import JsonMode
@@ -59,36 +61,69 @@ class OrmPrimaryMixin(_Base):
     async def update(
         self,
         payload: "_M | None" = None,
-        fields=None,
+        fields: list[str] | None = None,
         session=None,
     ):
+        """
+        Обновить запись.
+
+        Автоматически обрабатывает и store поля (SQL UPDATE),
+        и relation поля (O2M/M2M: created/deleted/selected/unselected,
+        attachments: PolymorphicMany2one).
+
+        Args:
+            payload: Данные для обновления (если None — используется self)
+            fields: Список полей для обновления.
+                    Если None — обновляются все заданные поля из payload.
+            session: DB сессия
+
+        Example:
+            # Только store поля
+            await record.update(payload, fields=["name", "email"])
+
+            # Store + relations — автоматически
+            await record.update(payload, fields=["name", "role_ids"])
+
+            # Все поля из payload
+            await record.update(payload)
+        """
         await self._check_access(Operation.UPDATE, record_ids=[self.id])
 
         session = self._get_db_session(session)
         if payload is None:
             payload = self
+
+        # Автоопределение полей если не указаны
+        if fields is None:
+            fields = [
+                name
+                for name, field_class in payload.get_fields().items()
+                if not isinstance(getattr(payload, name), Field)
+                and name != "id"
+            ]
+
         if not fields:
-            fields = []
+            return
 
-        if fields:
-            payload_dict = payload.json(
-                include=set(fields),
-                exclude_unset=True,
-                exclude_none=True,
-                only_store=True,
-                mode=JsonMode.UPDATE,
-            )
-        else:
-            payload_dict = payload.json(
-                exclude=payload.get_none_update_fields_set(),
-                exclude_none=True,
-                exclude_unset=True,
-                only_store=True,
-                mode=JsonMode.UPDATE,
-            )
+        await self._update_relations(payload, fields, session)
 
-        stmt, values = self._builder.build_update(payload_dict, self.id)
-        return await session.execute(stmt, values)
+    async def _update_store(
+        self,
+        payload: "_M",
+        fields: list[str],
+        session,
+    ):
+        """Прямой SQL UPDATE для store полей. Без access check и relations."""
+        payload_dict = payload.json(
+            include=set(fields),
+            exclude_unset=True,
+            exclude_none=True,
+            only_store=True,
+            mode=JsonMode.UPDATE,
+        )
+        if payload_dict:
+            stmt, values = self._builder.build_update(payload_dict, self.id)
+            return await session.execute(stmt, values)
 
     @hybridmethod
     async def update_bulk(
@@ -232,7 +267,9 @@ class OrmPrimaryMixin(_Base):
 
         # Фильтруем fields — оставляем только store поля для SQL
         store_fields = cls.get_store_fields()
-        fields_store = [f for f in fields if f in store_fields] if fields else []
+        fields_store = (
+            [f for f in fields if f in store_fields] if fields else []
+        )
         if not fields_store:
             fields_store = list(store_fields)
         if "id" not in fields_store:

@@ -370,7 +370,7 @@ class CRUDRouterGenerator(APIRouter):
             payload_dict = payload.model_dump(exclude_unset=True)
             fields_names = list(payload_dict)
             payload: DotModel = Model(**payload_dict)
-            await record.update_with_relations(payload, fields_names)
+            await record.update(payload, fields_names)
 
             return payload_dict
 
@@ -389,7 +389,7 @@ class CRUDRouterGenerator(APIRouter):
             record = await Model.get(id)
             if record:
                 # заменить виртуальный ИД на созданный только что
-                await record.update_with_relations(payload, fields_names)
+                await record.update(payload, fields_names)
             return {"id": id}
 
         return route

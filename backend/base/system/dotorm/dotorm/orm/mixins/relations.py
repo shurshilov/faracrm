@@ -37,7 +37,7 @@ class OrmRelationsMixin(_Base):
     - search_count - count records matching filter
     - exists - have one record or not
     - _get_load_relations - load relations for single record (used by get())
-    - update_with_relations - update record with relations
+    - _update_relations - update record with relations (used by update())
 
     Expects DotModel to provide:
     - _get_db_session()
@@ -332,41 +332,21 @@ class OrmRelationsMixin(_Base):
                 # o2m, m2m → список
                 setattr(record, name, result if result else [])
 
-    async def update_with_relations(
-        self, payload: _M, update_fields: list[str] | None = None, session=None
+    async def _update_relations(
+        self, payload: _M, update_fields: list[str], session=None
     ):
         """
         Обновить запись с поддержкой relation полей (M2M, O2M, attachments).
 
+        Вызывается из update() когда fields содержит relation поля.
+        Обрабатывает: store поля (через update) + attachments + O2M/M2M.
+
         Args:
             payload: Экземпляр модели с новыми значениями полей
-            update_fields: Список полей для обновления.
-                          Если None - автоматически определяются из payload
-                          (все поля которые не являются Field и не id).
-            session: DB сессия (опционально)
-
-        Returns:
-            Результат обновления store полей
-
-        Example:
-            # Автоопределение полей из payload
-            user.name = "New Name"
-            user.email = "new@email.com"
-            await user.update_with_relations(user)
-
-            # Явное указание полей
-            await user.update_with_relations(payload, update_fields=["name", "role_ids"])
+            update_fields: Список полей для обновления
+            session: DB сессия
         """
         session = self._get_db_session(session)
-
-        # Автоопределение полей если не указаны явно
-        if update_fields is None:
-            update_fields = [
-                name
-                for name, field_class in payload.get_fields().items()
-                if not isinstance(getattr(payload, name), Field)
-                and name != "id"
-            ]
 
         # Handle attachments
         fields_attachments = [
@@ -391,13 +371,13 @@ class OrmRelationsMixin(_Base):
                         )
                         setattr(payload, name, attachment_id)
 
-        # Update stored fields
+        # Update store fields
         fields_store = [
             name for name in self.get_store_fields() if name in update_fields
         ]
         # Обновление сущности в базе без связей
         if fields_store:
-            await self.update(payload, update_fields, session)
+            await self._update_store(payload, fields_store, session)
 
         # защита, оставить только те поля, которые являются отношениями (m2m, o2m)
         # добавлена информаци о вложенных полях
@@ -409,7 +389,6 @@ class OrmRelationsMixin(_Base):
 
         if fields_relation:
             request_list = []
-            field_list = []
 
             for name, field in fields_relation:
                 field_obj = getattr(payload, name)
@@ -425,7 +404,6 @@ class OrmRelationsMixin(_Base):
                         request_list.append(record[0].update(field_obj))
 
                 if isinstance(field, (One2many, PolymorphicOne2many)):
-                    field_list.append(field)
                     # заменить в связанных полях виртуальный ид на вновь созданный
                     for obj in field_obj.get("created", []):
                         for k, v in obj.items():
@@ -457,8 +435,6 @@ class OrmRelationsMixin(_Base):
                         )
 
                 if isinstance(field, Many2many):
-                    field_list.append(field)
-
                     # Replace virtual ID
                     for obj in field_obj.get("created", []):
                         for k, v in obj.items():
@@ -499,7 +475,4 @@ class OrmRelationsMixin(_Base):
                             )
                         )
 
-            # выполняем последовательно
             await execute_maybe_parallel(request_list)
-
-        # return record_raw

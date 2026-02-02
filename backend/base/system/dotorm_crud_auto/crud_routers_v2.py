@@ -277,9 +277,7 @@ class CRUDRouterGenerator(APIRouter):
             record = await Model.get(id)
 
             if record:
-                await record.update_with_relations(
-                    model_instance, fields_names
-                )
+                await record.update(model_instance, fields_names)
 
             return {"id": id}
 
@@ -333,7 +331,7 @@ class CRUDRouterGenerator(APIRouter):
             fields_names = list(payload_dict)
             model_instance = Model(**payload_dict)
 
-            await record.update_with_relations(model_instance, fields_names)
+            await record.update(model_instance, fields_names)
 
             return payload_dict
 

@@ -93,7 +93,7 @@ async def copy_user(req: Request, payload: CopyUserInput):
             role_ids = [r.id for r in source_user.role_ids]
             if role_ids:
                 # Используем Many2many связь
-                await new_user.update_with_relations(
+                await new_user.update(
                     User(id=id, role_ids={"selected": role_ids}),
                 )
 
@@ -101,7 +101,7 @@ async def copy_user(req: Request, payload: CopyUserInput):
         # if payload.copy_languages and source_user.lang_ids:
         #     lang_ids = [l.id for l in source_user.lang_ids]
         #     if lang_ids:
-        #         await new_user.update_with_relations(
+        #         await new_user.update(
         #             payload=User(
         #                 id=id, lang_ids={"selected": lang_ids}
         #             ),

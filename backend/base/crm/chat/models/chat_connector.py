@@ -194,25 +194,19 @@ class ChatConnector(DotModel):
         return connector_id
 
     @hybridmethod
-    async def update_with_relations(
-        self, payload, update_fields=None, session=None
-    ):
+    async def update(self, payload=None, fields=None, session=None):
         """
         Обновление коннектора с синхронизацией Contact для операторов.
         """
         # Проверяем, изменяются ли операторы
-        has_operator_changes = (
-            update_fields and "operator_ids" in update_fields
-        )
+        has_operator_changes = fields and "operator_ids" in fields
 
         old_operator_ids = []
         if has_operator_changes:
             old_operator_ids = await self._get_current_operator_ids()
 
         # Выполняем обновление (включая Many2many)
-        result = await super().update_with_relations(
-            payload, update_fields, session
-        )
+        result = await super().update(payload, fields, session=session)
 
         # Синхронизируем Contact если были изменения операторов
         if has_operator_changes:

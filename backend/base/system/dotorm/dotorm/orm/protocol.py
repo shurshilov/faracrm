@@ -153,6 +153,20 @@ class DotModelProtocol(Protocol):
         session: Any,
     ) -> None: ...
 
+    async def _update_relations(
+        self,
+        payload: Any,
+        update_fields: list[str],
+        session: Any,
+    ) -> None: ...
+
+    async def _update_store(
+        self,
+        payload: Any,
+        fields: list[str],
+        session: Any,
+    ) -> Any: ...
+
     # From DDLMixin
     @staticmethod
     def format_default_value(value: Any) -> str: ...
