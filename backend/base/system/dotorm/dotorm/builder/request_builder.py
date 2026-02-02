@@ -79,48 +79,15 @@ class RequestBuilder:
         return getattr(self.field.relation_table, "prepare_list_id")
 
 
-@dataclass(slots=True)
-class RequestBuilderForm(RequestBuilder):
-    """
-    Container for form relation query request.
-
-    Extends RequestBuilder with form-specific prepare functions.
-    """
-
-    # Override mapping for form context
-    _PREPARE_FUNCS: ClassVar[dict[type, str]] = {
-        Many2many: "prepare_form_ids",
-        One2many: "prepare_form_ids",
-        Many2one: "prepare_form_ids",
-        PolymorphicMany2one: "prepare_form_ids",
-        PolymorphicOne2many: "prepare_form_ids",
-    }
-
-    @property
-    def function_prepare(self) -> Callable:
-        """
-        Returns appropriate prepare function for form context.
-
-        Form context uses prepare_form_ids/prepare_form_id methods.
-        """
-        for field_type, method_name in self._PREPARE_FUNCS.items():
-            if isinstance(self.field, field_type):
-                return getattr(self.field.relation_table, method_name)
-
-        return getattr(self.field.relation_table, "prepare_form_id")
-
-
 def create_request_builder(
     stmt: str | None,
     value: Any,
     field_name: str,
     field: Field,
     fields: list[str] | None = None,
-    *,
-    form_mode: bool = False,
 ) -> RequestBuilder:
     """
-    Factory function for creating appropriate RequestBuilder.
+    Factory function for creating RequestBuilder.
 
     Args:
         stmt: SQL statement
@@ -128,16 +95,14 @@ def create_request_builder(
         field_name: Name of the field
         field: Field instance
         fields: Fields to select (default: ["id", "name"])
-        form_mode: If True, creates RequestBuilderForm
 
     Returns:
-        RequestBuilder or RequestBuilderForm instance
+        RequestBuilder instance
     """
     if fields is None:
         fields = ["id", "name"]
 
-    cls = RequestBuilderForm if form_mode else RequestBuilder
-    return cls(
+    return RequestBuilder(
         stmt=stmt,
         value=value,
         field_name=field_name,

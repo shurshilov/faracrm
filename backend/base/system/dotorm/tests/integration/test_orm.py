@@ -409,15 +409,15 @@ class TestMany2oneRelations:
                 assert hasattr(role.model_id, "id")
                 assert hasattr(role.model_id, "name")
 
-    async def test_get_with_relations_m2o(self, sample_data):
-        """Test get_with_relations loads M2O."""
+    async def test_get_fields_nested_m2o(self, sample_data):
+        """Test get(fields_nested) loads M2O."""
         from .models import Role
 
         role_id = sample_data["roles"][0]
-        role = await Role.get_with_relations(
+        role = await Role.get(
             id=role_id,
             fields=["id", "name", "model_id"],
-            fields_info={"model_id": ["id", "name"]},
+            fields_nested={"model_id": ["id", "name"]},
         )
 
         assert role is not None
@@ -452,8 +452,8 @@ class TestOne2manyRelations:
         )
         assert len(acls) == 3
 
-    async def test_get_with_relations_o2m(self, sample_data):
-        """Test get_with_relations loads O2M."""
+    async def test_get_fields_nested_o2m(self, sample_data):
+        """Test get(fields_nested) loads O2M."""
         from .models import Role, AccessList
 
         role_id = sample_data["roles"][0]
@@ -468,15 +468,16 @@ class TestOne2manyRelations:
             )
         )
 
-        role = await Role.get_with_relations(
+        role = await Role.get(
             id=role_id,
             fields=["id", "name", "acl_ids"],
-            fields_info={"acl_ids": ["id", "name", "active"]},
+            fields_nested={"acl_ids": ["id", "name", "active"]},
         )
 
         assert role is not None
-        assert "data" in role.acl_ids
-        assert len(role.acl_ids["data"]) >= 1
+        # Новый API возвращает список, а не dict
+        assert isinstance(role.acl_ids, list)
+        assert len(role.acl_ids) >= 1
 
 
 class TestMany2manyRelations:
@@ -539,8 +540,8 @@ class TestMany2manyRelations:
         # Should have only 1 role left
         assert len(linked_roles) == 1
 
-    async def test_get_with_relations_m2m(self, sample_data, session):
-        """Test get_with_relations loads M2M."""
+    async def test_get_fields_nested_m2m(self, sample_data, session):
+        """Test get(fields_nested) loads M2M."""
         from .models import User, Role
 
         user_id = sample_data["users"][0]
@@ -552,15 +553,16 @@ class TestMany2manyRelations:
         await User.link_many2many(role_field, values)
 
         # Get with relations
-        user = await User.get_with_relations(
+        user = await User.get(
             id=user_id,
             fields=["id", "name", "role_ids"],
-            fields_info={"role_ids": ["id", "name"]},
+            fields_nested={"role_ids": ["id", "name"]},
         )
 
         assert user is not None
-        assert "data" in user.role_ids
-        assert len(user.role_ids["data"]) == 2
+        # Новый API возвращает список, а не dict
+        assert isinstance(user.role_ids, list)
+        assert len(user.role_ids) == 2
 
 
 # ====================

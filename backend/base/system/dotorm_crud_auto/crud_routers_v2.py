@@ -383,8 +383,10 @@ class CRUDRouterGenerator(APIRouter):
                         fields_client.append(key)
                         fields_client_nested[key] = val
 
-            record = await Model.get_with_relations(
-                id, fields_client, fields_client_nested
+            record = await Model.get(
+                id,
+                fields=fields_client,
+                fields_nested=fields_client_nested,
             )
 
             if not record:
@@ -396,10 +398,21 @@ class CRUDRouterGenerator(APIRouter):
             fields_info = Model.get_fields_info_form(fields_client)
             fields_info = {f["name"]: f for f in fields_info}
 
+            response_data = record.json(
+                include=set(fields_client), mode=JsonMode.FORM
+            )
+
+            # Обернуть O2M/M2M в {data, fields, total} для UI
+            await _wrap_relations_for_ui(
+                Model,
+                record,
+                response_data,
+                fields_client,
+                fields_client_nested,
+            )
+
             return {
-                "data": record.json(
-                    include=set(fields_client), mode=JsonMode.FORM
-                ),
+                "data": response_data,
                 "fields": fields_info,
             }
 
@@ -414,3 +427,96 @@ class CRUDRouterGenerator(APIRouter):
             return Model.get_fields_info_list(all_fields)
 
         return route
+
+
+async def _wrap_relations_for_ui(
+    Model,
+    record,
+    response_data: dict,
+    fields_client: list[str],
+    fields_client_nested: dict[str, list[str]],
+):
+    """
+    Обернуть O2M/M2M поля в {data, fields, total} формат для UI.
+
+    Используется после get(fields_nested=...) для формирования
+    ответа, совместимого с фронтендом (пагинация таблиц).
+    search_count запросы выполняются параллельно.
+    """
+    from backend.base.system.dotorm.dotorm.fields import (
+        Many2many,
+        One2many,
+        PolymorphicOne2many,
+    )
+
+    # Собираем информацию и корутины для параллельного выполнения
+    wrap_items = []  # (name, nested, rel_fields_info, count_coro | int)
+
+    for name, field_cls in Model.get_relation_fields():
+        if name not in fields_client:
+            continue
+        if not isinstance(
+            field_cls, (Many2many, One2many, PolymorphicOne2many)
+        ):
+            continue
+
+        value = getattr(record, name)
+        if not isinstance(value, list):
+            continue
+
+        nested = fields_client_nested.get(name)
+        if not nested and field_cls.relation_table:
+            nested = ["id"]
+            if field_cls.relation_table.get_fields().get("name"):
+                nested.append("name")
+            if isinstance(field_cls, PolymorphicOne2many):
+                nested = field_cls.relation_table.get_store_fields_omit_m2o()
+
+        rel_fields_info = field_cls.relation_table.get_fields_info_list(
+            nested or ["id"]
+        )
+
+        # Готовим count — корутину или значение
+        if isinstance(field_cls, One2many):
+            count = field_cls.relation_table.search_count(
+                filter=[(field_cls.relation_table_field, "=", record.id)]
+            )
+        elif isinstance(field_cls, PolymorphicOne2many):
+            count = field_cls.relation_table.search_count(
+                filter=[
+                    ("res_id", "=", record.id),
+                    ("res_model", "=", record.__table__),
+                ]
+            )
+        else:
+            count = len(value)
+
+        wrap_items.append((name, rel_fields_info, count))
+
+    if not wrap_items:
+        return
+
+    # Собираем корутины для параллельного выполнения
+    coros = []
+    coro_indices = []
+    totals = [None] * len(wrap_items)
+
+    for i, (name, rel_fields_info, count) in enumerate(wrap_items):
+        if asyncio.iscoroutine(count):
+            coro_indices.append(i)
+            coros.append(count)
+        else:
+            totals[i] = count
+
+    if coros:
+        results = await asyncio.gather(*coros)
+        for idx, result in zip(coro_indices, results):
+            totals[idx] = result
+
+    # Применяем
+    for i, (name, rel_fields_info, _) in enumerate(wrap_items):
+        response_data[name] = {
+            "data": response_data.get(name, []),
+            "fields": rel_fields_info,
+            "total": totals[i],
+        }

@@ -259,12 +259,6 @@ class DotModel(
         return cls._no_transaction(cls._pool)
 
     @classmethod
-    def prepare_form_ids(cls, rows: list[dict]):
-        """Deserialize from list of dicts to list of objects."""
-        records = [cls.prepare_form_id([r]) for r in rows]
-        return records
-
-    @classmethod
     def prepare_form_id(cls, r: list):
         """Deserialize from dict to object."""
         if not r:
@@ -676,7 +670,9 @@ class DotModel(
                     # Вложенная сериализация оставляем как есть
                     fields_json[field_name] = field
                 elif mode == JsonMode.FORM:
-                    # При FORM (get) field это dict с data/fields/total
+                    # При FORM (get) field может быть:
+                    # list объектов (get с fields_nested)
+                    # dict с data/fields/total (legacy)
                     if isinstance(field, dict):
                         fields_json[field_name] = {
                             "data": [
@@ -686,6 +682,11 @@ class DotModel(
                             "fields": field["fields"],
                             "total": field["total"],
                         }
+                    elif isinstance(field, list):
+                        fields_json[field_name] = [
+                            rec.json(mode=JsonMode.NESTED_LIST)
+                            for rec in field
+                        ]
                     else:
                         fields_json[field_name] = field
 

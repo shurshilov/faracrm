@@ -5,9 +5,6 @@ from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar
 from ...components.filter_parser import FilterExpression
 from ...decorators import hybridmethod
 from ...access import Operation
-from ...builder.request_builder import (
-    RequestBuilderForm,
-)
 from ...fields import (
     PolymorphicMany2one,
     PolymorphicOne2many,
@@ -39,7 +36,7 @@ class OrmRelationsMixin(_Base):
     - search - search records with relation loading
     - search_count - count records matching filter
     - exists - have one record or not
-    - get_with_relations - get single record with relations
+    - _get_load_relations - load relations for single record (used by get())
     - update_with_relations - update record with relations
 
     Expects DotModel to provide:
@@ -110,9 +107,9 @@ class OrmRelationsMixin(_Base):
                     print(f"{user.name}: {len(user.role_ids)} roles")
 
         Note:
-            Для загрузки одной записи по ID с relations можно использовать
-            get_with_relations(), но search() эффективнее для множества записей
-            благодаря batch-запросам.
+            Relations загружаются batch-запросами (один запрос на тип relation
+            для всех найденных записей). Для одной записи используйте
+            get(id, fields, fields_nested).
         """
         cls = self.__class__
 
@@ -197,253 +194,143 @@ class OrmRelationsMixin(_Base):
         return bool(result)
 
     @classmethod
-    async def get_with_relations(
+    async def _get_load_relations(
         cls,
-        id,
-        fields=None,
-        fields_info={},
-        session=None,
-    ) -> Self:
+        record,
+        fields: list[str],
+        fields_nested: dict[str, list[str]],
+        session,
+    ):
         """
-        Получить одну запись по ID с загрузкой relation полей.
+        Загрузка relation полей для одной записи.
 
-        В отличие от search(), выполняет отдельные запросы для каждого relation поля,
-        что менее эффективно для множества записей, но удобно для загрузки одной.
+        Используется из get() когда передан fields_nested.
+        Для каждого relation поля выполняет отдельный запрос.
+
+        Формат результата единообразен с search():
+            M2O  → объект модели или None
+            O2M  → список объектов
+            M2M  → список объектов
 
         Args:
-            id: ID записи для загрузки
-            fields: Список полей для загрузки (store + relation).
-                   Если не указан - загружаются все store поля.
-            fields_info: Словарь с вложенными полями для relation.
-                        Например: {"user_id": ["id", "name", "email"]}
-            session: DB сессия (опционально)
-
-        Returns:
-            Экземпляр модели с загруженными данными
-
-        Raises:
-            ValueError: Если запись не найдена
-
-        Example:
-            # Загрузить чат с операторами (только id и name)
-            chat = await Chat.get_with_relations(
-                chat_id,
-                fields=["id", "name", "operator_ids"],
-                fields_info={"operator_ids": ["id", "name"]}
-            )
-
-        Note:
-            Для загрузки множества записей с relations лучше использовать
-            search() - он выполняет batch-запросы для relations.
+            record: Экземпляр модели с загруженными store полями
+            fields: Список запрошенных полей (store + relation)
+            fields_nested: Словарь вложенных полей для relations
+            session: DB сессия
         """
-        if not fields:
-            fields = []
-        session = cls._get_db_session(session)
-
-        # защита, оставить только те поля, которые действительно хранятся в базе
-        fields_store = [
-            name for name in cls.get_store_fields() if name in fields
-        ]
-        # если вдруг они не заданы, или таких нет, взять все
-        if not fields_store:
-            fields_store = [name for name in cls.get_store_fields()]
-        if "id" not in fields_store:
-            fields_store.append("id")
-
-        stmt, values = cls._builder.build_get(id, fields_store)
-        record_raw: list[Any] = await session.execute(stmt, values)
-        if not record_raw:
-            raise ValueError("Record not found")
-        record = cls(**record_raw[0])
-
-        # защита, оставить только те поля, которые являются отношениями (m2m, o2m, m2o)
-        # добавлена информаци о вложенных полях
         fields_relation = [
-            (name, field, fields_info.get(name))
+            (name, field)
             for name, field in cls.get_relation_fields()
             if name in fields
         ]
 
-        # если есть хоть одна запись и вообще нужно читать поля связей
-        if record and fields_relation:
-            request_list = []
-            execute_list = []
+        if not fields_relation:
+            return
 
-            # добавить запрос на o2m
-            for name, field, fields_nested in fields_relation:
-                relation_table = field.relation_table
-                relation_table_field = field.relation_table_field
+        execute_list = []
+        request_meta = []  # (field_name, field_type, relation)
 
-                if not fields_nested and relation_table:
-                    fields_select = ["id"]
-                    if relation_table.get_fields().get("name"):
-                        fields_select.append("name")
-                    if isinstance(field, PolymorphicMany2one):
-                        fields_select = (
-                            relation_table.get_store_fields_omit_m2o()
-                        )
-                else:
-                    fields_select = fields_nested
+        for name, field in fields_relation:
+            relation_table = field.relation_table
+            relation_table_field = field.relation_table_field
 
-                if (
-                    isinstance(field, (Many2one, PolymorphicMany2one))
-                    and relation_table
-                ):
-                    m2o_id = getattr(record, name)
-                    stmt, val = relation_table._builder.build_get(
-                        m2o_id, fields=fields_select
-                    )
-                    req = RequestBuilderForm(
-                        stmt=stmt,
-                        value=val,
-                        field_name=name,
-                        field=field,
+            # Определяем какие поля вложенной модели загружать
+            nested = fields_nested.get(name)
+            if nested:
+                fields_select = nested
+            elif relation_table:
+                fields_select = ["id"]
+                if relation_table.get_fields().get("name"):
+                    fields_select.append("name")
+                if isinstance(field, PolymorphicMany2one):
+                    fields_select = relation_table.get_store_fields_omit_m2o()
+            else:
+                continue
+
+            if (
+                isinstance(field, (Many2one, PolymorphicMany2one))
+                and relation_table
+            ):
+                m2o_id = getattr(record, name)
+                if m2o_id is None or isinstance(m2o_id, Field):
+                    setattr(record, name, None)
+                    continue
+                execute_list.append(
+                    relation_table.search(
                         fields=fields_select,
+                        filter=[("id", "=", m2o_id)],
+                        limit=1,
                     )
-                    request_list.append(req)
-                    execute_list.append(
-                        session.execute(
-                            req.stmt,
-                            req.value,
-                            prepare=req.function_prepare,
-                            cursor=req.function_cursor,
-                        )
-                    )
-                # если m2m или o2m необходимо посчитать длину, для пагинации
-                if isinstance(field, Many2many):
-                    params = {
-                        "id": record.id,
-                        "comodel": relation_table,
-                        "relation": field.many2many_table,
-                        "column1": field.column1,
-                        "column2": field.column2,
-                        "fields": fields_select,
-                        "order": "desc",
-                        "start": 0,
-                        "end": 40,
-                        "sort": "id",
-                        "limit": 40,
-                    }
-                    # records
-                    execute_list.append(cls.get_many2many(**params))
-                    params["fields"] = ["id"]
-                    params["start"] = None
-                    params["end"] = None
-                    params["limit"] = None
-                    # len
-                    execute_list.append(cls.get_many2many(**params))
-                    req = RequestBuilderForm(
-                        stmt=None,
-                        value=None,
-                        field_name=name,
-                        field=field,
-                        fields=fields_select,
-                    )
-                    request_list.append(req)
+                )
+                request_meta.append((name, "m2o"))
 
-                if isinstance(field, One2many) and relation_table:
-                    params = {
-                        "start": 0,
-                        "end": 40,
-                        "limit": 40,
-                        "fields": fields_select,
-                        "filter": [(relation_table_field, "=", record.id)],
-                    }
-                    execute_list.append(relation_table.search(**params))
-                    params["fields"] = ["id"]
-                    params["start"] = None
-                    params["end"] = None
-                    params["limit"] = 1000
-                    execute_list.append(relation_table.search(**params))
-                    req = RequestBuilderForm(
-                        stmt=None,
-                        value=None,
-                        field_name=name,
-                        field=field,
+            elif isinstance(field, Many2many) and relation_table:
+                execute_list.append(
+                    cls.get_many2many(
+                        id=record.id,
+                        comodel=relation_table,
+                        relation=field.many2many_table,
+                        column1=field.column1,
+                        column2=field.column2,
                         fields=fields_select,
+                        limit=None,
                     )
-                    request_list.append(req)
+                )
+                request_meta.append((name, "m2m"))
 
-                if isinstance(field, PolymorphicOne2many) and relation_table:
-                    params = {
-                        "start": 0,
-                        "end": 40,
-                        "limit": 40,
-                        "fields": relation_table.get_store_fields_omit_m2o(),
-                        "filter": [
+            elif (
+                isinstance(field, One2many)
+                and relation_table
+                and relation_table_field
+            ):
+                execute_list.append(
+                    relation_table.search(
+                        fields=fields_select,
+                        filter=[(relation_table_field, "=", record.id)],
+                        limit=1000,
+                    )
+                )
+                request_meta.append((name, "o2m"))
+
+            elif isinstance(field, PolymorphicOne2many) and relation_table:
+                execute_list.append(
+                    relation_table.search(
+                        fields=relation_table.get_store_fields_omit_m2o(),
+                        filter=[
                             ("res_id", "=", record.id),
                             ("res_model", "=", record.__table__),
                         ],
-                    }
-                    execute_list.append(relation_table.search(**params))
-                    params["fields"] = ["id"]
-                    params["start"] = None
-                    params["end"] = None
-                    params["limit"] = 1000
-                    execute_list.append(relation_table.search(**params))
-                    req = RequestBuilderForm(
-                        stmt=None,
-                        value=None,
-                        field_name=name,
-                        field=field,
-                        fields=relation_table.get_store_fields_omit_m2o(),
+                        limit=1000,
                     )
-                    request_list.append(req)
+                )
+                request_meta.append((name, "o2m"))
 
-                if isinstance(field, One2one) and relation_table:
-                    params = {
-                        "limit": 1,
-                        "fields": fields_select,
-                        "filter": [(relation_table_field, "=", record.id)],
-                    }
-                    execute_list.append(relation_table.search(**params))
-                    req = RequestBuilderForm(
-                        stmt=None,
-                        value=None,
-                        field_name=name,
-                        field=field,
+            elif (
+                isinstance(field, One2one)
+                and relation_table
+                and relation_table_field
+            ):
+                execute_list.append(
+                    relation_table.search(
                         fields=fields_select,
+                        filter=[(relation_table_field, "=", record.id)],
+                        limit=1,
                     )
-                    request_list.append(req)
+                )
+                request_meta.append((name, "m2o"))
 
-            # выполняем последовательно в транзакции, параллельно вне транзакции
-            results = await execute_maybe_parallel(execute_list)
+        if not execute_list:
+            return
 
-            # добавляем атрибуты к исходному объекту,
-            # получая удобное обращение через дот-нотацию
-            i = 0
-            for request_builder in request_list:
-                result = results[i]
+        results = await execute_maybe_parallel(execute_list)
 
-                if isinstance(
-                    request_builder.field,
-                    (Many2one, PolymorphicMany2one, One2one),
-                ):
-                    # m2o нужно распаковать так как он тоже в списке
-                    # если пустой список, то установить None
-                    result = result[0] if result else None
-
-                if isinstance(
-                    request_builder.field,
-                    (Many2many, One2many, PolymorphicOne2many),
-                ):
-                    # если m2m или o2m необбзодимо взять два результатата
-                    # так как один из них это число всех строк таблицы
-                    # для пагинации
-                    fields_info = request_builder.field.relation_table.get_fields_info_list(
-                        request_builder.fields
-                    )
-                    result = {
-                        "data": result,
-                        "fields": fields_info,
-                        "total": len(results[i + 1]),
-                    }
-                    i += 1
-
-                setattr(record, request_builder.field_name, result)
-                i += 1
-
-        return record
+        for i, (name, rel_type) in enumerate(request_meta):
+            result = results[i]
+            if rel_type == "m2o":
+                setattr(record, name, result[0] if result else None)
+            else:
+                # o2m, m2m → список
+                setattr(record, name, result if result else [])
 
     async def update_with_relations(
         self, payload: _M, update_fields: list[str] | None = None, session=None

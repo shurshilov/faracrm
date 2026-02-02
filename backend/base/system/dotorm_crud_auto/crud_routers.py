@@ -303,21 +303,39 @@ class CRUDRouterGenerator(APIRouter):
                         fields_client.append(key)
                         fields_client_nested[key] = val
 
-            record = await Model.get_with_relations(
-                id, fields_client, fields_client_nested
+            record = await Model.get(
+                id,
+                fields=fields_client,
+                fields_nested=fields_client_nested,
             )
             if not record:
                 return JSONResponse(
                     content={"error": "#NOT_FOUND"},
                     status_code=HTTP_404_NOT_FOUND,
                 )
-            fields_info = Model.get_fields_info_form(fields_client)
 
+            fields_info = Model.get_fields_info_form(fields_client)
             fields_info = {field["name"]: field for field in fields_info}
+
+            response_data = record.json(
+                include=set(fields_client), mode=JsonMode.FORM
+            )
+
+            # Обернуть O2M/M2M в {data, fields, total} для UI
+            from backend.base.system.dotorm_crud_auto.crud_routers_v2 import (
+                _wrap_relations_for_ui,
+            )
+
+            await _wrap_relations_for_ui(
+                Model,
+                record,
+                response_data,
+                fields_client,
+                fields_client_nested,
+            )
+
             return {
-                "data": record.json(
-                    include=set(fields_client), mode=JsonMode.FORM
-                ),
+                "data": response_data,
                 "fields": fields_info,
             }
 

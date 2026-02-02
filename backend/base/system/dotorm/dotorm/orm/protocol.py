@@ -143,6 +143,16 @@ class DotModelProtocol(Protocol):
         fields_nested: dict[str, list[str]] | None = None,
     ) -> None: ...
 
+    # From OrmRelationsMixin
+    @classmethod
+    async def _get_load_relations(
+        cls,
+        record: Any,
+        fields: list[str],
+        fields_nested: dict[str, list[str]],
+        session: Any,
+    ) -> None: ...
+
     # From DDLMixin
     @staticmethod
     def format_default_value(value: Any) -> str: ...

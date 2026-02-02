@@ -184,14 +184,61 @@ class OrmPrimaryMixin(_Base):
         return records
 
     @hybridmethod
-    async def get(self, id, fields: list[str] = [], session=None) -> Self:
+    async def get(
+        self,
+        id,
+        fields: list[str] = [],
+        fields_nested: dict[str, list[str]] | None = None,
+        session=None,
+    ) -> Self:
+        """
+        Получить запись по ID.
+
+        Args:
+            id: ID записи
+            fields: Список полей для загрузки (store + relation).
+            fields_nested: Словарь вложенных полей для relation.
+                Если передан — relation поля из fields загружаются:
+                    M2O  → объект модели или None
+                    O2M  → список объектов []
+                    M2M  → список объектов []
+                Если не передан — только store поля (M2O = integer FK).
+                Пример: {"user_id": ["id", "name"], "tag_ids": ["id", "name"]}
+            session: DB сессия
+
+        Returns:
+            Экземпляр модели
+
+        Raises:
+            ValueError: Если запись не найдена
+
+        Example:
+            # Только store поля
+            chat = await Chat.get(5)
+            chat.user_id  # → 42 (int)
+
+            # С relations
+            chat = await Chat.get(5,
+                fields=["id", "name", "user_id", "message_ids"],
+                fields_nested={"user_id": ["id", "name"]}
+            )
+            chat.user_id  # → User(id=42, name="John")
+        """
         cls = self.__class__
 
         await cls._check_access(Operation.READ, record_ids=[id])
 
         session = cls._get_db_session(session)
 
-        stmt, values = cls._builder.build_get(id, fields)
+        # Фильтруем fields — оставляем только store поля для SQL
+        store_fields = cls.get_store_fields()
+        fields_store = [f for f in fields if f in store_fields] if fields else []
+        if not fields_store:
+            fields_store = list(store_fields)
+        if "id" not in fields_store:
+            fields_store.append("id")
+
+        stmt, values = cls._builder.build_get(id, fields_store)
         record = await session.execute(
             stmt, values, prepare=cls.prepare_form_id
         )
@@ -199,6 +246,13 @@ class OrmPrimaryMixin(_Base):
         if not record:
             raise ValueError("Record not found")
         assert isinstance(record, cls)
+
+        # Загрузка relations если передан fields_nested
+        if fields_nested is not None and fields:
+            await cls._get_load_relations(
+                record, fields, fields_nested, session
+            )
+
         return record
 
     @hybridmethod
