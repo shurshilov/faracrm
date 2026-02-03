@@ -15,6 +15,9 @@ import {
   IconChevronRight,
 } from '@tabler/icons-react';
 import { useSearchQuery } from '@/services/api/crudApi';
+import { API_BASE_URL } from '@/services/baseQueryWithReauth';
+import { useSelector } from 'react-redux';
+import { selectCurrentSession } from '@/slices/authSlice';
 
 interface ReportTemplate {
   id: number;
@@ -31,6 +34,7 @@ interface PrintButtonProps {
 }
 
 export function PrintButton({ model, recordId }: PrintButtonProps) {
+  const session = useSelector(selectCurrentSession);
   const { data, isLoading } = useSearchQuery({
     model: 'report_template',
     filter: [
@@ -48,10 +52,41 @@ export function PrintButton({ model, recordId }: PrintButtonProps) {
     return null;
   }
 
-  const handlePrint = (templateId: number, format: 'docx' | 'pdf') => {
-    if (!recordId) return;
-    const url = `/api/reports/generate/${templateId}/${recordId}?output_format=${format}`;
-    window.open(url, '_blank');
+  const handlePrint = async (templateId: number, format: 'docx' | 'pdf') => {
+    if (!recordId || !session?.token) return;
+    const url = `${API_BASE_URL}/reports/generate/${templateId}/${recordId}?output_format=${format}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        console.error('Report generation failed:', response.status);
+        return;
+      }
+
+      // Получаем имя файла из заголовка или генерируем
+      const disposition = response.headers.get('Content-Disposition');
+      const filenameMatch = disposition?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      const filename = filenameMatch
+        ? filenameMatch[1].replace(/['"]/g, '')
+        : `report_${templateId}_${recordId}.${format}`;
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Report download error:', error);
+    }
   };
 
   // Один шаблон — простая кнопка с выбором формата

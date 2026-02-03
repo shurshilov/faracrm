@@ -56,16 +56,16 @@ async def generate_report(
             "template_file",
             "output_format",
         ],
-        fields_nested={
-            "template_file": [
-                "id",
-                "name",
-                "storage_file_url",
-                "storage_file_id",
-                "mimetype",
-                "storage_id",
-            ],
-        },
+        # fields_nested={
+        #     "template_file": [
+        #         "id",
+        #         "name",
+        #         "storage_file_url",
+        #         "storage_file_id",
+        #         "mimetype",
+        #         "storage_id",
+        #     ],
+        # },
     )
     if not templates:
         return JSONResponse(
@@ -75,6 +75,16 @@ async def generate_report(
 
     tmpl = templates[0]
     attachment = tmpl.template_file
+    if attachment is None:
+        return JSONResponse(
+            status_code=HTTP_404_NOT_FOUND,
+            content={"error": f"Template #{template_id} Attachment not found"},
+        )
+    attachment = await env.models.attachment.search(
+        filter=[("id", "=", attachment.id)],
+        # fields=["id", "storage_id", "storage_file_url"]
+    )
+    attachment = attachment[0]
     model_name = tmpl.model_name or ""
     func_name = tmpl.python_function or ""
     fmt = output_format or tmpl.output_format or "docx"
@@ -147,15 +157,15 @@ async def generate_report(
     # 5. Отдаём файл
     ext = "pdf" if fmt == "pdf" else "docx"
     filename = f"{report_name}_{record_id}.{ext}"
-    filename_enc = quote(filename)
+    filename_enc = quote(filename, safe="")
 
     return Response(
         content=file_bytes,
         media_type=content_type,
         headers={
             "Content-Disposition": (
-                f'attachment; filename="{filename_enc}"; '
-                f"filename*=UTF-8''{filename_enc}"
+                f'attachment; filename="{filename_enc}"'
+                # f"filename*=UTF-8''{quote(filename_enc, safe="")}"
             ),
         },
     )

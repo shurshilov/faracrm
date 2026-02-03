@@ -112,13 +112,13 @@ class SaleContractMixin(_Base):
                 "name",
                 "date_order",
                 "notes",
-                "parent_id",
+                "partner_id",
                 "user_id",
                 "company_id",
                 "order_line_ids",
             ],
             fields_nested={
-                "parent_id": ["id", "name", "vat", "inn", "kpp"],
+                "partner_id": ["id", "name", "vat", "inn", "kpp"],
                 "user_id": ["id", "name"],
                 "company_id": [
                     "id",
@@ -172,7 +172,7 @@ class SaleContractMixin(_Base):
         )
 
         # ── Покупатель ──
-        partner = sale.parent_id
+        partner = sale.partner_id
         partner_name = partner.name or "" if partner else ""
         partner_inn = partner.inn or "" if partner else ""
         partner_kpp = partner.kpp or "" if partner else ""
