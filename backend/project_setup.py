@@ -46,7 +46,6 @@ from backend.base.crm.sales.models.sale_line import SaleLine
 from backend.base.crm.partners.models.partners import Partner
 from backend.base.crm.partners.models.contact import Contact
 from backend.base.crm.partners.models.contact_type import ContactType
-from backend.base.crm.company.models.company import Company
 from backend.base.crm.products.models.product import Product
 from backend.base.crm.products.models.category import Category
 from backend.base.crm.products.models.uom import Uom
@@ -76,6 +75,13 @@ from backend.base.crm.tasks.models.task import Task
 # Activity
 from backend.base.crm.activity.models.activity_type import ActivityType
 from backend.base.crm.activity.models.activity import Activity
+
+from backend.base.crm.report_docx.models.report_template import ReportTemplate
+from backend.base.crm.contract.models.contract import Contract
+from backend.base.crm.contract.models.company_ext import CompanyContractMixin
+from backend.base.crm.contract.models.partner_ext import PartnerContractMixin
+from backend.base.crm.contract.models.sale_ext import SaleContractMixin
+
 
 # когда есть расширение чтобы IDE видела все поля в модели делаем хак
 if TYPE_CHECKING:
@@ -110,6 +116,18 @@ else:
         AttachmentStorage,
     )
 
+# когда есть расширение чтобы IDE видела все поля в модели делаем хак
+if TYPE_CHECKING:
+    from backend.base.crm.company.models.company import Company as CompanyBase
+
+    class Company(
+        CompanyContractMixin,
+        CompanyBase,
+    ): ...
+
+else:
+    from backend.base.crm.company.models.company import Company
+
 from backend.base.crm.chat.models.chat_external_account import (
     ChatExternalAccount,
 )
@@ -140,6 +158,8 @@ from backend.base.crm.chat_telegram.app import ChatTelegramApp
 from backend.base.crm.chat_email.app import ChatEmailApp
 from backend.base.crm.tasks.app import TasksApp
 from backend.base.crm.activity.app import ActivityApp
+from backend.base.crm.report_docx.app import ReportDocxApp
+from backend.base.crm.contract.app import ContractApp
 
 
 # services
@@ -225,6 +245,8 @@ class Models(ModelsCore, ExtensibleMixin):
     # activity
     activity = Activity
     activity_type = ActivityType
+    report_template = ReportTemplate
+    contract = Contract
 
 
 class Apps(AppsCore):
@@ -248,6 +270,8 @@ class Apps(AppsCore):
     chat_email = ChatEmailApp()
     task = TasksApp()
     activity = ActivityApp()
+    report_docx = ReportDocxApp()
+    contract = ContractApp()
 
     dotorm_crud_auto = DotormCrudAutoService()
     # dotorm_databases_postgres = DotormDatabasesPostgresService()

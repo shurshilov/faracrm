@@ -19,6 +19,8 @@ import {
   IconProgress,
   IconPalette,
 } from '@tabler/icons-react';
+import { useParams } from 'react-router-dom';
+import { PrintButton } from '@/fara_report_docx/PrintButton';
 
 interface SaleStage extends FaraRecord {
   name: string;
@@ -31,8 +33,10 @@ interface SaleStage extends FaraRecord {
  * Форма заказа на продажу
  */
 export function ViewFormSales(props: ViewFormProps) {
+  const { id } = useParams<{ id: string }>();
+
   return (
-    <Form<Sale> model="sale" {...props}>
+    <Form<Sale> model="sale" {...props} actions={<PrintButton model="sale" recordId={id} />}>
       {/* Основная информация */}
       <FormSection title="Основная информация" icon={<IconShoppingCart size={18} />}>
         <FormRow cols={2}>

@@ -239,6 +239,19 @@ export const modelsConfig: Record<string, ModelConfig> = {
       import('@/fara_sales/Form').then(m => ({ default: m.ViewFormSaleLines })),
   },
 
+  // === Contract ===
+  contract: {
+    menu: MenuGroups.sales,
+    list: () =>
+      import('@/fara_contract/List').then(m => ({
+        default: m.ViewListContract,
+      })),
+    form: () =>
+      import('@/fara_contract/Form').then(m => ({
+        default: m.ViewFormContract,
+      })),
+  },
+
   // === Files ===
   attachments: {
     menu: MenuGroups.files,
@@ -489,6 +502,19 @@ export const modelsConfig: Record<string, ModelConfig> = {
     form: () =>
       import('@/fara_system_settings/Form').then(m => ({
         default: m.ViewFormSystemSettings,
+      })),
+  },
+
+  // === Report Templates ===
+  report_template: {
+    menu: MenuGroups.settings,
+    list: () =>
+      import('@/fara_report_docx/List').then(m => ({
+        default: m.ViewListReportTemplate,
+      })),
+    form: () =>
+      import('@/fara_report_docx/Form').then(m => ({
+        default: m.ViewFormReportTemplate,
       })),
   },
 };
