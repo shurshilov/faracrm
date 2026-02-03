@@ -185,11 +185,8 @@ export type RouteSaleSearchMany2ManyGetApiResponse =
   /** status 200 успешно */ any;
 export type RouteSaleSearchMany2ManyGetApiArg = {
   id: number;
-  name: null;
   fields: string[];
   order?: 'desc' | 'asc';
-  start?: number | null;
-  end?: number | null;
   sort?: string;
   limit?: number;
 };
@@ -231,11 +228,8 @@ export type RouteSaleLineSearchMany2ManyGetApiResponse =
   /** status 200 успешно */ any;
 export type RouteSaleLineSearchMany2ManyGetApiArg = {
   id: number;
-  name: null;
   fields: string[];
   order?: 'desc' | 'asc';
-  start?: number | null;
-  end?: number | null;
   sort?: string;
   limit?: number;
 };
@@ -274,29 +268,13 @@ export type SchemaRelationNested = {
   name: string;
 };
 export type SaleReadSearchOutput = {
-  id?: number | null;
-  name?: string | null;
-  active?: boolean | null;
-  user_id?: SchemaRelationNested | null;
-  parent_id?: SchemaRelationNested | null;
-  company_id?: SchemaRelationNested | null;
-  order_line_ids?: SchemaRelationNested[] | null;
-  notes?: string | null;
-  date_order?: string | null;
-  origin?: string | null;
-  website?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  mobile?: string | null;
 };
 export type GetListField = {
   name: string;
   type: string;
-  relation?: string | null;
 };
 export type SchemaSearchOutputListSaleReadSearchOutput = {
   data: SaleReadSearchOutput[];
-  total?: number | null;
   fields: GetListField[];
 };
 export type SaleSearchInput = {
@@ -305,35 +283,25 @@ export type SaleSearchInput = {
     | 'name'
     | 'active'
     | 'user_id'
-    | 'parent_id'
+    | 'partner_id'
     | 'company_id'
     | 'order_line_ids'
     | 'notes'
     | 'date_order'
     | 'origin'
-    | 'website'
-    | 'email'
-    | 'phone'
-    | 'mobile'
   )[];
-  end?: number | null;
   order?: 'DESC' | 'ASC' | 'desc' | 'asc';
   sort?:
     | 'id'
     | 'name'
     | 'active'
     | 'user_id'
-    | 'parent_id'
+    | 'partner_id'
     | 'company_id'
     | 'order_line_ids'
     | 'notes'
     | 'date_order'
     | 'origin'
-    | 'website'
-    | 'email'
-    | 'phone'
-    | 'mobile';
-  start?: number | null;
   limit?: number;
   filter?: (
     | ['id', '=' | '>' | '<' | '!=' | '>=' | '<=', number]
@@ -344,7 +312,7 @@ export type SaleSearchInput = {
       ]
     | ['active', '=' | '!=', boolean]
     | ['user_id', '=' | '>' | '<' | '!=' | '>=' | '<=', number]
-    | ['parent_id', '=' | '>' | '<' | '!=' | '>=' | '<=', number]
+    | ['partner_id', '=' | '>' | '<' | '!=' | '>=' | '<=', number]
     | ['company_id', '=' | '>' | '<' | '!=' | '>=' | '<=', number]
     | ['order_line_ids', 'in' | 'not in', number[]]
     | [
@@ -385,18 +353,6 @@ export type SchemaCreateOutput = {
   id: number;
 };
 export type SchemaSaleLineRelationNestedUpdate = {
-  sale_id?: number | 'VirtualId' | null;
-  sequence?: number | null;
-  notes?: string | null;
-  product_id?: number | 'VirtualId' | null;
-  product_uom_qty?: number | null;
-  product_uom_id?: number | 'VirtualId' | null;
-  tax_id?: number | 'VirtualId' | null;
-  price_unit?: number | null;
-  discount?: number | null;
-  price_subtotal?: number | null;
-  price_tax?: number | null;
-  price_total?: number | null;
 };
 export type SchemaRelationOne2ManyUpdateCreateSchemaSaleLineRelationNestedUpdate =
   {
@@ -407,71 +363,23 @@ export type SaleCreate = {
   name: string;
   active?: boolean;
   user_id: number | 'VirtualId';
-  parent_id: number | 'VirtualId';
+  partner_id: number | 'VirtualId';
   company_id: number | 'VirtualId';
   order_line_ids: SchemaRelationOne2ManyUpdateCreateSchemaSaleLineRelationNestedUpdate;
   notes: string;
   date_order?: string;
   origin: string;
-  website: string;
-  email: string;
-  phone: string;
-  mobile: string;
 };
 export type SchemaUserNestedPartial = {
-  id?: number | null;
-  name?: string | null;
-  login?: string | null;
-  email?: string | null;
-  password_hash?: string | null;
-  password_salt?: string | null;
-  image?: SchemaRelationNested | null;
-  image_ids?: SchemaRelationNested[] | null;
-  role_ids?: SchemaRelationNested[] | null;
 };
 export type SchemaPartnerNestedPartial = {
-  id?: number | null;
-  name?: string | null;
-  active?: boolean | null;
-  parent_id?: SchemaRelationNested | null;
-  child_ids?: SchemaRelationNested[] | null;
-  user_id?: SchemaRelationNested | null;
-  company_id?: SchemaRelationNested | null;
-  tz?: string | null;
-  lang?: string | null;
-  vat?: string | null;
-  notes?: string | null;
-  website?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  mobile?: string | null;
 };
 export type SchemaCompanyNestedPartial = {
-  id?: number | null;
-  name?: string | null;
-  active?: boolean | null;
-  sequence?: number | null;
-  parent_id?: SchemaRelationNested | null;
-  child_ids?: SchemaRelationNested[] | null;
 };
 export type SchemaSaleLineNestedPartial = {
-  id?: number | null;
-  sale_id?: SchemaRelationNested | null;
-  sequence?: number | null;
-  notes?: string | null;
-  product_id?: SchemaRelationNested | null;
-  product_uom_qty?: number | null;
-  product_uom_id?: SchemaRelationNested | null;
-  tax_id?: SchemaRelationNested | null;
-  price_unit?: number | null;
-  discount?: number | null;
-  price_subtotal?: number | null;
-  price_tax?: number | null;
-  price_total?: number | null;
 };
 export type SchemaSearchOutputListSchemaSaleLineNestedPartial = {
   data: SchemaSaleLineNestedPartial[];
-  total?: number | null;
   fields: GetListField[];
 };
 export type Sale = {
@@ -479,23 +387,16 @@ export type Sale = {
   name: string;
   active?: boolean;
   user_id: SchemaUserNestedPartial;
-  parent_id: SchemaPartnerNestedPartial;
+  partner_id: SchemaPartnerNestedPartial;
   company_id: SchemaCompanyNestedPartial;
   order_line_ids: SchemaSearchOutputListSchemaSaleLineNestedPartial;
   notes: string;
   date_order?: string;
   origin: string;
-  website: string;
-  email: string;
-  phone: string;
-  mobile: string;
 };
 export type GetFormField = {
   name: string;
   type: string;
-  relatedModel?: string | null;
-  relatedField?: string | null;
-  options?: any[] | null;
 };
 export type SchemaGetOutputSale = {
   data: Sale;
@@ -527,48 +428,18 @@ export type SchemaGetInput = {
         | 'name'
         | 'active'
         | 'user_id'
-        | 'parent_id'
+        | 'partner_id'
         | 'company_id'
         | 'notes'
         | 'date_order'
         | 'origin'
-        | 'website'
-        | 'email'
-        | 'phone'
-        | 'mobile'
       )
     | SchemaGetFieldRelationInput
   )[];
 };
 export type SaleUpdate = {
-  name?: string | null;
-  active?: boolean | null;
-  user_id?: number | 'VirtualId' | null;
-  parent_id?: number | 'VirtualId' | null;
-  company_id?: number | 'VirtualId' | null;
-  order_line_ids?: SchemaRelationOne2ManyUpdateCreateSchemaSaleLineRelationNestedUpdate | null;
-  notes?: string | null;
-  date_order?: string | null;
-  origin?: string | null;
-  website?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  mobile?: string | null;
 };
 export type SaleUpdate2 = {
-  name?: string | null;
-  active?: boolean | null;
-  user_id?: number | 'VirtualId' | null;
-  parent_id?: number | 'VirtualId' | null;
-  company_id?: number | 'VirtualId' | null;
-  order_line_ids?: SchemaRelationOne2ManyUpdateCreateSchemaSaleLineRelationNestedUpdate | null;
-  notes?: string | null;
-  date_order?: string | null;
-  origin?: string | null;
-  website?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  mobile?: string | null;
 };
 export type SchemaGetFieldRelationInput2 = {
   order_line_ids: (
@@ -594,37 +465,19 @@ export type SchemaGetInput2 = {
         | 'name'
         | 'active'
         | 'user_id'
-        | 'parent_id'
+        | 'partner_id'
         | 'company_id'
         | 'notes'
         | 'date_order'
         | 'origin'
-        | 'website'
-        | 'email'
-        | 'phone'
-        | 'mobile'
       )
     | SchemaGetFieldRelationInput2
   )[];
 };
 export type SaleLineReadSearchOutput = {
-  id?: number | null;
-  sale_id?: SchemaRelationNested | null;
-  sequence?: number | null;
-  notes?: string | null;
-  product_id?: SchemaRelationNested | null;
-  product_uom_qty?: number | null;
-  product_uom_id?: SchemaRelationNested | null;
-  tax_id?: SchemaRelationNested | null;
-  price_unit?: number | null;
-  discount?: number | null;
-  price_subtotal?: number | null;
-  price_tax?: number | null;
-  price_total?: number | null;
 };
 export type SchemaSearchOutputListSaleLineReadSearchOutput = {
   data: SaleLineReadSearchOutput[];
-  total?: number | null;
   fields: GetListField[];
 };
 export type SaleLineSearchInput = {
@@ -643,7 +496,6 @@ export type SaleLineSearchInput = {
     | 'price_tax'
     | 'price_total'
   )[];
-  end?: number | null;
   order?: 'DESC' | 'ASC' | 'desc' | 'asc';
   sort?:
     | 'id'
@@ -659,7 +511,6 @@ export type SaleLineSearchInput = {
     | 'price_subtotal'
     | 'price_tax'
     | 'price_total';
-  start?: number | null;
   limit?: number;
   filter?: (
     | ['id', '=' | '>' | '<' | '!=' | '>=' | '<=', number]
@@ -697,46 +548,12 @@ export type SaleLineCreate = {
   price_total: number;
 };
 export type SchemaSaleNestedPartial = {
-  id?: number | null;
-  name?: string | null;
-  active?: boolean | null;
-  user_id?: SchemaRelationNested | null;
-  parent_id?: SchemaRelationNested | null;
-  company_id?: SchemaRelationNested | null;
-  order_line_ids?: SchemaRelationNested[] | null;
-  notes?: string | null;
-  date_order?: string | null;
-  origin?: string | null;
-  website?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  mobile?: string | null;
 };
 export type SchemaProductNestedPartial = {
-  id?: number | null;
-  name?: string | null;
-  sequence?: number | null;
-  type?: string | null;
-  uom_id?: SchemaRelationNested | null;
-  company_id?: SchemaRelationNested | null;
-  category_id?: SchemaRelationNested | null;
-  default_code?: string | null;
-  code?: string | null;
-  barcode?: string | null;
-  extra_price?: number | null;
-  list_price?: number | null;
-  standard_price?: number | null;
-  volume?: number | null;
-  weight?: number | null;
-  image?: SchemaRelationNested | null;
 };
 export type SchemaUomNestedPartial = {
-  id?: number | null;
-  name?: string | null;
 };
 export type SchemaTaxNestedPartial = {
-  id?: number | null;
-  name?: string | null;
 };
 export type SaleLine = {
   id: number;
@@ -777,18 +594,6 @@ export type SchemaGetInput3 = {
   )[];
 };
 export type SaleLineUpdate = {
-  sale_id?: number | 'VirtualId' | null;
-  sequence?: number | null;
-  notes?: string | null;
-  product_id?: number | 'VirtualId' | null;
-  product_uom_qty?: number | null;
-  product_uom_id?: number | 'VirtualId' | null;
-  tax_id?: number | 'VirtualId' | null;
-  price_unit?: number | null;
-  discount?: number | null;
-  price_subtotal?: number | null;
-  price_tax?: number | null;
-  price_total?: number | null;
 };
 export type SchemaGetInput4 = {
   fields: (

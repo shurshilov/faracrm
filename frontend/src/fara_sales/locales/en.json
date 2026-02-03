@@ -11,17 +11,14 @@
     "title": "Sales Orders",
     "name": "Order Number",
     "date_order": "Order Date",
-    "parent_id": "Customer",
+    "partner_id": "Customer",
     "user_id": "Salesperson",
     "company_id": "Company",
     "origin": "Source Document",
     "notes": "Notes",
     "active": "Active",
     "order_line_ids": "Order Lines",
-    "email": "Email",
-    "phone": "Phone",
-    "mobile": "Mobile",
-    "website": "Website"
+    "contact_ids": "Contacts"
   },
   "sale_line": {
     "title": "Order Lines",

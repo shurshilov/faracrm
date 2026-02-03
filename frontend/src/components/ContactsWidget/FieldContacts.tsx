@@ -26,6 +26,19 @@ interface FieldContactsProps {
   maxContacts?: number;
   /** Скрыть звёздочку основного */
   hidePrimary?: boolean;
+  /**
+   * Имя поля формы, из которого брать ID владельца контактов.
+   * Например, parentField="partner_id" — контакты загружаются по partner_id клиента.
+   * Если не указан — используется id текущей записи (поведение по умолчанию).
+   */
+  parentField?: string;
+  /**
+   * Модель владельца контактов (для определения relatedModel/relatedField).
+   * Например, parentModel="partners" — используется когда contact_ids не является
+   * полем текущей модели, а берётся из связанной модели.
+   * Если не указан — берётся из fieldsServer[name].
+   */
+  parentModel?: string;
   /** Вложенные поля (игнорируются, нужны только для запроса) */
   children?: React.ReactNode;
 }
@@ -55,6 +68,8 @@ export function FieldContacts({
   allowedTypes,
   maxContacts,
   hidePrimary,
+  parentField,
+  parentModel,
   children,
 }: FieldContactsProps) {
   const form = useFormContext();
@@ -63,23 +78,46 @@ export function FieldContacts({
 
   const displayLabel = label ?? name;
 
+  // Определяем ID владельца контактов:
+  // Если указан parentField — берём значение Many2one поля из формы (например partner_id)
+  // Иначе — используем id текущей записи из URL
+  const parentValue = parentField ? form.getValues()?.[parentField] : null;
+  const ownerId: number | null = parentField
+    ? (typeof parentValue === 'object' && parentValue !== null
+        ? parentValue.id
+        : typeof parentValue === 'number'
+          ? parentValue
+          : null)
+    : (id ? Number(id) : null);
+
+  // Определяем relatedField для фильтра запроса:
+  // Если parentField указан — используем его как фильтр (partner_id)
+  // Иначе — берём из метаданных сервера
+  const relatedField = parentField
+    ? parentField
+    : (fieldsServer[name]?.relatedField || 'partner_id');
+
+  // Определяем модель для запроса контактов:
+  // Если parentModel указан — берём relatedModel из fieldsServer родительской модели
+  // через parentModel + name. Иначе — из fieldsServer текущей модели.
+  // Фоллбэк — 'contact'.
+  const queryModel = fieldsServer[name]?.relatedModel || 'contact';
+
   // Локальное состояние для контактов
   const [contacts, setContacts] = useState<Contact[]>([]);
 
   // Запрос к связанной модели contact
   const { data, isFetching } = useSearchQuery(
     {
-      model: fieldsServer[name]?.relatedModel || 'contact',
+      model: queryModel,
       fields: ['id', 'contact_type_id', 'name', 'is_primary'],
       filter: [
-        [fieldsServer[name]?.relatedField || 'partner_id', '=', Number(id)],
+        [relatedField, '=', ownerId!],
       ],
       limit: 100,
     },
     {
-      skip: !fieldsServer[name]?.relatedModel || !id,
-      // Принудительно обновлять данные при каждом монтировании,
-      // чтобы не использовать устаревший кэш
+      skip: !ownerId,
       refetchOnMountOrArgChange: true,
     },
   );
@@ -100,16 +138,13 @@ export function FieldContacts({
     }
   }, [data, isFetching]);
 
-  // Сброс при смене записи
+  // Сброс при смене записи или владельца
   useEffect(() => {
     setContacts([]);
-  }, [id]);
+  }, [id, ownerId]);
 
   const handleChange = (newContacts: Contact[]) => {
     setContacts(newContacts);
-
-    // Получаем relatedField из fieldsServer
-    const relatedField = fieldsServer[name]?.relatedField || 'partner_id';
 
     // Собираем изменения для сохранения
     const created: any[] = [];
@@ -121,8 +156,7 @@ export function FieldContacts({
           contact_type_id: contact.contact_type_id,
           name: contact.name,
           is_primary: contact.is_primary,
-          // Если запись уже существует - используем её ID, иначе VirtualId
-          [relatedField]: id ? Number(id) : 'VirtualId',
+          [relatedField]: ownerId || 'VirtualId',
         });
       } else if (contact._isDeleted && contact.id) {
         deleted.push(contact.id);

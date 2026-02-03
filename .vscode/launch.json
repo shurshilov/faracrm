@@ -21,7 +21,7 @@
                 "debug",
                 "--reload",
                 "--reload-exclude",
-                "filestore/*",
+                "'filestore/*'",
                 // "--http",
                 // "httptools",
                 "--workers",

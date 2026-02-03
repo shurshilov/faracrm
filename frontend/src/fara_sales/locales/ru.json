@@ -11,17 +11,14 @@
     "title": "Заказы на продажу",
     "name": "Номер заказа",
     "date_order": "Дата заказа",
-    "parent_id": "Клиент",
+    "partner_id": "Клиент",
     "user_id": "Менеджер",
     "company_id": "Компания",
     "origin": "Источник",
     "notes": "Заметки",
     "active": "Активен",
     "order_line_ids": "Позиции заказа",
-    "email": "Email",
-    "phone": "Телефон",
-    "mobile": "Мобильный",
-    "website": "Вебсайт"
+    "contact_ids": "Контакты"
   },
   "sale_line": {
     "title": "Позиции заказа",

@@ -9,7 +9,7 @@ export function ViewListSales() {
       <Field name="id" />
       <Field name="name" />
       <Field name="date_order" />
-      <Field name="parent_id" />
+      <Field name="partner_id" />
       <Field name="user_id" />
       <Field name="company_id" />
       <Field name="stage_id" />

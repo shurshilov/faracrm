@@ -6,7 +6,7 @@ export function ViewKanbanSales() {
   return (
     <Kanban<Sale>
       model="sale"
-      fields={['id', 'name', 'parent_id', 'user_id', 'date_order']}
+      fields={['id', 'name', 'partner_id', 'user_id', 'date_order']}
       groupByField="stage_id"
       groupByModel="sale_stage"
     />

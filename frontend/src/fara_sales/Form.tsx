@@ -13,7 +13,7 @@ import {
 import {
   IconShoppingCart,
   IconUser,
-  IconCalendar,
+  IconAddressBook,
   IconList,
   IconReceipt,
   IconProgress,
@@ -21,6 +21,7 @@ import {
 } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { PrintButton } from '@/fara_report_docx/PrintButton';
+import { FieldContacts } from '@/components/ContactsWidget';
 
 interface SaleStage extends FaraRecord {
   name: string;
@@ -44,7 +45,7 @@ export function ViewFormSales(props: ViewFormProps) {
           <Field name="stage_id" label="Стадия" />
         </FormRow>
         <FormRow cols={2}>
-          <Field name="parent_id" label="Клиент" />
+          <Field name="partner_id" label="Клиент" />
           <Field name="company_id" label="Компания" />
         </FormRow>
         <Field name="active" label="Активен" />
@@ -62,16 +63,14 @@ export function ViewFormSales(props: ViewFormProps) {
         </FormRow>
       </FormSection>
 
-      {/* Контакты */}
-      <FormSection title="Контактная информация" icon={<IconCalendar size={18} />}>
-        <FormRow cols={2}>
-          <Field name="email" label="Email" />
-          <Field name="phone" label="Телефон" />
-        </FormRow>
-        <FormRow cols={2}>
-          <Field name="mobile" label="Мобильный" />
-          <Field name="website" label="Вебсайт" />
-        </FormRow>
+      {/* Контакты клиента */}
+      <FormSection title="Контакты клиента" icon={<IconAddressBook size={18} />}>
+        <FieldContacts
+          name="contact_ids"
+          label="Контакты"
+          parentField="partner_id"
+          parentModel="partners"
+        />
       </FormSection>
 
       {/* Вкладки */}

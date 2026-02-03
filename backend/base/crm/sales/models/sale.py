@@ -43,9 +43,9 @@ class Sale(DotModel):
         # index=True,
         ondelete="restrict",
     )
-    parent_id: "Partner" = Many2one(
+    partner_id: "Partner" = Many2one(
         lambda: env.models.partner,
-        string="Parent partner",
+        string="Client",
         index=True,
         ondelete="restrict",
     )
@@ -55,12 +55,8 @@ class Sale(DotModel):
     order_line_ids: list["SaleLine"] = One2many(
         lambda: env.models.sale_line, "order_id", string="Order Lines"
     )
-    notes: str = Text(string="Notes")
+    notes: str | None = Text(string="Notes")
     date_order: datetime.datetime = Datetime(
         string="Order Date", default=datetime.datetime.now
     )
     origin: str = Char(string="Source Document")
-    website: str = Char(string="Website URL")
-    email: str = Char(string="Email")
-    phone: str = Char(string="phone")
-    mobile: str = Char(string="mobile")
