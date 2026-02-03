@@ -12,7 +12,6 @@ import {
   IconPrinter,
   IconFileTypePdf,
   IconFileTypeDocx,
-  IconChevronRight,
 } from '@tabler/icons-react';
 import { useSearchQuery } from '@/services/api/crudApi';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
@@ -68,12 +67,16 @@ export function PrintButton({ model, recordId }: PrintButtonProps) {
         return;
       }
 
-      // Получаем имя файла из заголовка или генерируем
+      // Получаем имя файла из заголовка
       const disposition = response.headers.get('Content-Disposition');
-      const filenameMatch = disposition?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-      const filename = filenameMatch
-        ? filenameMatch[1].replace(/['"]/g, '')
-        : `report_${templateId}_${recordId}.${format}`;
+      let filename = `report_${templateId}_${recordId}.${format}`;
+
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";\n]+)"?/);
+        if (match) {
+          filename = decodeURIComponent(match[1].trim());
+        }
+      }
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
@@ -89,41 +92,26 @@ export function PrintButton({ model, recordId }: PrintButtonProps) {
     }
   };
 
-  // Один шаблон — простая кнопка с выбором формата
+  // Один шаблон — простая кнопка, формат из шаблона
   if (templates.length === 1) {
     const tmpl = templates[0];
+    const format = tmpl.output_format || 'docx';
+    const FormatIcon = format === 'pdf' ? IconFileTypePdf : IconFileTypeDocx;
+
     return (
-      <Menu shadow="md" width={140} position="bottom-end">
-        <Menu.Target>
-          <Button
-            variant="light"
-            size="xs"
-            leftSection={
-              isLoading ? <Loader size={14} /> : <IconPrinter size={16} />
-            }
-          >
-            Печать
-          </Button>
-        </Menu.Target>
-        <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<IconFileTypePdf size={16} />}
-            onClick={() => handlePrint(tmpl.id, 'pdf')}
-          >
-            PDF
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<IconFileTypeDocx size={16} />}
-            onClick={() => handlePrint(tmpl.id, 'docx')}
-          >
-            DOCX
-          </Menu.Item>
-        </Menu.Dropdown>
-      </Menu>
+      <Button
+        variant="light"
+        size="xs"
+        leftSection={
+          isLoading ? <Loader size={14} /> : <IconPrinter size={16} />
+        }
+        onClick={() => handlePrint(tmpl.id, format)}>
+        Печать
+      </Button>
     );
   }
 
-  // Несколько шаблонов — меню с подменю
+  // Несколько шаблонов — меню со списком
   return (
     <Menu shadow="md" width={220} position="bottom-end">
       <Menu.Target>
@@ -132,38 +120,27 @@ export function PrintButton({ model, recordId }: PrintButtonProps) {
           size="xs"
           leftSection={
             isLoading ? <Loader size={14} /> : <IconPrinter size={16} />
-          }
-        >
+          }>
           Печать
         </Button>
       </Menu.Target>
 
       <Menu.Dropdown>
-        {templates.map((tmpl) => (
-          <Menu key={tmpl.id} trigger="hover" position="left-start" offset={2}>
-            <Menu.Target>
-              <Menu.Item rightSection={<IconChevronRight size={14} />}>
-                <Text size="sm" truncate>
-                  {tmpl.name}
-                </Text>
-              </Menu.Item>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={<IconFileTypePdf size={16} />}
-                onClick={() => handlePrint(tmpl.id, 'pdf')}
-              >
-                PDF
-              </Menu.Item>
-              <Menu.Item
-                leftSection={<IconFileTypeDocx size={16} />}
-                onClick={() => handlePrint(tmpl.id, 'docx')}
-              >
-                DOCX
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        ))}
+        {templates.map(tmpl => {
+          const format = tmpl.output_format || 'docx';
+          const FormatIcon =
+            format === 'pdf' ? IconFileTypePdf : IconFileTypeDocx;
+          return (
+            <Menu.Item
+              key={tmpl.id}
+              leftSection={<FormatIcon size={16} />}
+              onClick={() => handlePrint(tmpl.id, format)}>
+              <Text size="sm" truncate>
+                {tmpl.name}
+              </Text>
+            </Menu.Item>
+          );
+        })}
       </Menu.Dropdown>
     </Menu>
   );
