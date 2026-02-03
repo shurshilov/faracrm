@@ -53,7 +53,7 @@ class Sale(DotModel):
         lambda: env.models.company, string="Company"
     )
     order_line_ids: list["SaleLine"] = One2many(
-        lambda: env.models.sale_line, "order_id", string="Order Lines"
+        lambda: env.models.sale_line, "sale_id", string="Order Lines"
     )
     notes: str | None = Text(string="Notes")
     date_order: datetime.datetime = Datetime(
