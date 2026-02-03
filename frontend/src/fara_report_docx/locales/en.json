@@ -1,0 +1,15 @@
+{
+  "menu": {
+    "report_template": "Report Templates"
+  },
+  "report_template": {
+    "title": "Report Templates",
+    "name": "Name",
+    "model_name": "Model",
+    "python_function": "Data Function",
+    "template_file": "DOCX Template",
+    "output_format": "Output Format",
+    "description": "Description",
+    "active": "Active"
+  }
+}

@@ -4,7 +4,8 @@
     "sale": "Orders",
     "sale_line": "Order Lines",
     "sale_stage": "Stages",
-    "tax": "Taxes"
+    "tax": "Taxes",
+    "contract": "Contracts"
   },
   "sales": {
     "title": "Sales Orders",

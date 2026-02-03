@@ -1,0 +1,17 @@
+{
+  "menu": {
+    "contract": "Contracts"
+  },
+  "contract": {
+    "title": "Contracts",
+    "name": "Name",
+    "partner_id": "Partner",
+    "company_id": "Company",
+    "type": "Type",
+    "date_start": "Start Date",
+    "date_end": "End Date",
+    "signed": "Signed",
+    "active": "Active",
+    "notes": "Notes"
+  }
+}

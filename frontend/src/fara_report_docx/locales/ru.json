@@ -1,0 +1,15 @@
+{
+  "menu": {
+    "report_template": "Шаблоны отчётов"
+  },
+  "report_template": {
+    "title": "Шаблоны отчётов",
+    "name": "Название",
+    "model_name": "Модель",
+    "python_function": "Функция данных",
+    "template_file": "Шаблон DOCX",
+    "output_format": "Формат",
+    "description": "Описание",
+    "active": "Активен"
+  }
+}

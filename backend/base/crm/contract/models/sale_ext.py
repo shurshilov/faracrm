@@ -128,8 +128,8 @@ class SaleContractMixin(_Base):
                     "chief_id",
                     "accountant_id",
                 ],
-                "company_id.chief_id": ["id", "name"],
-                "company_id.accountant_id": ["id", "name"],
+                # "company_id.chief_id": ["id", "name"],
+                # "company_id.accountant_id": ["id", "name"],
                 "order_line_ids": [
                     "id",
                     "sequence",

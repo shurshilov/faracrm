@@ -18,7 +18,7 @@ class Company(DotModel):
     sequence: int = Integer(
         help="Used to order Companies in the company switcher", default=10
     )
-    parent_id: "Company" = Many2one(
+    parent_id: "Company | None" = Many2one(
         lambda: env.models.company,
         string="Parent Company",
         index=True,

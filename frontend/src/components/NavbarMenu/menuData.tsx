@@ -79,6 +79,7 @@ const modelToNamespace: Record<string, string> = {
   sale_line: 'sales',
   sale_stage: 'sales',
   tax: 'sales',
+  contract: 'sales',
   // CRM/Leads
   lead: 'leads',
   lead_stage: 'leads',
@@ -106,6 +107,8 @@ const modelToNamespace: Record<string, string> = {
   saved_filters: 'saved_filters',
   // System Settings
   system_settings: 'system_settings',
+  // Reports
+  report_template: 'reports',
   // Tasks & Projects
   task: 'tasks',
   project: 'tasks',
@@ -121,6 +124,8 @@ const modelLabels: Record<string, string> = {
   contact: 'Контакты',
   contact_type: 'Типы контактов',
   partners: 'Партнёры',
+  contract: 'Договоры',
+  report_template: 'Шаблоны отчётов',
 };
 
 function getMenuLabelKey(modelName: string): string {
@@ -160,6 +165,7 @@ const settingsCategories: Record<
       'cron_job',
       'saved_filters',
       'system_settings',
+      'report_template',
     ],
   },
 };
