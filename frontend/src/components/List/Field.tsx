@@ -13,6 +13,16 @@ export interface FieldProps {
   fields?: string[];
   /** Виртуальная колонка — не запрашивает данные по name, только по fields */
   virtual?: boolean;
+  /**
+   * Режим отображения для One2many/Many2many колонок в списке.
+   * 'badge' — плашечка (по умолчанию), 'text' — обычный текст.
+   */
+  relationDisplay?: 'badge' | 'text';
+  /**
+   * Цвет плашечки для One2many/Many2many колонок (mantine color).
+   * Например: 'blue', 'green', 'violet'. По умолчанию — серый.
+   */
+  badgeColor?: string;
   [key: string]: any;
 }
 

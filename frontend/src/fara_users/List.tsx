@@ -12,8 +12,12 @@ export default function ViewListUsers() {
       <Field name="name" label={t('fields.name')} />
       <Field name="login" label={t('fields.login')} />
       {/* <Field name="email" label={t('fields.email')} /> */}
-      <Field name="role_ids" label={t('fields.role_ids')} />
-      <Field name="contact_ids" label={t('fields.contact_ids')} />
+      <Field name="role_ids" label={t('fields.role_ids')} badgeColor="violet" />
+      <Field
+        name="contact_ids"
+        label={t('fields.contact_ids')}
+        badgeColor="blue"
+      />
     </List>
   );
 }

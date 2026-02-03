@@ -5,3 +5,17 @@
     border-radius: var(--mantine-radius-md);
     background: light-dark(var(--mantine-colors-gray-1), var(--mantine-colors-dark-6));
   }
+
+/* Плашечка для o2m/m2m в списке */
+.recordsBadge {
+  background-color: var(--mantine-color-gray-1);
+  color: var(--mantine-color-gray-6);
+  padding: 2px 8px;
+  border-radius: var(--mantine-radius-sm);
+  font-size: var(--mantine-font-size-xs);
+}
+
+[data-mantine-color-scheme="dark"] .recordsBadge {
+  background-color: var(--mantine-color-dark-5);
+  color: var(--mantine-color-gray-4);
+}

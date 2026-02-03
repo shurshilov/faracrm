@@ -22,6 +22,7 @@ import { useFilters } from '@/components/SearchFilter/FilterContext';
 import { Field } from './Field';
 import { Toolbar } from './Toolbar';
 import useWindowDimensions from '@/services/hooks/useWindowDimensions';
+import listClasses from './List.module.css';
 
 const PAGE_SIZES = [10, 20, 40, 500, 1000, 2000];
 
@@ -136,6 +137,8 @@ export const List = <RecordType extends FaraRecord>({
     (value: any, record: any) => React.ReactNode
   > = {};
   const customLabels: Record<string, string> = {};
+  const customRelationDisplay: Record<string, 'badge' | 'text'> = {};
+  const customBadgeColor: Record<string, string> = {};
   Children.forEach(children, field => {
     if (isValidElement(field) && field.type === Field) {
       if (field.props.render && !field.props.virtual) {
@@ -143,6 +146,12 @@ export const List = <RecordType extends FaraRecord>({
       }
       if (field.props.label) {
         customLabels[field.props.name] = field.props.label;
+      }
+      if (field.props.relationDisplay) {
+        customRelationDisplay[field.props.name] = field.props.relationDisplay;
+      }
+      if (field.props.badgeColor) {
+        customBadgeColor[field.props.name] = field.props.badgeColor;
       }
     }
   });
@@ -206,11 +215,28 @@ export const List = <RecordType extends FaraRecord>({
         if (!record) {
           return null;
         }
-        if (field.type === 'Many2many') {
-          return <span>({record.length}) records</span>;
-        }
-        if (field.type === 'One2many') {
-          return <span>({record.length}) records</span>;
+        if (field.type === 'Many2many' || field.type === 'One2many') {
+          const count = Array.isArray(record) ? record.length : 0;
+          const display = customRelationDisplay[field.name] || 'badge';
+          if (display === 'text') {
+            return (
+              <Text size="sm" c="dimmed">
+                {count} записей
+              </Text>
+            );
+          }
+          const color = customBadgeColor[field.name];
+          return (
+            <span
+              className={listClasses.recordsBadge}
+              style={color ? {
+                backgroundColor: `var(--mantine-color-${color}-1)`,
+                color: `var(--mantine-color-${color}-7)`,
+              } : undefined}
+            >
+              {count} записей
+            </span>
+          );
         }
         if (field.type === 'Many2one') {
           return (
