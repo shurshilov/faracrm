@@ -358,8 +358,9 @@ class EmailStrategy(ChatStrategyBase):
                             match = re.search(r"UID\s+(\d+)", line)
                             if match:
                                 max_uid = int(match.group(1))
-                                connector.imap_last_uid = max_uid
-                                await connector.update()
+                                await connector.update(
+                                    type(connector)(imap_last_uid=max_uid)
+                                )
                                 logger.info(
                                     f"Email first run: set last_uid to {max_uid}"
                                 )
@@ -505,8 +506,9 @@ class EmailStrategy(ChatStrategyBase):
 
             # Обновляем last_uid в коннекторе
             if new_max_uid > last_uid:
-                connector.imap_last_uid = new_max_uid
-                await connector.update()
+                await connector.update(
+                    type(connector)(imap_last_uid=new_max_uid)
+                )
 
             logger.info(f"Email fetched {len(messages)} new messages")
             return messages

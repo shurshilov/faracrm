@@ -461,9 +461,10 @@ class Chat(DotModel):
         )
         if members:
             member = members[0]
-            member.is_active = False
-            member.left_at = datetime.now(timezone.utc)
-            await member.update()
+            now = datetime.now(timezone.utc)
+            await member.update(
+                env.models.chat_member(is_active=False, left_at=now)
+            )
             return True
         return False
 
@@ -479,17 +480,17 @@ class Chat(DotModel):
         )
         if members:
             member = members[0]
-            member.is_active = False
-            member.left_at = datetime.now(timezone.utc)
-            await member.update()
+            now = datetime.now(timezone.utc)
+            await member.update(
+                env.models.chat_member(is_active=False, left_at=now)
+            )
             return True
         return False
 
     async def update_last_message_date(self):
         """Обновить дату последнего сообщения."""
-        self.last_message_date = datetime.now(timezone.utc)
-        self.write_date = datetime.now(timezone.utc)
-        await self.update()
+        now = datetime.now(timezone.utc)
+        await self.update(Chat(last_message_date=now, write_date=now))
 
     async def get_member_permissions(self, user_id: int) -> dict | None:
         """Получить права участника в чате."""
@@ -519,10 +520,11 @@ class Chat(DotModel):
         )
         if members:
             member = members[0]
-            for key, value in permissions.items():
-                if hasattr(member, key):
-                    setattr(member, key, value)
-            await member.update()
+            valid_perms = {
+                k: v for k, v in permissions.items() if hasattr(member, k)
+            }
+            if valid_perms:
+                await member.update(env.models.chat_member(**valid_perms))
             return True
         return False
 

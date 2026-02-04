@@ -240,9 +240,11 @@ class ChatMessage(DotModel):
         if attachment_ids:
             for att_id in attachment_ids:
                 attachment = env.models.attachment(id=att_id)
-                attachment.res_id = message.id
-                attachment.res_model = "chat_message"
-                await attachment.update()
+                await attachment.update(
+                    env.models.attachment(
+                        res_id=message.id, res_model="chat_message"
+                    )
+                )
 
         return message
 
@@ -362,9 +364,12 @@ class ChatMessage(DotModel):
 
     async def soft_delete(self) -> bool:
         """Мягкое удаление сообщения."""
-        self.is_deleted = True
-        self.write_date = datetime.now(timezone.utc)
-        await self.update()
+        await self.update(
+            ChatMessage(
+                is_deleted=True,
+                write_date=datetime.now(timezone.utc),
+            )
+        )
         return True
 
     @hybridmethod

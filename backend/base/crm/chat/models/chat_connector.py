@@ -194,7 +194,7 @@ class ChatConnector(DotModel):
         return connector_id
 
     @hybridmethod
-    async def update(self, payload=None, fields=None, session=None):
+    async def update(self, payload, fields=None, session=None):
         """
         Обновление коннектора с синхронизацией Contact для операторов.
         """
@@ -392,26 +392,37 @@ class ChatConnector(DotModel):
                 self.webhook_url = self.generate_webhook_url(base_url)
 
             await self.strategy.set_webhook(self)
-            self.webhook_state = "successful"
-            await self.update()
+            await self.update(
+                ChatConnector(
+                    webhook_url=self.webhook_url,
+                    webhook_state="successful",
+                )
+            )
             return True
         except Exception as e:
-            self.webhook_state = "failed"
-            self.last_response = str(e)
-            await self.update()
+            await self.update(
+                ChatConnector(
+                    webhook_state="failed",
+                    last_response=str(e),
+                )
+            )
             return False
 
     async def unset_webhook(self) -> bool:
         """Удалить вебхук."""
         try:
             response = await self.strategy.unset_webhook(self)
-            self.webhook_state = "none"
-            self.last_response = str(response)
-            await self.update()
+            await self.update(
+                ChatConnector(
+                    webhook_state="none",
+                    last_response=str(response),
+                )
+            )
             return True
         except Exception as e:
-            self.last_response = str(e)
-            await self.update()
+            await self.update(
+                ChatConnector(last_response=str(e))
+            )
             return False
 
     async def get_active_connectors(

@@ -233,10 +233,12 @@ class User(DotModel):
 
         async with env.apps.db.get_transaction():
             # сохранить хеш-пароль, соль
-            self.password_hash = hash
-            self.password_salt = salt
-            # User(id=self.id, password_hash=hash, password_salt=salt)
-            await self.update(fields=["password_hash", "password_salt"])
+            await self.update(
+                payload=User(
+                    password_hash=hash,
+                    password_salt=salt,
+                )
+            )
 
             # закрыть старые сессии
             if auth_session is None:

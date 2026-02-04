@@ -126,10 +126,9 @@ class Activity(DotModel):
         now = datetime.now(timezone.utc)
 
         # Обновляем активность
-        activity.done = True
-        activity.done_datetime = now
-        activity.state = "done"
-        await activity.update()
+        await activity.update(
+            Activity(done=True, done_datetime=now, state="done")
+        )
 
         # Создаём notification в системном чате
         summary = activity.summary or "Активность"
@@ -215,9 +214,11 @@ class Activity(DotModel):
 
         # Привязываем к записи (через extend поля)
         if res_model and res_id:
-            message.res_model = res_model
-            message.res_id = res_id
-            await message.update()
+            await message.update(
+                env.models.chat_message(
+                    res_model=res_model, res_id=res_id
+                )
+            )
 
         # Отправляем через WebSocket
         try:
@@ -311,8 +312,7 @@ class Activity(DotModel):
             fields=["id", "state"],
         )
         for activity in overdue:
-            activity.state = "overdue"
-            await activity.update()
+            await activity.update(Activity(state="overdue"))
 
         # 2. Обновляем state для сегодняшних
         today_activities = await self.search(
@@ -324,8 +324,7 @@ class Activity(DotModel):
             fields=["id", "state"],
         )
         for activity in today_activities:
-            activity.state = "today"
-            await activity.update()
+            await activity.update(Activity(state="today"))
 
         # 3. Отправляем уведомления для сегодняшних и просроченных (если ещё не отправляли)
         pending = await self.search(
@@ -364,5 +363,4 @@ class Activity(DotModel):
                 res_id=activity.res_id,
             )
 
-            activity.notification_sent = True
-            await activity.update()
+            await activity.update(Activity(notification_sent=True))

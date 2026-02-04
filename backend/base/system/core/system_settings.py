@@ -181,11 +181,10 @@ class SystemSettings(DotModel):
 
         if records:
             record = records[0]
-            record.value = value
-            record.description = description
+            settings = cls(value=value, description=description)
             if cache_ttl is not None:
-                record.cache_ttl = cache_ttl
-            await record.update()
+                settings.cache_ttl = cache_ttl
+            await record.update(settings)
         else:
             setting = cls(
                 key=key,

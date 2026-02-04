@@ -333,18 +333,14 @@ class Attachment(DotModel):
 
     async def update(
         self,
-        payload: Self | None = None,
+        payload: Self,
         fields: list | None = None,
         session=None,
     ) -> None:
         if not fields:
             fields = []
 
-        if (
-            payload
-            and not isinstance(payload.content, Binary)
-            and self.storage_id
-        ):
+        if not isinstance(payload.content, Binary) and self.storage_id:
             async with env.apps.db.get_transaction():
                 try:
                     content_bytes = base64.b64decode(payload.content)

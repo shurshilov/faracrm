@@ -55,9 +55,9 @@ async def run_job_now(req: Request, job_id: int):
 
     start_time = datetime.now(timezone.utc)
 
-    job.last_status = "running"
-    job.lastcall = start_time
-    await job.update()
+    await job.update(
+        env.models.cron_job(last_status="running", lastcall=start_time)
+    )
 
     try:
         await asyncio.wait_for(
@@ -68,28 +68,41 @@ async def run_job_now(req: Request, job_id: int):
         end_time = datetime.now(timezone.utc)
         duration = (end_time - start_time).total_seconds()
 
-        job.last_status = "success"
-        job.last_error = ""
-        job.last_duration = duration
-        job.run_count += 1
-        job.nextcall = job.calculate_next_call()
-        await job.update()
+        await job.update(
+            env.models.cron_job(
+                last_status="success",
+                last_error="",
+                last_duration=duration,
+                run_count=job.run_count + 1,
+                nextcall=job.calculate_next_call(),
+            )
+        )
 
         return {"success": True, "status": "success", "duration": duration}
 
     except asyncio.TimeoutError:
-        job.last_status = "error"
-        job.last_error = f"Timeout after {job.timeout} seconds"
-        job.nextcall = job.calculate_next_call()
-        await job.update()
+        await job.update(
+            env.models.cron_job(
+                last_status="error",
+                last_error=f"Timeout after {job.timeout} seconds",
+                nextcall=job.calculate_next_call(),
+            )
+        )
 
-        return {"success": False, "status": "error", "error": job.last_error}
+        return {
+            "success": False,
+            "status": "error",
+            "error": f"Timeout after {job.timeout} seconds",
+        }
 
     except Exception as e:
-        job.last_status = "error"
-        job.last_error = str(e)
-        job.nextcall = job.calculate_next_call()
-        await job.update()
+        await job.update(
+            env.models.cron_job(
+                last_status="error",
+                last_error=str(e),
+                nextcall=job.calculate_next_call(),
+            )
+        )
 
         return {"success": False, "status": "error", "error": str(e)}
 
@@ -111,11 +124,11 @@ async def toggle_job(req: Request, job_id: int):
             }
         )
 
-    job.active = not job.active
+    new_active = not job.active
+    new_cron = env.models.cron_job(active=new_active)
+    if new_active:
+        new_cron.nextcall = job.calculate_next_call()
 
-    if job.active:
-        job.nextcall = job.calculate_next_call()
+    await job.update(new_cron)
 
-    await job.update()
-
-    return {"success": True, "active": job.active}
+    return {"success": True, "active": new_active}

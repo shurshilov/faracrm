@@ -67,8 +67,7 @@ class TestDotORMUpdate:
             for i in range(1, 101):
                 user = await BenchmarkUser.get(i)
                 if user:
-                    user.name = f"Updated User {i}"
-                    await user.update()
+                    await user.update(BenchmarkUser(name=f"Updated User {i}"))
 
         benchmark.pedantic(
             lambda: asyncio.get_event_loop().run_until_complete(run()),

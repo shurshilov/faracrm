@@ -116,8 +116,7 @@ class AttachmentStorage(DotModel):
         from .attachments_route import AttachmentRoute
 
         async with env.apps.db.get_transaction():
-            self.active = True
-            await self.update(self)
+            await self.update(AttachmentStorage(active=True))
 
             routes = await AttachmentRoute.search(
                 filter=[("storage_id", "=", self.id)],
@@ -154,8 +153,7 @@ class AttachmentStorage(DotModel):
             await AttachmentCache.clear_storage_cache(self.id)
 
             # Деактивируем storage
-            self.active = False
-            await self.update(self)
+            await self.update(AttachmentStorage(active=False))
 
             logger.info(
                 f"Storage '{self.name}' deactivated with {len(routes)} routes"
@@ -214,15 +212,14 @@ class AttachmentStorage(DotModel):
 
     async def update(
         self,
-        payload=None,
+        payload,
         fields: list | None = None,
         session=None,
     ) -> None:
         """Update storage with cascade activation/deactivation."""
         # Check if active field is being changed
         if (
-            payload
-            and payload.active is not None
+            payload.active is not None
             and payload.active != self.active
         ):
             if payload.active:
@@ -264,10 +261,9 @@ class AttachmentStorage(DotModel):
                     )
                     if attachments:
                         attach = attachments[0]
-                        update_data = Attachment()
-                        update_data.storage_id = self
-                        update_data.route_id = route
-                        await attach.update(update_data)
+                        await attach.update(
+                            Attachment(storage_id=self, route_id=route)
+                        )
                 except Exception as e:
                     logger.error(f"Failed to sync attachment {attach_id}: {e}")
 

@@ -95,7 +95,7 @@ class DotModelProtocol(Protocol):
     # From OrmPrimaryMixin
     async def update(
         self,
-        payload: Self | None = None,
+        payload: Self,
         fields: Any = None,
         session: Any = None,
     ) -> Any: ...

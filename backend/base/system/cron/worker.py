@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Set
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
-    from .models.cron_job import CronJob
+from .models.cron_job import CronJob
 
 logger = logging.getLogger("cron.worker")
 
@@ -134,13 +134,12 @@ class CronWorker:
         """
         Выполняет одну задачу.
         """
+
         logger.info(f"Executing job: {job.name} (id={job.id})")
         start_time = datetime.now(timezone.utc)
 
         # Помечаем как выполняющуюся
-        job.last_status = "running"
-        job.lastcall = start_time
-        await job.update()
+        await job.update(CronJob(last_status="running", lastcall=start_time))
 
         try:
             # Выполняем через метод модели
@@ -153,33 +152,42 @@ class CronWorker:
             end_time = datetime.now(timezone.utc)
             duration = (end_time - start_time).total_seconds()
 
-            job.last_status = "success"
-            job.last_error = ""
-            job.last_duration = duration
-            job.run_count += 1
-            job.nextcall = job.calculate_next_call()
+            vals = {
+                "last_status": "success",
+                "last_error": "",
+                "last_duration": duration,
+                "run_count": job.run_count + 1,
+                "nextcall": job.calculate_next_call(),
+            }
 
             logger.info(f"Job {job.name} completed (duration={duration:.2f}s)")
 
             # Деактивируем если достигнут лимит
             if job.numbercall != -1 and job.run_count >= job.numbercall:
-                job.active = False
+                vals["active"] = False
                 logger.info(f"Job {job.name} reached run limit, deactivating")
 
+            await job.update(CronJob(**vals))
+
         except asyncio.TimeoutError:
-            job.last_status = "error"
-            job.last_error = f"Timeout after {job.timeout} seconds"
-            job.nextcall = job.calculate_next_call()
+            await job.update(
+                CronJob(
+                    last_status="error",
+                    last_error=f"Timeout after {job.timeout} seconds",
+                    nextcall=job.calculate_next_call(),
+                )
+            )
             logger.error(f"Job {job.name} timed out")
 
         except Exception as e:
-            job.last_status = "error"
-            job.last_error = str(e)
-            job.nextcall = job.calculate_next_call()
+            await job.update(
+                CronJob(
+                    last_status="error",
+                    last_error=str(e),
+                    nextcall=job.calculate_next_call(),
+                )
+            )
             logger.exception(f"Job {job.name} failed: {e}")
-
-        finally:
-            await job.update()
 
     async def run_job_now(self, job_id: int) -> dict:
         """

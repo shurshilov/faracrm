@@ -60,7 +60,7 @@ class OrmPrimaryMixin(_Base):
 
     async def update(
         self,
-        payload: "_M | None" = None,
+        payload: "_M",
         fields: list[str] | None = None,
         session=None,
     ):
@@ -71,27 +71,27 @@ class OrmPrimaryMixin(_Base):
         и relation поля (O2M/M2M: created/deleted/selected/unselected,
         attachments: PolymorphicMany2one).
 
+        После обновления БД store-поля из payload синхронизируются в self.
+
         Args:
-            payload: Данные для обновления (если None — используется self)
+            payload: Данные для обновления (экземпляр модели).
             fields: Список полей для обновления.
                     Если None — обновляются все заданные поля из payload.
             session: DB сессия
 
         Example:
-            # Только store поля
+            # Store поля
+            await record.update(User(name="New", email="new@test.com"))
+
+            # Store + relations
+            await record.update(User(name="New", role_ids={"selected": [1, 2]}))
+
+            # Конкретные поля
             await record.update(payload, fields=["name", "email"])
-
-            # Store + relations — автоматически
-            await record.update(payload, fields=["name", "role_ids"])
-
-            # Все поля из payload
-            await record.update(payload)
         """
         await self._check_access(Operation.UPDATE, record_ids=[self.id])
 
         session = self._get_db_session(session)
-        if payload is None:
-            payload = self
 
         # Автоопределение полей если не указаны
         if fields is None:
@@ -106,6 +106,30 @@ class OrmPrimaryMixin(_Base):
             return
 
         await self._update_relations(payload, fields, session)
+
+        # Синхронизировать self с payload после успешного обновления
+        if payload is not self:
+            self._sync_after_update(payload, fields)
+
+    def _sync_after_update(self, payload: "_M", fields: list[str]):
+        """
+        Синхронизировать self с payload после успешного update.
+
+        Копируем только store-поля (скаляры, M2O FK) из payload в self.
+        Relation-поля (O2M, M2M) не синхронизируются — в payload они
+        в формате команд {created/deleted/selected/unselected},
+        а на self — список объектов. Если нужны актуальные relations
+        после update — следует перечитать запись из БД.
+
+        Аналогично другим ORM:
+        - SQLAlchemy: expire + lazy reload при обращении (доп. SELECT)
+        - Django: self уже мутирован до save(), M2M — отдельные операции
+        - Tortoise: self уже мутирован до save(), M2M — отдельные операции
+        """
+        store_fields = set(self.get_store_fields())
+        for name in fields:
+            if name in store_fields:
+                setattr(self, name, getattr(payload, name))
 
     async def _update_store(
         self,

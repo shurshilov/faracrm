@@ -155,8 +155,7 @@ class TestUpdate:
         user_id = sample_data["users"][0]
         user = await User.get(user_id)
 
-        user.name = "John Updated"
-        await user.update()
+        await user.update(User(name="John Updated"))
 
         updated = await User.get(user_id)
         assert updated.name == "John Updated"
@@ -926,7 +925,7 @@ class TestEdgeCases:
         model.id = 99999
 
         # Should not raise, just update nothing
-        await model.update()
+        await model.update(Model(name="updated"))
 
     async def test_search_with_empty_fields(self, sample_data):
         """Test search defaults to ['id'] when fields not specified."""

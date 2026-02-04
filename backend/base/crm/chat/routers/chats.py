@@ -590,33 +590,26 @@ async def update_chat(req: Request, chat_id: int, body: ChatUpdate):
 
     # Основные поля
     if body.name is not None:
-        chat.name = body.name
         updated_fields["name"] = body.name
     if body.description is not None:
-        chat.description = body.description
         updated_fields["description"] = body.description
 
     # Права по умолчанию
     if body.default_can_read is not None:
-        chat.default_can_read = body.default_can_read
         updated_fields["default_can_read"] = body.default_can_read
     if body.default_can_write is not None:
-        chat.default_can_write = body.default_can_write
         updated_fields["default_can_write"] = body.default_can_write
     if body.default_can_invite is not None:
-        chat.default_can_invite = body.default_can_invite
         updated_fields["default_can_invite"] = body.default_can_invite
     if body.default_can_pin is not None:
-        chat.default_can_pin = body.default_can_pin
         updated_fields["default_can_pin"] = body.default_can_pin
     if body.default_can_delete_others is not None:
-        chat.default_can_delete_others = body.default_can_delete_others
         updated_fields["default_can_delete_others"] = (
             body.default_can_delete_others
         )
 
     if updated_fields:
-        await chat.update()
+        await chat.update(env.models.chat(**updated_fields))
 
     return {"success": True, "data": {"id": chat.id, **updated_fields}}
 
@@ -645,20 +638,16 @@ async def update_member_permissions(
         )
 
     # Обновляем права
-    if "can_read" in body:
-        target_member.can_read = body["can_read"]
-    if "can_write" in body:
-        target_member.can_write = body["can_write"]
-    if "can_invite" in body:
-        target_member.can_invite = body["can_invite"]
-    if "can_pin" in body:
-        target_member.can_pin = body["can_pin"]
-    if "can_delete_others" in body:
-        target_member.can_delete_others = body["can_delete_others"]
-    if "is_admin" in body:
-        target_member.is_admin = body["is_admin"]
+    perm_fields = {}
+    for key in ("can_read", "can_write", "can_invite", "can_pin",
+                "can_delete_others", "is_admin"):
+        if key in body:
+            perm_fields[key] = body[key]
 
-    await target_member.update()
+    if perm_fields:
+        await target_member.update(
+            env.models.chat_member(**perm_fields)
+        )
 
     return {"success": True}
 
@@ -742,8 +731,7 @@ async def delete_chat(req: Request, chat_id: int):
         )
 
     # Soft delete - устанавливаем active = false
-    chat.active = False
-    await chat.update()
+    await chat.update(env.models.chat(active=False))
 
     return {"success": True}
 

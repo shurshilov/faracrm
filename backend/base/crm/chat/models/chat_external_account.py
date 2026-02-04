@@ -238,8 +238,9 @@ class ChatExternalAccount(DotModel):
         # 6. Создаём или обновляем ExternalAccount
         if existing:
             # Привязываем к найденному контакту
-            existing.contact_id = contact
-            await existing.update()
+            await existing.update(
+                ChatExternalAccount(contact_id=contact)
+            )
             account = existing
         else:
             # Создаём новый

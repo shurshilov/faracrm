@@ -118,10 +118,9 @@ class AttachmentCache(DotModel):
         )
 
         if existing:
-            update_data = cls()
-            update_data.folder_id = folder_id
-            update_data.folder_name = folder_name
-            await existing[0].update(update_data)
+            await existing[0].update(
+                cls(folder_id=folder_id, folder_name=folder_name)
+            )
         else:
             new_cache = cls()
             new_cache.route_id = env.models.attachment_route(id=route_id)

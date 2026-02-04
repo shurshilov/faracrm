@@ -332,8 +332,7 @@ async def delete_message(req: Request, chat_id: int, message_id: int):
         )
 
     # Soft delete
-    message.is_deleted = True
-    await message.update()
+    await message.update(env.models.chat_message(is_deleted=True))
 
     # Уведомляем через WebSocket
     await chat_manager.send_to_chat(
@@ -377,9 +376,9 @@ async def edit_message(
             }
         )
 
-    message.body = body.body
-    message.is_edited = True
-    await message.update()
+    await message.update(
+        env.models.chat_message(body=body.body, is_edited=True)
+    )
 
     # Уведомляем через WebSocket
     await chat_manager.send_to_chat(
@@ -415,8 +414,9 @@ async def pin_message(
     except ValueError:
         raise FaraException({"content": "NOT_FOUND", "status_code": 404})
 
-    message.pinned = body.pinned
-    await message.update()
+    await message.update(
+        env.models.chat_message(pinned=body.pinned)
+    )
 
     # Уведомляем через WebSocket
     await chat_manager.send_to_chat(

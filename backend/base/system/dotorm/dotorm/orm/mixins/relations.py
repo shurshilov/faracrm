@@ -475,4 +475,5 @@ class OrmRelationsMixin(_Base):
                             )
                         )
 
-            await execute_maybe_parallel(request_list)
+            for coro in request_list:
+                await coro

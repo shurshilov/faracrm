@@ -443,9 +443,9 @@ class AttachmentRoute(DotModel):
 
             await self._save_root_folder_to_cache(folder_id, new_name)
 
-            update_data = AttachmentRoute()
-            update_data.need_sync_root_name = False
-            await self.update(update_data)
+            await self.update(
+                AttachmentRoute(need_sync_root_name=False)
+            )
 
     async def get_attachments_to_sync(
         self,
