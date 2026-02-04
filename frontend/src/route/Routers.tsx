@@ -1,7 +1,7 @@
 import { Model } from './RouteModel';
 import { Fara } from './Fara';
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { modelsConfig } from '@/config/models';
 import { GenericList, GenericForm, GenericKanban } from '@/components/Generic';
@@ -102,9 +102,25 @@ const ModelRoutes = () => (
   </Fara>
 );
 
+// Редирект на домашнюю страницу пользователя
+const HomeRedirect = () => {
+  const session = useSelector((state: RootState) => state.auth.session);
+  const homePage = session?.user_id?.home_page;
+
+  // Валидация: должен быть относительный маршрут (начинается с /)
+  if (homePage && homePage.startsWith('/') && !homePage.includes('://')) {
+    return <Navigate to={homePage} replace />;
+  }
+
+  return null;
+};
+
 // Главный роутер с кастомными страницами + модели
 const FaraRouters = () => (
   <Routes>
+    {/* Домашняя страница пользователя */}
+    <Route path="/" element={<HomeRedirect />} />
+
     {/* Кастомные страницы */}
     <Route
       path="chat/*"

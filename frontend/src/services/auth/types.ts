@@ -1,6 +1,7 @@
 export interface User {
   id: number;
   name: string;
+  home_page?: string | null;
 }
 export interface Session {
   id: number;

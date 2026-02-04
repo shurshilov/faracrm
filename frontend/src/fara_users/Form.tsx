@@ -130,6 +130,7 @@ export default function ViewFormUsers(props: ViewFormProps) {
           <FormRow cols={2}>
             <FormCol gap="sm">
               <Field name="login" label={t('fields.login')} />
+              <Field name="home_page" label={t('fields.home_page', 'Домашняя страница')} />
               <Field
                 name="is_admin"
                 label={t('fields.is_admin', 'Суперпользователь')}

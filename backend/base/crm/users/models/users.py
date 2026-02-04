@@ -97,6 +97,14 @@ class User(DotModel):
         description="Контакты",
     )
 
+    # Страница по умолчанию после входа (относительный маршрут, например /sale или /chat)
+    home_page: str = Char(
+        max_length=256,
+        required=False,
+        default="/users",
+        description="Страница по умолчанию",
+    )
+
     @hybridmethod
     async def create(self, payload: Self) -> int:
         """Создание пользователя с автоматическим добавлением языков по умолчанию."""

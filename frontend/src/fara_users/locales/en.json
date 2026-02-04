@@ -11,7 +11,8 @@
     "lang_ids": "Available Languages",
     "active": "Active",
     "is_admin": "Superuser",
-    "contact_ids": "Contacts"
+    "contact_ids": "Contacts",
+    "home_page": "Home Page"
   },
   "tabs": {
     "roles": "Roles & Permissions",
