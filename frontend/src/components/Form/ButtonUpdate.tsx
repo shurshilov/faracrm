@@ -78,8 +78,19 @@ export function ButtonUpdate({
 
     try {
       const values = structuredClone(form.getValues());
-      prepareValuesToSave(fieldsServer, values);
+
+      // Собираем имена M2M/O2M полей с изменениями для инвалидации кеша
       const invalidateTags: string[] = [];
+      for (const key of Object.keys(values)) {
+        if (key.startsWith('_')) {
+          const v = values[key];
+          if (v?.unselected?.length || v?.created?.length || v?.selected?.length) {
+            invalidateTags.push(key.slice(1)); // '_role_ids' -> 'role_ids'
+          }
+        }
+      }
+
+      prepareValuesToSave(fieldsServer, values);
 
       await update({
         model,
@@ -100,7 +111,10 @@ export function ButtonUpdate({
   };
 
   return (
-    <Button loading={saving} variant="filled" onClick={handleSave}>
+    <Button
+      loading={saving}
+      variant="filled"
+      onClick={handleSave}>
       {saving ? t('saving') : t('save')}
     </Button>
   );

@@ -224,10 +224,9 @@ export const Form = <RecordType extends FaraRecord>({
     if (formData) {
       setFieldsServer(formData.fields);
       form.reset();
-      // form.resetDirty();
       form.initialize(formData.data);
-      // form.setInitialValues(formData.data);
       form.setValues(formData.data);
+      form.resetDirty(formData.data);
 
       // Устанавливаем валидацию для обязательных полей
       const validation = buildValidation(formData.fields);

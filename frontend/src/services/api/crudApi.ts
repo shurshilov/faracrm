@@ -65,32 +65,10 @@ export const crudApi = createApi({
         method: 'GET',
         url: `/${queryArg.model}/search_many2many`,
         params: queryArg,
-        // body: {
-        //   id: queryArg.id,
-        //   name: queryArg.name,
-        //   fields: queryArg.fields,
-        //   order: queryArg.order,
-        //   start: queryArg.start,
-        //   end: queryArg.end,
-        //   sort: queryArg.sort,
-        //   limit: queryArg.limit,
-        // },
       }),
-      // providesTags: (result, error, arg) => {
-      //   // return result
-      //   return result
-      //     ? [
-      //         { type: arg.model, id: 'LIST' },
-      //         ...result?.data.map(
-      //           ({ id }) => ({ type: arg.model, id }) as FaraRecord,
-      //         ),
-      //       ]
-      //     : [{ type: arg.model, id: 'LIST' } as FaraRecord];
-      // },
-
-      // forceRefetch: () => true,
-      // serializeQueryArgs: ({ endpointName, queryArgs }) =>
-      //   `${endpointName}-${queryArgs?.model}`,
+      providesTags: (result, error, arg) => [
+        { type: arg.model, id: `M2M_${arg.id}_${arg.name}` },
+      ],
     }),
 
     deleteBulk: build.mutation<DeleteListResult, DeleteListParams>({
@@ -238,11 +216,14 @@ export const crudApi = createApi({
         lifecycleApi.dispatch(
           crudApi.util.invalidateTags([{ type: model, id: id }]),
         );
-        // также инвалидируем связанные модели o2m и m2m
-        // console.log(invalidateTags, 'invalidateTags');
-        // invalidateTags?.map(modelRelation =>
-        //   crudApi.util.invalidateTags([{ type: modelRelation, id: 'LIST' }]),
-        // );
+        // Инвалидируем M2M/O2M кеши для затронутых полей
+        if (invalidateTags?.length) {
+          const m2mTags = invalidateTags.map(fieldName => ({
+            type: model,
+            id: `M2M_${id}_${fieldName}`,
+          }));
+          lifecycleApi.dispatch(crudApi.util.invalidateTags(m2mTags));
+        }
 
         try {
           await lifecycleApi.queryFulfilled;
