@@ -36,11 +36,14 @@ const slice = createSlice({
       { payload: { session } }: PayloadAction<{ session: Session }>,
     ) => {
       localStorage.setItem('session', JSON.stringify(session));
+      // Сбрасываем layoutTheme чтобы применился layout_theme нового пользователя
+      localStorage.removeItem('layoutTheme');
       state.session = session;
     },
 
     logOut: () => {
       localStorage.setItem('session', '');
+      localStorage.removeItem('layoutTheme');
       return initialState;
     },
   },

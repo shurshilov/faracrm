@@ -15,6 +15,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Many2many,
     Many2one,
     One2many,
+    Selection,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
@@ -103,6 +104,16 @@ class User(DotModel):
         required=False,
         default="/users",
         description="Страница по умолчанию",
+    )
+
+    # Тема интерфейса (classic — боковое меню, modern — app launcher)
+    layout_theme: str = Selection(
+        options=[
+            ("classic", "Классическая"),
+            ("modern", "Современная"),
+        ],
+        default="modern",
+        description="Тема интерфейса",
     )
 
     @hybridmethod

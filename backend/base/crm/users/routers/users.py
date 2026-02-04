@@ -167,7 +167,7 @@ async def signin(req: Request, payload: UserSigninInput):
         user_id = await env.models.user.search(
             filter=[("login", "=", payload.login)],
             limit=1,
-            fields=["id", "name", "password_hash", "password_salt", "home_page"],
+            fields=["id", "name", "password_hash", "password_salt", "home_page", "layout_theme"],
         )
         if not user_id:
             raise AuthException.UserNotExist
@@ -190,7 +190,7 @@ async def signin(req: Request, payload: UserSigninInput):
         ttl = await Session.get_ttl()
         # оставить только поля id, name, home_page
         # чтобы не хранить хеш и соль в сессии на фронте для безопасности
-        clear_user_id = User(**user_id.json(include={"id", "name", "home_page"}))
+        clear_user_id = User(**user_id.json(include={"id", "name", "home_page", "layout_theme"}))
         session = Session(
             user_id=clear_user_id,
             token=token,

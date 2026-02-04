@@ -18,6 +18,7 @@ import {
   IconLanguage,
   IconLock,
   IconCopy,
+  IconSettings,
 } from '@tabler/icons-react';
 import { FormActions, FormAction } from '@/components/Form/FormActions';
 import { ChangePasswordModal } from './ChangePasswordModal';
@@ -130,7 +131,6 @@ export default function ViewFormUsers(props: ViewFormProps) {
           <FormRow cols={2}>
             <FormCol gap="sm">
               <Field name="login" label={t('fields.login')} />
-              <Field name="home_page" label={t('fields.home_page', 'Домашняя страница')} />
               <Field
                 name="is_admin"
                 label={t('fields.is_admin', 'Суперпользователь')}
@@ -172,6 +172,16 @@ export default function ViewFormUsers(props: ViewFormProps) {
               <Field name="flag" />
               <Field name="active" />
             </Field>
+          </FormTab>
+
+          <FormTab
+            name="preferences"
+            label={t('tabs.preferences', 'Настройки')}
+            icon={<IconSettings size={16} />}>
+            <FormRow cols={2}>
+              <Field name="home_page" label={t('fields.home_page', 'Домашняя страница')} />
+              <Field name="layout_theme" label={t('fields.layout_theme', 'Тема интерфейса')} />
+            </FormRow>
           </FormTab>
 
           <FormTab

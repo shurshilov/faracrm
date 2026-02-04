@@ -12,12 +12,14 @@
     "active": "Active",
     "is_admin": "Superuser",
     "contact_ids": "Contacts",
-    "home_page": "Home Page"
+    "home_page": "Home Page",
+    "layout_theme": "Layout Theme"
   },
   "tabs": {
     "roles": "Roles & Permissions",
     "files": "Files",
-    "languages": "Available Languages"
+    "languages": "Available Languages",
+    "preferences": "Preferences"
   },
   "menu": {
     "title": "Users",

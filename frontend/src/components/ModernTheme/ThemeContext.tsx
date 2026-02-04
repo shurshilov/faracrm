@@ -5,6 +5,8 @@ import {
   useEffect,
   ReactNode,
 } from 'react';
+import { useSelector } from 'react-redux';
+import { selectCurrentSession } from '@/slices/authSlice';
 
 export type LayoutTheme = 'classic' | 'modern';
 
@@ -28,10 +30,18 @@ interface ThemeProviderProps {
 }
 
 export function LayoutThemeProvider({ children }: ThemeProviderProps) {
+  const session = useSelector(selectCurrentSession);
+
   const [layoutTheme, setLayoutTheme] = useState<LayoutTheme>(() => {
-    // Читаем из localStorage или берём default
+    // Приоритет: localStorage (пользователь переключил вручную) → сессия → classic
     const saved = localStorage.getItem('layoutTheme');
-    return (saved as LayoutTheme) || 'classic';
+    if (saved === 'classic' || saved === 'modern') return saved;
+
+    const fromSession = session?.user_id?.layout_theme;
+    if (fromSession === 'classic' || fromSession === 'modern')
+      return fromSession;
+
+    return 'classic';
   });
 
   useEffect(() => {

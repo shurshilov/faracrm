@@ -2,6 +2,7 @@ export interface User {
   id: number;
   name: string;
   home_page?: string | null;
+  layout_theme?: 'classic' | 'modern';
 }
 export interface Session {
   id: number;
