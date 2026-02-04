@@ -1,4 +1,4 @@
-import { Flex, Group } from '@mantine/core';
+import { Flex, Group, Text, ThemeIcon } from '@mantine/core';
 import { useNavigate } from 'react-router-dom';
 import { FaraRecord } from '@/services/api/crudTypes';
 import { ButtonUpdate } from './ButtonUpdate';
@@ -7,8 +7,10 @@ import { Field } from '@/types/fields';
 import { useFormContext } from './FormContext';
 import { UseFormReturnType } from '@mantine/form';
 import { ViewSwitcher, ViewType } from '@/components/ViewSwitcher';
-import { useCallback, useMemo, ReactNode } from 'react';
+import { useCallback, useMemo, useState, useRef, ReactNode } from 'react';
 import { FormPanelsBadges, PanelType } from './Panels';
+import { IconCheck } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 
 export const Toolbar = <RecordType extends FaraRecord>({
   model,
@@ -37,8 +39,17 @@ export const Toolbar = <RecordType extends FaraRecord>({
   activePanel?: PanelType;
   onTogglePanel?: (panel: PanelType) => void;
 }) => {
+  const { t } = useTranslation('common');
   const form = useFormContext();
   const navigate = useNavigate();
+  const [showSaved, setShowSaved] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleSaveSuccess = useCallback(() => {
+    setShowSaved(true);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => setShowSaved(false), 2000);
+  }, []);
 
   // Получаем доступные views из localStorage (сохраняются ModelView)
   const availableViews = useMemo<ViewType[]>(() => {
@@ -80,8 +91,8 @@ export const Toolbar = <RecordType extends FaraRecord>({
       wrap="nowrap"
       px="xs">
       <Group gap="xs">
-        {form.isDirty() &&
-          (!!isCreateForm ? (
+        {form.isDirty() ? (
+          !!isCreateForm ? (
             <ButtonCreate
               model={model}
               parentFieldName={parentFieldName}
@@ -98,9 +109,22 @@ export const Toolbar = <RecordType extends FaraRecord>({
                 fields={fieldsClient}
                 parentId={parentId}
                 relatedFieldO2M={relatedFieldO2M}
+                onSaveSuccess={handleSaveSuccess}
               />
             )
-          ))}
+          )
+        ) : (
+          showSaved && (
+            <Group gap={4}>
+              <ThemeIcon size="xs" color="green" variant="light">
+                <IconCheck size={12} />
+              </ThemeIcon>
+              <Text size="sm" c="green">
+                {t('saved')}
+              </Text>
+            </Group>
+          )
+        )}
       </Group>
 
       <Group gap="xs">

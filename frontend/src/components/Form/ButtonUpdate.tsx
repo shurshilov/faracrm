@@ -1,5 +1,4 @@
-import { Button, Transition } from '@mantine/core';
-import { IconCheck } from '@tabler/icons-react';
+import { Button } from '@mantine/core';
 import { FormFieldsContext, useFormContext } from './FormContext';
 import { useUpdateMutation } from '@/services/api/crudApi';
 import { FaraRecord, Identifier } from '@/services/api/crudTypes';
@@ -8,8 +7,6 @@ import { useContext, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { prepareValuesToSave } from './utils';
 import { UseFormReturnType } from '@mantine/form';
-
-type SaveState = 'idle' | 'saving' | 'success';
 
 /**
  * Валидирует обязательные поля формы
@@ -56,26 +53,28 @@ export function ButtonUpdate({
   fields,
   parentId,
   relatedFieldO2M,
+  onSaveSuccess,
 }: {
   model: string;
   id: Identifier;
   fields: Field[];
   parentId?: number;
   relatedFieldO2M?: string;
+  onSaveSuccess?: () => void;
 }) {
   const { t } = useTranslation('common');
   const { fields: fieldsServer } = useContext(FormFieldsContext);
   const form = useFormContext();
   const [update] = useUpdateMutation();
-  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     // Валидация обязательных полей
     if (!validateRequiredFields(form, fieldsServer)) {
-      return; // Прерываем сохранение если есть ошибки
+      return;
     }
 
-    setSaveState('saving');
+    setSaving(true);
 
     try {
       const values = structuredClone(form.getValues());
@@ -89,47 +88,20 @@ export function ButtonUpdate({
         invalidateTags,
       });
 
-      // Показываем галочку
-      setSaveState('success');
-
-      // Сбрасываем dirty state через задержку чтобы пользователь увидел галочку
-      setTimeout(() => {
-        const currentValues = form.getValues();
-        form.resetDirty(currentValues);
-        setSaveState('idle');
-      }, 1200);
+      // Сбрасываем dirty — кнопка исчезнет, Toolbar покажет галочку
+      const currentValues = form.getValues();
+      form.resetDirty(currentValues);
+      onSaveSuccess?.();
     } catch (error) {
-      setSaveState('idle');
       // TODO: показать ошибку
-    }
-  };
-
-  const getButtonText = () => {
-    switch (saveState) {
-      case 'saving':
-        return t('saving');
-      case 'success':
-        return t('saved');
-      default:
-        return t('save');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <Button
-      loading={saveState === 'saving'}
-      variant="filled"
-      color={saveState === 'success' ? 'green' : undefined}
-      leftSection={
-        saveState === 'success' ? (
-          <Transition mounted={true} transition="scale" duration={200}>
-            {styles => <IconCheck size={18} style={styles} />}
-          </Transition>
-        ) : undefined
-      }
-      onClick={handleSave}
-      disabled={saveState === 'success'}>
-      {getButtonText()}
+    <Button loading={saving} variant="filled" onClick={handleSave}>
+      {saving ? t('saving') : t('save')}
     </Button>
   );
 }
