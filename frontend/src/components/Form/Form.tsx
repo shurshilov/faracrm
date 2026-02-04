@@ -247,15 +247,21 @@ export const Form = <RecordType extends FaraRecord>({
     }
   }, [data, dataDefault]);
 
+  // Мемоизируем value контекста чтобы избежать лишних ре-рендеров
+  // children (M2M, O2M таблицы) при изменении простых полей (name, login и т.д.)
+  const formFieldsContextValue = useMemo(
+    () => ({
+      model,
+      fields: fieldsServer,
+      setFields: setFieldsServer,
+      handleFieldChange,
+      onchangeFields,
+    }),
+    [model, fieldsServer, setFieldsServer, handleFieldChange, onchangeFields],
+  );
+
   return (
-    <FormFieldsContext.Provider
-      value={{
-        model,
-        fields: fieldsServer,
-        setFields: setFieldsServer,
-        handleFieldChange,
-        onchangeFields,
-      }}>
+    <FormFieldsContext.Provider value={formFieldsContextValue}>
       <FormSettingsProvider
         labelPosition={labelPosition}
         labelWidth={labelWidth}>

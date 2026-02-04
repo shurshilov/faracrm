@@ -162,8 +162,11 @@ export function ViewWrapper({
     }
   };
 
+  // Мемоизируем value контекста чтобы List не перерисовывался при каждом рендере ViewWrapper
+  const filterContextValue = useMemo(() => ({ filters }), [filters]);
+
   return (
-    <FilterContext.Provider value={{ filters }}>
+    <FilterContext.Provider value={filterContextValue}>
       <div className={classes.container}>
         <div className={classes.header}>
           <Group justify="space-between" gap="xs" p="xs" wrap="nowrap">

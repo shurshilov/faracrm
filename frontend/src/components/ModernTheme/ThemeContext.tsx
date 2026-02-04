@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useEffect,
+  useMemo,
   ReactNode,
 } from 'react';
 import { useSelector } from 'react-redux';
@@ -35,7 +36,8 @@ export function LayoutThemeProvider({ children }: ThemeProviderProps) {
   const [layoutTheme, setLayoutTheme] = useState<LayoutTheme>(() => {
     // Инициализация из сессии (layout_theme приходит при логине)
     const fromSession = session?.user_id?.layout_theme;
-    if (fromSession === 'classic' || fromSession === 'modern') return fromSession;
+    if (fromSession === 'classic' || fromSession === 'modern')
+      return fromSession;
     return 'classic';
   });
 
@@ -43,8 +45,13 @@ export function LayoutThemeProvider({ children }: ThemeProviderProps) {
     document.body.setAttribute('data-layout-theme', layoutTheme);
   }, [layoutTheme]);
 
+  const contextValue = useMemo(
+    () => ({ layoutTheme, setLayoutTheme }),
+    [layoutTheme],
+  );
+
   return (
-    <ThemeContext.Provider value={{ layoutTheme, setLayoutTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );
