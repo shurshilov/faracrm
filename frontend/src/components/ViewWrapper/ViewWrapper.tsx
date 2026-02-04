@@ -15,17 +15,8 @@ import {
   PresetFilter,
   FilterContext,
 } from '@/components/SearchFilter';
-import { useSearchQuery } from '@/services/api/crudApi';
-import {
-  FaraRecord,
-  GetListParams,
-  GetListResult,
-  FilterExpression,
-} from '@/services/api/crudTypes';
-import {
-  BaseQueryFn,
-  TypedUseQueryHookResult,
-} from '@reduxjs/toolkit/query/react';
+import { useLazySearchQuery } from '@/services/api/crudApi';
+import { FilterExpression } from '@/services/api/crudTypes';
 import classes from './ViewWrapper.module.css';
 
 interface ViewWrapperProps {
@@ -57,7 +48,6 @@ export function ViewWrapper({
 
   // Обработчик изменения фильтров
   const handleFiltersChange = useCallback((newFilters: FilterExpression) => {
-    console.log('ViewWrapper filters changed:', newFilters);
     setFilters(newFilters);
   }, []);
 
@@ -95,20 +85,8 @@ export function ViewWrapper({
     return 'list';
   });
 
-  // Загружаем первую запись для перехода на форму
-  const { data: firstRecordData } = useSearchQuery({
-    model,
-    fields: ['id'],
-    limit: 1,
-    order: 'desc',
-    sort: 'id',
-  }) as TypedUseQueryHookResult<
-    GetListResult<FaraRecord>,
-    GetListParams,
-    BaseQueryFn
-  >;
-
-  const firstRecordId = firstRecordData?.data?.[0]?.id;
+  // Lazy-запрос первой записи — используется только при переключении на form view
+  const [triggerFirstRecord] = useLazySearchQuery();
 
   // Сохраняем выбор view (кроме form)
   useEffect(() => {
@@ -118,10 +96,18 @@ export function ViewWrapper({
   }, [viewType, storageKey]);
 
   const handleViewChange = useCallback(
-    (newView: ViewType) => {
+    async (newView: ViewType) => {
       if (newView === 'form') {
-        if (firstRecordId) {
-          navigate(`${firstRecordId}`);
+        const result = await triggerFirstRecord({
+          model,
+          fields: ['id'],
+          limit: 1,
+          order: 'desc',
+          sort: 'id',
+        }).unwrap();
+        const firstId = result?.data?.[0]?.id;
+        if (firstId) {
+          navigate(`${firstId}`);
         } else {
           navigate('create');
         }
@@ -129,11 +115,11 @@ export function ViewWrapper({
         setViewType(newView);
       }
     },
-    [navigate, firstRecordId],
+    [navigate, model, triggerFirstRecord],
   );
 
-  // Определяем какой компонент рендерить
-  const renderContent = () => {
+  // Мемоизируем контент чтобы не пересоздавать Suspense обёртку при каждом рендере ViewWrapper
+  const content = useMemo(() => {
     const fallback = (
       <Center h={200}>
         <Loader />
@@ -160,7 +146,7 @@ export function ViewWrapper({
           </Suspense>
         );
     }
-  };
+  }, [viewType, ListComponent, KanbanComponent, GanttComponent]);
 
   // Мемоизируем value контекста чтобы List не перерисовывался при каждом рендере ViewWrapper
   const filterContextValue = useMemo(() => ({ filters }), [filters]);
@@ -206,7 +192,7 @@ export function ViewWrapper({
           </Group>
         </div>
 
-        <div className={classes.content}>{renderContent()}</div>
+        <div className={classes.content}>{content}</div>
       </div>
     </FilterContext.Provider>
   );

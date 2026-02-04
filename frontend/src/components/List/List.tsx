@@ -71,7 +71,7 @@ export const List = <RecordType extends FaraRecord>({
 
   // Сбрасываем страницу при изменении фильтров
   useEffect(() => {
-    setPage(1);
+    setPage(prev => (prev !== 1 ? 1 : prev));
   }, [contextFilters]);
 
   // height table without rows
@@ -229,11 +229,14 @@ export const List = <RecordType extends FaraRecord>({
           return (
             <span
               className={listClasses.recordsBadge}
-              style={color ? {
-                backgroundColor: `var(--mantine-color-${color}-1)`,
-                color: `var(--mantine-color-${color}-7)`,
-              } : undefined}
-            >
+              style={
+                color
+                  ? {
+                      backgroundColor: `var(--mantine-color-${color}-1)`,
+                      color: `var(--mantine-color-${color}-7)`,
+                    }
+                  : undefined
+              }>
               {count} записей
             </span>
           );
