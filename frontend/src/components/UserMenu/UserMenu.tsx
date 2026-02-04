@@ -66,7 +66,7 @@ function UserMenu() {
     {
       model: 'users',
       id: session?.user_id.id ?? 0,
-      fields: ['id', 'name', 'image', 'lang_id'],
+      fields: ['id', 'name', 'image', 'lang_id', 'layout_theme'],
     },
     { skip: !session?.user_id },
   );
@@ -85,6 +85,7 @@ function UserMenu() {
   const userName = user?.name ?? t('common:user', 'Пользователь');
   const imageId = user?.image?.id;
   const userLangId = user?.lang_id?.id;
+  const userLayoutTheme = user?.layout_theme;
 
   const apiLanguages = (languagesData?.data as Language[]) || [];
   const languages = apiLanguages.length > 0 ? apiLanguages : FALLBACK_LANGUAGES;
@@ -105,6 +106,17 @@ function UserMenu() {
       localStorage.setItem('i18nextLng', currentLang.code);
     }
   }, [currentLang?.code]);
+
+  // Синхронизируем layout theme с настройкой пользователя из БД
+  useEffect(() => {
+    if (
+      userLayoutTheme &&
+      (userLayoutTheme === 'classic' || userLayoutTheme === 'modern') &&
+      userLayoutTheme !== layoutTheme
+    ) {
+      setLayoutTheme(userLayoutTheme);
+    }
+  }, [userLayoutTheme]);
 
   useEffect(() => {
     setAvatarSrc(null);
@@ -153,6 +165,22 @@ function UserMenu() {
         } catch (e) {
           // Ignore
         }
+      }
+    }
+  };
+
+  const handleLayoutThemeChange = async (theme: 'classic' | 'modern') => {
+    setLayoutTheme(theme);
+
+    if (session?.user_id?.id) {
+      try {
+        await updateUser({
+          model: 'users',
+          id: session.user_id.id,
+          values: { layout_theme: theme },
+        });
+      } catch (e) {
+        // Ignore
       }
     }
   };
@@ -271,7 +299,7 @@ function UserMenu() {
                   stroke={1.5}
                 />
               }
-              onClick={() => setLayoutTheme('classic')}
+              onClick={() => handleLayoutThemeChange('classic')}
               className={
                 layoutTheme === 'classic' ? classes.activeItem : undefined
               }>
@@ -284,7 +312,7 @@ function UserMenu() {
                   stroke={1.5}
                 />
               }
-              onClick={() => setLayoutTheme('modern')}
+              onClick={() => handleLayoutThemeChange('modern')}
               className={
                 layoutTheme === 'modern' ? classes.activeItem : undefined
               }>

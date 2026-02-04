@@ -33,21 +33,13 @@ export function LayoutThemeProvider({ children }: ThemeProviderProps) {
   const session = useSelector(selectCurrentSession);
 
   const [layoutTheme, setLayoutTheme] = useState<LayoutTheme>(() => {
-    // Приоритет: localStorage (пользователь переключил вручную) → сессия → classic
-    const saved = localStorage.getItem('layoutTheme');
-    if (saved === 'classic' || saved === 'modern') return saved;
-
+    // Инициализация из сессии (layout_theme приходит при логине)
     const fromSession = session?.user_id?.layout_theme;
-    if (fromSession === 'classic' || fromSession === 'modern')
-      return fromSession;
-
+    if (fromSession === 'classic' || fromSession === 'modern') return fromSession;
     return 'classic';
   });
 
   useEffect(() => {
-    // Сохраняем в localStorage
-    localStorage.setItem('layoutTheme', layoutTheme);
-    // Устанавливаем data-атрибут на body для CSS
     document.body.setAttribute('data-layout-theme', layoutTheme);
   }, [layoutTheme]);
 
