@@ -202,7 +202,6 @@ export type UserReadSearchOutput = {
   password_hash?: string | null;
   password_salt?: string | null;
   image?: SchemaRelationNested | null;
-  image_ids?: SchemaRelationNested[] | null;
   role_ids?: SchemaRelationNested[] | null;
 };
 export type GetListField = {
@@ -224,7 +223,6 @@ export type UserSearchInput = {
     | 'password_hash'
     | 'password_salt'
     | 'image'
-    | 'image_ids'
     | 'role_ids'
   )[];
   end?: number | null;
@@ -237,7 +235,6 @@ export type UserSearchInput = {
     | 'password_hash'
     | 'password_salt'
     | 'image'
-    | 'image_ids'
     | 'role_ids';
   start?: number | null;
   limit?: number;
@@ -257,7 +254,6 @@ export type UserSearchInput = {
     | ['password_hash', '=' | '>' | '<' | '!=' | '>=' | '<=', string | null]
     | ['password_salt', '=' | '>' | '<' | '!=' | '>=' | '<=', string | null]
     | ['image', '=' | '>' | '<' | '!=' | '>=' | '<=', number]
-    | ['image_ids', 'in' | 'not in', number[]]
     | ['role_ids', 'in' | 'not in', number[]]
   )[];
   raw?: boolean;
@@ -338,7 +334,6 @@ export type SchemaUser = {
   password_hash: string | null;
   password_salt: string | null;
   image: SchemaAttachment | null;
-  image_ids: SchemaAttachment[] | null;
   role_ids: SchemaRole[] | null;
 };
 export type SchemaAccessList = {
@@ -408,7 +403,6 @@ export type UserCreate = {
   password_hash: string | null;
   password_salt: string | null;
   image: SchemaAttachment | null;
-  image_ids: SchemaRelationOne2ManyUpdateCreateSchemaAttachmentRelationNestedUpdate;
   role_ids: SchemaRelationMany2ManyUpdateCreateSchemaRoleRelationNestedUpdate;
 };
 export type SchemaAttachmentNestedPartial = {
@@ -456,7 +450,6 @@ export type User = {
   password_hash: string | null;
   password_salt: string | null;
   image: SchemaAttachmentNestedPartial;
-  image_ids: SchemaSearchOutputListSchemaAttachmentNestedPartial;
   role_ids: SchemaSearchOutputListSchemaRoleNestedPartial;
 };
 export type GetFormField = {
@@ -492,7 +485,6 @@ export type SchemaGetInput = {
         | 'password_hash'
         | 'password_salt'
         | 'image'
-        | 'image_ids'
       )
     | SchemaGetFieldRelationInput
   )[];
@@ -519,7 +511,6 @@ export type SchemaUser2 = {
   password_hash: string | null;
   password_salt: string | null;
   image: SchemaAttachment | null;
-  image_ids: SchemaAttachment[] | null;
   role_ids: SchemaRole2[] | null;
 };
 export type SchemaAccessList2 = {
@@ -590,7 +581,6 @@ export type UserUpdate = {
   password_hash?: string | null;
   password_salt?: string | null;
   image?: SchemaAttachment | null;
-  image_ids?: SchemaRelationOne2ManyUpdateCreateSchemaAttachmentRelationNestedUpdate | null;
   role_ids?: SchemaRelationMany2ManyUpdateCreateSchemaRoleRelationNestedUpdate2 | null;
 };
 export type SchemaRoleRelationNestedUpdate3 = {
@@ -613,7 +603,6 @@ export type UserUpdate2 = {
   password_hash?: string | null;
   password_salt?: string | null;
   image?: SchemaAttachment | null;
-  image_ids?: SchemaRelationOne2ManyUpdateCreateSchemaAttachmentRelationNestedUpdate | null;
   role_ids?: SchemaRelationMany2ManyUpdateCreateSchemaRoleRelationNestedUpdate3 | null;
 };
 export type SchemaGetFieldRelationInput2 = {
@@ -636,7 +625,6 @@ export type SchemaGetInput2 = {
         | 'password_hash'
         | 'password_salt'
         | 'image'
-        | 'image_ids'
       )
     | SchemaGetFieldRelationInput2
   )[];

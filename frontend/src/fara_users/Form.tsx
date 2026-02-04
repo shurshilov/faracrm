@@ -13,7 +13,6 @@ import {
   FormSheet,
 } from '@/components/Form/Layout';
 import {
-  IconPhoto,
   IconShield,
   IconLanguage,
   IconLock,
@@ -184,12 +183,6 @@ export default function ViewFormUsers(props: ViewFormProps) {
             </FormRow>
           </FormTab>
 
-          <FormTab
-            name="files"
-            label={t('tabs.files')}
-            icon={<IconPhoto size={16} />}>
-            <Field name="image_ids" />
-          </FormTab>
         </FormTabs>
       </Form>
 

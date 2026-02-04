@@ -6,7 +6,6 @@
     "login": "Login",
     "image": "Avatar",
     "role_ids": "Roles",
-    "image_ids": "Files",
     "lang": "Language",
     "lang_ids": "Available Languages",
     "active": "Active",
@@ -17,7 +16,6 @@
   },
   "tabs": {
     "roles": "Roles & Permissions",
-    "files": "Files",
     "languages": "Available Languages",
     "preferences": "Preferences"
   },

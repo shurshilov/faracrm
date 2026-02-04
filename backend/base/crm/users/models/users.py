@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Self, cast
 from backend.base.crm.attachments.models.attachments import Attachment
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
-    PolymorphicOne2many,
     Boolean,
     Char,
     PolymorphicMany2one,
@@ -49,12 +48,12 @@ class User(DotModel):
     is_admin: bool = Boolean(default=False)
 
     image: Attachment | None = PolymorphicMany2one(relation_table=Attachment)
-    image_ids: list[Attachment] = PolymorphicOne2many(
-        store=False,
-        relation_table=Attachment,
-        relation_table_field="res_id",
-        default=None,
-    )
+    # image_ids: list[Attachment] = PolymorphicOne2many(
+    #     store=False,
+    #     relation_table=Attachment,
+    #     relation_table_field="res_id",
+    #     default=None,
+    # )
     role_ids: list["Role"] = Many2many(
         store=False,
         relation_table=lambda: env.models.role,
