@@ -96,6 +96,7 @@ function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
   useEffect(() => {
     if (!attachment || !isImageMimetype(attachment.mimetype) || !session?.token)
       return;
+    if (attachment.show_preview === false) return;
 
     setIsLoading(true);
     fetch(`${API_BASE_URL}/attachments/${attachment.id}/preview`, {
