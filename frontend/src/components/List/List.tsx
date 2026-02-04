@@ -19,6 +19,7 @@ import {
   FilterExpression,
 } from '@/services/api/crudTypes';
 import { useFilters } from '@/components/SearchFilter/FilterContext';
+import { BooleanCell } from '@/components/ListCells';
 import { Field } from './Field';
 import { Toolbar } from './Toolbar';
 import useWindowDimensions from '@/services/hooks/useWindowDimensions';
@@ -210,6 +211,11 @@ export const List = <RecordType extends FaraRecord>({
         // Используем кастомный render если он есть
         if (customRenders[field.name]) {
           return customRenders[field.name](record, row);
+        }
+
+        // Boolean поля — зелёная светящаяся точка
+        if (field.type === 'Boolean') {
+          return <BooleanCell value={row[field.name] as boolean} />;
         }
 
         if (!record) {
