@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Box,
   Image,
@@ -15,6 +15,7 @@ import {
   IconDownload,
   IconRefresh,
   IconX,
+  IconPhotoOff,
 } from '@tabler/icons-react';
 import { useSelector } from 'react-redux';
 import { FileIcon } from './FileIcon';
@@ -30,9 +31,9 @@ export interface AttachmentData {
   name?: string | null;
   mimetype?: string | null;
   size?: number | null;
-  content?: string | null; // base64 для новых файлов
-  storage_file_url?: string | null; // URL для существующих файлов
-  is_voice?: boolean; // Голосовое сообщение
+  content?: string | null;
+  storage_file_url?: string | null;
+  is_voice?: boolean;
 }
 
 interface AttachmentPreviewProps {
@@ -40,13 +41,39 @@ interface AttachmentPreviewProps {
   onDelete?: () => void;
   onReplace?: () => void;
   onDownload?: () => void;
-  onClick?: () => void; // для открытия галереи
+  onClick?: () => void;
   isLoading?: boolean;
   showActions?: boolean;
-  showPreview?: boolean; // загружать ли превью изображений (по умолчанию true)
+  showPreview?: boolean;
   previewSize?: number;
-  /** Компактный режим - только превью с крестиком удаления */
   compact?: boolean;
+}
+
+/** Загрузка картинки с сервера, возвращает data URL или null */
+function fetchImageFromApi(
+  attachId: number,
+  token: string,
+  width?: number,
+  height?: number,
+): Promise<string | null> {
+  const params = width && height ? `?w=${width}&h=${height}` : '';
+  return fetch(`${API_BASE_URL}/attachments/${attachId}/preview${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to load');
+      return response.blob();
+    })
+    .then(blob => {
+      // Пустой ответ = файл не найден
+      if (blob.size === 0) throw new Error('Empty response');
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Read failed'));
+        reader.readAsDataURL(blob);
+      });
+    });
 }
 
 export function AttachmentPreview({
@@ -61,71 +88,92 @@ export function AttachmentPreview({
   previewSize = 120,
   compact = false,
 }: AttachmentPreviewProps) {
+  // Превью (маленькая картинка в карточке)
+  const [thumbnailSrc, setThumbnailSrc] = useState<string | null>(null);
+  const [thumbnailError, setThumbnailError] = useState(false);
+  const [isLoadingThumbnail, setIsLoadingThumbnail] = useState(false);
+
+  // Оригинал (для модального окна)
+  const [originalSrc, setOriginalSrc] = useState<string | null>(null);
+  const [isLoadingOriginal, setIsLoadingOriginal] = useState(false);
+
   const [imageModalOpened, setImageModalOpened] = useState(false);
-  const [imageError, setImageError] = useState(false);
-  const [loadedImageSrc, setLoadedImageSrc] = useState<string | null>(null);
-  const [isLoadingImage, setIsLoadingImage] = useState(false);
+
+  // Трекаем id чтобы не сбрасывать при ререндерах с тем же id
+  const loadedForIdRef = useRef<number | string | null>(null);
+  const errorForIdRef = useRef<number | string | null>(null);
 
   const session = useSelector(selectCurrentSession);
   const isImage = isImageMimetype(attachment.mimetype);
   const isAudio = isAudioMimetype(attachment.mimetype);
 
-  // Загрузка изображения через fetch с авторизацией
+  const canFetchFromApi =
+    isImage &&
+    attachment.id &&
+    typeof attachment.id === 'number' &&
+    attachment.id > 0 &&
+    !!session?.token;
+
+  // --- Загрузка thumbnail при showPreview=true ---
   useEffect(() => {
-    // Сбрасываем состояние при смене attachment
-    setLoadedImageSrc(null);
-    setImageError(false);
+    const attachId = attachment.id;
 
-    // Если превью отключено или это аудио — не загружаем картинку
-    if (!showPreview || isAudio) return;
+    // Id сменился — сбрасываем
+    if (loadedForIdRef.current !== attachId) {
+      loadedForIdRef.current = null;
+      setThumbnailSrc(null);
+      setOriginalSrc(null);
+    }
+    if (errorForIdRef.current !== attachId) {
+      errorForIdRef.current = null;
+      setThumbnailError(false);
+    }
 
-    // Если есть base64 контент — не нужно загружать
+    if (!isImage || isAudio) return;
+
+    // base64 из формы (новый файл)
     if (attachment.content) {
-      setLoadedImageSrc(
-        `data:${attachment.mimetype};base64,${attachment.content}`,
-      );
+      const src = `data:${attachment.mimetype};base64,${attachment.content}`;
+      setThumbnailSrc(src);
+      setOriginalSrc(src); // для нового файла оригинал = то же самое
+      loadedForIdRef.current = attachId ?? null;
       return;
     }
 
-    // Если есть storage_file_url как data URL
+    // data URL из storage
     if (attachment.storage_file_url?.startsWith('data:')) {
-      setLoadedImageSrc(attachment.storage_file_url);
+      setThumbnailSrc(attachment.storage_file_url);
+      loadedForIdRef.current = attachId ?? null;
       return;
     }
 
-    // Если есть id и это изображение — загружаем через API
-    // Пропускаем временные отрицательные ID (используются при оптимистичном обновлении)
+    // Уже загружено / ошибка для этого id — ничего не делаем
+    if (loadedForIdRef.current === attachId) return;
+    if (errorForIdRef.current === attachId) return;
+
+    // showPreview=false → НЕ грузим, покажем иконку
+    if (!showPreview) return;
+
+    // showPreview=true → грузим thumbnail
     if (
-      isImage &&
-      attachment.id &&
+      canFetchFromApi &&
       typeof attachment.id === 'number' &&
-      attachment.id > 0 &&
       session?.token
     ) {
-      setIsLoadingImage(true);
-
-      fetch(`${API_BASE_URL}/attachments/${attachment.id}/preview`, {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
-      })
-        .then(response => {
-          if (!response.ok) throw new Error('Failed to load image');
-          return response.blob();
-        })
-        .then(blob => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            setLoadedImageSrc(reader.result as string);
-          };
-          reader.readAsDataURL(blob);
+      setIsLoadingThumbnail(true);
+      // Превью в размере previewSize * 2 для retina
+      const size = previewSize * 2;
+      fetchImageFromApi(attachment.id, session.token, size, size)
+        .then(src => {
+          loadedForIdRef.current = attachment.id ?? null;
+          setThumbnailSrc(src);
+          setThumbnailError(false);
         })
         .catch(() => {
-          setImageError(true);
+          errorForIdRef.current = attachment.id ?? null;
+          setThumbnailError(true);
         })
-        .finally(() => {
-          setIsLoadingImage(false);
-        });
+        .finally(() => setIsLoadingThumbnail(false));
     }
   }, [
     attachment.id,
@@ -133,31 +181,96 @@ export function AttachmentPreview({
     attachment.storage_file_url,
     attachment.mimetype,
     isImage,
+    isAudio,
     session?.token,
     showPreview,
+    canFetchFromApi,
+    previewSize,
   ]);
 
-  const imageSrc = loadedImageSrc;
+  // Показывать ли картинку inline
+  const showImageInline = isImage && !!thumbnailSrc && !thumbnailError;
 
-  const handleClick = () => {
-    // Если передан onClick — используем его (для галереи)
+  // <Image> onError — файл битый / формат не поддерживается
+  const handleImageError = useCallback(() => {
+    setThumbnailError(true);
+    setThumbnailSrc(null);
+    errorForIdRef.current = attachment.id ?? null;
+  }, [attachment.id]);
+
+  // --- Клик: загружаем оригинал и открываем модалку ---
+  const handleClick = useCallback(() => {
+    // onClick от родителя (галерея) — приоритет
     if (onClick) {
       onClick();
       return;
     }
-    // Иначе открываем встроенную модалку для одиночного изображения
-    if (isImage && imageSrc && !imageError) {
-      setImageModalOpened(true);
-    } else if (onDownload) {
-      onDownload();
+
+    if (!isImage) {
+      onDownload?.();
+      return;
     }
-  };
 
-  const handleImageError = () => {
-    setImageError(true);
-  };
+    // Уже была ошибка — не пытаемся снова
+    if (thumbnailError) return;
 
-  // Компактный режим - только превью с крестиком удаления (для ChatInput)
+    // Оригинал уже загружен
+    if (originalSrc) {
+      setImageModalOpened(true);
+      return;
+    }
+
+    // Есть thumbnail (из base64/content) — он и есть оригинал
+    if (thumbnailSrc && attachment.content) {
+      setOriginalSrc(thumbnailSrc);
+      setImageModalOpened(true);
+      return;
+    }
+
+    // Нужно загрузить оригинал с сервера
+    if (
+      canFetchFromApi &&
+      typeof attachment.id === 'number' &&
+      session?.token &&
+      !isLoadingOriginal
+    ) {
+      setIsLoadingOriginal(true);
+      // Без w/h → оригинал
+      fetchImageFromApi(attachment.id, session.token)
+        .then(src => {
+          if (src) {
+            setOriginalSrc(src);
+            // Если thumbnail не был загружен (showPreview=false), покажем его тоже
+            if (!thumbnailSrc) {
+              setThumbnailSrc(src);
+              loadedForIdRef.current = attachment.id ?? null;
+            }
+            setImageModalOpened(true);
+          }
+        })
+        .catch(() => {
+          errorForIdRef.current = attachment.id ?? null;
+          setThumbnailError(true);
+        })
+        .finally(() => setIsLoadingOriginal(false));
+    }
+  }, [
+    onClick,
+    isImage,
+    thumbnailError,
+    originalSrc,
+    thumbnailSrc,
+    attachment.id,
+    attachment.content,
+    canFetchFromApi,
+    session?.token,
+    isLoadingOriginal,
+    onDownload,
+  ]);
+
+  const isLoadingAny = isLoadingThumbnail || isLoadingOriginal;
+
+  // --- Compact mode ---
   if (compact) {
     return (
       <Box
@@ -170,17 +283,17 @@ export function AttachmentPreview({
               {attachment.name}
             </Text>
           </Box>
-        ) : isImage && imageSrc && !imageError ? (
+        ) : showImageInline ? (
           <Image
-            src={imageSrc}
+            src={thumbnailSrc}
             alt={attachment.name || 'Preview'}
             fit="cover"
             radius="sm"
             w={previewSize}
             h={previewSize}
             onError={handleImageError}
-            onClick={onClick}
-            style={{ cursor: onClick ? 'pointer' : undefined }}
+            onClick={handleClick}
+            style={{ cursor: 'pointer' }}
           />
         ) : (
           <Box className={classes.compactFile}>
@@ -208,9 +321,9 @@ export function AttachmentPreview({
     );
   }
 
+  // --- Main render ---
   return (
     <>
-      {/* Аудио файлы отображаем с плеером */}
       {isAudio ? (
         <Paper
           className={classes.audioContainer}
@@ -227,7 +340,6 @@ export function AttachmentPreview({
               isVoice={attachment.is_voice || false}
               compact
             />
-            {/* Показываем имя файла только для не-голосовых */}
             {!attachment.is_voice && (
               <Text size="xs" c="dimmed" lineClamp={1}>
                 {attachment.name || 'Audio'}
@@ -237,38 +349,50 @@ export function AttachmentPreview({
         </Paper>
       ) : (
         <Paper className={classes.container} withBorder p="xs" radius="md">
-          {isLoading || isLoadingImage ? (
-            <Box
-              className={classes.preview}
-              style={{ width: previewSize, height: previewSize }}>
+          <Box
+            className={classes.preview}
+            style={{
+              width: previewSize,
+              height: previewSize,
+              cursor:
+                isImage || onClick || onDownload ? 'pointer' : undefined,
+            }}
+            onClick={handleClick}>
+            {isLoading || isLoadingAny ? (
               <Loader size="sm" />
-            </Box>
-          ) : (
-            <Box
-              className={classes.preview}
-              style={{ width: previewSize, height: previewSize }}
-              onClick={handleClick}>
-              {isImage && imageSrc && !imageError && showPreview ? (
-                <Image
-                  src={imageSrc}
-                  alt={attachment.name || 'Preview'}
-                  fit="cover"
-                  radius="md"
-                  w={previewSize}
-                  h={previewSize}
-                  onError={handleImageError}
-                  className={classes.image}
-                />
-              ) : (
-                <Box className={classes.iconWrapper}>
-                  <FileIcon
-                    mimetype={attachment.mimetype}
-                    size={previewSize * 0.5}
+            ) : showImageInline ? (
+              <Image
+                src={thumbnailSrc}
+                alt={attachment.name || 'Preview'}
+                fit="cover"
+                radius="md"
+                w={previewSize}
+                h={previewSize}
+                onError={handleImageError}
+                className={classes.image}
+              />
+            ) : isImage && thumbnailError ? (
+              <Box className={classes.iconWrapper}>
+                <Stack align="center" gap={4}>
+                  <IconPhotoOff
+                    size={previewSize * 0.35}
+                    stroke={1.2}
+                    color="var(--mantine-color-gray-5)"
                   />
-                </Box>
-              )}
-            </Box>
-          )}
+                  <Text size="xs" c="dimmed">
+                    Превью недоступно
+                  </Text>
+                </Stack>
+              </Box>
+            ) : (
+              <Box className={classes.iconWrapper}>
+                <FileIcon
+                  mimetype={attachment.mimetype}
+                  size={previewSize * 0.5}
+                />
+              </Box>
+            )}
+          </Box>
 
           <Stack gap={4} className={classes.info}>
             <Tooltip label={attachment.name} disabled={!attachment.name}>
@@ -335,12 +459,12 @@ export function AttachmentPreview({
         </Paper>
       )}
 
-      {/* Модальное окно для просмотра изображения */}
-      {isImage && imageSrc && (
+      {/* Модальное окно — оригинал */}
+      {isImage && (
         <ImagePreviewModal
-          opened={imageModalOpened}
+          opened={imageModalOpened && !!originalSrc}
           onClose={() => setImageModalOpened(false)}
-          src={imageSrc}
+          src={originalSrc || ''}
           filename={attachment.name || undefined}
           onDownload={onDownload}
         />
