@@ -14,7 +14,6 @@ from backend.base.crm.users.schemas.users import (
     CopyUserOutput,
 )
 from backend.base.crm.security.models.sessions import Session
-from backend.base.system.schemas.base_schema import Id, Password
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -150,6 +149,19 @@ async def password_change(req: Request, payload: ChangePasswordInput):
     if payload.user_id is None:
         payload.user_id = req.state.session.user_id.id
 
+    # Валидация пароля по системной политике
+    policy = await User.get_password_policy(env)
+    errors = User.validate_password(payload.password, policy)
+    if errors:
+        return JSONResponse(
+            content={
+                "error": "#PASSWORD_POLICY",
+                "details": errors,
+                "policy": policy,
+            },
+            status_code=422,
+        )
+
     user = await env.models.user.get(id=payload.user_id)
     if user:
         await user.password_change(env, payload.password, auth_session)
@@ -167,7 +179,14 @@ async def signin(req: Request, payload: UserSigninInput):
         user_id = await env.models.user.search(
             filter=[("login", "=", payload.login)],
             limit=1,
-            fields=["id", "name", "password_hash", "password_salt", "home_page", "layout_theme"],
+            fields=[
+                "id",
+                "name",
+                "password_hash",
+                "password_salt",
+                "home_page",
+                "layout_theme",
+            ],
         )
         if not user_id:
             raise AuthException.UserNotExist
@@ -190,7 +209,9 @@ async def signin(req: Request, payload: UserSigninInput):
         ttl = await Session.get_ttl()
         # оставить только поля id, name, home_page
         # чтобы не хранить хеш и соль в сессии на фронте для безопасности
-        clear_user_id = User(**user_id.json(include={"id", "name", "home_page", "layout_theme"}))
+        clear_user_id = User(
+            **user_id.json(include={"id", "name", "home_page", "layout_theme"})
+        )
         session = Session(
             user_id=clear_user_id,
             token=token,

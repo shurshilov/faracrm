@@ -90,6 +90,26 @@ class SecurityApp(App):
                     "is_system": True,
                     "cache_ttl": -1,
                 },
+                {
+                    "key": "auth.password_policy",
+                    "value": {
+                        "preset": "basic",
+                        "min_length": 5,
+                        "require_uppercase": False,
+                        "require_lowercase": False,
+                        "require_digits": False,
+                        "require_special": False,
+                    },
+                    "description": (
+                        "Парольная политика. "
+                        "preset: basic (только длина), medium (буквы + цифры), "
+                        "strong (заглавные + строчные + цифры + спецсимволы), "
+                        "custom (ручная настройка флагов)"
+                    ),
+                    "module": "auth",
+                    "is_system": True,
+                    "cache_ttl": -1,
+                },
             ]
         )
 

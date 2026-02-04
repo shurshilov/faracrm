@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 from pydantic import AwareDatetime, BaseModel
 
-from backend.base.system.schemas.base_schema import Id, Password
+from backend.base.system.schemas.base_schema import Id
 
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ class UserSigninOutput(BaseModel, extra="forbid"):
 
 class ChangePasswordInput(BaseModel, extra="forbid"):
     user_id: Id | None = None
-    password: Password
+    password: str
 
 
 class CopyUserInput(BaseModel, extra="forbid"):

@@ -1,6 +1,7 @@
 import binascii
 from datetime import datetime, timedelta, timezone
 import hashlib
+import re
 import secrets
 from typing import TYPE_CHECKING, Self, cast
 
@@ -153,6 +154,65 @@ class User(DotModel):
             )
         ).decode()
 
+    _DEFAULT_PASSWORD_POLICY = {
+        "min_length": 5,
+        "require_uppercase": False,
+        "require_lowercase": False,
+        "require_digits": False,
+        "require_special": False,
+    }
+
+    @staticmethod
+    async def get_password_policy(env: "Environment") -> dict:
+        """Получить текущую парольную политику из SystemSettings."""
+        raw = await env.models.system_settings.get_value(
+            "auth.password_policy"
+        )
+        default = User._DEFAULT_PASSWORD_POLICY
+        if not raw or not isinstance(raw, dict):
+            return default.copy()
+        return {
+            "min_length": raw.get("min_length", default["min_length"]),
+            "require_uppercase": raw.get(
+                "require_uppercase", default["require_uppercase"]
+            ),
+            "require_lowercase": raw.get(
+                "require_lowercase", default["require_lowercase"]
+            ),
+            "require_digits": raw.get(
+                "require_digits", default["require_digits"]
+            ),
+            "require_special": raw.get(
+                "require_special", default["require_special"]
+            ),
+        }
+
+    @staticmethod
+    def validate_password(password: str, policy: dict) -> list[str]:
+        """
+        Проверить пароль по политике.
+        Возвращает список кодов ошибок (пустой = валидный).
+        """
+        errors: list[str] = []
+        min_len = policy.get("min_length", 5)
+        if len(password) < min_len:
+            errors.append(f"too_short:{min_len}")
+        if policy.get("require_uppercase"):
+            if not re.search(r"[A-ZА-ЯЁ]", password):
+                errors.append("no_uppercase")
+        if policy.get("require_lowercase"):
+            if not re.search(r"[a-zа-яё]", password):
+                errors.append("no_lowercase")
+        if policy.get("require_digits"):
+            if not re.search(r"[0-9]", password):
+                errors.append("no_digit")
+        if policy.get("require_special"):
+            if not re.search(
+                r"""[!@#$%^&*()_+\-=\[\]{}|;:'",.<>?/\\`~]""", password
+            ):
+                errors.append("no_special")
+        return errors
+
     async def password_change(
         self,
         env: "Environment",
@@ -175,7 +235,8 @@ class User(DotModel):
             # сохранить хеш-пароль, соль
             self.password_hash = hash
             self.password_salt = salt
-            await self.update()
+            # User(id=self.id, password_hash=hash, password_salt=salt)
+            await self.update(fields=["password_hash", "password_salt"])
 
             # закрыть старые сессии
             if auth_session is None:

@@ -31,7 +31,7 @@
   },
   "changePassword": {
     "title": "Change Password",
-    "forUser": "For user",
+    "forUser": "User",
     "newPassword": "New Password",
     "enterNewPassword": "Enter new password",
     "confirmPassword": "Confirm Password",
@@ -42,9 +42,14 @@
     "error": "Error",
     "errorMessage": "Failed to change password",
     "passwordRequired": "Password is required",
-    "passwordTooShort": "Password must be at least 8 characters",
     "confirmRequired": "Please confirm password",
-    "passwordsMismatch": "Passwords do not match"
+    "passwordsMismatch": "Passwords do not match",
+    "policyNotMet": "Password does not meet the requirements",
+    "rule_min_length": "At least {{count}} characters",
+    "rule_uppercase": "Uppercase letter (A-Z)",
+    "rule_lowercase": "Lowercase letter (a-z)",
+    "rule_digits": "Digit (0-9)",
+    "rule_special": "Special character (!@#$%...)"
   },
   "copyUser": {
     "title": "Copy User",
