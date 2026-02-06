@@ -165,9 +165,15 @@ class TestCategory:
         from backend.base.crm.products.models.category import Category
 
         cid = await Category.create(Category(name="Gadgets"))
-        pid = await Product.create(Product(name="Smartphone", categ_id=cid))
-        p = await Product.get(pid, fields=["id", "name", "categ_id"])
-        assert p.categ_id.id == cid
+        pid = await Product.create(
+            Product(name="Smartphone", category_id=Category(id=cid))
+        )
+        p = await Product.get(
+            pid,
+            fields=["id", "name", "category_id"],
+            fields_nested={"category_id": ["id"]},
+        )
+        assert p.category_id.id == cid
 
 
 # ====================

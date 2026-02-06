@@ -73,12 +73,16 @@ class TestLeadCreate:
         lid = await Lead.create(
             Lead(
                 name="Partner Lead",
-                stage_id=sid,
-                parent_id=pid,
+                stage_id=LeadStage(id=sid),
+                parent_id=Partner(id=pid),
             )
         )
 
-        lead = await Lead.get(lid, fields=["id", "name", "parent_id"])
+        lead = await Lead.get(
+            lid,
+            fields=["id", "name", "parent_id"],
+            fields_nested={"parent_id": ["id"]},
+        )
         assert lead.parent_id.id == pid
 
     async def test_create_lead_with_contact_info(self):
@@ -185,11 +189,15 @@ class TestLeadUpdate:
         s1 = await LeadStage.create(LeadStage(name="New", sequence=1))
         s2 = await LeadStage.create(LeadStage(name="Qualified", sequence=2))
 
-        lid = await Lead.create(Lead(name="Stage Lead", stage_id=s1))
+        lid = await Lead.create(
+            Lead(name="Stage Lead", stage_id=LeadStage(id=s1))
+        )
         lead = await Lead.get(lid)
-        await lead.update(Lead(stage_id=s2))
+        await lead.update(Lead(stage_id=LeadStage(id=s2)))
 
-        updated = await Lead.get(lid, fields=["id", "stage_id"])
+        updated = await Lead.get(
+            lid, fields=["id", "stage_id"], fields_nested={"stage_id": ["id"]}
+        )
         assert updated.stage_id.id == s2
 
     async def test_convert_lead_to_opportunity(self):

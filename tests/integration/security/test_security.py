@@ -41,11 +41,7 @@ class TestRoles:
         from backend.base.crm.security.models.roles import Role
         from backend.base.crm.security.models.models import Model
 
-        model_id = await Model.create(
-            Model(
-                name="users", model="backend.base.crm.users.models.users.User"
-            )
-        )
+        model_id = await Model.create(Model(name="users"))
 
         role_id = await Role.create(
             Role(
@@ -54,7 +50,11 @@ class TestRoles:
             )
         )
 
-        role = await Role.get(role_id, fields=["id", "name", "model_id"])
+        role = await Role.get(
+            role_id,
+            fields=["id", "name", "model_id"],
+            fields_nested={"model_id": ["id"]},
+        )
         assert role.model_id.id == model_id
 
     async def test_assign_users_to_role(self, user_factory):
@@ -69,13 +69,14 @@ class TestRoles:
         role = await Role.get(role_id)
 
         # Assign users
-        await role.update(
-            Role(user_ids={"selected": [user1.id, user2.id]}),
-            fields=["user_ids"],
-        )
+        await role.update(Role(user_ids={"selected": [user1.id, user2.id]}))
 
         # Verify
-        updated = await Role.get(role_id, fields=["id", "user_ids"])
+        updated = await Role.get(
+            role_id,
+            fields=["id", "user_ids"],
+            fields_nested={"user_ids": ["id"]},
+        )
         user_ids = [u.id for u in updated.user_ids] if updated.user_ids else []
         assert user1.id in user_ids
         assert user2.id in user_ids

@@ -79,3 +79,4 @@ class Product(DotModel):
     volume: float | None = Float(string="Volume")
     weight: float | None = Float(string="Stock Weight")
     image: Attachment | None = PolymorphicMany2one(relation_table=Attachment)
+    active: bool = Boolean(default=True)

@@ -137,12 +137,20 @@ class TestSaleUpdate:
         pid = await Partner.create(Partner(name="Customer"))
 
         sale_id = await Sale.create(
-            Sale(name="SO-MOVE", stage_id=s1, partner_id=pid)
+            Sale(
+                name="SO-MOVE",
+                stage_id=SaleStage(id=s1),
+                partner_id=Partner(id=pid),
+            )
         )
         sale = await Sale.get(sale_id)
-        await sale.update(Sale(stage_id=s2))
+        await sale.update(Sale(stage_id=SaleStage(id=s2)))
 
-        updated = await Sale.get(sale_id, fields=["id", "stage_id"])
+        updated = await Sale.get(
+            sale_id,
+            fields=["id", "stage_id"],
+            fields_nested={"stage_id": ["id"]},
+        )
         assert updated.stage_id.id == s2
 
     async def test_deactivate_sale(self):
@@ -200,21 +208,25 @@ class TestSaleLines:
         pid = await Partner.create(Partner(name="Customer"))
         prod_id = await Product.create(Product(name="Widget", list_price=50.0))
         sale_id = await Sale.create(
-            Sale(name="SO-LINE", stage_id=sid, partner_id=pid)
+            Sale(
+                name="SO-LINE",
+                stage_id=SaleStage(id=sid),
+                partner_id=Partner(id=pid),
+            )
         )
 
         line_id = await SaleLine.create(
             SaleLine(
                 sale_id=sale_id,
                 product_id=prod_id,
-                name="Widget",
-                quantity=10,
+                # name="Widget",
+                product_uom_qty=10,
                 price_unit=50.0,
             )
         )
 
         line = await SaleLine.get(line_id)
-        assert line.quantity == 10
+        assert line.product_uom_qty == 10
         assert line.price_unit == pytest.approx(50.0, abs=0.01)
 
     async def test_sale_with_multiple_lines(self):

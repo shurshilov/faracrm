@@ -171,20 +171,42 @@ async def db_pool(manage_test_database) -> AsyncGenerator:
     await pool.close()
 
 
+# @pytest_asyncio.fixture(autouse=True)
+# async def clean_all_tables(db_pool):
+#     """Truncate all tables in correct order."""
+#     # Order matters due to foreign keys
+#     if _models_instance is not None:
+#         tables_to_clean = [m.__table__ for m in _models_instance._get_models()]
+
+
+#         async with _pool.acquire() as conn:
+#             for table in tables_to_clean:
+#                 try:
+#                     await conn.execute(f"TRUNCATE TABLE {table} CASCADE")
+#                 except asyncpg.exceptions.UndefinedTableError:
+#                     print(f"\nX Error clean table: {table}")
+#                     pass  # Table doesn't exist yet
 @pytest_asyncio.fixture(autouse=True)
 async def clean_all_tables(db_pool):
-    """Truncate all tables in correct order."""
-    # Order matters due to foreign keys
+    """Truncate all tables in one fast query."""
     if _models_instance is not None:
-        tables_to_clean = [m.__table__ for m in _models_instance._get_models()]
+        tables = [m.__table__ for m in _models_instance._get_models()]
 
-        async with _pool.acquire() as conn:
-            for table in tables_to_clean:
-                try:
-                    await conn.execute(f"TRUNCATE TABLE {table} CASCADE")
-                except asyncpg.exceptions.UndefinedTableError:
-                    print(f"\nX Error clean table: {table}")
-                    pass  # Table doesn't exist yet
+        if tables:
+            try:
+                tables_str = ", ".join(tables)
+                async with db_pool.acquire() as conn:
+                    # Отключаем проверку FK, очищаем, включаем обратно
+                    # await conn.execute(
+                    #     "SET session_replication_role = 'replica'"
+                    # )
+                    await conn.execute(f"TRUNCATE TABLE {tables_str} CASCADE")
+                    # await conn.execute(
+                    #     "SET session_replication_role = 'origin'"
+                    # )
+            except asyncpg.exceptions.UndefinedTableError:
+                print(f"\nX Error clean table: {tables_str}")
+                pass  # Table doesn't exist yet
 
 
 async def _create_all_tables(pool):

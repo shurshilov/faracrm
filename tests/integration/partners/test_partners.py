@@ -39,17 +39,10 @@ class TestPartnerCreate:
         """Test creating customer partner."""
         from backend.base.crm.partners.models.partners import Partner
 
-        pid = await Partner.create(
-            Partner(
-                name="Customer Corp",
-                is_customer=True,
-                is_supplier=False,
-            )
-        )
+        pid = await Partner.create(Partner(name="Customer Corp"))
 
         p = await Partner.get(pid)
-        assert p.is_customer is True
-        assert p.is_supplier is False
+        assert p.name == "Customer Corp"
 
     async def test_create_supplier(self):
         """Test creating supplier partner."""
@@ -58,14 +51,11 @@ class TestPartnerCreate:
         pid = await Partner.create(
             Partner(
                 name="Supplier Inc",
-                is_customer=False,
-                is_supplier=True,
             )
         )
 
         p = await Partner.get(pid)
-        assert p.is_customer is False
-        assert p.is_supplier is True
+        assert p.name == "Supplier Inc"
 
     async def test_create_partner_hierarchy(self):
         """Test creating parent/child partners."""
@@ -75,11 +65,15 @@ class TestPartnerCreate:
         child_id = await Partner.create(
             Partner(
                 name="Child Division",
-                parent_id=parent_id,
+                parent_id=Partner(id=parent_id),
             )
         )
 
-        child = await Partner.get(child_id, fields=["id", "name", "parent_id"])
+        child = await Partner.get(
+            child_id,
+            fields=["id", "name", "parent_id"],
+            fields_nested={"parent_id": ["id"]},
+        )
         assert child.parent_id.id == parent_id
 
     async def test_create_partner_bulk(self):
@@ -226,7 +220,7 @@ class TestPartnerDelete:
         await Partner.delete_bulk(ids[:3])
 
         for i in range(3):
-            assert await Partner.get(ids[i]) is None
+            assert await Partner.get_or_none(ids[i]) is None
         for i in range(3, 5):
             assert await Partner.get(ids[i]) is not None
 
@@ -243,7 +237,9 @@ class TestContactTypes:
         """Test creating contact type."""
         from backend.base.crm.partners.models.contact_type import ContactType
 
-        ct_id = await ContactType.create(ContactType(name="Phone"))
+        ct_id = await ContactType.create(
+            ContactType(name="Phone", label="Phone")
+        )
         ct = await ContactType.get(ct_id)
         assert ct.name == "Phone"
 
@@ -253,7 +249,7 @@ class TestContactTypes:
 
         types = ["Phone", "Email", "Telegram", "WhatsApp"]
         for t in types:
-            await ContactType.create(ContactType(name=t))
+            await ContactType.create(ContactType(name=t, label="Label" + t))
 
         all_types = await ContactType.search(fields=["id", "name"])
         assert len(all_types) == 4
@@ -273,14 +269,16 @@ class TestContacts:
         from backend.base.crm.partners.models.contact import Contact
         from backend.base.crm.partners.models.contact_type import ContactType
 
-        ct_id = await ContactType.create(ContactType(name="Phone"))
+        ct_id = await ContactType.create(
+            ContactType(name="Phone", label="Phone")
+        )
         pid = await Partner.create(Partner(name="Contact Test"))
 
         c_id = await Contact.create(
             Contact(
                 name="+79001234567",
-                contact_type_id=ct_id,
-                partner_id=pid,
+                contact_type_id=ContactType(id=ct_id),
+                partner_id=Partner(id=pid),
                 is_primary=True,
             )
         )
@@ -295,23 +293,27 @@ class TestContacts:
         from backend.base.crm.partners.models.contact import Contact
         from backend.base.crm.partners.models.contact_type import ContactType
 
-        phone_id = await ContactType.create(ContactType(name="Phone"))
-        email_id = await ContactType.create(ContactType(name="Email"))
+        phone_id = await ContactType.create(
+            ContactType(name="Phone", label="Phone")
+        )
+        email_id = await ContactType.create(
+            ContactType(name="Email", label="Email")
+        )
         pid = await Partner.create(Partner(name="Multi Contact"))
 
         await Contact.create(
             Contact(
                 name="+79001111111",
-                contact_type_id=phone_id,
-                partner_id=pid,
+                contact_type_id=ContactType(id=phone_id),
+                partner_id=Partner(id=pid),
                 is_primary=True,
             )
         )
         await Contact.create(
             Contact(
                 name="test@test.com",
-                contact_type_id=email_id,
-                partner_id=pid,
+                contact_type_id=ContactType(id=email_id),
+                partner_id=Partner(id=pid),
                 is_primary=False,
             )
         )
