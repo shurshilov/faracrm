@@ -384,9 +384,7 @@ async def client(app) -> AsyncGenerator:
 
 
 @pytest_asyncio.fixture
-async def authenticated_client(
-    client, test_env, clean_tables
-) -> AsyncGenerator:
+async def authenticated_client(client, test_env) -> AsyncGenerator:
     """Create authenticated client with test user."""
     # Create test user
     from backend.base.crm.users.models.users import User
@@ -440,7 +438,7 @@ async def authenticated_client(
 
 
 @pytest_asyncio.fixture
-async def user_factory(db_pool, clean_tables):
+async def user_factory(db_pool):
     """Factory for creating test users."""
     from backend.base.crm.users.models.users import User
     from backend.base.crm.languages.models.language import Language
@@ -490,7 +488,7 @@ async def user_factory(db_pool, clean_tables):
 
 
 @pytest_asyncio.fixture
-async def partner_factory(db_pool, clean_tables):
+async def partner_factory(db_pool):
     """Factory for creating test partners."""
     from backend.base.crm.partners.models.partners import Partner
 
@@ -524,7 +522,7 @@ async def partner_factory(db_pool, clean_tables):
 
 
 @pytest_asyncio.fixture
-async def product_factory(db_pool, clean_tables):
+async def product_factory(db_pool):
     """Factory for creating test products."""
     from backend.base.crm.products.models.product import Product
 
@@ -546,7 +544,7 @@ async def product_factory(db_pool, clean_tables):
 
 
 @pytest_asyncio.fixture
-async def lead_factory(db_pool, clean_tables, partner_factory):
+async def lead_factory(db_pool, partner_factory):
     """Factory for creating test leads."""
     from backend.base.crm.leads.models.leads import Lead
     from backend.base.crm.leads.models.lead_stage import LeadStage
@@ -584,7 +582,7 @@ async def lead_factory(db_pool, clean_tables, partner_factory):
 
 
 @pytest_asyncio.fixture
-async def sale_factory(db_pool, clean_tables, partner_factory):
+async def sale_factory(db_pool, partner_factory):
     """Factory for creating test sales."""
     from backend.base.crm.sales.models.sale import Sale
     from backend.base.crm.sales.models.sale_stage import SaleStage

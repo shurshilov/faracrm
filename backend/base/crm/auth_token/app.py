@@ -50,7 +50,7 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         """
 
         if not credentials:
-            raise SessionErrorFormat
+            raise SessionErrorFormat()
         env: Environment = request.app.state.env
 
         session = await env.models.session.session_check(

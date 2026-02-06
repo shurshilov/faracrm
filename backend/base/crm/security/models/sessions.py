@@ -96,7 +96,7 @@ class Session(DotModel):
         result = await session.execute(stmt, [token])
 
         if not result:
-            raise AuthException.SessionNotExist
+            raise AuthException.SessionNotExist()
 
         session_id = result[0]
         now = datetime.now(timezone.utc)
@@ -110,7 +110,7 @@ class Session(DotModel):
                 "UPDATE sessions SET active = false WHERE id = %s",
                 [session_id["id"]],
             )
-            raise AuthException.SessionExpired
+            raise AuthException.SessionExpired()
 
         # Создаём объект сессии с user_id содержащим is_admin
         session_obj = Session(

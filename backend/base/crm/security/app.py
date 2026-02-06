@@ -2,8 +2,10 @@ import logging
 import os
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from backend.base.crm.security.exceptions import AuthException
 from backend.base.system.core.app import App
 from backend.base.system.core.enviroment import Environment
+from backend.base.system.core.service import Service
 from backend.base.system.dotorm.dotorm.access import (
     set_access_checker,
     AccessDenied,
@@ -17,7 +19,7 @@ from .access_control import SecurityAccessChecker
 log = logging.getLogger(__name__)
 
 
-class SecurityApp(App):
+class SecurityApp(Service):
     """
     Сервис который добавляет роли и права доступа
     """
@@ -32,6 +34,7 @@ class SecurityApp(App):
         "post_init": True,
         "sequence": 1,  # Выполняется первым - создаёт роли и модели
         "depends": [],
+        "service": True,
     }
 
     BASE_USER_ACL = {
@@ -46,15 +49,84 @@ class SecurityApp(App):
     }
 
     def handler_errors(self, app_server: FastAPI):
-        """Регистрирует обработчики ошибок доступа."""
+        """Регистрирует обработчики ошибок доступа и аутентификации."""
 
-        async def access_denied_handler(request: Request, exc: AccessDenied):
+        async def password_failed_handler(
+            request: Request, exc: AuthException.PasswordFailed
+        ):
             return JSONResponse(
-                content={"error": "#ACCESS_DENIED", "message": exc.message},
+                content={
+                    "error": "#PASSWORD_FAILED",
+                    "message": "Invalid password",
+                },
                 status_code=403,
             )
 
-        app_server.add_exception_handler(AccessDenied, access_denied_handler)
+        async def session_not_exist_handler(
+            request: Request, exc: AuthException.SessionNotExist
+        ):
+            return JSONResponse(
+                content={
+                    "error": "#SESSION_NOT_FOUND",
+                    "message": "Session not found",
+                },
+                status_code=401,
+            )
+
+        async def session_expired_handler(
+            request: Request, exc: AuthException.SessionExpired
+        ):
+            return JSONResponse(
+                content={
+                    "error": "#SESSION_EXPIRED",
+                    "message": "Session expired",
+                },
+                status_code=401,
+            )
+
+        async def user_not_exist_handler(
+            request: Request, exc: AuthException.UserNotExist
+        ):
+            return JSONResponse(
+                content={
+                    "error": "#USER_NOT_FOUND",
+                    "message": "User not found",
+                },
+                status_code=401,
+            )
+
+        async def session_error_format_handler(
+            request: Request, exc: AuthException.SessionErrorFormat
+        ):
+            return JSONResponse(
+                content={
+                    "error": "#INVALID_TOKEN",
+                    "message": "Invalid token format",
+                },
+                status_code=401,
+            )
+
+        app_server.add_exception_handler(
+            AuthException.PasswordFailed, password_failed_handler
+        )
+        app_server.add_exception_handler(
+            AuthException.SessionNotExist, session_not_exist_handler
+        )
+        app_server.add_exception_handler(
+            AuthException.SessionExpired, session_expired_handler
+        )
+        app_server.add_exception_handler(
+            AuthException.UserNotExist, user_not_exist_handler
+        )
+        app_server.add_exception_handler(
+            AuthException.SessionErrorFormat, session_error_format_handler
+        )
+
+    async def startup(self, app) -> None:
+        """Старт сервиса"""
+        await super().startup(app)
+        # Регистрируем глобальные обработчики ошибок
+        self.handler_errors(app)
 
     async def post_init(self, app: FastAPI):
         env: Environment = app.state.env

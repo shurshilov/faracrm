@@ -320,6 +320,6 @@ class User(DotModel):
             SELECT DISTINCT role_id FROM role_tree
         """
 
-        session = env.apps.db.get_session()
+        session = self._get_db_session()
         result = await session.execute(query, [self.id], cursor="fetch")
         return [row["role_id"] for row in result]

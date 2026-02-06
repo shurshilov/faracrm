@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 class AuthStrategyAbstract(ABC):
     @abstractmethod
     async def verify_access(self, *args, **kwargs):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     # @abstractmethod
     # async def session_store_to_request():

@@ -101,7 +101,7 @@ class TestRoles:
 
         await role.delete()
 
-        deleted = await Role.get(role_id)
+        deleted = await Role.get_or_none(role_id)
         assert deleted is None
 
 
@@ -225,13 +225,13 @@ class TestRules:
             Rule(
                 name="See Own Records Only",
                 role_id=role_id,
-                domain_force="[('user_id', '=', user.id)]",
+                domain=[["user_id", "=", "user.id"]],
             )
         )
 
         rule = await Rule.get(rule_id)
         assert rule.name == "See Own Records Only"
-        assert rule.domain_force == "[('user_id', '=', user.id)]"
+        assert rule.domain == [["user_id", "=", "user.id"]]
 
     async def test_search_rules_by_role(self):
         """Test searching rules by role."""
@@ -487,7 +487,6 @@ class TestSecurityIntegration:
         model_id = await Model.create(
             Model(
                 name="leads",
-                model="backend.base.crm.leads.models.leads.Lead",
             )
         )
 
@@ -513,7 +512,7 @@ class TestSecurityIntegration:
             Rule(
                 name="Own Leads Only",
                 role_id=role_id,
-                domain_force="[('user_id', '=', user.id)]",
+                domain=[("user_id", "=", "user.id")],
             )
         )
 
@@ -525,7 +524,14 @@ class TestSecurityIntegration:
         )
 
         # Verify setup
-        role = await Role.get(role_id, fields=["id", "user_ids", "acl_ids"])
+        role = await Role.get(
+            role_id,
+            fields=["id", "user_ids", "acl_ids"],
+            fields_nested={
+                "user_ids": ["id"],
+                "acl_ids": ["id"],
+            },
+        )
         user_ids = [u.id for u in role.user_ids] if role.user_ids else []
         assert user.id in user_ids
 
@@ -554,7 +560,11 @@ class TestSecurityIntegration:
         )
 
         # Verify
-        updated = await User.get(user.id, fields=["id", "role_ids"])
+        updated = await User.get(
+            user.id,
+            fields=["id", "role_ids"],
+            fields_nested={"role_ids": ["id"]},
+        )
         role_ids = [r.id for r in updated.role_ids] if updated.role_ids else []
 
         assert admin_role_id in role_ids

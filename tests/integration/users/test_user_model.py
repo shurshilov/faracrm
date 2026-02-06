@@ -159,7 +159,7 @@ class TestUserRead:
         """Test getting non-existent user returns None."""
         from backend.base.crm.users.models.users import User
 
-        result = await User.get(99999)
+        result = await User.get_or_none(99999)
         assert result is None
 
     async def test_get_user_with_specific_fields(self, user_factory):
@@ -351,7 +351,7 @@ class TestUserDelete:
 
         await user.delete()
 
-        deleted = await User.get(user_id)
+        deleted = await User.get_or_none(user_id)
         assert deleted is None
 
     async def test_delete_bulk(self, user_factory):
@@ -639,7 +639,11 @@ class TestUserRoles:
         )
 
         # Verify role assigned
-        updated = await User.get(user.id, fields=["id", "role_ids"])
+        updated = await User.get(
+            user.id,
+            fields=["id", "role_ids"],
+            fields_nested={"role_ids": ["id"]},
+        )
         role_ids = [r.id for r in updated.role_ids] if updated.role_ids else []
         assert role_id in role_ids
 
@@ -648,7 +652,7 @@ class TestUserRoles:
         from backend.base.crm.users.models.users import User
         from backend.base.crm.security.models.roles import Role
 
-        user = await user_factory()
+        user: User = await user_factory()
 
         # Create role hierarchy: admin -> manager -> user
         base_role_id = await Role.create(Role(name="Base Role"))
@@ -720,11 +724,9 @@ class TestUserEdgeCases:
 
     async def test_unicode_name(self, user_factory):
         """Test user with unicode name."""
-        user = await user_factory(name="Тест Unicode 日本語 🎉")
-
-        fetched = await user_factory.__self__  # Get model class
         from backend.base.crm.users.models.users import User
 
+        user = await user_factory(name="Тест Unicode 日本語 🎉")
         fetched = await User.get(user.id)
 
         assert fetched.name == "Тест Unicode 日本語 🎉"

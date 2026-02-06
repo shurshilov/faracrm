@@ -42,22 +42,22 @@ class ChatMessageAdapter:
     @property
     def message_id(self) -> str:
         """ID сообщения во внешней системе."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def chat_id(self) -> str:
         """ID чата во внешней системе."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def author_id(self) -> str:
         """ID автора сообщения."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def text(self) -> str | None:
         """Текст сообщения."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def images(self) -> list[str]:
@@ -79,7 +79,7 @@ class ChatMessageAdapter:
     @property
     def created_at(self) -> int:
         """Unix timestamp создания сообщения."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @property
     def author_name(self) -> str | None:

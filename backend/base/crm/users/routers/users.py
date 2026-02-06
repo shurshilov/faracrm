@@ -189,7 +189,7 @@ async def signin(req: Request, payload: UserSigninInput):
             ],
         )
         if not user_id:
-            raise AuthException.UserNotExist
+            raise AuthException.UserNotExist()
 
         user_id = user_id[0]
         # сделать хеш из введеного пароля, с использованием старой соли
@@ -199,7 +199,7 @@ async def signin(req: Request, payload: UserSigninInput):
 
         # сравнить с базой
         if password_hash != user_id.password_hash:
-            raise AuthException.PasswordFailed
+            raise AuthException.PasswordFailed()
 
         # генерация токена
         token = secrets.token_urlsafe(nbytes=64)

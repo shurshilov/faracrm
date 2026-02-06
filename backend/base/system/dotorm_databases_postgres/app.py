@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from backend.base.system.core.service import Service
+from ..dotorm.dotorm.access import AccessDenied
 from ..dotorm.dotorm.builder.builder import Builder
 from ..dotorm.dotorm.components.dialect import POSTGRES
 from ..dotorm.dotorm.exceptions import RecordNotFound
@@ -163,6 +164,13 @@ class DotormDatabasesPostgresService(Service):
                 status_code=404,
             )
 
+        async def access_denied_handler(request: Request, exc: AccessDenied):
+            return JSONResponse(
+                content={"error": "#ACCESS_DENIED", "message": exc.message},
+                status_code=403,
+            )
+
+        app_server.add_exception_handler(AccessDenied, access_denied_handler)
         app_server.add_exception_handler(
             RecordNotFound, record_not_found_handler
         )

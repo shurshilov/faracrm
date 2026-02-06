@@ -17,3 +17,4 @@ class App(DotModel):
     code: str = Char(max_length=64, unique=True)
     name: str = Char(max_length=128)
     active: bool = Boolean(default=True)
+    sequence: int = Integer(default=10, description="Порядок в очереди")
