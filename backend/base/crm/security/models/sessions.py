@@ -83,6 +83,7 @@ class Session(DotModel):
                 s.id,
                 s.ttl,
                 s.create_datetime,
+                s.expired_datetime,
                 s.active,
                 u.id as user_id,
                 u.is_admin,
@@ -100,9 +101,10 @@ class Session(DotModel):
 
         session_id = result[0]
         now = datetime.now(timezone.utc)
-        expired = session_id["create_datetime"] + timedelta(
-            seconds=session_id["ttl"]
-        )
+        # expired = session_id["create_datetime"] + timedelta(
+        #     seconds=session_id["ttl"]
+        # )
+        expired = session_id["expired_datetime"]
 
         if expired < now:
             # Деактивируем сессию

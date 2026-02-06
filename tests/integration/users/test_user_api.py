@@ -100,7 +100,7 @@ class TestSigninAPI:
             },
         )
 
-        assert response.status_code == 403  # Auth failed
+        assert response.status_code == 401  # Auth failed
 
     async def test_signin_nonexistent_user(self, client):
         """Test signin with non-existent user."""
@@ -112,7 +112,7 @@ class TestSigninAPI:
             },
         )
 
-        assert response.status_code == 403  # User not found
+        assert response.status_code == 401  # User not found
 
 
 # ====================
@@ -237,10 +237,7 @@ class TestCopyUserAPI:
         source = await user_factory(
             name="Source With Role", login="source_role"
         )
-        await source.update(
-            User(role_ids={"selected": [role_id]}),
-            fields=["role_ids"],
-        )
+        await source.update(User(role_ids={"selected": [role_id]}))
 
         response = await client.post(
             "/users/copy",
@@ -261,7 +258,11 @@ class TestCopyUserAPI:
         data = response.json()
 
         # Verify roles were copied
-        copied = await User.get(data["id"], fields=["id", "role_ids"])
+        copied = await User.get(
+            data["id"],
+            fields=["id", "role_ids"],
+            fields_nested={"role_ids": ["id"]},
+        )
         role_ids = [r.id for r in copied.role_ids] if copied.role_ids else []
         assert role_id in role_ids
 
@@ -462,7 +463,7 @@ class TestUserCRUDAPI:
         # Verify deletion
         from backend.base.crm.users.models.users import User
 
-        deleted = await User.get(user_id)
+        deleted = await User.get_or_none(user_id)
         assert deleted is None
 
     async def test_bulk_delete_users(self, authenticated_client, user_factory):

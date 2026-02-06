@@ -50,12 +50,12 @@ async def copy_user(req: Request, payload: CopyUserInput):
                 "contact_ids",
             ],
         )
-        source_user = source_user[0]
 
         if not source_user:
             return JSONResponse(
                 content={"error": "User not found"}, status_code=404
             )
+        source_user = source_user[0]
 
         # Проверяем уникальность логина
         existing = await env.models.user.search(

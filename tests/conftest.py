@@ -366,7 +366,12 @@ async def app(test_env):
     )
 
     # Load routers
+    # await test_env.load_routers(app)
+    await test_env.setup_services()
+    await test_env.start_services_before(app)
     await test_env.load_routers(app)
+    await test_env.start_services_after(app)
+    test_env.add_handlers_errors(app)
 
     yield app
 

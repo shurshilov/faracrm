@@ -59,7 +59,7 @@ class SecurityApp(Service):
                     "error": "#PASSWORD_FAILED",
                     "message": "Invalid password",
                 },
-                status_code=403,
+                status_code=401,
             )
 
         async def session_not_exist_handler(
