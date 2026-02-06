@@ -153,11 +153,30 @@ async def db_pool(manage_database):
                 foreign_keys = await model.__create_table__(session)
                 stmt_foreign_keys += foreign_keys
 
-            for stmt_fk in stmt_foreign_keys:
-                try:
-                    await session.execute(stmt_fk)
-                except asyncpg.exceptions.DuplicateObjectError:
-                    pass
+            if not stmt_foreign_keys:
+                return
+
+            # Дедупликация по имени FK (M2M таблицы могут дублироваться)
+            unique_fks = {
+                fk_name: fk_sql for fk_name, fk_sql in stmt_foreign_keys
+            }
+
+            # Получаем существующие FK одним запросом
+            existing_fk_result = await session.execute(
+                "SELECT conname FROM pg_constraint WHERE contype = 'f'"
+            )
+            existing_fk_names = {row["conname"] for row in existing_fk_result}
+
+            # Создаём только отсутствующие FK
+            for fk_name, fk_sql in unique_fks.items():
+                if fk_name not in existing_fk_names:
+                    await session.execute(fk_sql)
+
+            # for stmt_fk in stmt_foreign_keys:
+            #     try:
+            #         await session.execute(stmt_fk)
+            #     except asyncpg.exceptions.DuplicateObjectError:
+            #         pass
 
         _tables_created = True
         print(f"✓ Tables created ({len(MODELS_CREATION_ORDER)} models)")

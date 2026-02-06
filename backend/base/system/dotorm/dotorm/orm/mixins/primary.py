@@ -94,7 +94,7 @@ class OrmPrimaryMixin(_Base):
         session = self._get_db_session(session)
 
         # Автоопределение полей если не указаны
-        if fields is None:
+        if not fields:
             fields = [
                 name
                 for name, field_class in payload.get_fields().items()

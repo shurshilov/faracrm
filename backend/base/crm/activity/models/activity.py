@@ -101,49 +101,49 @@ class Activity(DotModel):
         description="Уведомление отправлено",
     )
 
-    @hybridmethod
-    async def mark_done(self, activity_id: int, user_id: int):
-        """
-        Пометить активность как выполненную.
-        Создаёт notification-сообщение в системном чате.
-        """
-        activities = await self.search(
-            filter=[("id", "=", activity_id)],
-            fields=[
-                "id",
-                "summary",
-                "res_model",
-                "res_id",
-                "user_id",
-                "activity_type_id",
-            ],
-            limit=1,
-        )
-        if not activities:
-            return None
+    # @hybridmethod
+    # async def mark_done(self, activity_id: int, user_id: int):
+    #     """
+    #     Пометить активность как выполненную.
+    #     Создаёт notification-сообщение в системном чате.
+    #     """
+    #     activities = await self.search(
+    #         filter=[("id", "=", activity_id)],
+    #         fields=[
+    #             "id",
+    #             "summary",
+    #             "res_model",
+    #             "res_id",
+    #             "user_id",
+    #             "activity_type_id",
+    #         ],
+    #         limit=1,
+    #     )
+    #     if not activities:
+    #         return None
 
-        activity = activities[0]
-        now = datetime.now(timezone.utc)
+    #     activity = activities[0]
+    #     now = datetime.now(timezone.utc)
 
-        # Обновляем активность
-        await activity.update(
-            Activity(done=True, done_datetime=now, state="done")
-        )
+    #     # Обновляем активность
+    #     await activity.update(
+    #         Activity(done=True, done_datetime=now, state="done")
+    #     )
 
-        # Создаём notification в системном чате
-        summary = activity.summary or "Активность"
-        type_name = ""
-        if activity.activity_type_id:
-            type_name = f"[{activity.activity_type_id.name}] "
+    #     # Создаём notification в системном чате
+    #     summary = activity.summary or "Активность"
+    #     type_name = ""
+    #     if activity.activity_type_id:
+    #         type_name = f"[{activity.activity_type_id.name}] "
 
-        await self._send_notification(
-            user_id=activity.user_id.id,
-            body=f"✅ {type_name}{summary} — выполнена",
-            res_model=activity.res_model,
-            res_id=activity.res_id,
-        )
+    #     await self._send_notification(
+    #         user_id=activity.user_id.id,
+    #         body=f"✅ {type_name}{summary} — выполнена",
+    #         res_model=activity.res_model,
+    #         res_id=activity.res_id,
+    #     )
 
-        return activity
+    #     return activity
 
     @hybridmethod
     async def schedule_activity(
@@ -215,9 +215,7 @@ class Activity(DotModel):
         # Привязываем к записи (через extend поля)
         if res_model and res_id:
             await message.update(
-                env.models.chat_message(
-                    res_model=res_model, res_id=res_id
-                )
+                env.models.chat_message(res_model=res_model, res_id=res_id)
             )
 
         # Отправляем через WebSocket

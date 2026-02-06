@@ -337,9 +337,6 @@ class Attachment(DotModel):
         fields: list | None = None,
         session=None,
     ) -> None:
-        if not fields:
-            fields = []
-
         if not isinstance(payload.content, Binary) and self.storage_id:
             async with env.apps.db.get_transaction():
                 try:

@@ -37,7 +37,7 @@
 
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": [
-        "./backend/base/system/dotorm/tests",
+        "./tests",
         "-v",
         "--tb=short"
   ],

@@ -72,8 +72,8 @@ class TestFilterParserSimpleTriplets:
         """Test with None value."""
         clause, values = self.parser.parse(("deleted_at", "=", None))
 
-        assert clause == '"deleted_at" = %s'
-        assert values == (None,)
+        assert clause == '"deleted_at" IS NULL'
+        assert values == ()
 
     def test_integer_value(self):
         """Test with integer value."""
