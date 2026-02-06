@@ -361,10 +361,7 @@ async def edit_message(
     # Проверяем членство
     await ChatMember.check_membership(chat_id, user_id)
 
-    try:
-        message = await env.models.chat_message.get(message_id)
-    except ValueError:
-        raise FaraException({"content": "NOT_FOUND", "status_code": 404})
+    message = await env.models.chat_message.get(message_id)
 
     # Проверяем что это своё сообщение
     if not message.author_user_id or message.author_user_id.id != user_id:
@@ -409,10 +406,7 @@ async def pin_message(
     # Проверяем право на закрепление
     await ChatMember.check_can_pin(chat_id, user_id)
 
-    try:
-        message = await env.models.chat_message.get(message_id)
-    except ValueError:
-        raise FaraException({"content": "NOT_FOUND", "status_code": 404})
+    message = await env.models.chat_message.get(message_id)
 
     await message.update(
         env.models.chat_message(pinned=body.pinned)
@@ -527,10 +521,7 @@ async def add_reaction(
     # Проверяем членство
     await ChatMember.check_membership(chat_id, user_id)
 
-    try:
-        message = await env.models.chat_message.get(message_id)
-    except ValueError:
-        raise FaraException({"content": "NOT_FOUND", "status_code": 404})
+    message = await env.models.chat_message.get(message_id)
 
     # Проверяем, есть ли уже такая реакция от этого пользователя
     existing = await env.models.chat_message_reaction.search(
@@ -635,10 +626,7 @@ async def forward_message(
     # Проверяем право писать в целевой чат
     await ChatMember.check_can_write(body.target_chat_id, user_id)
 
-    try:
-        original_message = await env.models.chat_message.get(message_id)
-    except ValueError:
-        raise FaraException({"content": "NOT_FOUND", "status_code": 404})
+    original_message = await env.models.chat_message.get(message_id)
 
     # Определяем автора оригинального сообщения
     if original_message.author_user_id:

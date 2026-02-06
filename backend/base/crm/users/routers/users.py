@@ -162,7 +162,7 @@ async def password_change(req: Request, payload: ChangePasswordInput):
             status_code=422,
         )
 
-    user = await env.models.user.get(id=payload.user_id)
+    user = await env.models.user.get_or_none(id=payload.user_id)
     if user:
         await user.password_change(env, payload.password, auth_session)
         return {"success": True}

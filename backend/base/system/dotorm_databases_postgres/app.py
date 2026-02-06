@@ -1,9 +1,13 @@
 from typing import TYPE_CHECKING
 
 import asyncpg
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
 from backend.base.system.core.service import Service
 from ..dotorm.dotorm.builder.builder import Builder
 from ..dotorm.dotorm.components.dialect import POSTGRES
+from ..dotorm.dotorm.exceptions import RecordNotFound
 from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
     ContainerTransaction,
 )
@@ -143,6 +147,26 @@ class DotormDatabasesPostgresService(Service):
         db_transaction = ContainerTransaction()
         return db_transaction
 
+    def handler_errors(self, app_server: FastAPI):
+        """Регистрирует глобальные обработчики ошибок ORM."""
+
+        async def record_not_found_handler(
+            request: Request, exc: RecordNotFound
+        ):
+            return JSONResponse(
+                content={
+                    "error": "#NOT_FOUND",
+                    "message": str(exc),
+                    "model": exc.model,
+                    "id": exc.id,
+                },
+                status_code=404,
+            )
+
+        app_server.add_exception_handler(
+            RecordNotFound, record_not_found_handler
+        )
+
     async def startup(self, app) -> None:
         """Старт сервиса"""
         await super().startup(app)
@@ -155,6 +179,9 @@ class DotormDatabasesPostgresService(Service):
         # несмотря на то что пулов может быть несколько, конкретно в данном проекте
         # подразумевается пул по умолчанию fara как наиболее часто используемый
         NoTransactionSession.default_pool = self.fara
+
+        # Регистрируем глобальные обработчики ошибок
+        self.handler_errors(app)
 
     async def shutdown(self, app):
         """Отключение сервиса"""

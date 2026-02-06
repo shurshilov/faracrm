@@ -343,12 +343,7 @@ async def get_chat(req: Request, chat_id: int):
     # Проверяем членство (бросит исключение если не участник)
     await ChatMember.check_membership(chat_id, user_id)
 
-    try:
-        chat = await env.models.chat.get(chat_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    chat = await env.models.chat.get(chat_id)
 
     # Получаем участников отдельным запросом
 
@@ -531,12 +526,7 @@ async def add_member(req: Request, chat_id: int, body: AddMemberInput):
     # Проверяем членство и право приглашать
     await ChatMember.check_can_invite(chat_id, user_id)
 
-    try:
-        chat = await env.models.chat.get(chat_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    chat = await env.models.chat.get(chat_id)
 
     if chat.chat_type == "direct":
         raise FaraException({"content": "CANNOT_ADD_TO_DIRECT_CHAT"})
@@ -574,12 +564,7 @@ async def update_chat(req: Request, chat_id: int, body: ChatUpdate):
             {"content": "ADMIN_REQUIRED", "status_code": HTTP_403_FORBIDDEN}
         )
 
-    try:
-        chat = await env.models.chat.get(chat_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    chat = await env.models.chat.get(chat_id)
 
     # Нельзя редактировать direct чаты
     if chat.chat_type == "direct":
@@ -664,12 +649,7 @@ async def remove_member(req: Request, chat_id: int, member_id: int):
     # Для удаления других участников нужны права админа
     await ChatMember.check_admin(chat_id, user_id)
 
-    try:
-        chat = await env.models.chat.get(chat_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    chat = await env.models.chat.get(chat_id)
 
     # Нельзя удалять из direct чата
     if chat.chat_type == "direct":
@@ -693,12 +673,7 @@ async def leave_chat(req: Request, chat_id: int):
     # Проверяем членство
     await ChatMember.check_membership(chat_id, user_id)
 
-    try:
-        chat = await env.models.chat.get(chat_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    chat = await env.models.chat.get(chat_id)
 
     # Нельзя покинуть direct чат
     if chat.chat_type == "direct":
@@ -723,12 +698,7 @@ async def delete_chat(req: Request, chat_id: int):
     # Только админ может удалить чат
     await ChatMember.check_admin(chat_id, user_id)
 
-    try:
-        chat = await env.models.chat.get(chat_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    chat = await env.models.chat.get(chat_id)
 
     # Soft delete - устанавливаем active = false
     await chat.update(env.models.chat(active=False))
@@ -746,12 +716,7 @@ async def get_chat_connectors(req: Request, chat_id: int):
     # Проверяем членство
     await ChatMember.check_membership(chat_id, user_id)
 
-    try:
-        chat = await env.models.chat.get(chat_id, fields=["id", "is_internal"])
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    chat = await env.models.chat.get(chat_id, fields=["id", "is_internal"])
 
     connectors = await chat.get_available_connectors()
     return {"data": connectors}

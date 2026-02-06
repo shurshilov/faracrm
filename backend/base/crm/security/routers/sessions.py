@@ -43,7 +43,7 @@ async def terminate_all_sessions(req: Request, exclude_current: bool = True):
     user_id = auth_session.user_id.id
 
     async with env.apps.db.get_transaction():
-        user = await env.models.user.get(id=user_id)
+        user = await env.models.user.get_or_none(id=user_id)
 
         if not user:
             return TerminateAllResponse(

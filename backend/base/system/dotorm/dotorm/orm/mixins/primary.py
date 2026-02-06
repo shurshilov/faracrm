@@ -2,6 +2,8 @@
 
 from typing import TYPE_CHECKING, Self, TypeVar
 
+from ...exceptions import RecordNotFound
+
 from ...fields import Field
 
 from ...access import Operation
@@ -269,7 +271,7 @@ class OrmPrimaryMixin(_Base):
             Экземпляр модели
 
         Raises:
-            ValueError: Если запись не найдена
+            RecordNotFound: Если запись не найдена
 
         Example:
             # Только store поля
@@ -282,6 +284,44 @@ class OrmPrimaryMixin(_Base):
                 fields_nested={"user_id": ["id", "name"]}
             )
             chat.user_id  # → User(id=42, name="John")
+        """
+
+        cls = self.__class__
+        record = await cls.get_or_none(id, fields, fields_nested, session)
+
+        if record is None:
+            raise RecordNotFound(cls.__name__, id)
+
+        return record
+
+    @hybridmethod
+    async def get_or_none(
+        self,
+        id,
+        fields: list[str] = [],
+        fields_nested: dict[str, list[str]] | None = None,
+        session=None,
+    ) -> Self | None:
+        """
+        Получить запись по ID или None если не найдена.
+
+        Используйте когда отсутствие записи — нормальная ситуация
+        (проверка существования, опциональные связи).
+
+        Args:
+            id: ID записи
+            fields: Список полей для загрузки
+            fields_nested: Словарь вложенных полей для relation
+            session: DB сессия
+
+        Returns:
+            Экземпляр модели или None
+
+        Example:
+            # Проверка существования
+            user = await User.get_or_none(user_id)
+            if user is None:
+                return {"error": "User not found"}
         """
         cls = self.__class__
 
@@ -305,7 +345,8 @@ class OrmPrimaryMixin(_Base):
         )
 
         if not record:
-            raise ValueError("Record not found")
+            return None
+
         assert isinstance(record, cls)
 
         # Загрузка relations если передан fields_nested

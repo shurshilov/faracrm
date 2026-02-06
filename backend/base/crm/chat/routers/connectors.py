@@ -42,12 +42,7 @@ async def set_connector_webhook(req: Request, connector_id: int):
     """
     env: "Environment" = req.app.state.env
 
-    try:
-        connector = await env.models.chat_connector.get(connector_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    connector = await env.models.chat_connector.get(connector_id)
 
     # Передаём base_url из request если нет в настройках
     base_url = str(req.base_url).rstrip("/")
@@ -69,12 +64,7 @@ async def unset_connector_webhook(req: Request, connector_id: int):
     """
     env: "Environment" = req.app.state.env
 
-    try:
-        connector = await env.models.chat_connector.get(connector_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    connector = await env.models.chat_connector.get(connector_id)
 
     success = await connector.unset_webhook()
 
@@ -90,12 +80,7 @@ async def get_connector_webhook_info(req: Request, connector_id: int):
     """
     env: "Environment" = req.app.state.env
 
-    try:
-        connector = await env.models.chat_connector.get(connector_id)
-    except ValueError:
-        raise FaraException(
-            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
-        )
+    connector = await env.models.chat_connector.get(connector_id)
 
     info = await connector.strategy.get_webhook_info(connector)
 

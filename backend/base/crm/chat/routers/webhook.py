@@ -76,15 +76,8 @@ async def chat_webhook(
             content={"error": "READ_ERROR"}, status_code=HTTP_400_BAD_REQUEST
         )
 
-    # 2. Получаем коннектор и валидируем (короткая транзакция только для чтения)
-    try:
-        connector = await env.models.chat_connector.get(connector_id)
-    except ValueError:
-        logger.warning(f"Chat webhook: Connector not found: {connector_id}")
-        return JSONResponse(
-            content={"error": "CONNECTOR_NOT_FOUND"},
-            status_code=HTTP_404_NOT_FOUND,
-        )
+    # 2. Получаем коннектор и валидируем
+    connector = await env.models.chat_connector.get(connector_id)
 
     # 3. Проверяем webhook_hash
     if connector.webhook_hash != webhook_hash:

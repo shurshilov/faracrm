@@ -11,6 +11,7 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
 
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.schemas.base_schema import Id
+from backend.base.system.dotorm.dotorm.exceptions import RecordNotFound
 from ..utils.engine import DocxReportEngine
 
 if TYPE_CHECKING:
@@ -116,7 +117,7 @@ async def generate_report(
     # 3. Данные
     try:
         context = await report_func(env, record_id)
-    except ValueError as e:
+    except (ValueError, RecordNotFound) as e:
         return JSONResponse(
             status_code=HTTP_404_NOT_FOUND,
             content={"error": str(e)},
