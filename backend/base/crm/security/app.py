@@ -62,28 +62,6 @@ class SecurityApp(Service):
                 status_code=401,
             )
 
-        async def session_not_exist_handler(
-            request: Request, exc: AuthException.SessionNotExist
-        ):
-            return JSONResponse(
-                content={
-                    "error": "#SESSION_NOT_FOUND",
-                    "message": "Session not found",
-                },
-                status_code=401,
-            )
-
-        async def session_expired_handler(
-            request: Request, exc: AuthException.SessionExpired
-        ):
-            return JSONResponse(
-                content={
-                    "error": "#SESSION_EXPIRED",
-                    "message": "Session expired",
-                },
-                status_code=401,
-            )
-
         async def user_not_exist_handler(
             request: Request, exc: AuthException.UserNotExist
         ):
@@ -95,31 +73,11 @@ class SecurityApp(Service):
                 status_code=401,
             )
 
-        async def session_error_format_handler(
-            request: Request, exc: AuthException.SessionErrorFormat
-        ):
-            return JSONResponse(
-                content={
-                    "error": "#INVALID_TOKEN",
-                    "message": "Invalid token format",
-                },
-                status_code=401,
-            )
-
         app_server.add_exception_handler(
             AuthException.PasswordFailed, password_failed_handler
         )
         app_server.add_exception_handler(
-            AuthException.SessionNotExist, session_not_exist_handler
-        )
-        app_server.add_exception_handler(
-            AuthException.SessionExpired, session_expired_handler
-        )
-        app_server.add_exception_handler(
             AuthException.UserNotExist, user_not_exist_handler
-        )
-        app_server.add_exception_handler(
-            AuthException.SessionErrorFormat, session_error_format_handler
         )
 
     async def startup(self, app) -> None:
