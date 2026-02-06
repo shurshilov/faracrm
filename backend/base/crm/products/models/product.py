@@ -22,7 +22,7 @@ from backend.base.system.core.enviroment import env
 
 
 class Product(DotModel):
-    __table__ = "product"
+    __table__ = "products"
 
     id: Id = Integer(primary_key=True)
     name: str = Char(string="Name", required=True)

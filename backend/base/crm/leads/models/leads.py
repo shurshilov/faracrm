@@ -20,7 +20,7 @@ from backend.base.system.core.enviroment import env
 
 
 class Lead(DotModel):
-    __table__ = "lead"
+    __table__ = "leads"
 
     id: Id = Integer(primary_key=True)
     name: str = Char(string="Lead Name")

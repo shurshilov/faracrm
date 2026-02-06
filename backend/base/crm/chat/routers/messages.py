@@ -313,8 +313,10 @@ async def delete_message(req: Request, chat_id: int, message_id: int):
     # Проверяем членство
     member = await ChatMember.check_membership(chat_id, user_id)
     message = await env.models.chat_message.search(
-        filter=[("id", "=", message_id)], fields=["author_user_id"]
+        filter=[("id", "=", message_id)],
+        fields=["author_user_id"],
     )
+
     if not message:
         raise FaraException({"content": "NOT_FOUND", "status_code": 404})
     message = message[0]
@@ -361,7 +363,11 @@ async def edit_message(
     # Проверяем членство
     await ChatMember.check_membership(chat_id, user_id)
 
-    message = await env.models.chat_message.get(message_id)
+    message = await env.models.chat_message.get(
+        message_id,
+        fields=["author_user_id"],
+        fields_nested={"author_user_id": ["id"]},
+    )
 
     # Проверяем что это своё сообщение
     if not message.author_user_id or message.author_user_id.id != user_id:
@@ -408,9 +414,7 @@ async def pin_message(
 
     message = await env.models.chat_message.get(message_id)
 
-    await message.update(
-        env.models.chat_message(pinned=body.pinned)
-    )
+    await message.update(env.models.chat_message(pinned=body.pinned))
 
     # Уведомляем через WebSocket
     await chat_manager.send_to_chat(

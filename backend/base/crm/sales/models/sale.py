@@ -26,7 +26,7 @@ from backend.base.system.core.enviroment import env
 
 
 class Sale(DotModel):
-    __table__ = "sale"
+    __table__ = "sales"
 
     id: Id = Integer(primary_key=True)
     name: str = Char(string="Order Name")

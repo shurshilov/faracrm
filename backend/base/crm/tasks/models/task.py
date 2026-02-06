@@ -38,7 +38,7 @@ class Task(DotModel):
       - planned_hours / effective_hours → трекинг времени
     """
 
-    __table__ = "task"
+    __table__ = "tasks"
 
     id: Id = Integer(primary_key=True)
     name: str = Char(string="Task Title", required=True, size=500)

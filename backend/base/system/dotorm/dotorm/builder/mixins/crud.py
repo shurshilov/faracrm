@@ -164,9 +164,13 @@ class CRUDMixin:
             sort = store_fields[0]
             # raise ValueError(f"Invalid sort field: {sort}")
 
+        # Always include 'id' — without it, deserialized objects have
+        # Field descriptor instead of int, which breaks update()/delete().
+        fields_with_id = fields if "id" in fields else ["id", *fields]
+
         fields_store_stmt = ", ".join(
             f"{escape}{name}{escape}"
-            for name in fields
+            for name in fields_with_id
             if name in store_fields
         )
 

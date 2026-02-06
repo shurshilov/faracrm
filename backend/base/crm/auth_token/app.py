@@ -78,3 +78,6 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         app_server.add_exception_handler(
             SessionExpired, catch_exception_handler_auth
         )
+        app_server.add_exception_handler(
+            SessionErrorFormat, catch_exception_handler_auth
+        )
