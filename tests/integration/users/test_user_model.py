@@ -369,7 +369,7 @@ class TestUserDelete:
         await User.delete_bulk(ids_to_delete)
 
         for user_id in ids_to_delete:
-            assert await User.get(user_id) is None
+            assert await User.get_or_none(user_id) is None
 
         for user_id in ids_to_keep:
             assert await User.get(user_id) is not None

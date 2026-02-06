@@ -214,7 +214,7 @@ class TestPartnerDelete:
         p = await Partner.get(pid)
         await p.delete()
 
-        assert await Partner.get(pid) is None
+        assert await Partner.get_or_none(pid) is None
 
     async def test_delete_bulk_partners(self):
         """Test bulk deleting partners."""

@@ -233,7 +233,7 @@ class TestLeadDelete:
 
         lead = await Lead.get(lid)
         await lead.delete()
-        assert await Lead.get(lid) is None
+        assert await Lead.get_or_none(lid) is None
 
 
 # ====================

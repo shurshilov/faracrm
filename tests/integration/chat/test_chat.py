@@ -114,7 +114,7 @@ class TestChatDelete:
         cid = await Chat.create(Chat(name="Delete Me"))
         c = await Chat.get(cid)
         await c.delete()
-        assert await Chat.get(cid) is None
+        assert await Chat.get_or_none(cid) is None
 
     async def test_delete_message(self):
         from backend.base.crm.chat.models.chat import Chat
@@ -126,4 +126,4 @@ class TestChatDelete:
         )
         m = await ChatMessage.get(mid)
         await m.delete()
-        assert await ChatMessage.get(mid) is None
+        assert await ChatMessage.get_or_none(mid) is None

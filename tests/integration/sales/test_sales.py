@@ -178,7 +178,7 @@ class TestSaleDelete:
         )
         sale = await Sale.get(sale_id)
         await sale.delete()
-        assert await Sale.get(sale_id) is None
+        assert await Sale.get_or_none(sale_id) is None
 
 
 # ====================

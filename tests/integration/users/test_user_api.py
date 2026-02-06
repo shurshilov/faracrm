@@ -490,7 +490,7 @@ class TestUserCRUDAPI:
         from backend.base.crm.users.models.users import User
 
         for user_id in ids:
-            assert await User.get(user_id) is None
+            assert await User.get_or_none(user_id) is None
 
 
 # ====================

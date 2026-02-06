@@ -39,7 +39,7 @@ class TestProjects:
         pid = await Project.create(Project(name="To Delete"))
         p = await Project.get(pid)
         await p.delete()
-        assert await Project.get(pid) is None
+        assert await Project.get_or_none(pid) is None
 
 
 class TestTaskStages:
@@ -157,4 +157,4 @@ class TestTasks:
         )
         task = await Task.get(task_id)
         await task.delete()
-        assert await Task.get(task_id) is None
+        assert await Task.get_or_none(task_id) is None

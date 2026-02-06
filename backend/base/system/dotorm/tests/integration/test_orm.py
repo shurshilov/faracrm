@@ -223,7 +223,7 @@ class TestDelete:
 
         # Check deleted
         for deleted_id in ids[:3]:
-            assert await Model.get(deleted_id) is None
+            assert await Model.get_or_none(deleted_id) is None
 
         # Check remaining
         for remaining_id in ids[3:]:

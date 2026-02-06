@@ -189,7 +189,7 @@ class TestAttachmentDelete:
         aid = await Attachment.create(Attachment(name="delete_me.pdf"))
         a = await Attachment.get(aid)
         await a.delete()
-        assert await Attachment.get(aid) is None
+        assert await Attachment.get_or_none(aid) is None
 
     async def test_bulk_delete(self):
         from backend.base.crm.attachments.models.attachments import Attachment
@@ -200,4 +200,4 @@ class TestAttachmentDelete:
         ]
         await Attachment.delete_bulk(ids)
         for aid in ids:
-            assert await Attachment.get(aid) is None
+            assert await Attachment.get_or_none(aid) is None

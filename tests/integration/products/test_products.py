@@ -134,7 +134,7 @@ class TestProductDelete:
         pid = await Product.create(Product(name="Del Me"))
         p = await Product.get(pid)
         await p.delete()
-        assert await Product.get(pid) is None
+        assert await Product.get_or_none(pid) is None
 
 
 # ====================
