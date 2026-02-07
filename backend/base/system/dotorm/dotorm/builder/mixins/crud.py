@@ -33,8 +33,16 @@ class CRUDMixin:
         return f"DELETE FROM {self.table} WHERE id=%s"
 
     def build_delete_bulk(self: "BuilderProtocol", count: int) -> str:
-        """Delete by ids using ANY(array) — single param, no parse overhead."""
-        return f"DELETE FROM {self.table} WHERE id = ANY($1::int[])"
+        """Build bulk DELETE by ids.
+
+        Postgres: ANY($1::int[]) — single array param, no parse overhead.
+        MySQL:    IN (%s, %s, ...) — individual params (no array type).
+        """
+        if self.dialect.name == "postgres":
+            return f"DELETE FROM {self.table} WHERE id = ANY($1::int[])"
+
+        placeholders = self.dialect.make_placeholders(count)
+        return f"DELETE FROM {self.table} WHERE id IN ({placeholders})"
 
     def build_create(
         self: "BuilderProtocol",
@@ -92,7 +100,11 @@ class CRUDMixin:
         payload_dict: dict[str, Any],
         ids: list[int],
     ) -> tuple[str, tuple]:
-        """Build bulk UPDATE query using ANY(array) for id matching."""
+        """Build bulk UPDATE query.
+
+        Postgres: WHERE id = ANY($N::int[]) — ids as single array param.
+        MySQL:    WHERE id IN (%s, %s, ...) — ids as individual params.
+        """
         if not payload_dict:
             raise ValueError("payload_dict cannot be empty")
 
@@ -101,12 +113,23 @@ class CRUDMixin:
 
         # SET field1=%s, field2=%s  (will be converted to $1, $2...)
         set_clause = ", ".join(f"{field}=%s" for field in fields_list)
-        # ids as single array parameter: $N::int[]
-        values_list.append(ids)
 
-        stmt = (
-            f"UPDATE {self.table} SET {set_clause} WHERE id = ANY(%s::int[])"
-        )
+        if self.dialect.name == "postgres":
+            # ids as single array parameter: ANY($N::int[])
+            values_list.append(ids)
+            stmt = (
+                f"UPDATE {self.table} SET {set_clause} "
+                f"WHERE id = ANY(%s::int[])"
+            )
+        else:
+            # ids as individual parameters: IN (%s, %s, ...)
+            placeholders = self.dialect.make_placeholders(len(ids))
+            values_list.extend(ids)
+            stmt = (
+                f"UPDATE {self.table} SET {set_clause} "
+                f"WHERE id IN ({placeholders})"
+            )
+
         return stmt, tuple(values_list)
 
     def build_get(

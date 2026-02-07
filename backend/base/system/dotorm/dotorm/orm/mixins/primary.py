@@ -58,8 +58,13 @@ class OrmPrimaryMixin(_Base):
 
         session = cls._get_db_session(session)
         stmt = cls._builder.build_delete_bulk(len(ids))
-        # Pass ids as single array parameter for ANY($1::int[])
-        return await session.execute(stmt, [ids], cursor="void")
+
+        if cls._dialect.name == "postgres":
+            # ANY($1::int[]) — ids as single array param
+            return await session.execute(stmt, [ids], cursor="void")
+        else:
+            # IN (%s, %s, ...) — ids as individual params
+            return await session.execute(stmt, ids, cursor="void")
 
     async def update(
         self,
