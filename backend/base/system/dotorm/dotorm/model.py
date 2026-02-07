@@ -167,20 +167,13 @@ class DotModel(
             # установить имя роута такой же как имя модели по умолчанию
             cls.__route__ = "/" + cls.__table__
 
-        # Lazy field cache — built on first access via _ensure_field_cache()
-        cls._cache_all_fields: dict[str, Field] | None = None
-        cls._cache_store_fields: list[str] | None = None
-        cls._cache_store_fields_dict: dict[str, Field] | None = None
-        cls._cache_json_fields: list[str] | None = None
-        cls._cache_compute_fields: list[tuple[str, Field]] | None = None
-        cls._cache_has_json_fields: bool | None = None
-        cls._cache_has_compute_fields: bool | None = None
+        # Build field cache eagerly — runs once per class definition.
+        # Each subclass (Lead, Activity, etc.) sees full MRO including mixins.
+        cls._build_field_cache()
 
     @classmethod
-    def _ensure_field_cache(cls):
-        """Build field cache once (lazy). Called from __init__ and prepare_list_ids."""
-        if cls._cache_all_fields is not None:
-            return
+    def _build_field_cache(cls):
+        """Build all field caches from MRO. Called once in __init_subclass__."""
         fields = {}
         for klass in reversed(cls.__mro__):
             if klass is object:
@@ -195,25 +188,26 @@ class DotModel(
         cls._cache_store_fields_dict = {
             name: field for name, field in fields.items() if field.store
         }
-        cls._cache_json_fields = [
+        json_fields = [
             name
             for name, field in fields.items()
             if isinstance(field, JSONField)
         ]
-        cls._cache_compute_fields = [
+        compute_fields = [
             (name, field)
             for name, field in fields.items()
             if field.compute and not field.store
         ]
-        cls._cache_has_json_fields = bool(cls._cache_json_fields)
-        cls._cache_has_compute_fields = bool(cls._cache_compute_fields)
+        cls._cache_json_fields = json_fields
+        cls._cache_compute_fields = compute_fields
+        cls._cache_has_json_fields = bool(json_fields)
+        cls._cache_has_compute_fields = bool(compute_fields)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         # Fast path: bulk-assign all kwargs via __dict__
         self.__dict__.update(kwargs)
 
         cls = self.__class__
-        cls._ensure_field_cache()
 
         # Десериализация JSON полей (если пришла строка из БД)
         # asyncpg не десериализует jsonb автоматически без кодека,
@@ -318,7 +312,6 @@ class DotModel(
         Fast path: bypasses __init__ when model has no JSON/compute fields.
         Uses object.__new__ + __dict__.update — same approach as SQLAlchemy.
         """
-        cls._ensure_field_cache()
         # Fast path: no JSON deserialization, no compute fields
         if (
             not cls._cache_has_json_fields
@@ -351,7 +344,6 @@ class DotModel(
 
         Использует кэш для избежания MRO traversal на каждом вызове.
         """
-        cls._ensure_field_cache()
         return cls._cache_all_fields
 
     @classmethod
@@ -385,7 +377,6 @@ class DotModel(
 
             Lead.get_all_fields()  # {'created_at': Datetime, 'name': Char, 'id': Integer}
         """
-        cls._ensure_field_cache()
         return cls._cache_all_fields
 
     @classmethod
@@ -441,7 +432,6 @@ class DotModel(
         Поля, у которых store = False, не хранятся в бд.
         По умолчанию все поля store = True, кроме One2many и Many2many
         """
-        cls._ensure_field_cache()
         return cls._cache_store_fields
 
     @classmethod
@@ -463,7 +453,6 @@ class DotModel(
     def get_store_fields_dict(cls) -> dict[str, Field]:
         """Возвращает только те поля, которые хранятся в БД.
         Результат в виде dict"""
-        cls._ensure_field_cache()
         return cls._cache_store_fields_dict
 
     @classmethod
