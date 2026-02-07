@@ -1,9 +1,79 @@
 [
   {
-    "module": "Chat",
-    "operation": "message delete_bulk \u2014 100",
+    "module": "Activity",
+    "operation": "create \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 1.27,
+    "rps": 784.9
+  },
+  {
+    "module": "Activity",
+    "operation": "create_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 175.04,
+    "rps": 28564.5
+  },
+  {
+    "module": "Activity",
+    "operation": "get \u2014 single by id",
+    "rows": 1,
+    "elapsed_ms": 1.45,
+    "rps": 688.9
+  },
+  {
+    "module": "Activity",
+    "operation": "search \u2014 filter user_id",
     "rows": 100,
-    "elapsed_ms": 25.54,
-    "rps": 3914.8
+    "elapsed_ms": 1.29,
+    "rps": 77333.5
+  },
+  {
+    "module": "Activity",
+    "operation": "search \u2014 filter res_model='lead'",
+    "rows": 1000,
+    "elapsed_ms": 3.08,
+    "rps": 324233.2
+  },
+  {
+    "module": "Activity",
+    "operation": "search \u2014 state='overdue'",
+    "rows": 1000,
+    "elapsed_ms": 9.54,
+    "rps": 104791.0
+  },
+  {
+    "module": "Activity",
+    "operation": "search_count \u2014 100k table",
+    "rows": 100000,
+    "elapsed_ms": 7.61,
+    "rps": 13144922.7
+  },
+  {
+    "module": "Activity",
+    "operation": "update \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 1.89,
+    "rps": 529.0
+  },
+  {
+    "module": "Activity",
+    "operation": "update_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 58.97,
+    "rps": 84791.5
+  },
+  {
+    "module": "Activity",
+    "operation": "delete \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 0.98,
+    "rps": 1023.8
+  },
+  {
+    "module": "Activity",
+    "operation": "delete_bulk \u2014 2,000",
+    "rows": 2000,
+    "elapsed_ms": 14.47,
+    "rps": 138174.0
   }
 ]

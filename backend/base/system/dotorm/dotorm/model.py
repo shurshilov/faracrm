@@ -167,28 +167,70 @@ class DotModel(
             # установить имя роута такой же как имя модели по умолчанию
             cls.__route__ = "/" + cls.__table__
 
+        # Lazy field cache — built on first access via _ensure_field_cache()
+        cls._cache_all_fields: dict[str, Field] | None = None
+        cls._cache_store_fields: list[str] | None = None
+        cls._cache_store_fields_dict: dict[str, Field] | None = None
+        cls._cache_json_fields: list[str] | None = None
+        cls._cache_compute_fields: list[tuple[str, Field]] | None = None
+        cls._cache_has_json_fields: bool | None = None
+        cls._cache_has_compute_fields: bool | None = None
+
+    @classmethod
+    def _ensure_field_cache(cls):
+        """Build field cache once (lazy). Called from __init__ and prepare_list_ids."""
+        if cls._cache_all_fields is not None:
+            return
+        fields = {}
+        for klass in reversed(cls.__mro__):
+            if klass is object:
+                continue
+            for attr_name, attr in klass.__dict__.items():
+                if isinstance(attr, Field):
+                    fields[attr_name] = attr
+        cls._cache_all_fields = fields
+        cls._cache_store_fields = [
+            name for name, field in fields.items() if field.store
+        ]
+        cls._cache_store_fields_dict = {
+            name: field for name, field in fields.items() if field.store
+        }
+        cls._cache_json_fields = [
+            name
+            for name, field in fields.items()
+            if isinstance(field, JSONField)
+        ]
+        cls._cache_compute_fields = [
+            (name, field)
+            for name, field in fields.items()
+            if field.compute and not field.store
+        ]
+        cls._cache_has_json_fields = bool(cls._cache_json_fields)
+        cls._cache_has_compute_fields = bool(cls._cache_compute_fields)
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        # задаем переменные переданные с помощью kwargs
-        # instance variables (it is intended to be used by one instance)
-        # for name, value in kwargs.items():
-        #     setattr(self, name, value)
+        # Fast path: bulk-assign all kwargs via __dict__
         self.__dict__.update(kwargs)
 
+        cls = self.__class__
+        cls._ensure_field_cache()
+
         # Десериализация JSON полей (если пришла строка из БД)
-        for name, field in self.get_fields().items():
-            if isinstance(field, JSONField):
-                value = getattr(self, name, None)
-                # Если значение - строка, десериализуем в dict/list
+        # asyncpg не десериализует jsonb автоматически без кодека,
+        # поэтому нужен fallback json.loads для строковых значений.
+        if cls._cache_has_json_fields:
+            for name in cls._cache_json_fields:
+                value = self.__dict__.get(name)
                 if isinstance(value, str):
                     try:
-                        setattr(self, name, json.loads(value))
+                        self.__dict__[name] = json.loads(value)
                     except (json.JSONDecodeError, TypeError):
-                        pass  # Оставляем как есть если не валидный JSON
+                        pass
 
-        # если поле вычисляемое и не хранящееся в БД то вычислить его
-        for name, field in self.get_fields().items():
-            if field.compute and not field.store:
-                setattr(self, name, field.compute(self))
+        # Вычисляемые поля (compute, не хранящиеся в БД)
+        if cls._cache_has_compute_fields:
+            for name, field in cls._cache_compute_fields:
+                self.__dict__[name] = field.compute(self)
 
     #             # Если есть функция вычисления (имя метода)
     #             if isinstance(field.compute, str):
@@ -270,9 +312,25 @@ class DotModel(
         return record
 
     @classmethod
-    def prepare_list_ids(cls, rows: list[dict]):
-        """Десериализация из списка соварей в список объектов.
-        Используется при получении данных из БД"""
+    def prepare_list_ids(cls, rows: list):
+        """Десериализация из списка записей (dict или asyncpg Record) в список объектов.
+
+        Fast path: bypasses __init__ when model has no JSON/compute fields.
+        Uses object.__new__ + __dict__.update — same approach as SQLAlchemy.
+        """
+        cls._ensure_field_cache()
+        # Fast path: no JSON deserialization, no compute fields
+        if (
+            not cls._cache_has_json_fields
+            and not cls._cache_has_compute_fields
+        ):
+            result = []
+            for r in rows:
+                obj = object.__new__(cls)
+                obj.__dict__.update(r)
+                result.append(obj)
+            return result
+        # Slow path: has JSON or compute fields — use full __init__
         return [cls(**r) for r in rows]
 
     @classmethod
@@ -291,9 +349,10 @@ class DotModel(
     def get_fields(cls) -> dict[str, Field]:
         """Возвращает все поля модели, включая унаследованные из миксинов.
 
-        Это алиас для get_all_fields() для обратной совместимости.
+        Использует кэш для избежания MRO traversal на каждом вызове.
         """
-        return cls.get_all_fields()
+        cls._ensure_field_cache()
+        return cls._cache_all_fields
 
     @classmethod
     def get_own_fields(cls) -> dict[str, Field]:
@@ -312,8 +371,7 @@ class DotModel(
         """
         Возвращает все поля модели, включая унаследованные из миксинов и родительских классов.
 
-        Использует MRO (Method Resolution Order) для сбора полей из всей цепочки наследования.
-        Поля из дочерних классов переопределяют поля из родительских.
+        Алиас для get_fields() — оба используют кэш.
 
         Returns:
             dict[str, Field]: Словарь {имя_поля: объект_Field}
@@ -325,17 +383,10 @@ class DotModel(
             class Lead(AuditMixin, DotModel):
                 name = Char()
 
-            Lead.get_all_fields()  # {'created_at': Datetime, 'name': Char}
-            Lead.get_fields()      # {'name': Char}  - только собственные
+            Lead.get_all_fields()  # {'created_at': Datetime, 'name': Char, 'id': Integer}
         """
-        fields = {}
-        for klass in reversed(cls.__mro__):
-            if klass is object:
-                continue
-            for attr_name, attr in klass.__dict__.items():
-                if isinstance(attr, Field):
-                    fields[attr_name] = attr
-        return fields
+        cls._ensure_field_cache()
+        return cls._cache_all_fields
 
     @classmethod
     def get_compute_fields(cls):
@@ -390,9 +441,8 @@ class DotModel(
         Поля, у которых store = False, не хранятся в бд.
         По умолчанию все поля store = True, кроме One2many и Many2many
         """
-        return [
-            name for name, field in cls.get_fields().items() if field.store
-        ]
+        cls._ensure_field_cache()
+        return cls._cache_store_fields
 
     @classmethod
     def get_store_fields_omit_m2o(cls) -> list[str]:
@@ -413,11 +463,8 @@ class DotModel(
     def get_store_fields_dict(cls) -> dict[str, Field]:
         """Возвращает только те поля, которые хранятся в БД.
         Результат в виде dict"""
-        return {
-            name: field
-            for name, field in cls.get_fields().items()
-            if field.store
-        }
+        cls._ensure_field_cache()
+        return cls._cache_store_fields_dict
 
     @classmethod
     async def get_default_values(
