@@ -1,72 +1,225 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Perf Report 2026-02-07 12:02:03</title>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DotORM — Performance Comparison</title>
 <style>
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-       margin: 2em auto; max-width: 960px; color: #333; }
-h1 { text-align:center; }
-table { width:100%; border-collapse:collapse; margin-top:1em; }
-th { background:#2c3e50; color:white; padding:10px 12px; text-align:left; }
-td { padding:8px 12px; border-bottom:1px solid #eee; }
-.num { text-align:right; font-variant-numeric: tabular-nums; }
-tr.group { background:#ecf0f1; font-weight:bold; }
-tr.fast td.num:nth-child(4) { color:#27ae60; }
-tr.medium td.num:nth-child(4) { color:#f39c12; }
-tr.slow td.num:nth-child(4) { color:#e74c3c; font-weight:bold; }
-tr:hover { background:#f8f9fa; }
-.meta { color:#888; text-align:center; margin-top:1.5em; font-size:0.9em; }
-</style></head><body>
-<h1>🚀 FARA CRM — Performance Report</h1>
-<table>
-<tr><th>Module</th><th>Operation</th><th>Rows</th><th>Time (ms)</th><th>rows/sec</th></tr>
-<tr class="group"><td colspan="5">raw asyncpg</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>create — single</td><td class='num'>1</td><td class='num'>0.63</td><td class='num'>1,594.6</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>104.58</td><td class='num'>47,812.1</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>get — single by id</td><td class='num'>1</td><td class='num'>0.63</td><td class='num'>1,584.8</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>search — filter user_id</td><td class='num'>1,000</td><td class='num'>0.57</td><td class='num'>1,763,979.5</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>3.51</td><td class='num'>285,087.1</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>2.41</td><td class='num'>415,006.6</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>search_count — 100k</td><td class='num'>100,000</td><td class='num'>11.13</td><td class='num'>8,988,602.5</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>update — single</td><td class='num'>1</td><td class='num'>1.40</td><td class='num'>716.0</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>95.72</td><td class='num'>52,237.3</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>delete — single</td><td class='num'>1</td><td class='num'>0.75</td><td class='num'>1,335.8</td></tr>
-<tr class="fast"><td>raw asyncpg</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>12.54</td><td class='num'>159,489.6</td></tr>
-<tr class="group"><td colspan="5">SQLAlchemy</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>create — single</td><td class='num'>1</td><td class='num'>13.59</td><td class='num'>73.6</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>288.67</td><td class='num'>17,320.6</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>get — single by id</td><td class='num'>1</td><td class='num'>2.93</td><td class='num'>341.5</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>search — filter user_id</td><td class='num'>1,000</td><td class='num'>2.45</td><td class='num'>408,163.3</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>8.57</td><td class='num'>116,664.3</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>7.58</td><td class='num'>131,891.3</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>search_count — 100k</td><td class='num'>100,000</td><td class='num'>13.97</td><td class='num'>7,160,400.2</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>update — single</td><td class='num'>1</td><td class='num'>2.10</td><td class='num'>475.7</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>120.47</td><td class='num'>41,504.2</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>delete — single</td><td class='num'>1</td><td class='num'>1.54</td><td class='num'>648.6</td></tr>
-<tr class="fast"><td>SQLAlchemy</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>20.23</td><td class='num'>98,873.8</td></tr>
-<tr class="group"><td colspan="5">Tortoise</td></tr>
-<tr class="fast"><td>Tortoise</td><td>create — single</td><td class='num'>1</td><td class='num'>9.62</td><td class='num'>103.9</td></tr>
-<tr class="fast"><td>Tortoise</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>184.79</td><td class='num'>27,058.1</td></tr>
-<tr class="fast"><td>Tortoise</td><td>get — single by id</td><td class='num'>1</td><td class='num'>1.28</td><td class='num'>778.7</td></tr>
-<tr class="fast"><td>Tortoise</td><td>search — filter user_id</td><td class='num'>1,000</td><td class='num'>1.19</td><td class='num'>837,731.4</td></tr>
-<tr class="fast"><td>Tortoise</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>16.95</td><td class='num'>59,003.3</td></tr>
-<tr class="fast"><td>Tortoise</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>14.48</td><td class='num'>69,052.2</td></tr>
-<tr class="fast"><td>Tortoise</td><td>search_count — 100k</td><td class='num'>100,000</td><td class='num'>11.80</td><td class='num'>8,472,494.0</td></tr>
-<tr class="fast"><td>Tortoise</td><td>update — single</td><td class='num'>1</td><td class='num'>1.58</td><td class='num'>632.7</td></tr>
-<tr class="fast"><td>Tortoise</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>147.32</td><td class='num'>33,940.2</td></tr>
-<tr class="fast"><td>Tortoise</td><td>delete — single</td><td class='num'>1</td><td class='num'>0.69</td><td class='num'>1,446.8</td></tr>
-<tr class="fast"><td>Tortoise</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>18.04</td><td class='num'>110,838.9</td></tr>
-<tr class="group"><td colspan="5">dotorm</td></tr>
-<tr class="fast"><td>dotorm</td><td>create — single</td><td class='num'>1</td><td class='num'>1.40</td><td class='num'>712.4</td></tr>
-<tr class="fast"><td>dotorm</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>157.66</td><td class='num'>31,713.3</td></tr>
-<tr class="fast"><td>dotorm</td><td>get — single by id</td><td class='num'>1</td><td class='num'>1.14</td><td class='num'>873.4</td></tr>
-<tr class="fast"><td>dotorm</td><td>search — filter user_id</td><td class='num'>1,000</td><td class='num'>1.21</td><td class='num'>826,036.7</td></tr>
-<tr class="fast"><td>dotorm</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>3.59</td><td class='num'>278,807.8</td></tr>
-<tr class="fast"><td>dotorm</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>10.13</td><td class='num'>98,715.7</td></tr>
-<tr class="fast"><td>dotorm</td><td>search_count — 100k</td><td class='num'>100,000</td><td class='num'>7.56</td><td class='num'>13,233,114.5</td></tr>
-<tr class="fast"><td>dotorm</td><td>update — single</td><td class='num'>1</td><td class='num'>1.28</td><td class='num'>780.4</td></tr>
-<tr class="fast"><td>dotorm</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>52.09</td><td class='num'>95,983.7</td></tr>
-<tr class="fast"><td>dotorm</td><td>delete — single</td><td class='num'>1</td><td class='num'>0.79</td><td class='num'>1,260.1</td></tr>
-<tr class="fast"><td>dotorm</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>15.10</td><td class='num'>132,478.4</td></tr>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+  :root {
+    --bg:#0c0e13;--surface:#13161d;--surface2:#1a1e28;--border:#252a36;
+    --text:#e2e4ea;--text-dim:#7a7f8e;
+    --gold:#f5c542;--gold-dim:rgba(245,197,66,.12);
+    --green:#34d399;--green-dim:rgba(52,211,153,.10);
+    --red:#f87171;--red-dim:rgba(248,113,113,.08);
+    --purple:#a78bfa;--orange:#fb923c;--cyan:#22d3ee;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding:40px 24px 80px}
+  .container{max-width:1320px;margin:0 auto}
 
-</table>
-<p class="meta">Generated 2026-02-07 12:02:03</p>
-</body></html>
+  /* Header */
+  .header{text-align:center;margin-bottom:40px}
+  .header h1{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;letter-spacing:-.5px;background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+  .header p{color:var(--text-dim);font-size:.9rem}
+  .header .meta{display:inline-flex;gap:20px;margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text-dim)}
+  .header .ts{display:block;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text-dim);opacity:.45}
+
+  /* Summary cards */
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:32px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+  .card .emoji{font-size:1.5rem;margin-bottom:4px}
+  .card .card-label{font-size:.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .card .card-val{font-family:'JetBrains Mono',monospace;font-size:1.25rem;font-weight:700}
+  .card .card-sub{font-size:.7rem;color:var(--text-dim);margin-top:2px}
+
+  /* Tabs */
+  .tabs{display:flex;gap:2px;margin-bottom:0;background:var(--surface2);border-radius:10px 10px 0 0;padding:4px 4px 0;border:1px solid var(--border);border-bottom:none}
+  .tab{padding:10px 24px;font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;color:var(--text-dim);cursor:pointer;border-radius:8px 8px 0 0;transition:all .15s;border:none;background:none}
+  .tab:hover{color:var(--text);background:rgba(255,255,255,.03)}
+  .tab.active{color:var(--gold);background:var(--surface);border:1px solid var(--border);border-bottom:1px solid var(--surface);margin-bottom:-1px;z-index:1}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+
+  /* Legend */
+  .legend{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;margin:20px 0}
+  .legend-item{display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text-dim)}
+  .legend-dot{width:10px;height:10px;border-radius:2px}
+
+  /* Table shared */
+  .table-wrap{overflow-x:auto;border-radius:0 0 12px 12px;border:1px solid var(--border);border-top:none;background:var(--surface)}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  thead th{background:var(--surface2);font-family:'JetBrains Mono',monospace;font-weight:600;font-size:.71rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);padding:13px 14px;text-align:right;white-space:nowrap;border-bottom:2px solid var(--border)}
+  thead th:first-child{text-align:left;min-width:210px}
+  thead th.col-asyncpg{color:var(--cyan)} thead th.col-sa{color:var(--purple)}
+  thead th.col-tortoise{color:var(--orange)} thead th.col-dotorm{color:var(--gold)}
+  tr.group-header td{background:var(--bg);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.76rem;letter-spacing:.5px;color:var(--text-dim);padding:9px 14px;border-bottom:1px solid var(--border);text-transform:uppercase}
+  tbody tr{border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+  td{padding:11px 14px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:.8rem;white-space:nowrap;position:relative}
+  td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-weight:500;color:var(--text);font-size:.84rem}
+  td .rows-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--text-dim);background:var(--surface2);padding:2px 5px;border-radius:3px;margin-left:7px}
+  .val{display:inline-flex;align-items:center;gap:5px}
+  .badge{display:inline-block;font-size:.63rem;font-family:'DM Sans',sans-serif;font-weight:600;padding:1px 5px;border-radius:3px;letter-spacing:.3px}
+  .badge-gold{background:var(--gold-dim);color:var(--gold)}
+  .badge-silver{background:var(--green-dim);color:var(--green)}
+  .badge-last{background:var(--red-dim);color:var(--red)}
+  td.cell-asyncpg{color:var(--cyan)} td.cell-sa{color:var(--purple)}
+  td.cell-tortoise{color:var(--orange)} td.cell-dotorm{color:var(--gold)}
+  td.winner-cell{font-weight:700}
+  td.winner-cell::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;border-radius:0 2px 2px 0}
+  td.winner-cell.cell-asyncpg::before{background:var(--cyan)}
+  td.winner-cell.cell-sa::before{background:var(--purple)}
+  td.winner-cell.cell-tortoise::before{background:var(--orange)}
+  td.winner-cell.cell-dotorm::before{background:var(--gold)}
+
+  /* Detail table */
+  .detail-table th{text-align:left}
+  .detail-table td{text-align:left}
+  .detail-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .detail-table tr.group td{background:var(--surface2);font-weight:700;color:var(--text);font-size:.78rem}
+  .detail-table tr.fast td.num:nth-child(4){color:var(--green)}
+  .detail-table tr.medium td.num:nth-child(4){color:var(--orange)}
+  .detail-table tr.slow td.num:nth-child(4){color:var(--red);font-weight:700}
+
+  .footer{text-align:center;margin-top:32px;color:var(--text-dim);font-size:.73rem;line-height:1.7}
+  .footer span{font-family:'JetBrains Mono',monospace;color:var(--text)}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⚡ DotORM Performance Report</h1>
+    <p>Head-to-head: raw asyncpg · SQLAlchemy · Tortoise · dotorm</p>
+    <div class="meta"><span>PostgreSQL 16</span><span>100k rows</span><span>asyncpg 0.30</span><span>Python 3.12</span></div>
+    <span class="ts">Generated: 2026-02-07 13:01:10</span>
+  </div>
+  <div id="summary" class="summary"></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('comparison')">⚔️ Comparison</div>
+    <div class="tab" onclick="switchTab('detail')">📋 Detail Log</div>
+  </div>
+
+  <div id="tab-comparison" class="tab-content active">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>raw asyncpg</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>SQLAlchemy</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Tortoise</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>dotorm</div>
+      <div class="legend-item"><span class="badge badge-gold">🥇 1st</span></div>
+      <div class="legend-item"><span class="badge badge-silver">🥈 2nd</span></div>
+      <div class="legend-item"><span class="badge badge-last">🐌 last</span></div>
+    </div>
+    <div class="table-wrap" id="comparison-table"></div>
+  </div>
+
+  <div id="tab-detail" class="tab-content">
+    <div class="table-wrap" id="detail-table"></div>
+  </div>
+
+  <div class="footer">
+    Lower is better (ms). Badges compare <span>ORM-only</span> (excl. raw asyncpg).<br>
+    Re-run <span>pytest tests/performance/test_orm_comparison.py</span> to refresh data.
+  </div>
+</div>
+
+<script>
+const data = [{"module": "raw asyncpg", "operation": "create \u2014 single", "rows": 1, "elapsed_ms": 0.69, "rps": 1455.2}, {"module": "raw asyncpg", "operation": "create_bulk \u2014 5,000", "rows": 5000, "elapsed_ms": 98.92, "rps": 50546.8}, {"module": "raw asyncpg", "operation": "get \u2014 single by id", "rows": 1, "elapsed_ms": 0.64, "rps": 1553.3}, {"module": "raw asyncpg", "operation": "search \u2014 filter user_id", "rows": 1000, "elapsed_ms": 0.52, "rps": 1914608.4}, {"module": "raw asyncpg", "operation": "search \u2014 filter res_model='lead'", "rows": 1000, "elapsed_ms": 2.91, "rps": 343961.7}, {"module": "raw asyncpg", "operation": "search \u2014 state='overdue'", "rows": 1000, "elapsed_ms": 1.77, "rps": 565163.3}, {"module": "raw asyncpg", "operation": "search_count \u2014 100k", "rows": 100000, "elapsed_ms": 6.76, "rps": 14786337.3}, {"module": "raw asyncpg", "operation": "update \u2014 single", "rows": 1, "elapsed_ms": 1.12, "rps": 889.4}, {"module": "raw asyncpg", "operation": "update_bulk \u2014 5,000", "rows": 5000, "elapsed_ms": 95.0, "rps": 52630.7}, {"module": "raw asyncpg", "operation": "delete \u2014 single", "rows": 1, "elapsed_ms": 0.71, "rps": 1399.8}, {"module": "raw asyncpg", "operation": "delete_bulk \u2014 2,000", "rows": 2000, "elapsed_ms": 11.09, "rps": 180319.9}, {"module": "SQLAlchemy", "operation": "create \u2014 single", "rows": 1, "elapsed_ms": 13.14, "rps": 76.1}, {"module": "SQLAlchemy", "operation": "create_bulk \u2014 5,000", "rows": 5000, "elapsed_ms": 248.43, "rps": 20126.3}, {"module": "SQLAlchemy", "operation": "get \u2014 single by id", "rows": 1, "elapsed_ms": 3.28, "rps": 304.5}, {"module": "SQLAlchemy", "operation": "search \u2014 filter user_id", "rows": 1000, "elapsed_ms": 2.28, "rps": 437694.2}, {"module": "SQLAlchemy", "operation": "search \u2014 filter res_model='lead'", "rows": 1000, "elapsed_ms": 8.39, "rps": 119225.0}, {"module": "SQLAlchemy", "operation": "search \u2014 state='overdue'", "rows": 1000, "elapsed_ms": 6.94, "rps": 144052.8}, {"module": "SQLAlchemy", "operation": "search_count \u2014 100k", "rows": 100000, "elapsed_ms": 12.65, "rps": 7904263.5}, {"module": "SQLAlchemy", "operation": "update \u2014 single", "rows": 1, "elapsed_ms": 2.88, "rps": 347.0}, {"module": "SQLAlchemy", "operation": "update_bulk \u2014 5,000", "rows": 5000, "elapsed_ms": 111.96, "rps": 44659.9}, {"module": "SQLAlchemy", "operation": "delete \u2014 single", "rows": 1, "elapsed_ms": 1.72, "rps": 580.0}, {"module": "SQLAlchemy", "operation": "delete_bulk \u2014 2,000", "rows": 2000, "elapsed_ms": 26.52, "rps": 75404.5}, {"module": "Tortoise", "operation": "create \u2014 single", "rows": 1, "elapsed_ms": 10.9, "rps": 91.7}, {"module": "Tortoise", "operation": "create_bulk \u2014 5,000", "rows": 5000, "elapsed_ms": 171.07, "rps": 29227.8}, {"module": "Tortoise", "operation": "get \u2014 single by id", "rows": 1, "elapsed_ms": 1.27, "rps": 788.3}, {"module": "Tortoise", "operation": "search \u2014 filter user_id", "rows": 1000, "elapsed_ms": 1.3, "rps": 772141.1}, {"module": "Tortoise", "operation": "search \u2014 filter res_model='lead'", "rows": 1000, "elapsed_ms": 17.11, "rps": 58440.2}, {"module": "Tortoise", "operation": "search \u2014 state='overdue'", "rows": 1000, "elapsed_ms": 16.07, "rps": 62231.2}, {"module": "Tortoise", "operation": "search_count \u2014 100k", "rows": 100000, "elapsed_ms": 11.18, "rps": 8941984.4}, {"module": "Tortoise", "operation": "update \u2014 single", "rows": 1, "elapsed_ms": 1.71, "rps": 585.7}, {"module": "Tortoise", "operation": "update_bulk \u2014 5,000", "rows": 5000, "elapsed_ms": 108.61, "rps": 46036.2}, {"module": "Tortoise", "operation": "delete \u2014 single", "rows": 1, "elapsed_ms": 0.91, "rps": 1101.3}, {"module": "Tortoise", "operation": "delete_bulk \u2014 2,000", "rows": 2000, "elapsed_ms": 15.72, "rps": 127257.2}, {"module": "dotorm", "operation": "create \u2014 single", "rows": 1, "elapsed_ms": 1.51, "rps": 663.3}, {"module": "dotorm", "operation": "create_bulk \u2014 5,000", "rows": 5000, "elapsed_ms": 158.83, "rps": 31479.8}, {"module": "dotorm", "operation": "get \u2014 single by id", "rows": 1, "elapsed_ms": 0.92, "rps": 1084.2}, {"module": "dotorm", "operation": "search \u2014 filter user_id", "rows": 1000, "elapsed_ms": 1.15, "rps": 870928.5}, {"module": "dotorm", "operation": "search \u2014 filter res_model='lead'", "rows": 1000, "elapsed_ms": 4.37, "rps": 229063.6}, {"module": "dotorm", "operation": "search \u2014 state='overdue'", "rows": 1000, "elapsed_ms": 10.44, "rps": 95790.9}, {"module": "dotorm", "operation": "search_count \u2014 100k", "rows": 100000, "elapsed_ms": 7.61, "rps": 13132148.8}, {"module": "dotorm", "operation": "update \u2014 single", "rows": 1, "elapsed_ms": 1.42, "rps": 701.8}, {"module": "dotorm", "operation": "update_bulk \u2014 5,000", "rows": 5000, "elapsed_ms": 49.03, "rps": 101971.1}, {"module": "dotorm", "operation": "delete \u2014 single", "rows": 1, "elapsed_ms": 0.9, "rps": 1116.4}, {"module": "dotorm", "operation": "delete_bulk \u2014 2,000", "rows": 2000, "elapsed_ms": 11.3, "rps": 176917.6}];
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Detect modules ──
+const modules = [...new Set(data.map(d => d.module))];
+const baseline = modules[0];
+const ormModules = modules.slice(1);
+const cssMap = ['cell-asyncpg','cell-sa','cell-tortoise','cell-dotorm'];
+const colMap = ['col-asyncpg','col-sa','col-tortoise','col-dotorm'];
+const themeColors = ['var(--cyan)','var(--purple)','var(--orange)','var(--gold)'];
+
+const ops = {};
+data.forEach(d => { if (!ops[d.operation]) ops[d.operation] = {}; ops[d.operation][d.module] = d; });
+
+// ── Categorize ──
+const cats = { CREATE:[], READ:[], UPDATE:[], DELETE:[] };
+Object.keys(ops).forEach(op => {
+  const lo = op.toLowerCase();
+  if (lo.startsWith('create')) cats.CREATE.push(op);
+  else if (lo.startsWith('get')||lo.startsWith('search')) cats.READ.push(op);
+  else if (lo.startsWith('update')) cats.UPDATE.push(op);
+  else if (lo.startsWith('delete')) cats.DELETE.push(op);
+  else cats.READ.push(op);
+});
+
+function fmt(ms) { return ms < 1 ? ms.toFixed(2) : ms < 10 ? ms.toFixed(1) : Math.round(ms).toLocaleString(); }
+function fmtRps(rps) { return rps === Infinity ? '∞' : rps > 1e6 ? (rps/1e6).toFixed(1)+'M' : rps > 1e3 ? (rps/1e3).toFixed(1)+'K' : rps.toFixed(0); }
+
+// ═══ Comparison table ═══
+const wins = {}; ormModules.forEach(m => wins[m] = 0);
+let cHead = '<tr><th>Operation</th>' + modules.map((m,i) => `<th class="${colMap[i]||'col-dotorm'}">${m}</th>`).join('') + '</tr>';
+let cBody = '';
+
+Object.entries(cats).forEach(([cat, opNames]) => {
+  if (!opNames.length) return;
+  cBody += `<tr class="group-header"><td colspan="${modules.length+1}">${cat}</td></tr>`;
+  opNames.forEach(opName => {
+    const row = ops[opName]; if (!row) return;
+    const ormVals = ormModules.map(m => ({mod:m, ms:row[m]?.elapsed_ms??Infinity})).sort((a,b) => a.ms - b.ms);
+    const rank = {}; ormVals.forEach((v,i) => rank[v.mod] = i);
+    if (ormVals[0].ms < Infinity) wins[ormVals[0].mod]++;
+    const fe = row[modules[0]] || Object.values(row)[0];
+    const rb = fe ? `<span class="rows-badge">${fe.rows.toLocaleString()}</span>` : '';
+    let cells = `<td>${opName}${rb}</td>`;
+    modules.forEach(mod => {
+      const e = row[mod]; if (!e) { cells += `<td class="${cssMap[modules.indexOf(mod)]}">—</td>`; return; }
+      const cls = cssMap[modules.indexOf(mod)] || 'cell-dotorm';
+      const isORM = ormModules.includes(mod);
+      let badge = '', wc = '';
+      if (isORM) { const r = rank[mod]; if (r===0){badge='<span class="badge badge-gold">🥇</span>';wc=' winner-cell'} else if(r===1){badge='<span class="badge badge-silver">🥈</span>'} else if(r===ormVals.length-1){badge='<span class="badge badge-last">🐌</span>'} }
+      cells += `<td class="${cls}${wc}"><span class="val">${fmt(e.elapsed_ms)} ms ${badge}</span></td>`;
+    });
+    cBody += `<tr>${cells}</tr>`;
+  });
+});
+
+document.getElementById('comparison-table').innerHTML = `<table><thead>${cHead}</thead><tbody>${cBody}</tbody></table>`;
+
+// ═══ Detail table ═══
+let dBody = '';
+let curMod = null;
+data.forEach(r => {
+  if (r.module !== curMod) { curMod = r.module; dBody += `<tr class="group"><td colspan="5">${r.module}</td></tr>`; }
+  const cls = r.elapsed_ms < 500 ? 'fast' : r.elapsed_ms < 2000 ? 'medium' : 'slow';
+  dBody += `<tr class="${cls}"><td>${r.module}</td><td>${r.operation}</td><td class="num">${r.rows.toLocaleString()}</td><td class="num">${r.elapsed_ms.toFixed(2)}</td><td class="num">${fmtRps(r.rps)}</td></tr>`;
+});
+document.getElementById('detail-table').innerHTML = `<table class="detail-table"><thead><tr><th>Module</th><th>Operation</th><th style="text-align:right">Rows</th><th style="text-align:right">Time (ms)</th><th style="text-align:right">rows/sec</th></tr></thead><tbody>${dBody}</tbody></table>`;
+
+// ═══ Summary cards ═══
+const totalOps = Object.keys(ops).length;
+const overhead = {};
+ormModules.forEach(mod => {
+  let sO=0,sR=0,c=0;
+  Object.values(ops).forEach(row => { if(row[mod]&&row[baseline]){sO+=row[mod].elapsed_ms;sR+=row[baseline].elapsed_ms;c++} });
+  overhead[mod] = c > 0 ? ((sO/sR-1)*100).toFixed(0) : '?';
+});
+let best='',bw=0; Object.entries(wins).forEach(([m,w])=>{if(w>bw){bw=w;best=m}});
+
+const emojis=['🏆','⚡','🐘','🐢'];
+const labels=['Most ORM Wins',...ormModules.map(m=>`${m} overhead`)];
+const vals=[best,...ormModules.map(m=>`+${overhead[m]}%`)];
+const subs=[`${bw} / ${totalOps} operations`,...ormModules.map(()=>`vs ${baseline}`)];
+
+let sh='';
+vals.forEach((v,i) => {
+  const c = themeColors[i]||themeColors[3];
+  sh += `<div class="card"><div class="emoji">${emojis[i]||'📊'}</div><div class="card-label">${labels[i]}</div><div class="card-val" style="color:${c}">${v}</div><div class="card-sub">${subs[i]}</div></div>`;
+});
+document.getElementById('summary').innerHTML = sh;
+</script>
+</body>
+</html>

@@ -185,6 +185,262 @@ tr:hover {{ background:#f8f9fa; }}
         with open(path, "w") as f:
             json.dump(data, f, indent=2)
 
+    # ── comparison html (rich, with inline data) ──
+
+    def save_comparison_html(self, path: str):
+        """Generate beautiful comparison HTML with data embedded inline."""
+        if not self.results:
+            return
+
+        data = [
+            {
+                "module": r.module,
+                "operation": r.operation,
+                "rows": r.rows,
+                "elapsed_ms": r.elapsed_ms,
+                "rps": r.rps,
+            }
+            for r in self.results
+        ]
+        data_json = json.dumps(data)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        html = _COMPARISON_HTML_TEMPLATE.replace("__DATA_PLACEHOLDER__", data_json)
+        html = html.replace("__TIMESTAMP__", ts)
+
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(html)
+        print(f"\n✓ Comparison HTML saved to {path}")
+
+
+# ── HTML template for comparison report ──
+_COMPARISON_HTML_TEMPLATE = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DotORM — Performance Comparison</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap');
+  :root {
+    --bg:#0c0e13;--surface:#13161d;--surface2:#1a1e28;--border:#252a36;
+    --text:#e2e4ea;--text-dim:#7a7f8e;
+    --gold:#f5c542;--gold-dim:rgba(245,197,66,.12);
+    --green:#34d399;--green-dim:rgba(52,211,153,.10);
+    --red:#f87171;--red-dim:rgba(248,113,113,.08);
+    --purple:#a78bfa;--orange:#fb923c;--cyan:#22d3ee;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;padding:40px 24px 80px}
+  .container{max-width:1320px;margin:0 auto}
+
+  /* Header */
+  .header{text-align:center;margin-bottom:40px}
+  .header h1{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:700;letter-spacing:-.5px;background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+  .header p{color:var(--text-dim);font-size:.9rem}
+  .header .meta{display:inline-flex;gap:20px;margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text-dim)}
+  .header .ts{display:block;margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--text-dim);opacity:.45}
+
+  /* Summary cards */
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:32px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+  .card .emoji{font-size:1.5rem;margin-bottom:4px}
+  .card .card-label{font-size:.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .card .card-val{font-family:'JetBrains Mono',monospace;font-size:1.25rem;font-weight:700}
+  .card .card-sub{font-size:.7rem;color:var(--text-dim);margin-top:2px}
+
+  /* Tabs */
+  .tabs{display:flex;gap:2px;margin-bottom:0;background:var(--surface2);border-radius:10px 10px 0 0;padding:4px 4px 0;border:1px solid var(--border);border-bottom:none}
+  .tab{padding:10px 24px;font-family:'JetBrains Mono',monospace;font-size:.78rem;font-weight:600;color:var(--text-dim);cursor:pointer;border-radius:8px 8px 0 0;transition:all .15s;border:none;background:none}
+  .tab:hover{color:var(--text);background:rgba(255,255,255,.03)}
+  .tab.active{color:var(--gold);background:var(--surface);border:1px solid var(--border);border-bottom:1px solid var(--surface);margin-bottom:-1px;z-index:1}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+
+  /* Legend */
+  .legend{display:flex;justify-content:center;flex-wrap:wrap;gap:20px;margin:20px 0}
+  .legend-item{display:flex;align-items:center;gap:7px;font-size:.8rem;color:var(--text-dim)}
+  .legend-dot{width:10px;height:10px;border-radius:2px}
+
+  /* Table shared */
+  .table-wrap{overflow-x:auto;border-radius:0 0 12px 12px;border:1px solid var(--border);border-top:none;background:var(--surface)}
+  table{width:100%;border-collapse:collapse;font-size:.84rem}
+  thead th{background:var(--surface2);font-family:'JetBrains Mono',monospace;font-weight:600;font-size:.71rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);padding:13px 14px;text-align:right;white-space:nowrap;border-bottom:2px solid var(--border)}
+  thead th:first-child{text-align:left;min-width:210px}
+  thead th.col-asyncpg{color:var(--cyan)} thead th.col-sa{color:var(--purple)}
+  thead th.col-tortoise{color:var(--orange)} thead th.col-dotorm{color:var(--gold)}
+  tr.group-header td{background:var(--bg);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.76rem;letter-spacing:.5px;color:var(--text-dim);padding:9px 14px;border-bottom:1px solid var(--border);text-transform:uppercase}
+  tbody tr{border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+  td{padding:11px 14px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:.8rem;white-space:nowrap;position:relative}
+  td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-weight:500;color:var(--text);font-size:.84rem}
+  td .rows-badge{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--text-dim);background:var(--surface2);padding:2px 5px;border-radius:3px;margin-left:7px}
+  .val{display:inline-flex;align-items:center;gap:5px}
+  .badge{display:inline-block;font-size:.63rem;font-family:'DM Sans',sans-serif;font-weight:600;padding:1px 5px;border-radius:3px;letter-spacing:.3px}
+  .badge-gold{background:var(--gold-dim);color:var(--gold)}
+  .badge-silver{background:var(--green-dim);color:var(--green)}
+  .badge-last{background:var(--red-dim);color:var(--red)}
+  td.cell-asyncpg{color:var(--cyan)} td.cell-sa{color:var(--purple)}
+  td.cell-tortoise{color:var(--orange)} td.cell-dotorm{color:var(--gold)}
+  td.winner-cell{font-weight:700}
+  td.winner-cell::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;border-radius:0 2px 2px 0}
+  td.winner-cell.cell-asyncpg::before{background:var(--cyan)}
+  td.winner-cell.cell-sa::before{background:var(--purple)}
+  td.winner-cell.cell-tortoise::before{background:var(--orange)}
+  td.winner-cell.cell-dotorm::before{background:var(--gold)}
+
+  /* Detail table */
+  .detail-table th{text-align:left}
+  .detail-table td{text-align:left}
+  .detail-table td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .detail-table tr.group td{background:var(--surface2);font-weight:700;color:var(--text);font-size:.78rem}
+  .detail-table tr.fast td.num:nth-child(4){color:var(--green)}
+  .detail-table tr.medium td.num:nth-child(4){color:var(--orange)}
+  .detail-table tr.slow td.num:nth-child(4){color:var(--red);font-weight:700}
+
+  .footer{text-align:center;margin-top:32px;color:var(--text-dim);font-size:.73rem;line-height:1.7}
+  .footer span{font-family:'JetBrains Mono',monospace;color:var(--text)}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⚡ DotORM Performance Report</h1>
+    <p>Head-to-head: raw asyncpg · SQLAlchemy · Tortoise · dotorm</p>
+    <div class="meta"><span>PostgreSQL 16</span><span>100k rows</span><span>asyncpg 0.30</span><span>Python 3.12</span></div>
+    <span class="ts">Generated: __TIMESTAMP__</span>
+  </div>
+  <div id="summary" class="summary"></div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('comparison')">⚔️ Comparison</div>
+    <div class="tab" onclick="switchTab('detail')">📋 Detail Log</div>
+  </div>
+
+  <div id="tab-comparison" class="tab-content active">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>raw asyncpg</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>SQLAlchemy</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Tortoise</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>dotorm</div>
+      <div class="legend-item"><span class="badge badge-gold">🥇 1st</span></div>
+      <div class="legend-item"><span class="badge badge-silver">🥈 2nd</span></div>
+      <div class="legend-item"><span class="badge badge-last">🐌 last</span></div>
+    </div>
+    <div class="table-wrap" id="comparison-table"></div>
+  </div>
+
+  <div id="tab-detail" class="tab-content">
+    <div class="table-wrap" id="detail-table"></div>
+  </div>
+
+  <div class="footer">
+    Lower is better (ms). Badges compare <span>ORM-only</span> (excl. raw asyncpg).<br>
+    Re-run <span>pytest tests/performance/test_orm_comparison.py</span> to refresh data.
+  </div>
+</div>
+
+<script>
+const data = __DATA_PLACEHOLDER__;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Detect modules ──
+const modules = [...new Set(data.map(d => d.module))];
+const baseline = modules[0];
+const ormModules = modules.slice(1);
+const cssMap = ['cell-asyncpg','cell-sa','cell-tortoise','cell-dotorm'];
+const colMap = ['col-asyncpg','col-sa','col-tortoise','col-dotorm'];
+const themeColors = ['var(--cyan)','var(--purple)','var(--orange)','var(--gold)'];
+
+const ops = {};
+data.forEach(d => { if (!ops[d.operation]) ops[d.operation] = {}; ops[d.operation][d.module] = d; });
+
+// ── Categorize ──
+const cats = { CREATE:[], READ:[], UPDATE:[], DELETE:[] };
+Object.keys(ops).forEach(op => {
+  const lo = op.toLowerCase();
+  if (lo.startsWith('create')) cats.CREATE.push(op);
+  else if (lo.startsWith('get')||lo.startsWith('search')) cats.READ.push(op);
+  else if (lo.startsWith('update')) cats.UPDATE.push(op);
+  else if (lo.startsWith('delete')) cats.DELETE.push(op);
+  else cats.READ.push(op);
+});
+
+function fmt(ms) { return ms < 1 ? ms.toFixed(2) : ms < 10 ? ms.toFixed(1) : Math.round(ms).toLocaleString(); }
+function fmtRps(rps) { return rps === Infinity ? '∞' : rps > 1e6 ? (rps/1e6).toFixed(1)+'M' : rps > 1e3 ? (rps/1e3).toFixed(1)+'K' : rps.toFixed(0); }
+
+// ═══ Comparison table ═══
+const wins = {}; ormModules.forEach(m => wins[m] = 0);
+let cHead = '<tr><th>Operation</th>' + modules.map((m,i) => `<th class="${colMap[i]||'col-dotorm'}">${m}</th>`).join('') + '</tr>';
+let cBody = '';
+
+Object.entries(cats).forEach(([cat, opNames]) => {
+  if (!opNames.length) return;
+  cBody += `<tr class="group-header"><td colspan="${modules.length+1}">${cat}</td></tr>`;
+  opNames.forEach(opName => {
+    const row = ops[opName]; if (!row) return;
+    const ormVals = ormModules.map(m => ({mod:m, ms:row[m]?.elapsed_ms??Infinity})).sort((a,b) => a.ms - b.ms);
+    const rank = {}; ormVals.forEach((v,i) => rank[v.mod] = i);
+    if (ormVals[0].ms < Infinity) wins[ormVals[0].mod]++;
+    const fe = row[modules[0]] || Object.values(row)[0];
+    const rb = fe ? `<span class="rows-badge">${fe.rows.toLocaleString()}</span>` : '';
+    let cells = `<td>${opName}${rb}</td>`;
+    modules.forEach(mod => {
+      const e = row[mod]; if (!e) { cells += `<td class="${cssMap[modules.indexOf(mod)]}">—</td>`; return; }
+      const cls = cssMap[modules.indexOf(mod)] || 'cell-dotorm';
+      const isORM = ormModules.includes(mod);
+      let badge = '', wc = '';
+      if (isORM) { const r = rank[mod]; if (r===0){badge='<span class="badge badge-gold">🥇</span>';wc=' winner-cell'} else if(r===1){badge='<span class="badge badge-silver">🥈</span>'} else if(r===ormVals.length-1){badge='<span class="badge badge-last">🐌</span>'} }
+      cells += `<td class="${cls}${wc}"><span class="val">${fmt(e.elapsed_ms)} ms ${badge}</span></td>`;
+    });
+    cBody += `<tr>${cells}</tr>`;
+  });
+});
+
+document.getElementById('comparison-table').innerHTML = `<table><thead>${cHead}</thead><tbody>${cBody}</tbody></table>`;
+
+// ═══ Detail table ═══
+let dBody = '';
+let curMod = null;
+data.forEach(r => {
+  if (r.module !== curMod) { curMod = r.module; dBody += `<tr class="group"><td colspan="5">${r.module}</td></tr>`; }
+  const cls = r.elapsed_ms < 500 ? 'fast' : r.elapsed_ms < 2000 ? 'medium' : 'slow';
+  dBody += `<tr class="${cls}"><td>${r.module}</td><td>${r.operation}</td><td class="num">${r.rows.toLocaleString()}</td><td class="num">${r.elapsed_ms.toFixed(2)}</td><td class="num">${fmtRps(r.rps)}</td></tr>`;
+});
+document.getElementById('detail-table').innerHTML = `<table class="detail-table"><thead><tr><th>Module</th><th>Operation</th><th style="text-align:right">Rows</th><th style="text-align:right">Time (ms)</th><th style="text-align:right">rows/sec</th></tr></thead><tbody>${dBody}</tbody></table>`;
+
+// ═══ Summary cards ═══
+const totalOps = Object.keys(ops).length;
+const overhead = {};
+ormModules.forEach(mod => {
+  let sO=0,sR=0,c=0;
+  Object.values(ops).forEach(row => { if(row[mod]&&row[baseline]){sO+=row[mod].elapsed_ms;sR+=row[baseline].elapsed_ms;c++} });
+  overhead[mod] = c > 0 ? ((sO/sR-1)*100).toFixed(0) : '?';
+});
+let best='',bw=0; Object.entries(wins).forEach(([m,w])=>{if(w>bw){bw=w;best=m}});
+
+const emojis=['🏆','⚡','🐘','🐢'];
+const labels=['Most ORM Wins',...ormModules.map(m=>`${m} overhead`)];
+const vals=[best,...ormModules.map(m=>`+${overhead[m]}%`)];
+const subs=[`${bw} / ${totalOps} operations`,...ormModules.map(()=>`vs ${baseline}`)];
+
+let sh='';
+vals.forEach((v,i) => {
+  const c = themeColors[i]||themeColors[3];
+  sh += `<div class="card"><div class="emoji">${emojis[i]||'📊'}</div><div class="card-label">${labels[i]}</div><div class="card-val" style="color:${c}">${v}</div><div class="card-sub">${subs[i]}</div></div>`;
+});
+document.getElementById('summary').innerHTML = sh;
+</script>
+</body>
+</html>"""
+
 
 # Session-scoped singleton
 _report = PerfReport()

@@ -135,7 +135,7 @@ class DotModel(
     )
     # base validation schema for routers endpoints
     # __schema__: ClassVar[Type]
-    __schema__: ClassVar[Annotated]
+    __schema__: ClassVar[Any]
     # variables for override auto created - update and create schemas
     __schema_create__: ClassVar[Type]
     __schema_read_output__: ClassVar[Type]

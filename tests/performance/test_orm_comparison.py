@@ -73,11 +73,11 @@ def _print_comparison_report(comparison_report):
     yield
     comparison_report.print_console()
     report_dir = os.path.join(os.path.dirname(__file__), "..", "..", "reports")
-    comparison_report.save_html(
-        os.path.join(report_dir, "orm_comparison.html")
-    )
     comparison_report.save_json(
         os.path.join(report_dir, "orm_comparison.json")
+    )
+    comparison_report.save_comparison_html(
+        os.path.join(report_dir, "orm_comparison.html")
     )
 
 
