@@ -53,7 +53,7 @@ class ActivityApp(App):
             [
                 {
                     "key": "activity.check_interval_minutes",
-                    "value": 60,
+                    "value": {"value": 60},
                     "description": "Интервал проверки дедлайнов активностей в минутах",
                     "module": "activity",
                     "is_system": False,

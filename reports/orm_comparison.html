@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Perf Report 2026-02-07 11:05:36</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       margin: 2em auto; max-width: 960px; color: #333; }
+h1 { text-align:center; }
+table { width:100%; border-collapse:collapse; margin-top:1em; }
+th { background:#2c3e50; color:white; padding:10px 12px; text-align:left; }
+td { padding:8px 12px; border-bottom:1px solid #eee; }
+.num { text-align:right; font-variant-numeric: tabular-nums; }
+tr.group { background:#ecf0f1; font-weight:bold; }
+tr.fast td.num:nth-child(4) { color:#27ae60; }
+tr.medium td.num:nth-child(4) { color:#f39c12; }
+tr.slow td.num:nth-child(4) { color:#e74c3c; font-weight:bold; }
+tr:hover { background:#f8f9fa; }
+.meta { color:#888; text-align:center; margin-top:1.5em; font-size:0.9em; }
+</style></head><body>
+<h1>🚀 FARA CRM — Performance Report</h1>
+<table>
+<tr><th>Module</th><th>Operation</th><th>Rows</th><th>Time (ms)</th><th>rows/sec</th></tr>
+<tr class="group"><td colspan="5">raw asyncpg</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>create — single</td><td class='num'>1</td><td class='num'>0.73</td><td class='num'>1,367.8</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>164.72</td><td class='num'>30,353.7</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>get — single by id</td><td class='num'>1</td><td class='num'>0.92</td><td class='num'>1,088.4</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>search — filter user_id</td><td class='num'>1,000</td><td class='num'>0.83</td><td class='num'>1,208,459.2</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>3.23</td><td class='num'>309,310.2</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>2.38</td><td class='num'>420,415.4</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>search_count — 100k</td><td class='num'>100,000</td><td class='num'>7.73</td><td class='num'>12,944,313.5</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>update — single</td><td class='num'>1</td><td class='num'>1.52</td><td class='num'>658.2</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>112.80</td><td class='num'>44,326.2</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>delete — single</td><td class='num'>1</td><td class='num'>0.76</td><td class='num'>1,320.5</td></tr>
+<tr class="fast"><td>raw asyncpg</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>10.34</td><td class='num'>193,462.9</td></tr>
+<tr class="group"><td colspan="5">SQLAlchemy</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>create — single</td><td class='num'>1</td><td class='num'>13.76</td><td class='num'>72.7</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>295.64</td><td class='num'>16,912.3</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>get — single by id</td><td class='num'>1</td><td class='num'>3.20</td><td class='num'>312.9</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>search — filter user_id</td><td class='num'>1,000</td><td class='num'>2.13</td><td class='num'>468,625.5</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>8.39</td><td class='num'>119,254.9</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>8.05</td><td class='num'>124,155.7</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>search_count — 100k</td><td class='num'>100,000</td><td class='num'>12.83</td><td class='num'>7,793,685.5</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>update — single</td><td class='num'>1</td><td class='num'>2.74</td><td class='num'>364.5</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>114.89</td><td class='num'>43,520.0</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>delete — single</td><td class='num'>1</td><td class='num'>1.63</td><td class='num'>612.7</td></tr>
+<tr class="fast"><td>SQLAlchemy</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>20.68</td><td class='num'>96,710.9</td></tr>
+<tr class="group"><td colspan="5">Tortoise</td></tr>
+<tr class="fast"><td>Tortoise</td><td>create — single</td><td class='num'>1</td><td class='num'>10.14</td><td class='num'>98.6</td></tr>
+<tr class="fast"><td>Tortoise</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>160.93</td><td class='num'>31,070.1</td></tr>
+<tr class="fast"><td>Tortoise</td><td>get — single by id</td><td class='num'>1</td><td class='num'>1.48</td><td class='num'>673.6</td></tr>
+<tr class="fast"><td>Tortoise</td><td>search — filter user_id</td><td class='num'>1,000</td><td class='num'>1.34</td><td class='num'>746,937.5</td></tr>
+<tr class="fast"><td>Tortoise</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>15.88</td><td class='num'>62,982.6</td></tr>
+<tr class="fast"><td>Tortoise</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>14.48</td><td class='num'>69,044.1</td></tr>
+<tr class="fast"><td>Tortoise</td><td>search_count — 100k</td><td class='num'>100,000</td><td class='num'>12.39</td><td class='num'>8,070,373.6</td></tr>
+<tr class="fast"><td>Tortoise</td><td>update — single</td><td class='num'>1</td><td class='num'>1.38</td><td class='num'>726.3</td></tr>
+<tr class="fast"><td>Tortoise</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>142.12</td><td class='num'>35,181.2</td></tr>
+<tr class="fast"><td>Tortoise</td><td>delete — single</td><td class='num'>1</td><td class='num'>0.76</td><td class='num'>1,317.9</td></tr>
+<tr class="fast"><td>Tortoise</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>17.13</td><td class='num'>116,755.6</td></tr>
+<tr class="group"><td colspan="5">dotorm</td></tr>
+<tr class="fast"><td>dotorm</td><td>create — single</td><td class='num'>1</td><td class='num'>1.63</td><td class='num'>614.9</td></tr>
+<tr class="fast"><td>dotorm</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>266.71</td><td class='num'>18,746.9</td></tr>
+<tr class="fast"><td>dotorm</td><td>get — single by id</td><td class='num'>1</td><td class='num'>1.30</td><td class='num'>771.0</td></tr>
+<tr class="fast"><td>dotorm</td><td>search — filter user_id</td><td class='num'>1,000</td><td class='num'>1.20</td><td class='num'>832,223.7</td></tr>
+<tr class="fast"><td>dotorm</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>19.63</td><td class='num'>50,933.4</td></tr>
+<tr class="fast"><td>dotorm</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>26.58</td><td class='num'>37,625.2</td></tr>
+<tr class="fast"><td>dotorm</td><td>search_count — 100k</td><td class='num'>100,000</td><td class='num'>7.48</td><td class='num'>13,370,056.4</td></tr>
+<tr class="fast"><td>dotorm</td><td>update — single</td><td class='num'>1</td><td class='num'>1.46</td><td class='num'>685.9</td></tr>
+<tr class="fast"><td>dotorm</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>64.25</td><td class='num'>77,825.6</td></tr>
+<tr class="fast"><td>dotorm</td><td>delete — single</td><td class='num'>1</td><td class='num'>1.15</td><td class='num'>871.8</td></tr>
+<tr class="fast"><td>dotorm</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>10.71</td><td class='num'>186,708.2</td></tr>
+
+</table>
+<p class="meta">Generated 2026-02-07 11:05:36</p>
+</body></html>

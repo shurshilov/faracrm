@@ -1,0 +1,9 @@
+[
+  {
+    "module": "Chat",
+    "operation": "message delete_bulk \u2014 100",
+    "rows": 100,
+    "elapsed_ms": 25.54,
+    "rps": 3914.8
+  }
+]

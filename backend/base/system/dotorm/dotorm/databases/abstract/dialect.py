@@ -53,12 +53,15 @@ class PostgresDialect(Dialect):
     }
 
     def convert_placeholders(self, stmt: str) -> str:
-        """Convert %s to $1, $2, $3..."""
-        counter = 1
-        while "%s" in stmt:
-            stmt = stmt.replace("%s", f"${counter}", 1)
-            counter += 1
-        return stmt
+        """Convert %s to $1, $2, $3... in a single pass."""
+        if "%s" not in stmt:
+            return stmt
+        parts = stmt.split("%s")
+        result = [parts[0]]
+        for i, part in enumerate(parts[1:], 1):
+            result.append(f"${i}")
+            result.append(part)
+        return "".join(result)
 
     def convert_result(self, rows: Any, cursor: CursorType) -> Any:
         """Convert asyncpg Record objects to dicts."""

@@ -91,6 +91,11 @@ class TransactionSession(PostgresSession):
     ) -> Any:
         stmt = _dialect.convert_placeholders(stmt)
         result = await self._do_execute(self.connection, stmt, values, cursor)
+
+        # Fast path: skip dict() conversion for fetch + prepare
+        if prepare and result and cursor in ("fetchall", "fetch"):
+            return prepare(result)
+
         result = _dialect.convert_result(result, cursor)
 
         if prepare and result:
@@ -125,6 +130,13 @@ class NoTransactionSession(PostgresSession):
 
         async with self.pool.acquire() as conn:
             result = await self._do_execute(conn, stmt, values, cursor)
+
+            # Fast path: when prepare callback is provided for fetch results,
+            # skip dict() conversion — asyncpg Records support ** unpacking,
+            # so prepare_list_ids(records) works directly.
+            if prepare and result and cursor in ("fetchall", "fetch"):
+                return prepare(result)
+
             result = _dialect.convert_result(result, cursor)
 
             if prepare and result:

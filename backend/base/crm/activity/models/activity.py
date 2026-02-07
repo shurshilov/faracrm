@@ -57,6 +57,7 @@ class Activity(DotModel):
     # Дедлайн
     date_deadline: date = Date(
         required=True,
+        index=True,
         description="Дата завершения",
     )
 
@@ -64,6 +65,7 @@ class Activity(DotModel):
     user_id: "User" = Many2one(
         relation_table=lambda: env.models.user,
         required=True,
+        index=True,
         description="Кому назначено",
     )
     create_user_id: "User | None" = Many2one(

@@ -47,7 +47,7 @@ class OrmPrimaryMixin(_Base):
 
         session = self._get_db_session(session)
         stmt = self._builder.build_delete()
-        return await session.execute(stmt, [self.id])
+        return await session.execute(stmt, [self.id], cursor="void")
 
     @hybridmethod
     async def delete_bulk(self, ids: list[int], session=None):
@@ -58,7 +58,8 @@ class OrmPrimaryMixin(_Base):
 
         session = cls._get_db_session(session)
         stmt = cls._builder.build_delete_bulk(len(ids))
-        return await session.execute(stmt, ids)
+        # Pass ids as single array parameter for ANY($1::int[])
+        return await session.execute(stmt, [ids], cursor="void")
 
     async def update(
         self,
@@ -149,7 +150,7 @@ class OrmPrimaryMixin(_Base):
         )
         if payload_dict:
             stmt, values = self._builder.build_update(payload_dict, self.id)
-            return await session.execute(stmt, values)
+            return await session.execute(stmt, values, cursor="void")
 
     @hybridmethod
     async def update_bulk(
@@ -173,7 +174,7 @@ class OrmPrimaryMixin(_Base):
         )
 
         stmt, values = cls._builder.build_update_bulk(payload_dict, ids)
-        return await session.execute(stmt, values)
+        return await session.execute(stmt, values, cursor="void")
 
     @hybridmethod
     async def create(self, payload: _M, session=None) -> int:

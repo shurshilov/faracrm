@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Optional, List
 from fastapi import APIRouter, Depends, Request, Query
 from starlette.status import HTTP_403_FORBIDDEN
 
-from ...attachments.models.attachments import Attachment
+from backend.base.crm.attachments.models.attachments import Attachment
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.crm.chat.websocket import chat_manager
 from backend.base.system.core.exceptions.environment import FaraException
@@ -21,7 +21,7 @@ from ..models.chat_member import ChatMember
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
-    from ...security.models.sessions import Session
+    from backend.base.crm.security.models.sessions import Session
 
 router_private = APIRouter(
     tags=["Chat"],

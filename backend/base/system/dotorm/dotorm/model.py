@@ -170,8 +170,9 @@ class DotModel(
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         # задаем переменные переданные с помощью kwargs
         # instance variables (it is intended to be used by one instance)
-        for name, value in kwargs.items():
-            setattr(self, name, value)
+        # for name, value in kwargs.items():
+        #     setattr(self, name, value)
+        self.__dict__.update(kwargs)
 
         # Десериализация JSON полей (если пришла строка из БД)
         for name, field in self.get_fields().items():

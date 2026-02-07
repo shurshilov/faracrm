@@ -136,6 +136,7 @@ class ChatMessage(DotModel):
 
     # Ответ на сообщение (для thread/reply функциональности)
     parent_id: "ChatMessage | None" = Many2one(
+        index=True,
         relation_table=lambda: env.models.chat_message,
         description="Родительское сообщение (для ответов)",
     )

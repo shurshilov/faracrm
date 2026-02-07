@@ -33,8 +33,8 @@ class CRUDMixin:
         return f"DELETE FROM {self.table} WHERE id=%s"
 
     def build_delete_bulk(self: "BuilderProtocol", count: int) -> str:
-        args = ",".join(["%s"] * count)
-        return f"DELETE FROM {self.table} WHERE id IN ({args})"
+        """Delete by ids using ANY(array) — single param, no parse overhead."""
+        return f"DELETE FROM {self.table} WHERE id = ANY($1::int[])"
 
     def build_create(
         self: "BuilderProtocol",
@@ -92,12 +92,22 @@ class CRUDMixin:
         payload_dict: dict[str, Any],
         ids: list[int],
     ) -> tuple[str, tuple]:
-        """Build bulk UPDATE query from dict."""
-        stmt = f"UPDATE {self.table} SET %s WHERE id IN (%s)"
-        stmt, values_list = build_sql_update_from_schema(
-            stmt, payload_dict, ids
+        """Build bulk UPDATE query using ANY(array) for id matching."""
+        if not payload_dict:
+            raise ValueError("payload_dict cannot be empty")
+
+        fields_list = list(payload_dict.keys())
+        values_list = [payload_dict[f] for f in fields_list]
+
+        # SET field1=%s, field2=%s  (will be converted to $1, $2...)
+        set_clause = ", ".join(f"{field}=%s" for field in fields_list)
+        # ids as single array parameter: $N::int[]
+        values_list.append(ids)
+
+        stmt = (
+            f"UPDATE {self.table} SET {set_clause} WHERE id = ANY(%s::int[])"
         )
-        return stmt, values_list
+        return stmt, tuple(values_list)
 
     def build_get(
         self: "BuilderProtocol",
@@ -132,8 +142,8 @@ class CRUDMixin:
         start: int | None = None,
         end: int | None = None,
         limit: int = 80,
-        order: Literal["DESC", "ASC", "desc", "asc"] = "DESC",
-        sort: str = "id",
+        order: Literal["DESC", "ASC", "desc", "asc"] | None = None,
+        sort: str | None = None,
         filter: FilterExpression | None = None,
         raw: bool = False,
     ) -> tuple[str, tuple]:
@@ -157,10 +167,11 @@ class CRUDMixin:
             fields = store_fields
 
         # поставить защиту, хотя по идее защита есть в ОРМ
-        order_upper = order.upper()
-        if order_upper not in _ALLOWED_ORDER:
-            raise ValueError(f"Invalid order: {order}")
-        if sort not in store_fields:
+        if order:
+            order_upper = order.upper()
+            if order_upper not in _ALLOWED_ORDER:
+                raise ValueError(f"Invalid order: {order}")
+        if sort and sort not in store_fields:
             sort = store_fields[0]
             # raise ValueError(f"Invalid sort field: {sort}")
 
@@ -181,10 +192,9 @@ class CRUDMixin:
             where_clause, where_values = self.filter_parser.parse(filter)
             where = f"WHERE {where_clause}"
 
-        stmt = (
-            f"SELECT {fields_store_stmt} FROM {self.table} "
-            f"{where} ORDER BY {sort} {order_upper} "
-        )
+        stmt = f"SELECT {fields_store_stmt} FROM {self.table} " f"{where} "
+        if sort and order:
+            stmt += f"ORDER BY {sort} {order_upper} "
 
         val: tuple = ()
 
