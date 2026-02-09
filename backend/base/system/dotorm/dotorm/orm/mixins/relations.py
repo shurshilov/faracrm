@@ -59,7 +59,7 @@ class OrmRelationsMixin(_Base):
         fields_nested: dict[str, list[str]] | None = None,
         start: int | None = None,
         end: int | None = None,
-        limit: int = 1000,
+        limit: int | None = None,
         order: Literal["DESC", "ASC", "desc", "asc"] | None = None,
         sort: str | None = None,
         filter: FilterExpression | None = None,
@@ -77,7 +77,8 @@ class OrmRelationsMixin(_Base):
                    По умолчанию ["id"].
             start: Начальный индекс для пагинации (OFFSET)
             end: Конечный индекс (не используется напрямую, см. limit)
-            limit: Максимальное количество записей. По умолчанию 1000.
+            limit: Максимальное количество записей. По умолчанию None (без ограничений).
+                   Пагинация контролируется через start/end.
             order: Направление сортировки "DESC" или "ASC"
             sort: Поле для сортировки. По умолчанию "id".
             filter: Фильтр в формате FilterExpression.

@@ -459,7 +459,7 @@ class SchemaRegistry:
             order=(Literal["DESC", "ASC", "desc", "asc"], "DESC"),
             sort=(sort_literal, "id"),
             start=(Optional[int], None),
-            limit=(int, 80),
+            limit=(Optional[int], None),
             # filter принимает FilterExpression: список триплетов [field, op, value]
             # и логических операторов 'and'/'or'
             # Пример: [["name", "=", "test"], "or", ["id", ">", 5]]

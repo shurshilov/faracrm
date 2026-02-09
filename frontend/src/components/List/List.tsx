@@ -161,7 +161,6 @@ export const List = <RecordType extends FaraRecord>({
     ...props,
     start: (page - 1) * pageSize,
     end: (page - 1) * pageSize + pageSize,
-    limit: 80,
     sort: (sortStatus?.columnAccessor as string) || props.sort || 'id',
     order: sortStatus?.direction || props.order || 'asc',
     fields: fieldsList,

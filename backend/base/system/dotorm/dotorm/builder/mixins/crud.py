@@ -244,7 +244,7 @@ class CRUDMixin:
         fields: list[str] | None = None,
         start: int | None = None,
         end: int | None = None,
-        limit: int = 80,
+        limit: int | None = None,
         order: Literal["DESC", "ASC", "desc", "asc"] | None = None,
         sort: str | None = None,
         filter: FilterExpression | None = None,

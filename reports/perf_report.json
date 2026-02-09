@@ -3,77 +3,77 @@
     "module": "Activity",
     "operation": "create \u2014 single",
     "rows": 1,
-    "elapsed_ms": 1.17,
-    "rps": 851.6
+    "elapsed_ms": 1.67,
+    "rps": 599.3
   },
   {
     "module": "Activity",
     "operation": "create_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 159.32,
-    "rps": 31383.8
+    "elapsed_ms": 154.28,
+    "rps": 32409.5
   },
   {
     "module": "Activity",
     "operation": "get \u2014 single by id",
     "rows": 1,
-    "elapsed_ms": 1.3,
-    "rps": 770.4
+    "elapsed_ms": 1.2,
+    "rps": 833.3
   },
   {
     "module": "Activity",
     "operation": "search \u2014 filter user_id",
     "rows": 100,
-    "elapsed_ms": 1.13,
-    "rps": 88526.9
+    "elapsed_ms": 1.22,
+    "rps": 82155.8
   },
   {
     "module": "Activity",
     "operation": "search \u2014 filter res_model='lead'",
     "rows": 1000,
-    "elapsed_ms": 3.54,
-    "rps": 282278.6
+    "elapsed_ms": 3.02,
+    "rps": 331027.2
   },
   {
     "module": "Activity",
     "operation": "search \u2014 state='overdue'",
     "rows": 1000,
-    "elapsed_ms": 10.51,
-    "rps": 95115.8
+    "elapsed_ms": 9.43,
+    "rps": 106067.0
   },
   {
     "module": "Activity",
     "operation": "search_count \u2014 100k table",
     "rows": 100000,
-    "elapsed_ms": 7.44,
-    "rps": 13437970.4
+    "elapsed_ms": 7.68,
+    "rps": 13023037.7
   },
   {
     "module": "Activity",
     "operation": "update \u2014 single",
     "rows": 1,
-    "elapsed_ms": 1.96,
-    "rps": 509.0
+    "elapsed_ms": 2.2,
+    "rps": 454.9
   },
   {
     "module": "Activity",
     "operation": "update_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 58.58,
-    "rps": 85359.0
+    "elapsed_ms": 58.77,
+    "rps": 85071.2
   },
   {
     "module": "Activity",
     "operation": "delete \u2014 single",
     "rows": 1,
-    "elapsed_ms": 1.04,
-    "rps": 958.9
+    "elapsed_ms": 1.15,
+    "rps": 873.3
   },
   {
     "module": "Activity",
     "operation": "delete_bulk \u2014 2,000",
     "rows": 2000,
-    "elapsed_ms": 13.38,
-    "rps": 149510.4
+    "elapsed_ms": 11.35,
+    "rps": 176202.1
   }
 ]
