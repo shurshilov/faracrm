@@ -57,7 +57,6 @@ export function ChatPage({
   );
   const [typingUsers, setTypingUsers] = useState<Record<number, string[]>>({});
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
-  const hasSubscribedRef = useRef(false);
   const selectedChatRef = useRef<Chat | null>(null);
   const refetchChatsRef = useRef<(() => void) | null>(null);
   const skipMarkAsReadRef = useRef(false);
@@ -268,7 +267,6 @@ export function ChatPage({
   const {
     isConnected,
     subscribe,
-    subscribeAll,
     unsubscribe,
     sendTyping,
     sendRead,
@@ -279,24 +277,6 @@ export function ChatPage({
   useEffect(() => {
     return addMessageListener(handleWSMessage);
   }, [addMessageListener, handleWSMessage]);
-
-  // Подписываемся на все чаты одним запросом при подключении
-  useEffect(() => {
-    if (isConnected && chatsData?.data && !hasSubscribedRef.current) {
-      const chatIds = chatsData.data.map(c => c.id);
-      if (chatIds.length > 0) {
-        subscribeAll(chatIds);
-        hasSubscribedRef.current = true;
-      }
-    }
-  }, [isConnected, chatsData?.data, subscribeAll]);
-
-  // Сбрасываем флаг при отключении
-  useEffect(() => {
-    if (!isConnected) {
-      hasSubscribedRef.current = false;
-    }
-  }, [isConnected]);
 
   const handleSelectChat = async (chat: Chat) => {
     setSelectedChat(chat);
