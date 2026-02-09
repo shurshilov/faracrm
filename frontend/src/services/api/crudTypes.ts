@@ -1,5 +1,5 @@
 export interface FaraRecord {
-  id: Identifier | number;
+  id: Identifier;
   [key: string]: any;
 }
 export type VirtualIdType = 'VirtualId';

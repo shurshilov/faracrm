@@ -178,11 +178,16 @@ export default function ViewFormUsers(props: ViewFormProps) {
             label={t('tabs.preferences', 'Настройки')}
             icon={<IconSettings size={16} />}>
             <FormRow cols={2}>
-              <Field name="home_page" label={t('fields.home_page', 'Домашняя страница')} />
-              <Field name="layout_theme" label={t('fields.layout_theme', 'Тема интерфейса')} />
+              <Field
+                name="home_page"
+                label={t('fields.home_page', 'Домашняя страница')}
+              />
+              <Field
+                name="layout_theme"
+                label={t('fields.layout_theme', 'Тема интерфейса')}
+              />
             </FormRow>
           </FormTab>
-
         </FormTabs>
       </Form>
 

@@ -15,22 +15,22 @@ export type GanttScale = 'hour' | '2hours' | '4hours' | 'day' | 'week' | 'month'
 
 export interface GanttProps<T extends FaraRecord> {
   model: string;
-  fields?: string[];
+  fields?: (keyof T & string)[];
   // Режим 1: два поля даты
-  startField?: string;
-  endField?: string;
+  startField?: keyof T & string;
+  endField?: keyof T & string;
   // Режим 2: одно поле даты + длительность (в секундах)
-  dateField?: string;
-  durationField?: string;
+  dateField?: keyof T & string;
+  durationField?: keyof T & string;
   // Название для отображения
-  labelField?: string;
+  labelField?: keyof T & string;
   // Цвет плашки
-  colorField?: string;
+  colorField?: keyof T & string;
   defaultColor?: string;
   // Начальный масштаб
   defaultScale?: GanttScale;
   // Сортировка
-  sort?: string;
+  sort?: keyof T & string;
   order?: 'asc' | 'desc';
 }
 

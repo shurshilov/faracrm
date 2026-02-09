@@ -3,7 +3,7 @@
  */
 
 export type SchemaRole = {
-  id?: number | null;
+  id: number;
   name?: string | null;
   app_id?: any;
   active?: boolean | null;

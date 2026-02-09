@@ -3,7 +3,7 @@
  */
 
 export type SchemaAttachmentStorage = {
-  id?: number | null;
+  id: number;
   name?: string | null;
   type?: string | null;
   active?: boolean | null;

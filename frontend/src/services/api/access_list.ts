@@ -3,7 +3,7 @@
  */
 
 export type SchemaAccessList = {
-  id?: number | null;
+  id: number;
   name?: string | null;
   model_id?: any;
   role_id?: any;
@@ -11,7 +11,7 @@ export type SchemaAccessList = {
 };
 
 export type SchemaModel = {
-  id?: number | null;
+  id: number;
   name?: string | null;
   model?: string | null;
 };

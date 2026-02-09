@@ -24,7 +24,7 @@ const injectedRtkApi = api.injectEndpoints({
 
 // Types
 export type SchemaSession = {
-  id?: number | null;
+  id: number;
   user_id?: any;
   token?: string | null;
   ip_address?: string | null;
@@ -36,7 +36,7 @@ export type SchemaSession = {
 export type Session = SchemaSession;
 
 export type SchemaModel = {
-  id?: number | null;
+  id: number;
   name?: string | null;
   model?: string | null;
 };

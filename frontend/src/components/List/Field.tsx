@@ -1,16 +1,27 @@
 import { LabelPosition } from '@/components/Form/FormSettingsContext';
+import { FaraRecord } from '@/services/api/crudTypes';
 
-export interface FieldProps {
-  name: string;
+/**
+ * Generic Field component for List/Form.
+ *
+ * Type parameter T enables type-safe field names and render callbacks:
+ *   <Field<SchemaUser> name="email" />           // ✅ autocomplete + checked
+ *   <Field<SchemaUser> name="nonexistent" />      // ❌ TS error
+ *
+ * Without T, falls back to FaraRecord (any field name allowed).
+ */
+export interface FieldProps<T extends FaraRecord = FaraRecord> {
+  /** Field name — type-checked against T when generic is provided */
+  name: keyof T & string;
   label?: string;
   labelPosition?: LabelPosition;
   children?: React.ReactNode;
   /** Кастомный рендер для таблицы */
-  render?: (value: any, record: any) => React.ReactNode;
+  render?: (value: any, record: T) => React.ReactNode;
   /** Скрыть колонку (но запрашивать данные) */
   hidden?: boolean;
   /** Поля для запроса (для виртуальных колонок или дополнительных данных) */
-  fields?: string[];
+  fields?: (keyof T & string)[];
   /** Виртуальная колонка — не запрашивает данные по name, только по fields */
   virtual?: boolean;
   /**
@@ -26,7 +37,7 @@ export interface FieldProps {
   [key: string]: any;
 }
 
-export const Field = ({
+export const Field = <T extends FaraRecord = FaraRecord>({
   name,
   label,
   labelPosition,
@@ -36,4 +47,4 @@ export const Field = ({
   fields,
   virtual,
   ...props
-}: FieldProps) => <></>;
+}: FieldProps<T>) => <></>;

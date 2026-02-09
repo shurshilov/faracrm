@@ -28,8 +28,10 @@ import listClasses from './List.module.css';
 const PAGE_SIZES = [10, 20, 40, 500, 1000, 2000];
 
 interface ListProps<RecordType extends FaraRecord>
-  extends Omit<GetListParams, 'fields'> {
+  extends Omit<GetListParams, 'fields' | 'sort'> {
   children: React.ReactNode;
+  /** Sort field — type-checked against RecordType */
+  sort?: keyof RecordType & string;
   /** Дополнительные кнопки для тулбара */
   toolbarActions?: React.ReactNode;
   /** Функция для определения класса строки */

@@ -173,8 +173,8 @@ function KanbanColumn({ stage, records, model, fields, onCardClick }: KanbanColu
 
 export interface KanbanProps<T extends FaraRecord> {
   model: string;
-  fields?: string[];
-  groupByField?: string;
+  fields?: (keyof T & string)[];
+  groupByField?: keyof T & string;
   groupByModel?: string;
 }
 

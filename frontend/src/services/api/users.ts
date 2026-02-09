@@ -35,8 +35,8 @@ const injectedRtkApi = api.injectEndpoints({
 
 // Types
 export type SchemaUser = {
-  id?: number | null;
-  name?: string | null;
+  id: number;
+  name: string;
   login?: string | null;
   email?: string | null;
   image?: any;

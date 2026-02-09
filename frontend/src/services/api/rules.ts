@@ -3,7 +3,7 @@
  */
 
 export type SchemaRule = {
-  id?: number | null;
+  id: number;
   name?: string | null;
   role_id?: any;
   model_id?: any;
