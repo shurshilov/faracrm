@@ -385,9 +385,17 @@ class ChatConnector(DotModel):
             # Генерируем webhook_url если его нет
             if not self.webhook_url:
                 if not base_url:
-                    base_url = await env.models.system_settings.get_base_url()
-                    if not base_url:
+
+                    settings_base_url = (
+                        await env.models.system_settings.get_base_url()
+                    )
+                    if not settings_base_url:
                         base_url = "http://127.0.0.1"
+                    else:
+                        if isinstance(settings_base_url, str):
+                            base_url = settings_base_url
+                        else:
+                            base_url = "http://127.0.0.1"
 
                 self.webhook_url = self.generate_webhook_url(base_url)
 

@@ -132,30 +132,28 @@ class SystemSettings(DotModel):
             return cached
 
         # 2. БД
-        try:
-            records = await cls.search(
-                filter=[("key", "=", key)],
-                fields=["value", "cache_ttl"],
-                limit=1,
-            )
-            if records:
-                raw = records[0].value
-                ttl = getattr(records[0], "cache_ttl", 0) or 0
+        records = await cls.search(
+            filter=[("key", "=", key)],
+            fields=["value", "cache_ttl"],
+            limit=1,
+        )
+        if records:
+            raw = records[0].value
+            ttl = getattr(records[0], "cache_ttl", 0) or 0
 
-                # Извлекаем значение
-                if raw and isinstance(raw, dict):
-                    result = raw.get("value", raw)
-                elif isinstance(raw, list):
-                    result = raw
-                else:
-                    result = raw
+            # Извлекаем значение
+            if raw and isinstance(raw, dict):
+                result = raw.get("value", raw)
+            elif isinstance(raw, list):
+                result = raw
+            else:
+                # result = raw
+                raise ValueError("Value should be dict or list")
 
-                # Кладём в кеш
-                _cache.put(key, result, ttl)
-                return result
-
-            return default
-        except Exception:
+            # Кладём в кеш
+            _cache.put(key, result, ttl)
+            return result
+        else:
             return default
 
     @classmethod
