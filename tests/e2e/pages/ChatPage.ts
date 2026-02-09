@@ -22,7 +22,9 @@ export class ChatPage {
     this.sendButton = page.locator(
       'button[class*="send"], [class*="ChatInput"] button[type="submit"]',
     ).last();
-    this.messagesContainer = page.locator('body');
+    // Ограничиваем messagesContainer правой частью (chatArea) — 
+    // исключаем sidebar со списком чатов, где отображается last_message preview
+    this.messagesContainer = page.locator('[class*="chatArea"], [class*="chat-area"]').first();
   }
 
   /**
@@ -158,7 +160,9 @@ export class ChatPage {
       }
     }
 
-    // Создать
+    // Создать — сначала закрываем dropdown участников (кликаем вне него)
+    await this.page.keyboard.press('Escape');
+    await this.page.waitForTimeout(300);
     await this.page.getByRole('button', { name: /^создать$|^create$/i }).click();
     await this.page.waitForTimeout(1000);
   }
@@ -200,48 +204,63 @@ export class ChatPage {
 
   // ==================== Контекстное меню сообщения ====================
 
+  /**
+   * Открыть контекстное меню сообщения (правый клик).
+   * UI использует onContextMenu → custom Paper popup,
+   * а не hover-кнопки с role="button".
+   */
   async openMessageActions(messageText: string) {
     const msg = this.messagesContainer
       .getByText(messageText, { exact: false })
       .first();
-    await msg.hover();
+    await msg.click({ button: 'right' });
+    // Ждём появления контекстного меню
+    await this.page.locator('[class*="contextMenu"]').first().waitFor({ state: 'visible', timeout: 3_000 });
   }
 
   async editMessage(originalText: string, newText: string) {
     await this.openMessageActions(originalText);
-    await this.page.getByRole('button', { name: /редакт|edit/i }).first().click();
-    await this.messageInput.clear();
-    await this.messageInput.fill(newText);
-    await this.page.keyboard.press('Enter');
+    // Контекстное меню — это Box элементы с Text внутри, не button
+    await this.page.locator('[class*="contextMenuItem"]').filter({ hasText: /редактировать|edit/i }).first().click();
+    // Редактирование открывает Modal с TextInput
+    const editInput = this.page.locator('input[placeholder], .mantine-TextInput-input').last();
+    await editInput.waitFor({ state: 'visible', timeout: 5_000 });
+    await editInput.clear();
+    await editInput.fill(newText);
+    // Кликаем "Сохранить" в модалке
+    await this.page.getByRole('button', { name: /сохранить|save/i }).click();
+    await this.page.waitForTimeout(500);
     await this.expectMessageVisible(newText);
   }
 
   async deleteMessage(messageText: string) {
     await this.openMessageActions(messageText);
-    await this.page.getByRole('button', { name: /удал|delete/i }).first().click();
+    // Контекстное меню — Box с className contextMenuItemDanger для удаления
+    await this.page.locator('[class*="contextMenuItem"]').filter({ hasText: /удалить|delete/i }).first().click();
+    // Опционально: подтверждение
     const confirmBtn = this.page.getByRole('button', { name: /да|подтвер|confirm|yes/i });
     if (await confirmBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await confirmBtn.click();
     }
+    await this.page.waitForTimeout(500);
   }
 
   async addReaction(messageText: string, emoji = '👍') {
     await this.openMessageActions(messageText);
-    const reactionBtn = this.page.getByRole('button', {
-      name: /реакц|reaction|emoji/i,
-    }).first();
+    // Реакции отображаются в верхней части контекстного меню
+    const reactionBtn = this.page.locator('[class*="contextMenuReactions"] button, [class*="contextMenuReactions"] [role="button"]')
+      .filter({ hasText: emoji }).first();
     if (await reactionBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await reactionBtn.click();
-      await this.page.getByText(emoji).first().click();
+    } else {
+      // Fallback: ищем emoji текст
+      await this.page.locator(`text="${emoji}"`).first().click();
     }
   }
 
   async pinMessage(messageText: string) {
     await this.openMessageActions(messageText);
-    await this.page
-      .getByRole('button', { name: /закреп|pin/i })
-      .first()
-      .click();
+    await this.page.locator('[class*="contextMenuItem"]').filter({ hasText: /закреп|pin/i }).first().click();
   }
 
   // ==================== Typing indicator ====================

@@ -201,11 +201,15 @@ test.describe('WebSocket — reaction events', () => {
       try {
         const event = await ws.waitFor(
           (m) =>
-            (m.type === 'reaction' || m.type === 'message_updated' || m.type === 'message_edited') &&
-            m.chat_id === chat.id,
+            m.type === 'reaction_changed' &&
+            m.chat_id === chat.id &&
+            m.message_id === msg.id,
           5_000,
         );
         expect(event).toBeTruthy();
+        expect(event.reactions).toBeDefined();
+        expect(event.reactions.length).toBeGreaterThan(0);
+        expect(event.reactions[0].emoji).toBe('👍');
       } catch {
         console.log('Reaction WS event not received — may not be implemented');
       }

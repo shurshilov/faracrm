@@ -736,7 +736,34 @@ export interface WSRead {
   user_id: number;
 }
 
-export type WSMessage = WSNewMessage | WSTyping | WSPresence | WSRead;
+export interface WSReactionChanged {
+  type: 'reaction_changed';
+  chat_id: number;
+  message_id: number;
+  reactions: MessageReaction[];
+}
+
+export interface WSMessageEdited {
+  type: 'message_edited';
+  chat_id: number;
+  message_id: number;
+  body: string;
+}
+
+export interface WSMessageDeleted {
+  type: 'message_deleted';
+  chat_id: number;
+  message_id: number;
+}
+
+export interface WSMessagePinned {
+  type: 'message_pinned';
+  chat_id: number;
+  message_id: number;
+  pinned: boolean;
+}
+
+export type WSMessage = WSNewMessage | WSTyping | WSPresence | WSRead | WSReactionChanged | WSMessageEdited | WSMessageDeleted | WSMessagePinned;
 
 // ====================== RECORD CHAT (get_or_create) ======================
 

@@ -259,6 +259,28 @@ export function ChatPage({
           }
           break;
         }
+        case 'message_edited': {
+          // Удаляем старую версию из локального newMessages (если она там)
+          const editChatId = (message as any).chat_id;
+          const editMsgId = (message as any).message_id;
+          setNewMessages(prev => ({
+            ...prev,
+            [editChatId]: (prev[editChatId] || []).map(m =>
+              m.id === editMsgId ? { ...m, body: (message as any).body, is_edited: true } : m,
+            ),
+          }));
+          break;
+        }
+        case 'message_deleted': {
+          // Удаляем из локального newMessages
+          const delChatId = (message as any).chat_id;
+          const delMsgId = (message as any).message_id;
+          setNewMessages(prev => ({
+            ...prev,
+            [delChatId]: (prev[delChatId] || []).filter(m => m.id !== delMsgId),
+          }));
+          break;
+        }
       }
     },
     [currentUserId, dispatch, markChatAsRead, getChatsArgs],

@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
-import { chatApi, WSMessage, WSNewMessage, Chat } from '@/services/api/chat';
+import { chatApi, WSMessage, WSNewMessage, WSReactionChanged, WSMessageEdited, WSMessageDeleted, WSMessagePinned, Chat } from '@/services/api/chat';
 import type { RootState } from '@/store/store';
 
 interface ChatWebSocketContextValue {
@@ -187,6 +187,90 @@ export function ChatWebSocketProvider({
             );
           }
         }
+      }
+
+      // Обработка reaction_changed — обновляем реакции в кэше сообщений
+      if (message.type === 'reaction_changed') {
+        const wsMsg = message as WSReactionChanged;
+        dispatch(
+          chatApi.util.updateQueryData(
+            'getChatMessages',
+            { chatId: wsMsg.chat_id, limit: 50 },
+            draft => {
+              const msg = draft.data.find(m => m.id === wsMsg.message_id);
+              if (msg) {
+                msg.reactions = wsMsg.reactions;
+              }
+            },
+          ),
+        );
+      }
+
+      // Обработка message_edited — обновляем текст сообщения в кэше
+      if (message.type === 'message_edited') {
+        const wsMsg = message as WSMessageEdited;
+        dispatch(
+          chatApi.util.updateQueryData(
+            'getChatMessages',
+            { chatId: wsMsg.chat_id, limit: 50 },
+            draft => {
+              const msg = draft.data.find(m => m.id === wsMsg.message_id);
+              if (msg) {
+                msg.body = wsMsg.body;
+                msg.is_edited = true;
+              }
+            },
+          ),
+        );
+        // Обновляем last_message если это было последнее сообщение
+        dispatch(
+          chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
+            const chat = draft.data.find(c => c.id === wsMsg.chat_id);
+            if (chat?.last_message?.id === wsMsg.message_id) {
+              chat.last_message.body = wsMsg.body;
+            }
+          }),
+        );
+      }
+
+      // Обработка message_deleted — удаляем сообщение из кэша
+      if (message.type === 'message_deleted') {
+        const wsMsg = message as WSMessageDeleted;
+        dispatch(
+          chatApi.util.updateQueryData(
+            'getChatMessages',
+            { chatId: wsMsg.chat_id, limit: 50 },
+            draft => {
+              draft.data = draft.data.filter(m => m.id !== wsMsg.message_id);
+            },
+          ),
+        );
+        // Обновляем last_message в списке чатов — если удалённое сообщение было последним
+        dispatch(
+          chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
+            const chat = draft.data.find(c => c.id === wsMsg.chat_id);
+            if (chat?.last_message?.id === wsMsg.message_id) {
+              chat.last_message = undefined as any;
+            }
+          }),
+        );
+      }
+
+      // Обработка message_pinned — обновляем статус закрепления
+      if (message.type === 'message_pinned') {
+        const wsMsg = message as WSMessagePinned;
+        dispatch(
+          chatApi.util.updateQueryData(
+            'getChatMessages',
+            { chatId: wsMsg.chat_id, limit: 50 },
+            draft => {
+              const msg = draft.data.find(m => m.id === wsMsg.message_id);
+              if (msg) {
+                msg.pinned = wsMsg.pinned;
+              }
+            },
+          ),
+        );
       }
     },
     [currentUserId, dispatch],

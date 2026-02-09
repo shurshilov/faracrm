@@ -100,6 +100,7 @@ class ConnectionManager:
             user_id: ID пользователя
         """
         is_last = False
+        saved_subscriptions: Set[int] = set()
 
         async with self._lock:
             if user_id in self._connections:
@@ -109,6 +110,12 @@ class ConnectionManager:
                     # Последнее подключение — удаляем всё
                     del self._connections[user_id]
                     is_last = True
+
+                    # Сохраняем подписки ДО удаления — нужны для broadcast_presence
+                    if user_id in self._user_subscriptions:
+                        saved_subscriptions = self._user_subscriptions[
+                            user_id
+                        ].copy()
 
                     # Удаляем из всех подписок на чаты
                     if user_id in self._user_subscriptions:
@@ -131,7 +138,9 @@ class ConnectionManager:
 
         # Уведомляем о выходе — только если это было последнее подключение
         if is_last:
-            await self._broadcast_presence(user_id, "offline")
+            await self._broadcast_presence(
+                user_id, "offline", saved_subscriptions
+            )
 
     async def subscribe_to_chat(self, user_id: int, chat_id: int):
         """
@@ -298,13 +307,20 @@ class ConnectionManager:
                     for ws in dead_websockets:
                         self._connections[user_id].discard(ws)
 
-    async def _broadcast_presence(self, user_id: int, status: str):
+    async def _broadcast_presence(
+        self,
+        user_id: int,
+        status: str,
+        user_chats_override: Set[int] | None = None,
+    ):
         """
         Разослать уведомление о статусе пользователя.
 
         Args:
             user_id: ID пользователя
             status: Статус (online/offline)
+            user_chats_override: Если указан, используется вместо текущих подписок
+                (нужно при disconnect, когда подписки уже удалены)
         """
         message = {
             "type": "presence",
@@ -314,8 +330,13 @@ class ConnectionManager:
         }
 
         # Получаем все чаты пользователя
-        async with self._lock:
-            user_chats = self._user_subscriptions.get(user_id, set()).copy()
+        if user_chats_override is not None:
+            user_chats = user_chats_override
+        else:
+            async with self._lock:
+                user_chats = self._user_subscriptions.get(
+                    user_id, set()
+                ).copy()
 
         # Собираем всех уникальных пользователей из этих чатов
         notified_users: Set[int] = set()

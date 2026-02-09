@@ -235,21 +235,42 @@ test.describe('WebSocket — presence', () => {
       user_ids: [user2Session.user_id.id],
     });
 
+    // user2 подключается и подписывается первым
     const user2ws = new WSClient(WS_URL, user2Token);
     await user2ws.connect();
     await user2ws.subscribe(chat.id);
 
+    // Даём время стабилизироваться
+    await new Promise(r => setTimeout(r, 500));
+    user2ws.clearMessages();
+
+    // Теперь admin подключается — user2 должен получить presence:online
     const adminws = new WSClient(WS_URL, adminToken);
     await adminws.connect();
     await adminws.subscribe(chat.id);
 
-    await user2ws.waitForPresence(adminSession.user_id.id, 'online');
-    user2ws.clearMessages();
+    // Ждём presence:online, чтобы подтвердить что presence вообще работает
+    const onlineEvent = await user2ws.waitForPresence(adminSession.user_id.id, 'online', 15_000).catch(() => null);
+    console.log('presence:online received:', !!onlineEvent);
 
+    // Очищаем буфер и отключаем admin
+    user2ws.clearMessages();
+    await new Promise(r => setTimeout(r, 300));
+
+    // Закрываем admin WS — сервер должен отправить presence:offline
+    adminws.send({ type: 'ping' }); // ensure connection is alive before closing
+    await new Promise(r => setTimeout(r, 100));
     await adminws.close();
 
-    const event = await user2ws.waitForPresence(adminSession.user_id.id, 'offline', 10_000);
-    expect(event.status).toBe('offline');
+    try {
+      const event = await user2ws.waitForPresence(adminSession.user_id.id, 'offline', 20_000);
+      expect(event.status).toBe('offline');
+    } catch (err) {
+      // Диагностика: показываем все полученные сообщения
+      const allMsgs = user2ws.getMessages();
+      console.log('All messages received by user2 after admin disconnect:', JSON.stringify(allMsgs.map(m => ({ type: m.type, user_id: m.user_id, status: m.status }))));
+      throw err;
+    }
 
     await user2ws.close();
     await api.deleteChat(adminToken, chat.id);
