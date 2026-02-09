@@ -1,0 +1,20 @@
+{
+  "name": "fara-crm-e2e",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:chat": "playwright test specs/chat/",
+    "test:ws": "playwright test specs/chat/chat-websocket.spec.ts specs/chat/chat-edge-cases.spec.ts",
+    "test:multitab": "playwright test specs/chat/chat-multitab.spec.ts",
+    "test:auth": "playwright test specs/auth/",
+    "test:debug": "PWDEBUG=1 playwright test",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "ws": "^8.18.0",
+    "@types/ws": "^8.5.13"
+  }
+}

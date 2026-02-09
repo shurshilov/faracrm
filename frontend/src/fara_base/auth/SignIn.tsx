@@ -105,7 +105,7 @@ export default function SignIn() {
   const form = useForm({
     initialValues: {
       login: 'admin',
-      password: '12345678!Aaa',
+      password: 'admin',
     },
     validate: yupResolver(validationSchema),
   });
@@ -129,7 +129,10 @@ export default function SignIn() {
         <div className={classes.langSwitcher}>
           <Menu shadow="sm" width={160} position="bottom-end">
             <Menu.Target>
-              <ActionIcon variant="subtle" size="lg" className={classes.langBtn}>
+              <ActionIcon
+                variant="subtle"
+                size="lg"
+                className={classes.langBtn}>
                 <IconLanguage size={20} />
               </ActionIcon>
             </Menu.Target>

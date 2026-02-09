@@ -18,7 +18,7 @@ class TestUsers(unittest.IsolatedAsyncioTestCase):
         with TestClient(app) as client:
             response = client.post(
                 f"{self.URL_SIGNIN}",
-                json={"login": "admin", "password": "12345678!Aaa"},
+                json={"login": "admin", "password": "admin"},
             )
             json = response.json()
             assert response.status_code in [200]

@@ -45,8 +45,8 @@ class UserApp(App):
                     login="admin",
                     # email="admin",
                     is_admin=True,
-                    password_hash="be323af993117444e8d4530137d2283c7de8ea3e8d08920f46a95df0b21bd625e3224ac3b623ae47e8416ea045361f534aed540ba35d7c68d86ba87ad12836b4",
-                    password_salt="b53505394825dcd51278f1457a4e7746a43b110bf3daa570f99ad5511a5942b1d452e5505e5455635e288f3b4ea449a326c46298022a6bca80bfa12c1b0200c8",
+                    password_hash="8562bbd6efff81338d44778c206328c2f20897bb5ba3472c1b8c6ee68f8c452f12753b15d8ef92cf9bad00ac3fe56078db10d656947fe1b9f1cfd1bc148ac845",
+                    password_salt="04da4b9d76a371ce0e7b518d85ed255ff86c663070832f7f669641705955332903f09cbc4481a3b07dc29dfa261d48140dcff6134d2cccb7f15c002068d602dd",
                 ),
             )
 
