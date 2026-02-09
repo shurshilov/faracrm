@@ -1,7 +1,6 @@
 import unittest
 from fastapi.testclient import TestClient
 from backend.main import app
-import httpx
 
 
 class TestRules(unittest.IsolatedAsyncioTestCase):

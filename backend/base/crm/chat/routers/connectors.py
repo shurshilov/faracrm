@@ -11,10 +11,8 @@
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Request
-from starlette.status import HTTP_404_NOT_FOUND
 
 from backend.base.crm.auth_token.app import AuthTokenApp
-from backend.base.system.core.exceptions.environment import FaraException
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -134,8 +132,5 @@ async def get_my_connectors(req: Request):
     result = await session.execute(query, [user_id])
 
     return {
-        "data": [
-            {"type": row["type"], "name": row["name"]}
-            for row in result
-        ]
+        "data": [{"type": row["type"], "name": row["name"]} for row in result]
     }

@@ -49,7 +49,7 @@ class TestSigninAPI:
         )
         # Generate hash using same method
         user.password_hash = user.generate_password_hash(password, salt)
-        user_id = await User.create(user)
+        await User.create(user)
 
         # Try signin
         response = await client.post(

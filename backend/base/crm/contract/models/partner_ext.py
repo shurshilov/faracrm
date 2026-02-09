@@ -7,7 +7,6 @@ from backend.base.crm.partners.models.partners import Partner
 from backend.base.system.dotorm.dotorm.fields import Char
 from backend.base.system.core.extensions import extend
 
-
 # Поддержка IDE - видны все атрибуты базового класса
 if TYPE_CHECKING:
     _Base = Partner

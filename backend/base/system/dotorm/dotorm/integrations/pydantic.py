@@ -4,7 +4,7 @@ try:
 except:
     print("pydantic lib not installed")
 from types import UnionType
-from typing import Any, List, Literal, Optional, Type, TypeAlias, Union
+from typing import Any, List, Literal, Optional, Type, Union
 
 
 from ..fields import (
@@ -53,7 +53,6 @@ def dotorm_to_pydantic_nested_one(cls):
 
 from typing import (
     Annotated,
-    get_type_hints,
     ForwardRef,
     Union,
     get_args,

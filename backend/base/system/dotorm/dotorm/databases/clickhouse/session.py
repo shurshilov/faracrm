@@ -5,7 +5,6 @@ from typing import Any, Callable, TYPE_CHECKING
 from ..abstract.session import SessionAbstract
 from ..abstract.dialect import ClickHouseDialect, CursorType
 
-
 if TYPE_CHECKING:
     import asynch
     from asynch.cursors import Cursor

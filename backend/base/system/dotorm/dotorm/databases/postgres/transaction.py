@@ -11,7 +11,6 @@ except ImportError:
 
 from .session import TransactionSession
 
-
 # Context variable для хранения текущей сессии транзакции
 _current_session: ContextVar["TransactionSession | None"] = ContextVar(
     "current_session", default=None

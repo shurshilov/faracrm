@@ -1,13 +1,7 @@
 # Copyright 2025 FARA CRM
 # Chat module - WhatsApp ChatApp message adapter
 
-from datetime import datetime
-from typing import TYPE_CHECKING
-
 from backend.base.crm.chat.strategies.adapter import ChatMessageAdapter
-
-if TYPE_CHECKING:
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
 
 
 class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
@@ -93,7 +87,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def author_id(self) -> str:
         """
         ID отправителя.
-        
+
         В WhatsApp используется номер телефона как ID.
         """
         return str(self._from_user.get("phone", ""))
@@ -102,7 +96,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def text(self) -> str | None:
         """
         Текст сообщения.
-        
+
         Если текст отправлен с картинкой, то текст в caption.
         """
         return self._message.get("text") or self._message.get("caption")
@@ -111,7 +105,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def message_type(self) -> str:
         """
         Тип сообщения.
-        
+
         Типы: text, image, video, document, audio, voice, sticker, location
         """
         return self._data.get("type", "text")
@@ -135,7 +129,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def images(self) -> list[dict]:
         """
         Список файлов-изображений.
-        
+
         ChatApp возвращает файлы в message.file с публичной ссылкой.
         """
         file_data = self._message.get("file")
@@ -153,7 +147,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def files(self) -> list[dict]:
         """
         Список файлов (не изображений).
-        
+
         Каждый файл содержит:
         - link: публичная ссылка для скачивания
         - name: имя файла
@@ -187,7 +181,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def side(self) -> str:
         """
         Направление сообщения.
-        
+
         'in' - входящее (от клиента)
         'out' - исходящее (от нас)
         """
@@ -197,7 +191,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def should_skip(self) -> bool:
         """
         Определить нужно ли пропустить обработку.
-        
+
         Пропускаем:
         - Исходящие сообщения (от нас)
         - Сообщения отправленные через API (fromApi=True и fromMe=True)
@@ -216,7 +210,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def is_from_external(self) -> bool:
         """
         Сообщение от внешнего пользователя (клиента).
-        
+
         True если side='in' и fromMe=False.
         """
         return self.side == "in" and not self.is_from_me
@@ -235,7 +229,7 @@ class WhatsAppChatAppMessageAdapter(ChatMessageAdapter):
     def chat_type(self) -> str:
         """
         Тип чата.
-        
+
         'private' - личный чат
         'group' - групповой чат
         """

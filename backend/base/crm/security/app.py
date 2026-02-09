@@ -8,7 +8,6 @@ from backend.base.system.core.enviroment import Environment
 from backend.base.system.core.service import Service
 from backend.base.system.dotorm.dotorm.access import (
     set_access_checker,
-    AccessDenied,
 )
 from backend.base.crm.security.acl_post_init_mixin import ACL, ACLPerms
 from .models.models import Model

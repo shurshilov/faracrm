@@ -420,9 +420,7 @@ class ChatConnector(DotModel):
             )
             return True
         except Exception as e:
-            await self.update(
-                ChatConnector(last_response=str(e))
-            )
+            await self.update(ChatConnector(last_response=str(e)))
             return False
 
     async def get_active_connectors(

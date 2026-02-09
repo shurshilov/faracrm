@@ -7,10 +7,8 @@ import json
 from types import UnionType
 from typing import (
     TYPE_CHECKING,
-    Annotated,
     Any,
     Awaitable,
-    Callable,
     ClassVar,
     Type,
     Union,
@@ -24,7 +22,6 @@ from .components.dialect import POSTGRES, Dialect
 
 if TYPE_CHECKING:
     from .builder.builder import Builder
-    import aiomysql
     import asyncpg
 
     # import asynch

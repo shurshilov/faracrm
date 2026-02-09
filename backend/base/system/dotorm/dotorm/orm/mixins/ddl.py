@@ -227,7 +227,7 @@ CREATE TABLE IF NOT EXISTS "{cls.__table__}" (\
 
         # ОПТИМИЗАЦИЯ: получаем все колонки таблицы ОДНИМ запросом
         existing_columns_sql = f"""
-            SELECT column_name 
+            SELECT column_name
             FROM information_schema.columns
             WHERE table_name = '{cls.__table__}'
         """

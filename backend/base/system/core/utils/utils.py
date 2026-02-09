@@ -45,7 +45,9 @@ def create_ssl_context(
 
 
 def camel_to_snake(camel: str):
-    return "".join(["_" + c.lower() if c.isupper() else c for c in camel]).lstrip("_")
+    return "".join(
+        ["_" + c.lower() if c.isupper() else c for c in camel]
+    ).lstrip("_")
 
 
 def snake_to_camel(snake: str):

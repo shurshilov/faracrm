@@ -39,7 +39,6 @@ from typing import (
     Union,
     TypeVar,
 )
-from functools import wraps
 import logging
 
 log = logging.getLogger(__name__)
@@ -464,8 +463,6 @@ class ExtensibleModelsCore(ExtensibleMixin, ModelsCore):
         env.models = Models()
         env.models.lead  # Lead с применёнными @extend расширениями
     """
-
-    pass
 
 
 # ============== УТИЛИТЫ ==============

@@ -2,7 +2,6 @@
 # Chat module - Email message adapter
 
 import re
-from email import message_from_bytes
 from email.message import Message
 from email.utils import parseaddr, parsedate_to_datetime
 from email.header import decode_header

@@ -2,7 +2,7 @@
 # Chat module - main chat/channel model
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
@@ -13,7 +13,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     Datetime,
     Selection,
     Many2one,
-    Many2many,
     One2many,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
@@ -242,9 +241,9 @@ class Chat(DotModel):
         session = self._get_db_session()
         query = """
             SELECT c.id FROM chat c
-            JOIN chat_member cm1 ON c.id = cm1.chat_id 
+            JOIN chat_member cm1 ON c.id = cm1.chat_id
                 AND cm1.user_id = %s AND cm1.is_active = true
-            JOIN chat_member cm2 ON c.id = cm2.chat_id 
+            JOIN chat_member cm2 ON c.id = cm2.chat_id
                 AND cm2.user_id = %s AND cm2.is_active = true
             WHERE c.chat_type = 'direct' AND c.active = true
             LIMIT 1
@@ -342,9 +341,9 @@ class Chat(DotModel):
         session = self._get_db_session()
         query = """
             SELECT c.id FROM chat c
-            JOIN chat_member cm1 ON c.id = cm1.chat_id 
+            JOIN chat_member cm1 ON c.id = cm1.chat_id
                 AND cm1.user_id = %s AND cm1.is_active = true
-            JOIN chat_member cm2 ON c.id = cm2.chat_id 
+            JOIN chat_member cm2 ON c.id = cm2.chat_id
                 AND cm2.partner_id = %s AND cm2.is_active = true
             WHERE c.chat_type = 'direct' AND c.active = true AND c.is_internal = false
             LIMIT 1
@@ -559,9 +558,9 @@ class Chat(DotModel):
                     c.name as contact_value
                 FROM chat_member cm
                 JOIN contact c ON c.partner_id = cm.partner_id AND c.active = true
-                JOIN chat_connector cc ON cc.active = true 
+                JOIN chat_connector cc ON cc.active = true
                     AND cc.contact_type_id = c.contact_type_id
-                WHERE cm.chat_id = %s 
+                WHERE cm.chat_id = %s
                   AND cm.partner_id IS NOT NULL
                   AND cm.is_active = true
                 ORDER BY cc.type, cc.name

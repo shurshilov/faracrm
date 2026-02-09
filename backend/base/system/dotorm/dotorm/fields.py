@@ -429,7 +429,7 @@ class Binary(Field[bytes]):
 # ==================== RELATION FIELDS ====================
 
 
-class Many2one[T: "DotModel"](Field[T]):
+class Many2one[T: DotModel](Field[T]):
     """Many-to-one relation field."""
 
     field_type = Type
@@ -444,7 +444,7 @@ class Many2one[T: "DotModel"](Field[T]):
         super().__init__(**kwargs)
 
 
-class PolymorphicMany2one[T: "DotModel"](Field[T]):
+class PolymorphicMany2one[T: DotModel](Field[T]):
     """Many-to-one attachment field."""
 
     field_type = Type
@@ -459,7 +459,7 @@ class PolymorphicMany2one[T: "DotModel"](Field[T]):
         super().__init__(**kwargs)
 
 
-class PolymorphicOne2many[T: "DotModel"](Field[list[T]]):
+class PolymorphicOne2many[T: DotModel](Field[list[T]]):
     """One-to-many attachment field."""
 
     field_type = list[Type]
@@ -547,7 +547,7 @@ class PolymorphicOne2many[T: "DotModel"](Field[list[T]]):
 #         return self._data is not None and len(self._data) > 0
 
 
-class Many2many[T: "DotModel"](Field[list[T]]):
+class Many2many[T: DotModel](Field[list[T]]):
     """Many-to-many relation field."""
 
     field_type = list[Type]
@@ -587,7 +587,7 @@ class Many2many[T: "DotModel"](Field[list[T]]):
     #     self._field_name = name
 
 
-class One2many[T: "DotModel"](Field[list[T]]):
+class One2many[T: DotModel](Field[list[T]]):
     """One-to-many relation field."""
 
     field_type = list[Type]
@@ -607,7 +607,7 @@ class One2many[T: "DotModel"](Field[list[T]]):
         super().__init__(**kwargs)
 
 
-class One2one[T: "DotModel"](Field[T]):
+class One2one[T: DotModel](Field[T]):
     """One-to-one relation field."""
 
     field_type = Type

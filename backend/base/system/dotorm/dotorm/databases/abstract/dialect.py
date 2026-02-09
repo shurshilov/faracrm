@@ -3,7 +3,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Literal
 
-
 # Unified cursor types for all dialects
 CursorType = Literal[
     "fetchall",

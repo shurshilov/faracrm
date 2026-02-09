@@ -15,7 +15,6 @@ except ImportError:
 from dotorm.databases.postgres.session import NoTransactionSession
 from dotorm.databases.postgres.transaction import ContainerTransaction
 
-
 # ====================
 # Database configuration
 # ====================
@@ -73,14 +72,12 @@ async def _drop_database():
         database="postgres",
     )
     try:
-        await conn.execute(
-            f"""
+        await conn.execute(f"""
             SELECT pg_terminate_backend(pg_stat_activity.pid)
             FROM pg_stat_activity
             WHERE pg_stat_activity.datname = '{TEST_DB_NAME}'
             AND pid <> pg_backend_pid()
-        """
-        )
+        """)
         await conn.execute(f'DROP DATABASE IF EXISTS "{TEST_DB_NAME}"')
         print(f"\n✓ Dropped database: {TEST_DB_NAME}")
     finally:

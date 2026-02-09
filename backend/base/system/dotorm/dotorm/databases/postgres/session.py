@@ -6,7 +6,6 @@ from ..abstract.types import PostgresPoolSettings
 from ..abstract.session import SessionAbstract
 from ..abstract.dialect import PostgresDialect, CursorType
 
-
 if TYPE_CHECKING:
     import asyncpg
     from asyncpg.transaction import Transaction

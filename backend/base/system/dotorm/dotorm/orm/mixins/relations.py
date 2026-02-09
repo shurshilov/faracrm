@@ -1,6 +1,6 @@
 """Relations ORM operations mixin."""
 
-from typing import TYPE_CHECKING, Any, Literal, Self, TypeVar
+from typing import TYPE_CHECKING, Literal, Self, TypeVar
 
 from ...components.filter_parser import FilterExpression
 from ...decorators import hybridmethod

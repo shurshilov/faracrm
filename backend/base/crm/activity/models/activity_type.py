@@ -17,10 +17,16 @@ class ActivityType(DotModel):
     __table__ = "activity_type"
 
     id: int = Integer(primary_key=True)
-    name: str = Char(max_length=255, required=True, description="Название типа")
-    icon: str | None = Char(max_length=100, description="Имя иконки (tabler icon)")
+    name: str = Char(
+        max_length=255, required=True, description="Название типа"
+    )
+    icon: str | None = Char(
+        max_length=100, description="Имя иконки (tabler icon)"
+    )
     color: str = Char(max_length=20, default="#228be6", description="Цвет")
-    default_days: int = Integer(default=1, description="Дней до дедлайна по умолчанию")
+    default_days: int = Integer(
+        default=1, description="Дней до дедлайна по умолчанию"
+    )
     sequence: int = Integer(default=10, description="Порядок сортировки")
     active: bool = Boolean(default=True)
 

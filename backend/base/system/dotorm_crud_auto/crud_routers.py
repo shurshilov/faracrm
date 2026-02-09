@@ -28,7 +28,6 @@ from backend.base.system.dotorm_crud_auto.crud_pydantic_types import (
     RelationNestedPickIdName,
     RelationNestedSearch,
     RelationNestedUpdateCreate,
-    RelationOmitX2M,
     create_class,
     generate_search_triplet,
 )

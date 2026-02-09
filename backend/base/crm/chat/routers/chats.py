@@ -87,9 +87,9 @@ async def get_chats(
 
         if contact_type_id_for_filter:
             base_query += """
-            JOIN chat_member cm_filter ON c.id = cm_filter.chat_id 
+            JOIN chat_member cm_filter ON c.id = cm_filter.chat_id
                 AND cm_filter.partner_id IS NOT NULL AND cm_filter.is_active = true
-            JOIN contact contact_filter ON contact_filter.partner_id = cm_filter.partner_id 
+            JOIN contact contact_filter ON contact_filter.partner_id = cm_filter.partner_id
                 AND contact_filter.active = true
                 AND contact_filter.contact_type_id = %s
             """
@@ -126,9 +126,9 @@ async def get_chats(
 
     # Получаем участников (пользователей и партнёров) через chat_member
     members_query = """
-        SELECT cm.chat_id, 
+        SELECT cm.chat_id,
                COALESCE(u.id, p.id) as id,
-               COALESCE(u.name, p.name) as name, 
+               COALESCE(u.name, p.name) as name,
                COALESCE(u.email, p.email) as email,
                CASE WHEN cm.user_id IS NOT NULL THEN 'user' ELSE 'partner' END as member_type,
                cm.can_read,
@@ -145,7 +145,7 @@ async def get_chats(
     members_task = session.execute(members_query, (chat_ids,))
 
     last_messages_query = """
-        SELECT DISTINCT ON (chat_id) 
+        SELECT DISTINCT ON (chat_id)
             id, chat_id, body, message_type, author_user_id, author_partner_id, create_date
         FROM chat_message
         WHERE chat_id = ANY(%s) AND is_deleted = false
@@ -156,9 +156,9 @@ async def get_chats(
     unread_query = """
         SELECT chat_id, COUNT(*) as unread_count
         FROM chat_message
-        WHERE chat_id = ANY(%s) 
+        WHERE chat_id = ANY(%s)
           AND (author_user_id IS NULL OR author_user_id != %s)
-          AND is_read = false 
+          AND is_read = false
           AND is_deleted = false
         GROUP BY chat_id
     """
@@ -169,7 +169,7 @@ async def get_chats(
     # Маппинг contact → connector через общий contact_type_id (integer FK)
     # contact.contact_type_id = chat_connector.contact_type_id
     connectors_query = """
-        SELECT DISTINCT 
+        SELECT DISTINCT
             cm.chat_id,
             cc.id as connector_id,
             cc.type as connector_type,
@@ -178,10 +178,10 @@ async def get_chats(
             c.name as contact_value
         FROM chat_member cm
         JOIN contact c ON c.partner_id = cm.partner_id AND c.active = true
-        JOIN chat_connector cc ON cc.active = true 
+        JOIN chat_connector cc ON cc.active = true
             AND cc.contact_type_id = c.contact_type_id
-        WHERE cm.chat_id = ANY(%s) 
-          AND cm.partner_id IS NOT NULL 
+        WHERE cm.chat_id = ANY(%s)
+          AND cm.partner_id IS NOT NULL
           AND cm.is_active = true
     """
     connectors_task = session.execute(connectors_query, (chat_ids,))
@@ -348,7 +348,7 @@ async def get_chat(req: Request, chat_id: int):
     # Получаем участников отдельным запросом
 
     members_query = """
-        SELECT 
+        SELECT
             COALESCE(u.id, p.id) as id,
             COALESCE(u.name, p.name) as name,
             COALESCE(u.email, p.email) as email,
@@ -423,7 +423,7 @@ async def create_chat(req: Request, body: ChatCreate):
 
     # Определяем тип чата: внутренний или внешний
     has_partners = len(body.partner_ids) > 0
-    has_users = len(body.user_ids) > 0
+    len(body.user_ids) > 0
 
     async with env.apps.db.get_transaction():
         if body.chat_type == "direct":
@@ -624,15 +624,19 @@ async def update_member_permissions(
 
     # Обновляем права
     perm_fields = {}
-    for key in ("can_read", "can_write", "can_invite", "can_pin",
-                "can_delete_others", "is_admin"):
+    for key in (
+        "can_read",
+        "can_write",
+        "can_invite",
+        "can_pin",
+        "can_delete_others",
+        "is_admin",
+    ):
         if key in body:
             perm_fields[key] = body[key]
 
     if perm_fields:
-        await target_member.update(
-            env.models.chat_member(**perm_fields)
-        )
+        await target_member.update(env.models.chat_member(**perm_fields))
 
     return {"success": True}
 

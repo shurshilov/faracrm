@@ -28,7 +28,9 @@ Limit = Annotated[int, Field(ge=1, le=999)]
 OrderId = Annotated[
     str, Field(pattern=r"^(id) (DESC|ASC)$", min_length=6, max_length=7)
 ]
-Secret = Annotated[str, Field(pattern=r"^[2-7A-Z]+$", min_length=32, max_length=32)]
+Secret = Annotated[
+    str, Field(pattern=r"^[2-7A-Z]+$", min_length=32, max_length=32)
+]
 Port = Annotated[int, Field(ge=0, le=65535)]
 PositiveInt0 = Annotated[int, Field(ge=0)]
 PositiveInt1 = Annotated[int, Field(ge=1)]
@@ -62,7 +64,9 @@ def text_file_match(p: str) -> str:
     return p
 
 
-TextFile = Annotated[str, AfterValidator(text_file_match), Field(max_length=500)]
+TextFile = Annotated[
+    str, AfterValidator(text_file_match), Field(max_length=500)
+]
 
 
 def regex_password(p: str) -> str:

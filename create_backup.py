@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Script to create fara_crm_context.zip archive
 Includes only specified file extensions and excludes .venv and node_modules folders
 """
 
-import os
 import zipfile
 from pathlib import Path
 from typing import List, Set

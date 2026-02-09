@@ -2,12 +2,11 @@
 # Chat module - WebSocket manager for real-time messaging
 
 import asyncio
-import json
 import logging
-from typing import Dict, Set, Any, Optional
+from typing import Dict, Set
 from datetime import datetime, timezone
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
 logger = logging.getLogger(__name__)
@@ -305,7 +304,11 @@ class ConnectionManager:
                 await self.subscribe_to_chats(user_id, chat_ids)
                 await self._send_to_user(
                     user_id,
-                    {"type": "subscribed_all", "chat_ids": chat_ids, "count": len(chat_ids)},
+                    {
+                        "type": "subscribed_all",
+                        "chat_ids": chat_ids,
+                        "count": len(chat_ids),
+                    },
                 )
 
         elif message_type == "unsubscribe":

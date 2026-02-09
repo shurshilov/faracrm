@@ -22,12 +22,10 @@ from dotorm import (
     Many2one,
     One2many,
     Many2many,
-    One2one,
     PolymorphicMany2one,
     PolymorphicOne2many,
 )
 from dotorm.components import POSTGRES
-
 
 # ====================
 # Base configuration

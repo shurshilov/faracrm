@@ -60,7 +60,6 @@ class TestRoles:
     async def test_assign_users_to_role(self, user_factory):
         """Test assigning users to role via Many2many."""
         from backend.base.crm.security.models.roles import Role
-        from backend.base.crm.users.models.users import User
 
         user1 = await user_factory(name="Role User 1", login="role_user1")
         user2 = await user_factory(name="Role User 2", login="role_user2")

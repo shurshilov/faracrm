@@ -35,7 +35,3 @@ class AttachmentsGoogleApp(App):
         )
 
         register_strategy(GoogleDriveStrategy)
-
-        # Импортируем миксины для применения расширений
-        # flake8: noqa: F401
-        from backend.base.crm.attachments_google import mixins

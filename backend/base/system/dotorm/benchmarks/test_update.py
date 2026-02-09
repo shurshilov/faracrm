@@ -12,14 +12,13 @@ Run:
 
 import pytest
 import asyncio
-from typing import Any
 
 from .conftest import generate_user_data
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Setup: Seed database with test data
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.fixture
 async def seeded_database_for_update(dotorm_pool, clean_tables):
@@ -32,15 +31,19 @@ async def seeded_database_for_update(dotorm_pool, clean_tables):
                 INSERT INTO benchmark_users (id, name, email, active)
                 VALUES ($1, $2, $3, $4)
                 """,
-                i, user["name"], user["email"], user["active"],
+                i,
+                user["name"],
+                user["email"],
+                user["active"],
             )
-    
+
     yield
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DotORM Benchmarks
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestDotORMUpdate:
     """DotORM UPDATE benchmarks."""
@@ -125,7 +128,9 @@ class TestDotORMUpdate:
         async def run():
             user = await BenchmarkUser.get(1)
             if user:
-                payload = BenchmarkUser(name="Partially Updated", email="new@email.com")
+                payload = BenchmarkUser(
+                    name="Partially Updated", email="new@email.com"
+                )
                 await user.update(payload, fields=["name"])  # Only update name
 
         benchmark.pedantic(
@@ -139,6 +144,7 @@ class TestDotORMUpdate:
 # Raw asyncpg Benchmarks (baseline)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestRawAsyncpgUpdate:
     """Raw asyncpg UPDATE benchmarks (baseline)."""
 
@@ -147,6 +153,7 @@ class TestRawAsyncpgUpdate:
         self, dotorm_pool, seeded_database_for_update, benchmark
     ):
         """Bulk update 1000 records with raw asyncpg."""
+
         async def run():
             async with dotorm_pool.acquire() as conn:
                 ids = list(range(1, 1001))
@@ -171,6 +178,7 @@ class TestRawAsyncpgUpdate:
         self, dotorm_pool, seeded_database_for_update, benchmark
     ):
         """Update 100 records one by one with raw asyncpg."""
+
         async def run():
             async with dotorm_pool.acquire() as conn:
                 for i in range(1, 101):
@@ -195,6 +203,7 @@ class TestRawAsyncpgUpdate:
 # SQLAlchemy Benchmarks
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestSQLAlchemyUpdate:
     """SQLAlchemy UPDATE benchmarks."""
 
@@ -204,7 +213,14 @@ class TestSQLAlchemyUpdate:
     ):
         """Bulk update 1000 records with SQLAlchemy."""
         try:
-            from sqlalchemy import Column, Integer, String, Boolean, Table, MetaData
+            from sqlalchemy import (
+                Column,
+                Integer,
+                String,
+                Boolean,
+                Table,
+                MetaData,
+            )
             from sqlalchemy import update
         except ImportError:
             pytest.skip("SQLAlchemy not installed")

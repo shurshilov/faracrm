@@ -18,7 +18,6 @@ from backend.base.system.core.enviroment import env
 from backend.base.crm.attachments.strategies import get_strategy
 
 if TYPE_CHECKING:
-    from .attachments import Attachment
     from .attachments_storage import AttachmentStorage
 
 logger = logging.getLogger(__name__)
@@ -443,9 +442,7 @@ class AttachmentRoute(DotModel):
 
             await self._save_root_folder_to_cache(folder_id, new_name)
 
-            await self.update(
-                AttachmentRoute(need_sync_root_name=False)
-            )
+            await self.update(AttachmentRoute(need_sync_root_name=False))
 
     async def get_attachments_to_sync(
         self,

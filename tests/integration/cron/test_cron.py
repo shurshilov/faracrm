@@ -60,12 +60,18 @@ class TestCronJobCRUD:
         from backend.base.system.cron.models.cron_job import CronJob
 
         await CronJob.create(
-            CronJob(name="Active Job", active=True,
-                    nextcall=datetime.now(timezone.utc))
+            CronJob(
+                name="Active Job",
+                active=True,
+                nextcall=datetime.now(timezone.utc),
+            )
         )
         await CronJob.create(
-            CronJob(name="Inactive Job", active=False,
-                    nextcall=datetime.now(timezone.utc))
+            CronJob(
+                name="Inactive Job",
+                active=False,
+                nextcall=datetime.now(timezone.utc),
+            )
         )
 
         active = await CronJob.search(
@@ -80,8 +86,12 @@ class TestCronJobCRUD:
         from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
-            CronJob(name="Update Me", interval_number=1, interval_type="hours",
-                    nextcall=datetime.now(timezone.utc))
+            CronJob(
+                name="Update Me",
+                interval_number=1,
+                interval_type="hours",
+                nextcall=datetime.now(timezone.utc),
+            )
         )
         j = await CronJob.get(jid)
         await j.update(CronJob(interval_number=2, interval_type="days"))
@@ -196,12 +206,14 @@ class TestJobState:
         )
         j = await CronJob.get(jid)
 
-        await j.update(CronJob(
-            last_status="success",
-            last_duration=1.5,
-            run_count=1,
-            lastcall=datetime.now(timezone.utc),
-        ))
+        await j.update(
+            CronJob(
+                last_status="success",
+                last_duration=1.5,
+                run_count=1,
+                lastcall=datetime.now(timezone.utc),
+            )
+        )
 
         updated = await CronJob.get(jid)
         assert updated.last_status == "success"
@@ -216,10 +228,12 @@ class TestJobState:
         )
         j = await CronJob.get(jid)
 
-        await j.update(CronJob(
-            last_status="error",
-            last_error="Connection refused",
-        ))
+        await j.update(
+            CronJob(
+                last_status="error",
+                last_error="Connection refused",
+            )
+        )
 
         updated = await CronJob.get(jid)
         assert updated.last_status == "error"

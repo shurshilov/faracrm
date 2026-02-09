@@ -15,7 +15,6 @@ Prerequisites:
 
 import os
 import time
-import asyncio
 from datetime import date, datetime, timezone
 from contextlib import asynccontextmanager
 
@@ -99,8 +98,7 @@ async def raw_pool():
     )
     async with pool.acquire() as conn:
         await conn.execute("DROP TABLE IF EXISTS bench_activity_raw CASCADE")
-        await conn.execute(
-            """
+        await conn.execute("""
             CREATE TABLE bench_activity_raw (
                 id SERIAL PRIMARY KEY,
                 res_model VARCHAR(255) NOT NULL,
@@ -115,17 +113,14 @@ async def raw_pool():
                 notification_sent BOOLEAN NOT NULL DEFAULT false,
                 create_date TIMESTAMPTZ NOT NULL DEFAULT now()
             )
-        """
-        )
-        await conn.execute(
-            """
+        """)
+        await conn.execute("""
             CREATE INDEX idx_raw_user_id ON bench_activity_raw (user_id);
             CREATE INDEX idx_raw_date_deadline ON bench_activity_raw (date_deadline);
             CREATE INDEX idx_raw_state ON bench_activity_raw (state);
             CREATE INDEX idx_raw_done ON bench_activity_raw (done);
             CREATE INDEX idx_raw_res_model ON bench_activity_raw (res_model);
-        """
-        )
+        """)
         await conn.execute(
             """
             INSERT INTO bench_activity_raw
@@ -297,7 +292,6 @@ class TestRawAsyncpg:
 try:
     from sqlalchemy.ext.asyncio import (
         create_async_engine,
-        AsyncSession,
         async_sessionmaker,
     )
     from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -372,8 +366,7 @@ async def sa_session():
         max_size=5,
     )
     async with raw_pool.acquire() as conn:
-        await conn.execute(
-            f"""
+        await conn.execute(f"""
             INSERT INTO bench_activity_sa
                 (res_model, res_id, summary, date_deadline, user_id, state, done,
                  notification_sent, active, create_date)
@@ -389,8 +382,7 @@ async def sa_session():
                 false, true,
                 now() - (random() * interval '90 days')
             FROM generate_series(1, {SEED_COUNT}) g
-        """
-        )
+        """)
     await raw_pool.close()
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -456,7 +448,7 @@ class TestSQLAlchemy:
                     .where(SAActivity.user_id == 1)
                     .limit(SEARCH_LIMIT)
                 )
-                rows = result.scalars().all()
+                result.scalars().all()
 
     async def test_search_filter_res_model(self, sa_session):
         async with sa_session() as s:
@@ -471,7 +463,7 @@ class TestSQLAlchemy:
                     )
                     .limit(SEARCH_LIMIT)
                 )
-                rows = result.scalars().all()
+                result.scalars().all()
 
     async def test_search_filter_state(self, sa_session):
         async with sa_session() as s:
@@ -485,7 +477,7 @@ class TestSQLAlchemy:
                     )
                     .limit(SEARCH_LIMIT)
                 )
-                rows = result.scalars().all()
+                result.scalars().all()
 
     async def test_search_count(self, sa_session):
         async with sa_session() as s:
@@ -493,7 +485,7 @@ class TestSQLAlchemy:
                 result = await s.execute(
                     select(func.count()).select_from(SAActivity)
                 )
-                count = result.scalar()
+                result.scalar()
 
     async def test_update_single(self, sa_session):
         async with sa_session() as s:
@@ -591,8 +583,7 @@ async def tortoise_db():
         max_size=5,
     )
     async with raw_pool.acquire() as conn:
-        await conn.execute(
-            f"""
+        await conn.execute(f"""
             INSERT INTO bench_activity_tortoise
                 (res_model, res_id, summary, date_deadline, user_id, state, done,
                  notification_sent, active, create_date)
@@ -608,8 +599,7 @@ async def tortoise_db():
                 false, true,
                 now() - (random() * interval '90 days')
             FROM generate_series(1, {SEED_COUNT}) g
-        """
-        )
+        """)
     await raw_pool.close()
 
     yield
@@ -698,7 +688,7 @@ class TestTortoise:
 
     async def test_search_count(self, tortoise_db):
         async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
-            count = await TortoiseActivity.all().count()
+            await TortoiseActivity.all().count()
 
     async def test_update_single(self, tortoise_db):
         obj = await TortoiseActivity.get(id=1)
@@ -738,7 +728,6 @@ class TestTortoise:
 async def dotorm_ready(db_pool):
     """Seed activity table for dotorm benchmarks (reuses existing schema)."""
     from backend.base.crm.languages.models.language import Language
-    from backend.base.crm.activity.models.activity_type import ActivityType
 
     async with db_pool.acquire() as conn:
         await conn.execute(
@@ -759,13 +748,11 @@ async def dotorm_ready(db_pool):
             lang_id,
         )
 
-        await conn.execute(
-            """
+        await conn.execute("""
             INSERT INTO activity_type (name, active, default_days, icon)
             VALUES ('Call', true, 1, 'phone'), ('Email', true, 2, 'mail'),
                    ('Meeting', true, 3, 'calendar'), ('Task', true, 5, 'check')
-        """
-        )
+        """)
 
         await conn.execute(
             """

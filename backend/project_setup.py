@@ -82,7 +82,6 @@ from backend.base.crm.contract.models.company_ext import CompanyContractMixin
 from backend.base.crm.contract.models.partner_ext import PartnerContractMixin
 from backend.base.crm.contract.models.sale_ext import SaleContractMixin
 
-
 # когда есть расширение чтобы IDE видела все поля в модели делаем хак
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat_connector import (
@@ -160,7 +159,6 @@ from backend.base.crm.tasks.app import TasksApp
 from backend.base.crm.activity.app import ActivityApp
 from backend.base.crm.report_docx.app import ReportDocxApp
 from backend.base.crm.contract.app import ContractApp
-
 
 # services
 from backend.base.system.logger.app import LoggerService

@@ -1,13 +1,7 @@
 # Copyright 2025 FARA CRM
 # Chat module - Avito message adapter
 
-from datetime import datetime
-from typing import TYPE_CHECKING
-
 from backend.base.crm.chat.strategies.adapter import ChatMessageAdapter
-
-if TYPE_CHECKING:
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
 
 
 class AvitoMessageAdapter(ChatMessageAdapter):

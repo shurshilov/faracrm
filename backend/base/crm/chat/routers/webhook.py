@@ -14,7 +14,6 @@ from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
-    HTTP_404_NOT_FOUND,
 )
 
 if TYPE_CHECKING:

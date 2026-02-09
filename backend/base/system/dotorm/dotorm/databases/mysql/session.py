@@ -5,7 +5,6 @@ from typing import Any, Callable, TYPE_CHECKING
 from ..abstract.session import SessionAbstract
 from ..abstract.dialect import MySQLDialect, CursorType
 
-
 if TYPE_CHECKING:
     import aiomysql
 
@@ -115,7 +114,7 @@ class NoTransactionSession(MysqlSession):
         cursor: CursorType = "fetchall",
     ) -> Any:
         import aiomysql
-        
+
         stmt = _dialect.convert_placeholders(stmt)
 
         async with self.pool.acquire() as conn:

@@ -5,7 +5,7 @@ Structure:
 - unit/           Unit tests (no database required)
 - integration/    Integration tests with database
   - users/        User module tests
-  - security/     Security module tests  
+  - security/     Security module tests
   - partners/     Partners module tests
   - leads/        Leads module tests
   - sales/        Sales module tests

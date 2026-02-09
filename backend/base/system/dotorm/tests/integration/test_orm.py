@@ -11,7 +11,6 @@ import pytest
 from datetime import datetime, date, time
 from decimal import Decimal
 
-
 # ====================
 # Mark all tests as integration
 # ====================
@@ -382,7 +381,7 @@ class TestMany2oneRelations:
 
     async def test_create_with_m2o(self, sample_data):
         """Test creating record with M2O relation."""
-        from .models import Role, Model
+        from .models import Role
 
         model_id = sample_data["models"][0]
         role_id = await Role.create(
@@ -429,7 +428,7 @@ class TestOne2manyRelations:
 
     async def test_create_o2m_records(self, sample_data):
         """Test creating records for O2M relation."""
-        from .models import Role, AccessList
+        from .models import AccessList
 
         role_id = sample_data["roles"][0]
 
@@ -490,7 +489,7 @@ class TestMany2manyRelations:
         role_ids = sample_data["roles"]
 
         # Get user
-        user = await User.get(user_id)
+        await User.get(user_id)
 
         # Get M2M field
         role_field = User.get_fields()["role_ids"]
@@ -541,7 +540,7 @@ class TestMany2manyRelations:
 
     async def test_get_fields_nested_m2m(self, sample_data, session):
         """Test get(fields_nested) loads M2M."""
-        from .models import User, Role
+        from .models import User
 
         user_id = sample_data["users"][0]
         role_ids = sample_data["roles"]

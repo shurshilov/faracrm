@@ -4,7 +4,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     Integer,
     JSONField,
     Many2one,
-    Text,
     JSONField,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel

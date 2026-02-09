@@ -1,7 +1,6 @@
 import unittest
 from fastapi.testclient import TestClient
 from backend.main import app
-import httpx
 
 
 class TestRoles(unittest.IsolatedAsyncioTestCase):
@@ -221,7 +220,9 @@ class TestRoles(unittest.IsolatedAsyncioTestCase):
             },
             "rule_ids": {
                 "deleted": [],
-                "created": [{"name": "auto_test_name", "role_id": "VirtualId"}],
+                "created": [
+                    {"name": "auto_test_name", "role_id": "VirtualId"}
+                ],
             },
             "model_id": self.model_id,
             "name": "auto_test_name",
@@ -267,7 +268,9 @@ class TestRoles(unittest.IsolatedAsyncioTestCase):
                 "name": "auto_test_name_update",
                 "model_id": self.model_id2,
                 "user_ids": {
-                    "unselected": [self.create_obj["user_ids"]["data"][0]["id"]],
+                    "unselected": [
+                        self.create_obj["user_ids"]["data"][0]["id"]
+                    ],
                     "created": [
                         {
                             "name": "auto_test_name_update",
@@ -290,7 +293,10 @@ class TestRoles(unittest.IsolatedAsyncioTestCase):
                 "rule_ids": {
                     "deleted": [self.create_obj["rule_ids"]["data"][0]["id"]],
                     "created": [
-                        {"name": "auto_test_name_update", "role_id": self.create_id}
+                        {
+                            "name": "auto_test_name_update",
+                            "role_id": self.create_id,
+                        }
                     ],
                 },
             }

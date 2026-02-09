@@ -14,11 +14,9 @@ Run:
 import os
 import time
 import json
-import asyncio
-from datetime import datetime, timedelta, timezone
-from dataclasses import dataclass, field
+from datetime import datetime
+from dataclasses import dataclass
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
@@ -205,7 +203,9 @@ tr:hover {{ background:#f8f9fa; }}
         data_json = json.dumps(data)
         ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        html = _COMPARISON_HTML_TEMPLATE.replace("__DATA_PLACEHOLDER__", data_json)
+        html = _COMPARISON_HTML_TEMPLATE.replace(
+            "__DATA_PLACEHOLDER__", data_json
+        )
         html = html.replace("__TIMESTAMP__", ts)
 
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
@@ -456,9 +456,7 @@ def _print_report_at_end(perf_report):
     """Print report after all tests finish."""
     yield
     perf_report.print_console()
-    report_dir = os.path.join(
-        os.path.dirname(__file__), "..", "..", "reports"
-    )
+    report_dir = os.path.join(os.path.dirname(__file__), "..", "..", "reports")
     perf_report.save_html(os.path.join(report_dir, "perf_report.html"))
     perf_report.save_json(os.path.join(report_dir, "perf_report.json"))
 
@@ -469,7 +467,9 @@ def _print_report_at_end(perf_report):
 
 
 @asynccontextmanager
-async def perf_timer(report: PerfReport, module: str, operation: str, rows: int):
+async def perf_timer(
+    report: PerfReport, module: str, operation: str, rows: int
+):
     """
     Usage:
         async with perf_timer(perf_report, "Users", "create_bulk 10_000", 10_000):
@@ -579,7 +579,9 @@ async def seed_chat_and_messages(db_pool, seed_users) -> dict:
     big_chat_members = 5_000
 
     async with db_pool.acquire() as conn:
-        await conn.execute("TRUNCATE TABLE chat_message, chat_member, chat CASCADE")
+        await conn.execute(
+            "TRUNCATE TABLE chat_message, chat_member, chat CASCADE"
+        )
 
         # 1) Create chats
         await conn.execute(
@@ -677,16 +679,14 @@ async def seed_activities(db_pool, seed_users) -> int:
         await conn.execute("TRUNCATE TABLE activity, activity_type CASCADE")
 
         # Create some activity types
-        await conn.execute(
-            """
+        await conn.execute("""
             INSERT INTO activity_type (name, active, default_days, icon)
             VALUES
                 ('Call', true, 1, 'phone'),
                 ('Email', true, 2, 'mail'),
                 ('Meeting', true, 3, 'calendar'),
                 ('Task', true, 5, 'check')
-            """
-        )
+            """)
 
         await conn.execute(
             """
@@ -725,13 +725,11 @@ async def seed_leads(db_pool, seed_users) -> int:
     async with db_pool.acquire() as conn:
         await conn.execute("TRUNCATE TABLE lead, lead_stage CASCADE")
 
-        await conn.execute(
-            """
+        await conn.execute("""
             INSERT INTO lead_stage (name, sequence)
             VALUES ('New', 1), ('Qualified', 2), ('Proposal', 3),
                    ('Won', 4), ('Lost', 5)
-            """
-        )
+            """)
 
         await conn.execute(
             """

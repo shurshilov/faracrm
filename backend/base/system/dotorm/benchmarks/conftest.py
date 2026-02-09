@@ -2,7 +2,6 @@
 
 import asyncio
 import pytest
-from typing import AsyncGenerator
 
 # Try to import database drivers
 try:
@@ -11,8 +10,7 @@ except ImportError:
     asyncpg = None
 
 try:
-    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-    from sqlalchemy.orm import sessionmaker
+    from sqlalchemy.ext.asyncio import create_async_engine
 except ImportError:
     create_async_engine = None
 
@@ -50,18 +48,23 @@ async def dotorm_pool():
     """Create DotORM connection pool."""
     if asyncpg is None:
         pytest.skip("asyncpg not installed")
-    
+
     from dotorm.databases.postgres import ContainerPostgres
-    from dotorm.databases.abstract import PostgresPoolSettings, ContainerSettings
-    
+    from dotorm.databases.abstract import (
+        PostgresPoolSettings,
+        ContainerSettings,
+    )
+
     pool_settings = PostgresPoolSettings(**DATABASE_CONFIG)
-    container_settings = ContainerSettings(driver="asyncpg", reconnect_timeout=10)
-    
+    container_settings = ContainerSettings(
+        driver="asyncpg", reconnect_timeout=10
+    )
+
     container = ContainerPostgres(pool_settings, container_settings)
     pool = await container.create_pool()
-    
+
     yield pool
-    
+
     await container.close_pool()
 
 
@@ -70,15 +73,15 @@ async def sqlalchemy_engine():
     """Create SQLAlchemy async engine."""
     if create_async_engine is None:
         pytest.skip("SQLAlchemy not installed")
-    
+
     engine = create_async_engine(
         f"postgresql+asyncpg://{DATABASE_CONFIG['user']}:{DATABASE_CONFIG['password']}"
         f"@{DATABASE_CONFIG['host']}:{DATABASE_CONFIG['port']}/{DATABASE_CONFIG['database']}",
         echo=False,
     )
-    
+
     yield engine
-    
+
     await engine.dispose()
 
 
@@ -87,15 +90,15 @@ async def tortoise_connection():
     """Initialize Tortoise ORM."""
     if Tortoise is None:
         pytest.skip("Tortoise ORM not installed")
-    
+
     await Tortoise.init(
         db_url=f"postgres://{DATABASE_CONFIG['user']}:{DATABASE_CONFIG['password']}"
-               f"@{DATABASE_CONFIG['host']}:{DATABASE_CONFIG['port']}/{DATABASE_CONFIG['database']}",
+        f"@{DATABASE_CONFIG['host']}:{DATABASE_CONFIG['port']}/{DATABASE_CONFIG['database']}",
         modules={"models": ["benchmarks.tortoise_models"]},
     )
-    
+
     yield
-    
+
     await Tortoise.close_connections()
 
 
@@ -103,8 +106,12 @@ async def tortoise_connection():
 async def clean_tables(dotorm_pool):
     """Clean test tables before each test."""
     async with dotorm_pool.acquire() as conn:
-        await conn.execute("TRUNCATE TABLE benchmark_users RESTART IDENTITY CASCADE")
-        await conn.execute("TRUNCATE TABLE benchmark_roles RESTART IDENTITY CASCADE")
+        await conn.execute(
+            "TRUNCATE TABLE benchmark_users RESTART IDENTITY CASCADE"
+        )
+        await conn.execute(
+            "TRUNCATE TABLE benchmark_roles RESTART IDENTITY CASCADE"
+        )
     yield
 
 

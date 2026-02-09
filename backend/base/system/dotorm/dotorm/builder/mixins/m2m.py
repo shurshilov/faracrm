@@ -2,7 +2,6 @@
 
 from typing import TYPE_CHECKING, Literal, Type
 
-
 if TYPE_CHECKING:
     from ..protocol import BuilderProtocol
     from ...model import DotModel

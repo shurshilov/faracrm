@@ -218,10 +218,7 @@ class AttachmentStorage(DotModel):
     ) -> None:
         """Update storage with cascade activation/deactivation."""
         # Check if active field is being changed
-        if (
-            payload.active is not None
-            and payload.active != self.active
-        ):
+        if payload.active is not None and payload.active != self.active:
             if payload.active:
                 await self.activate()
             else:

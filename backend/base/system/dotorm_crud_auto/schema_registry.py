@@ -20,12 +20,11 @@ from typing import (
     Literal,
     Optional,
     Tuple,
-    Type,
     Union,
     get_args,
     get_origin,
 )
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, ConfigDict, create_model
 from pydantic.fields import FieldInfo
 
 from backend.base.system.dotorm.dotorm.fields import (
@@ -42,7 +41,6 @@ from backend.base.system.dotorm_crud_auto.crud_pydantic_schemas import (
     SchemaRelationMany2ManyUpdateCreate,
     SchemaRelationOne2ManyUpdateCreate,
 )
-
 
 # Типы отношений
 RELATION_TYPES = (

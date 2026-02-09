@@ -14,14 +14,13 @@ Run:
 
 import pytest
 import asyncio
-from typing import Any
 
 from .conftest import generate_user_data, generate_role_data
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Setup: Seed database with test data
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 @pytest.fixture
 async def seeded_database(dotorm_pool, clean_tables):
@@ -35,9 +34,11 @@ async def seeded_database(dotorm_pool, clean_tables):
                 INSERT INTO benchmark_roles (id, name, description)
                 VALUES ($1, $2, $3)
                 """,
-                i, role["name"], role["description"],
+                i,
+                role["name"],
+                role["description"],
             )
-        
+
         # Create users with role_id
         user_data = generate_user_data(1000)
         for i, user in enumerate(user_data, 1):
@@ -46,15 +47,20 @@ async def seeded_database(dotorm_pool, clean_tables):
                 INSERT INTO benchmark_users (id, name, email, active, role_id)
                 VALUES ($1, $2, $3, $4, $5)
                 """,
-                i, user["name"], user["email"], user["active"], (i % 10) + 1,
+                i,
+                user["name"],
+                user["email"],
+                user["active"],
+                (i % 10) + 1,
             )
-    
+
     yield
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DotORM Benchmarks
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestDotORMSelect:
     """DotORM SELECT benchmarks."""
@@ -89,7 +95,9 @@ class TestDotORMSelect:
         )
 
     @pytest.mark.benchmark(group="select-with-relation")
-    async def test_select_1000_with_m2o(self, dotorm_pool, seeded_database, benchmark):
+    async def test_select_1000_with_m2o(
+        self, dotorm_pool, seeded_database, benchmark
+    ):
         """Select 1000 records WITH Many2One relation (optimized)."""
         from dotorm import DotModel, Integer, Char, Boolean, Many2one
         from dotorm.components import POSTGRES
@@ -122,7 +130,11 @@ class TestDotORMSelect:
             )
             # Access relation to ensure it's loaded
             for user in users:
-                _ = user.role_id.name if hasattr(user.role_id, "name") else None
+                _ = (
+                    user.role_id.name
+                    if hasattr(user.role_id, "name")
+                    else None
+                )
             return users
 
         benchmark.pedantic(
@@ -132,7 +144,9 @@ class TestDotORMSelect:
         )
 
     @pytest.mark.benchmark(group="select-with-filter")
-    async def test_select_filtered(self, dotorm_pool, seeded_database, benchmark):
+    async def test_select_filtered(
+        self, dotorm_pool, seeded_database, benchmark
+    ):
         """Select with complex filter."""
         from dotorm import DotModel, Integer, Char, Boolean
         from dotorm.components import POSTGRES
@@ -174,22 +188,24 @@ class TestDotORMSelect:
 # Raw asyncpg Benchmarks (baseline)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestRawAsyncpgSelect:
     """Raw asyncpg SELECT benchmarks (baseline)."""
 
     @pytest.mark.benchmark(group="select-simple")
-    async def test_select_1000_raw(self, dotorm_pool, seeded_database, benchmark):
+    async def test_select_1000_raw(
+        self, dotorm_pool, seeded_database, benchmark
+    ):
         """Select 1000 records with raw asyncpg."""
+
         async def run():
             async with dotorm_pool.acquire() as conn:
-                rows = await conn.fetch(
-                    """
+                rows = await conn.fetch("""
                     SELECT id, name, email, active
                     FROM benchmark_users
                     ORDER BY id DESC
                     LIMIT 1000
-                    """
-                )
+                    """)
                 return [dict(row) for row in rows]
 
         benchmark.pedantic(
@@ -203,18 +219,17 @@ class TestRawAsyncpgSelect:
         self, dotorm_pool, seeded_database, benchmark
     ):
         """Select 1000 records with JOIN (raw asyncpg)."""
+
         async def run():
             async with dotorm_pool.acquire() as conn:
-                rows = await conn.fetch(
-                    """
+                rows = await conn.fetch("""
                     SELECT u.id, u.name, u.email, u.active,
                            r.id as role_id, r.name as role_name
                     FROM benchmark_users u
                     LEFT JOIN benchmark_roles r ON u.role_id = r.id
                     ORDER BY u.id DESC
                     LIMIT 1000
-                    """
-                )
+                    """)
                 return [dict(row) for row in rows]
 
         benchmark.pedantic(
@@ -228,19 +243,23 @@ class TestRawAsyncpgSelect:
 # N+1 Problem Demonstration
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestN1Problem:
     """Demonstrates the N+1 problem and DotORM's solution."""
 
     @pytest.mark.benchmark(group="n1-problem")
-    async def test_n1_naive_approach(self, dotorm_pool, seeded_database, benchmark):
+    async def test_n1_naive_approach(
+        self, dotorm_pool, seeded_database, benchmark
+    ):
         """N+1 problem: Naive approach (1001 queries)."""
+
         async def run():
             async with dotorm_pool.acquire() as conn:
                 # Query 1: Get all users
                 users = await conn.fetch(
                     "SELECT id, name, role_id FROM benchmark_users LIMIT 100"
                 )
-                
+
                 results = []
                 # Queries 2-101: Get role for each user (N+1!)
                 for user in users:
@@ -248,11 +267,13 @@ class TestN1Problem:
                         "SELECT id, name FROM benchmark_roles WHERE id = $1",
                         user["role_id"],
                     )
-                    results.append({
-                        "user": dict(user),
-                        "role": dict(role) if role else None,
-                    })
-                
+                    results.append(
+                        {
+                            "user": dict(user),
+                            "role": dict(role) if role else None,
+                        }
+                    )
+
                 return results
 
         benchmark.pedantic(
@@ -262,33 +283,38 @@ class TestN1Problem:
         )
 
     @pytest.mark.benchmark(group="n1-problem")
-    async def test_n1_optimized_approach(self, dotorm_pool, seeded_database, benchmark):
+    async def test_n1_optimized_approach(
+        self, dotorm_pool, seeded_database, benchmark
+    ):
         """N+1 solved: Batch approach (2 queries)."""
+
         async def run():
             async with dotorm_pool.acquire() as conn:
                 # Query 1: Get all users
                 users = await conn.fetch(
                     "SELECT id, name, role_id FROM benchmark_users LIMIT 100"
                 )
-                
+
                 # Collect unique role IDs
-                role_ids = list(set(u["role_id"] for u in users if u["role_id"]))
-                
+                role_ids = list({u["role_id"] for u in users if u["role_id"]})
+
                 # Query 2: Get all needed roles in one query
                 roles = await conn.fetch(
                     "SELECT id, name FROM benchmark_roles WHERE id = ANY($1)",
                     role_ids,
                 )
                 roles_map = {r["id"]: dict(r) for r in roles}
-                
+
                 # Map roles to users in memory
                 results = []
                 for user in users:
-                    results.append({
-                        "user": dict(user),
-                        "role": roles_map.get(user["role_id"]),
-                    })
-                
+                    results.append(
+                        {
+                            "user": dict(user),
+                            "role": roles_map.get(user["role_id"]),
+                        }
+                    )
+
                 return results
 
         benchmark.pedantic(
@@ -298,9 +324,11 @@ class TestN1Problem:
         )
 
     @pytest.mark.benchmark(group="n1-problem")
-    async def test_n1_dotorm_automatic(self, dotorm_pool, seeded_database, benchmark):
+    async def test_n1_dotorm_automatic(
+        self, dotorm_pool, seeded_database, benchmark
+    ):
         """N+1 solved: DotORM automatic optimization (2 queries)."""
-        from dotorm import DotModel, Integer, Char, Boolean, Many2one
+        from dotorm import DotModel, Integer, Char, Many2one
         from dotorm.components import POSTGRES
 
         class BenchmarkRole(DotModel):
@@ -328,7 +356,11 @@ class TestN1Problem:
             )
             # Access all roles - no additional queries!
             for user in users:
-                _ = user.role_id.name if hasattr(user.role_id, "name") else None
+                _ = (
+                    user.role_id.name
+                    if hasattr(user.role_id, "name")
+                    else None
+                )
             return users
 
         benchmark.pedantic(

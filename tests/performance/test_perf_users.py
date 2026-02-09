@@ -5,7 +5,6 @@ CRUD benchmarks through ORM layer on 10k user dataset.
 """
 
 import pytest
-import pytest_asyncio
 
 from tests.performance.conftest import perf_timer, chunked_create_bulk
 
@@ -84,7 +83,9 @@ class TestUserPerformance:
         from backend.base.crm.users.models.users import User
 
         n = 10_000
-        async with perf_timer(perf_report, MODULE, f"search — limit {n} (full)", n):
+        async with perf_timer(
+            perf_report, MODULE, f"search — limit {n} (full)", n
+        ):
             result = await User.search(fields=["id", "name", "login"], limit=n)
         assert len(result) == n
 
@@ -92,7 +93,9 @@ class TestUserPerformance:
         """Search with text filter: login ilike."""
         from backend.base.crm.users.models.users import User
 
-        async with perf_timer(perf_report, MODULE, "search — filter login ilike", 1):
+        async with perf_timer(
+            perf_report, MODULE, "search — filter login ilike", 1
+        ):
             result = await User.search(
                 fields=["id", "name", "login"],
                 filter=[("login", "ilike", "%user_500%")],
@@ -100,7 +103,9 @@ class TestUserPerformance:
             )
         assert len(result) >= 1
 
-    async def test_search_filter_is_admin(self, db_pool, seed_users, perf_report):
+    async def test_search_filter_is_admin(
+        self, db_pool, seed_users, perf_report
+    ):
         """Search with boolean filter."""
         from backend.base.crm.users.models.users import User
 
@@ -118,7 +123,9 @@ class TestUserPerformance:
         """Count all users."""
         from backend.base.crm.users.models.users import User
 
-        async with perf_timer(perf_report, MODULE, "search_count — all", 10_000):
+        async with perf_timer(
+            perf_report, MODULE, "search_count — all", 10_000
+        ):
             count = await User.search_count()
         assert count >= 10_000
 

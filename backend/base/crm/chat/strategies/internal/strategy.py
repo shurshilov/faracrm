@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING, Tuple, Any
 import logging
 
 from backend.base.crm.chat.strategies.strategy import ChatStrategyBase
-from backend.base.crm.chat.strategies.internal.adapter import InternalMessageAdapter
+from backend.base.crm.chat.strategies.internal.adapter import (
+    InternalMessageAdapter,
+)
 
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat_connector import ChatConnector

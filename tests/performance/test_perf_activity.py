@@ -20,7 +20,7 @@ class TestActivityPerformance:
     async def test_create_single(self, db_pool, seed_activities, perf_report):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.crm.activity.models.activity_type import ActivityType
-        from datetime import date, datetime, timezone
+        from datetime import date
 
         types = await ActivityType.search(fields=["id"], limit=1)
         type_id = types[0].id
@@ -84,7 +84,9 @@ class TestActivityPerformance:
             )
         assert len(result) >= 1
 
-    async def test_search_by_res_model(self, db_pool, seed_activities, perf_report):
+    async def test_search_by_res_model(
+        self, db_pool, seed_activities, perf_report
+    ):
         """Filter by polymorphic field res_model."""
         from backend.base.crm.activity.models.activity import Activity
 

@@ -14,8 +14,9 @@ repos:
           - --in-place
           - --remove-all-unused-imports
           - --remove-duplicate-keys
-          - --remove-unused-variables
+          # - --remove-unused-variables
         exclude: /__init__\.py$
+        exclude: project_setup.py$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -25,8 +26,8 @@ repos:
         name: Check files conflict case-insensitive FS like MacOS HFS+ or Windows FAT.
       - id: check-ast
         name: Simply check whether files parse as valid python
-      - id: check-docstring-first
-        name: Checks for a common error of placing code before the docstring.
+      # - id: check-docstring-first
+        # name: Checks for a common error of placing code before the docstring.
       # - id: check-json
       - id: debug-statements
       - id: requirements-txt-fixer
@@ -37,11 +38,11 @@ repos:
         files: \.py$
       - id: trailing-whitespace
         files: \.py$
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.2
-    hooks:
-      - id: pyupgrade
-        args: ["--keep-percent-format"]
+  # - repo: https://github.com/asottile/pyupgrade
+  #   rev: v3.21.2
+  #   hooks:
+  #     - id: pyupgrade
+  #       args: ["--keep-percent-format"]
   - repo: https://github.com/psf/black
     rev: 26.1.0
     hooks:
@@ -51,7 +52,7 @@ repos:
         language: python
         types: [python]
         # default 88
-        # args: ["--line-length=100"]
+        args: ["--line-length=79"]
         files: \.py$
   # - repo: https://github.com/pycqa/isort
   #   rev: 5.12.0

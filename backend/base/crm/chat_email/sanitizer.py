@@ -15,11 +15,39 @@ logger = logging.getLogger(__name__)
 
 # Whitelist тегов — зеркалит фронтенд DOMPurify config
 ALLOWED_TAGS = {
-    "p", "br", "b", "i", "u", "strong", "em", "a", "img",
-    "div", "span", "blockquote", "pre", "code",
-    "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6",
-    "table", "thead", "tbody", "tr", "td", "th",
-    "hr", "sub", "sup", "small",
+    "p",
+    "br",
+    "b",
+    "i",
+    "u",
+    "strong",
+    "em",
+    "a",
+    "img",
+    "div",
+    "span",
+    "blockquote",
+    "pre",
+    "code",
+    "ul",
+    "ol",
+    "li",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "td",
+    "th",
+    "hr",
+    "sub",
+    "sup",
+    "small",
 }
 
 # Whitelist атрибутов по тегам
@@ -62,7 +90,9 @@ class _Sanitizer(HTMLParser):
             return
 
         # Фильтруем атрибуты
-        allowed = ALLOWED_ATTRIBUTES.get(tag, set()) | ALLOWED_ATTRIBUTES.get("*", set())
+        allowed = ALLOWED_ATTRIBUTES.get(tag, set()) | ALLOWED_ATTRIBUTES.get(
+            "*", set()
+        )
         safe_attrs = []
         for name, value in attrs:
             name = name.lower()
@@ -90,7 +120,9 @@ class _Sanitizer(HTMLParser):
 
     def handle_data(self, data: str):
         self.result.append(
-            data.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            data.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
         )
 
     def handle_entityref(self, name: str):

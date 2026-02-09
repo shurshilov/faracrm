@@ -19,9 +19,39 @@ class SaleStage(DotModel):
 
 
 INITIAL_SALE_STAGES = [
-    {"name": "Черновик", "sequence": 10, "active": True, "fold": False, "color": "#6c757d"},
-    {"name": "Отправлено", "sequence": 20, "active": True, "fold": False, "color": "#17a2b8"},
-    {"name": "Подтверждено", "sequence": 30, "active": True, "fold": False, "color": "#28a745"},
-    {"name": "Выполнено", "sequence": 40, "active": True, "fold": False, "color": "#007bff"},
-    {"name": "Отменено", "sequence": 50, "active": True, "fold": True, "color": "#dc3545"},
+    {
+        "name": "Черновик",
+        "sequence": 10,
+        "active": True,
+        "fold": False,
+        "color": "#6c757d",
+    },
+    {
+        "name": "Отправлено",
+        "sequence": 20,
+        "active": True,
+        "fold": False,
+        "color": "#17a2b8",
+    },
+    {
+        "name": "Подтверждено",
+        "sequence": 30,
+        "active": True,
+        "fold": False,
+        "color": "#28a745",
+    },
+    {
+        "name": "Выполнено",
+        "sequence": 40,
+        "active": True,
+        "fold": False,
+        "color": "#007bff",
+    },
+    {
+        "name": "Отменено",
+        "sequence": 50,
+        "active": True,
+        "fold": True,
+        "color": "#dc3545",
+    },
 ]

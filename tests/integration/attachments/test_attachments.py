@@ -10,7 +10,6 @@ Run: pytest tests/integration/attachments/test_attachments.py -v -m integration
 """
 
 import pytest
-from requests import session
 
 pytestmark = pytest.mark.integration
 

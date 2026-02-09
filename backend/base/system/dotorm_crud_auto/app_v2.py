@@ -92,4 +92,3 @@ class DotormCrudAutoService(Service):
 
     async def shutdown(self, app) -> None:
         """Отключение сервиса."""
-        pass

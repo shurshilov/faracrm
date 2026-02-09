@@ -34,19 +34,23 @@ class TestGetMessagesAPI:
 
         chat_id = await Chat.create(Chat(name="Test Chat"))
 
-        await ChatMember.create(ChatMember(
-            chat_id=chat_id,
-            user_id=user_id,
-            is_active=True,
-        ))
+        await ChatMember.create(
+            ChatMember(
+                chat_id=chat_id,
+                user_id=user_id,
+                is_active=True,
+            )
+        )
 
         msg_ids = []
         for i in range(5):
-            mid = await ChatMessage.create(ChatMessage(
-                chat_id=chat_id,
-                body=f"Message {i}",
-                author_user_id=user_id,
-            ))
+            mid = await ChatMessage.create(
+                ChatMessage(
+                    chat_id=chat_id,
+                    body=f"Message {i}",
+                    author_user_id=user_id,
+                )
+            )
             msg_ids.append(mid)
 
         return client, chat_id, msg_ids
@@ -109,16 +113,21 @@ class TestPostMessageAPI:
         from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Send Chat"))
-        await ChatMember.create(ChatMember(
-            chat_id=chat_id,
-            user_id=user_id,
-            is_active=True,
-            can_write=True,
-        ))
+        await ChatMember.create(
+            ChatMember(
+                chat_id=chat_id,
+                user_id=user_id,
+                is_active=True,
+                can_write=True,
+            )
+        )
 
         return client, chat_id, user_id
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
     async def test_send_message(self, mock_ws, authenticated_client):
         client, chat_id, user_id = await self._setup_chat(authenticated_client)
 
@@ -132,8 +141,13 @@ class TestPostMessageAPI:
         assert data["data"]["body"] == "Hello, World!"
         assert "id" in data["data"]
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
-    async def test_send_empty_message_fails(self, mock_ws, authenticated_client):
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
+    async def test_send_empty_message_fails(
+        self, mock_ws, authenticated_client
+    ):
         client, chat_id, user_id = await self._setup_chat(authenticated_client)
 
         response = await client.post(
@@ -156,19 +170,32 @@ class TestEditMessageAPI:
         from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Edit Chat"))
-        await ChatMember.create(ChatMember(
-            chat_id=chat_id, user_id=user_id, is_active=True,
-        ))
+        await ChatMember.create(
+            ChatMember(
+                chat_id=chat_id,
+                user_id=user_id,
+                is_active=True,
+            )
+        )
 
-        msg_id = await ChatMessage.create(ChatMessage(
-            chat_id=chat_id, body="Original", author_user_id=user_id,
-        ))
+        msg_id = await ChatMessage.create(
+            ChatMessage(
+                chat_id=chat_id,
+                body="Original",
+                author_user_id=user_id,
+            )
+        )
 
         return client, chat_id, msg_id, user_id
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
     async def test_edit_own_message(self, mock_ws, authenticated_client):
-        client, chat_id, msg_id, user_id = await self._setup(authenticated_client)
+        client, chat_id, msg_id, user_id = await self._setup(
+            authenticated_client
+        )
 
         response = await client.patch(
             f"/chats/{chat_id}/messages/{msg_id}",
@@ -179,6 +206,7 @@ class TestEditMessageAPI:
         assert response.json()["success"] is True
 
         from backend.base.crm.chat.models.chat_message import ChatMessage
+
         msg = await ChatMessage.get(msg_id)
         assert msg.body == "Edited text"
         assert msg.is_edited is True
@@ -195,17 +223,28 @@ class TestDeleteMessageAPI:
         from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Delete Chat"))
-        await ChatMember.create(ChatMember(
-            chat_id=chat_id, user_id=user_id, is_active=True,
-        ))
+        await ChatMember.create(
+            ChatMember(
+                chat_id=chat_id,
+                user_id=user_id,
+                is_active=True,
+            )
+        )
 
-        msg_id = await ChatMessage.create(ChatMessage(
-            chat_id=chat_id, body="Delete me", author_user_id=user_id,
-        ))
+        msg_id = await ChatMessage.create(
+            ChatMessage(
+                chat_id=chat_id,
+                body="Delete me",
+                author_user_id=user_id,
+            )
+        )
 
         return client, chat_id, msg_id
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
     async def test_delete_own_message(self, mock_ws, authenticated_client):
         client, chat_id, msg_id = await self._setup(authenticated_client)
 
@@ -215,6 +254,7 @@ class TestDeleteMessageAPI:
         assert response.json()["success"] is True
 
         from backend.base.crm.chat.models.chat_message import ChatMessage
+
         msg = await ChatMessage.get(msg_id)
         assert msg.is_deleted is True
 
@@ -230,18 +270,29 @@ class TestPinMessageAPI:
         from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Pin Chat"))
-        await ChatMember.create(ChatMember(
-            chat_id=chat_id, user_id=user_id, is_active=True,
-            can_pin=True,
-        ))
+        await ChatMember.create(
+            ChatMember(
+                chat_id=chat_id,
+                user_id=user_id,
+                is_active=True,
+                can_pin=True,
+            )
+        )
 
-        msg_id = await ChatMessage.create(ChatMessage(
-            chat_id=chat_id, body="Pin this", author_user_id=user_id,
-        ))
+        msg_id = await ChatMessage.create(
+            ChatMessage(
+                chat_id=chat_id,
+                body="Pin this",
+                author_user_id=user_id,
+            )
+        )
 
         return client, chat_id, msg_id
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
     async def test_pin_message(self, mock_ws, authenticated_client):
         client, chat_id, msg_id = await self._setup(authenticated_client)
 
@@ -253,7 +304,10 @@ class TestPinMessageAPI:
         assert response.status_code == 200
         assert response.json()["pinned"] is True
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
     async def test_unpin_message(self, mock_ws, authenticated_client):
         client, chat_id, msg_id = await self._setup(authenticated_client)
 
@@ -276,7 +330,10 @@ class TestPinMessageAPI:
 class TestMarkAsReadAPI:
     """Tests for POST /chats/{chat_id}/read."""
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
     async def test_mark_as_read(self, mock_ws, authenticated_client):
         client, user_id, token = authenticated_client
 
@@ -287,21 +344,36 @@ class TestMarkAsReadAPI:
         from backend.base.crm.languages.models.language import Language
 
         chat_id = await Chat.create(Chat(name="Read Chat"))
-        await ChatMember.create(ChatMember(
-            chat_id=chat_id, user_id=user_id, is_active=True,
-        ))
+        await ChatMember.create(
+            ChatMember(
+                chat_id=chat_id,
+                user_id=user_id,
+                is_active=True,
+            )
+        )
 
         # Create message from another user
-        lang_id = await Language.create(Language(code="ru", name="Russian", active=True))
-        other_id = await User.create(User(
-            name="Other", login="other_read",
-            password_hash="h", password_salt="s", lang_id=lang_id,
-        ))
+        lang_id = await Language.create(
+            Language(code="ru", name="Russian", active=True)
+        )
+        other_id = await User.create(
+            User(
+                name="Other",
+                login="other_read",
+                password_hash="h",
+                password_salt="s",
+                lang_id=lang_id,
+            )
+        )
 
-        await ChatMessage.create(ChatMessage(
-            chat_id=chat_id, body="Unread msg", author_user_id=other_id,
-            is_read=False,
-        ))
+        await ChatMessage.create(
+            ChatMessage(
+                chat_id=chat_id,
+                body="Unread msg",
+                author_user_id=other_id,
+                is_read=False,
+            )
+        )
 
         response = await client.post(f"/chats/{chat_id}/read")
 
@@ -320,16 +392,27 @@ class TestReactionsAPI:
         from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Reactions Chat"))
-        await ChatMember.create(ChatMember(
-            chat_id=chat_id, user_id=user_id, is_active=True,
-        ))
-        msg_id = await ChatMessage.create(ChatMessage(
-            chat_id=chat_id, body="React to this", author_user_id=user_id,
-        ))
+        await ChatMember.create(
+            ChatMember(
+                chat_id=chat_id,
+                user_id=user_id,
+                is_active=True,
+            )
+        )
+        msg_id = await ChatMessage.create(
+            ChatMessage(
+                chat_id=chat_id,
+                body="React to this",
+                author_user_id=user_id,
+            )
+        )
 
         return client, chat_id, msg_id
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
     async def test_add_reaction(self, mock_ws, authenticated_client):
         client, chat_id, msg_id = await self._setup(authenticated_client)
 
@@ -342,7 +425,10 @@ class TestReactionsAPI:
         data = response.json()
         assert data["action"] == "added"
 
-    @patch("backend.base.crm.chat.websocket.chat_manager.send_to_chat", new_callable=AsyncMock)
+    @patch(
+        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
+        new_callable=AsyncMock,
+    )
     async def test_toggle_reaction(self, mock_ws, authenticated_client):
         """Adding same reaction twice should remove it (toggle)."""
         client, chat_id, msg_id = await self._setup(authenticated_client)

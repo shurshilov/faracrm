@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (c) 2024-2026 FARA CRM Authors
 # Licensed under the FARA CRM License v1.0
 
@@ -12,7 +11,6 @@
 import os
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, Response
-
 
 router_public = APIRouter(prefix="/static/app-icons", tags=["static"])
 
@@ -35,19 +33,19 @@ def get_registered_icons() -> list[str]:
 async def get_app_icon(app_code: str) -> Response:
     """
     Получить иконку приложения.
-    
+
     Возвращает SVG иконку для указанного приложения.
     Если иконка не найдена — возвращает 404 (фронт покажет fallback).
     """
     icon_path = _app_icons.get(app_code)
-    
+
     if icon_path and os.path.exists(icon_path):
         return FileResponse(
             icon_path,
             media_type="image/svg+xml",
             headers={"Cache-Control": "public, max-age=86400"},
         )
-    
+
     raise HTTPException(status_code=404, detail="Icon not found")
 
 

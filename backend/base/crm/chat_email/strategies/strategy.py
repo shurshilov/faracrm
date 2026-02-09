@@ -18,7 +18,6 @@ import aioimaplib
 from backend.base.crm.chat.strategies.strategy import ChatStrategyBase
 from .adapter import EmailMessageAdapter
 
-
 if TYPE_CHECKING:
     from backend.project_setup import ChatConnector
     from backend.base.crm.chat.models.chat_external_account import (

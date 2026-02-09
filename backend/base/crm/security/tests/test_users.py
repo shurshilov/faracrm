@@ -1,7 +1,6 @@
 import unittest
 from fastapi.testclient import TestClient
 from backend.main import app
-import httpx
 
 
 class TestUsers(unittest.IsolatedAsyncioTestCase):
@@ -192,7 +191,9 @@ class TestUsers(unittest.IsolatedAsyncioTestCase):
         data = {
             "role_ids": {
                 "deleted": [],
-                "created": [{"model_id": self.model_id, "name": "auto_test_created"}],
+                "created": [
+                    {"model_id": self.model_id, "name": "auto_test_created"}
+                ],
             },
             "name": "auto_test_created",
             "email": "auto_test_created",

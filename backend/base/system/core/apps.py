@@ -10,7 +10,8 @@ class AppsCore:
         apps: list[Tuple[str, App]] = [
             (app_name, getattr(self, app_name))
             for app_name in dir(self)
-            if not app_name.startswith("_") and not callable(getattr(self, app_name))
+            if not app_name.startswith("_")
+            and not callable(getattr(self, app_name))
         ]
         apps_sorted = sorted(apps, key=lambda x: x[1].info.get("sequence", 10))
         apps_names_sorted = [app_tuple[0] for app_tuple in apps_sorted]

@@ -7,7 +7,6 @@ Run: pytest tests/unit/test_utils.py -v -m unit
 """
 
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
 
 pytestmark = pytest.mark.unit
 

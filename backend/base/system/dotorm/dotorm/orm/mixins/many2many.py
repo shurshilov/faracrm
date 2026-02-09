@@ -118,7 +118,7 @@ class OrmMany2manyMixin(_Base):
         fields_nested: dict[str, list[str]] | None = None,
     ):
         """Load relations for a list of records (batch)."""
-        dialect = cls._dialect
+        cls._dialect
 
         request_list = cls._builder.build_search_relation(
             fields_relation, records, fields_nested

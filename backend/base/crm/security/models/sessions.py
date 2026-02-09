@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
@@ -79,7 +79,7 @@ class Session(DotModel):
 
         # Прямой SQL для получения сессии с данными пользователя
         stmt = """
-            SELECT 
+            SELECT
                 s.id,
                 s.ttl,
                 s.create_datetime,

@@ -3,7 +3,6 @@
 """
 
 import datetime
-from typing import TYPE_CHECKING
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,

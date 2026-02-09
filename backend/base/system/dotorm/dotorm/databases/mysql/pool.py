@@ -10,7 +10,6 @@ except ImportError:
     ...
 from ..abstract.types import ContainerSettings, MysqlPoolSettings
 
-
 log = logging.getLogger("dotorm")
 
 

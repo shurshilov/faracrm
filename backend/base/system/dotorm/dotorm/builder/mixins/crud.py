@@ -12,7 +12,6 @@ from ..helpers import (
     build_sql_update_from_schema,
 )
 
-
 # Allowed order values (uppercase for comparison)
 _ALLOWED_ORDER = frozenset({"ASC", "DESC"})
 

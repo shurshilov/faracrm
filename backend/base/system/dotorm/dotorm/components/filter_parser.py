@@ -9,7 +9,6 @@ from typing import Any, Literal, Union
 
 from .dialect import Dialect
 
-
 # Type definitions
 SQLOperator = Literal[
     "=",

@@ -13,7 +13,6 @@ from backend.base.crm.company.models.company import Company
 from backend.base.system.core.extensions import extend
 from backend.base.system.core.enviroment import env
 
-
 # Поддержка IDE - видны все атрибуты базового класса
 if TYPE_CHECKING:
     _Base = Company

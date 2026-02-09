@@ -113,12 +113,17 @@ class TestLeadPerformance:
             )
         assert len(result) >= 1
 
-    async def test_search_filter_combined(self, db_pool, seed_leads, perf_report):
+    async def test_search_filter_combined(
+        self, db_pool, seed_leads, perf_report
+    ):
         """Combined filter: type + active + user_id."""
         from backend.base.crm.leads.models.leads import Lead
 
         async with perf_timer(
-            perf_report, MODULE, "search — multi-filter (type+active+user)", 200
+            perf_report,
+            MODULE,
+            "search — multi-filter (type+active+user)",
+            200,
         ):
             result = await Lead.search(
                 fields=["id", "name", "type", "email"],
@@ -130,7 +135,9 @@ class TestLeadPerformance:
                 limit=200,
             )
 
-    async def test_search_filter_email_ilike(self, db_pool, seed_leads, perf_report):
+    async def test_search_filter_email_ilike(
+        self, db_pool, seed_leads, perf_report
+    ):
         """Text search: email ilike on 100k rows."""
         from backend.base.crm.leads.models.leads import Lead
 

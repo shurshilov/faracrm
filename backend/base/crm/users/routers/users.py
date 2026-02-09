@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import secrets
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 

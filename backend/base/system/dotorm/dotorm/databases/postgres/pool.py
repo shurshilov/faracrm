@@ -13,7 +13,6 @@ from .transaction import ContainerTransaction
 from ..abstract.types import ContainerSettings, PostgresPoolSettings
 from .session import NoTransactionNoPoolSession
 
-
 log = logging.getLogger("dotorm")
 
 

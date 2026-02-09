@@ -3,7 +3,6 @@ from pydantic import AwareDatetime, BaseModel
 
 from backend.base.system.schemas.base_schema import Id
 
-
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
 
@@ -31,6 +30,7 @@ class ChangePasswordInput(BaseModel, extra="forbid"):
 
 class CopyUserInput(BaseModel, extra="forbid"):
     """Входные данные для копирования пользователя."""
+
     source_user_id: Id
     name: str
     login: str
@@ -44,6 +44,7 @@ class CopyUserInput(BaseModel, extra="forbid"):
 
 class CopyUserOutput(BaseModel, extra="forbid"):
     """Результат копирования пользователя."""
+
     id: int
     name: str
     login: str

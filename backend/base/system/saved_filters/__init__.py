@@ -3,6 +3,7 @@
 
 Позволяет пользователям сохранять и повторно использовать фильтры поиска.
 """
+
 from .models import SavedFilter
 
 __all__ = ["SavedFilter"]

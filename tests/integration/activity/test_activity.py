@@ -156,20 +156,29 @@ class TestActivityCRUD:
 
         await Activity.create(
             Activity(
-                res_model="lead", res_id=10,
-                activity_type_id=at_id, date_deadline=dl, user_id=user_id,
+                res_model="lead",
+                res_id=10,
+                activity_type_id=at_id,
+                date_deadline=dl,
+                user_id=user_id,
             )
         )
         await Activity.create(
             Activity(
-                res_model="task", res_id=20,
-                activity_type_id=at_id, date_deadline=dl, user_id=user_id,
+                res_model="task",
+                res_id=20,
+                activity_type_id=at_id,
+                date_deadline=dl,
+                user_id=user_id,
             )
         )
         await Activity.create(
             Activity(
-                res_model="partner", res_id=30,
-                activity_type_id=at_id, date_deadline=dl, user_id=user_id,
+                res_model="partner",
+                res_id=30,
+                activity_type_id=at_id,
+                date_deadline=dl,
+                user_id=user_id,
             )
         )
 
@@ -196,24 +205,48 @@ class TestActivityCRUD:
             Language(code="en", name="English", active=True)
         )
         u1 = await User.create(
-            User(name="A", login="a", password_hash="h", password_salt="s", lang_id=lang_id)
+            User(
+                name="A",
+                login="a",
+                password_hash="h",
+                password_salt="s",
+                lang_id=lang_id,
+            )
         )
         u2 = await User.create(
-            User(name="B", login="b", password_hash="h", password_salt="s", lang_id=lang_id)
+            User(
+                name="B",
+                login="b",
+                password_hash="h",
+                password_salt="s",
+                lang_id=lang_id,
+            )
         )
         dl = date.today() + timedelta(days=1)
 
         for i in range(3):
             await Activity.create(
-                Activity(res_model="lead", res_id=i, activity_type_id=at_id,
-                         date_deadline=dl, user_id=u1)
+                Activity(
+                    res_model="lead",
+                    res_id=i,
+                    activity_type_id=at_id,
+                    date_deadline=dl,
+                    user_id=u1,
+                )
             )
         await Activity.create(
-            Activity(res_model="lead", res_id=99, activity_type_id=at_id,
-                     date_deadline=dl, user_id=u2)
+            Activity(
+                res_model="lead",
+                res_id=99,
+                activity_type_id=at_id,
+                date_deadline=dl,
+                user_id=u2,
+            )
         )
 
-        u1_acts = await Activity.search(fields=["id"], filter=[("user_id", "=", u1)])
+        u1_acts = await Activity.search(
+            fields=["id"], filter=[("user_id", "=", u1)]
+        )
         assert len(u1_acts) == 3
 
     async def test_state_transition_to_done(self):
@@ -223,8 +256,12 @@ class TestActivityCRUD:
 
         aid = await Activity.create(
             Activity(
-                res_model="partner", res_id=5, activity_type_id=at_id,
-                date_deadline=date.today(), user_id=user_id, state="planned",
+                res_model="partner",
+                res_id=5,
+                activity_type_id=at_id,
+                date_deadline=date.today(),
+                user_id=user_id,
+                state="planned",
             )
         )
         a = await Activity.get(aid)
@@ -243,8 +280,12 @@ class TestActivityCRUD:
 
         aid = await Activity.create(
             Activity(
-                res_model="lead", res_id=1, activity_type_id=at_id,
-                date_deadline=date.today(), user_id=user_id, state="planned",
+                res_model="lead",
+                res_id=1,
+                activity_type_id=at_id,
+                date_deadline=date.today(),
+                user_id=user_id,
+                state="planned",
             )
         )
         a = await Activity.get(aid)
@@ -261,25 +302,37 @@ class TestActivityCRUD:
         # Overdue
         await Activity.create(
             Activity(
-                res_model="lead", res_id=1, activity_type_id=at_id,
+                res_model="lead",
+                res_id=1,
+                activity_type_id=at_id,
                 date_deadline=date.today() - timedelta(days=5),
-                user_id=user_id, state="overdue", done=False,
+                user_id=user_id,
+                state="overdue",
+                done=False,
             )
         )
         # Future (not overdue)
         await Activity.create(
             Activity(
-                res_model="lead", res_id=2, activity_type_id=at_id,
+                res_model="lead",
+                res_id=2,
+                activity_type_id=at_id,
                 date_deadline=date.today() + timedelta(days=5),
-                user_id=user_id, state="planned", done=False,
+                user_id=user_id,
+                state="planned",
+                done=False,
             )
         )
         # Done (not overdue)
         await Activity.create(
             Activity(
-                res_model="lead", res_id=3, activity_type_id=at_id,
+                res_model="lead",
+                res_id=3,
+                activity_type_id=at_id,
                 date_deadline=date.today() - timedelta(days=1),
-                user_id=user_id, state="done", done=True,
+                user_id=user_id,
+                state="done",
+                done=True,
             )
         )
 
@@ -296,8 +349,11 @@ class TestActivityCRUD:
 
         aid = await Activity.create(
             Activity(
-                res_model="lead", res_id=1, activity_type_id=at_id,
-                date_deadline=date.today(), user_id=user_id,
+                res_model="lead",
+                res_id=1,
+                activity_type_id=at_id,
+                date_deadline=date.today(),
+                user_id=user_id,
             )
         )
         a = await Activity.get(aid)
@@ -311,8 +367,11 @@ class TestActivityCRUD:
 
         aid = await Activity.create(
             Activity(
-                res_model="lead", res_id=1, activity_type_id=at_id,
-                date_deadline=date.today(), user_id=user_id,
+                res_model="lead",
+                res_id=1,
+                activity_type_id=at_id,
+                date_deadline=date.today(),
+                user_id=user_id,
                 notification_sent=False,
             )
         )
@@ -333,17 +392,27 @@ class TestActivityCRUD:
         # Needs notification
         await Activity.create(
             Activity(
-                res_model="lead", res_id=1, activity_type_id=at_id,
-                date_deadline=date.today(), user_id=user_id,
-                state="today", done=False, notification_sent=False,
+                res_model="lead",
+                res_id=1,
+                activity_type_id=at_id,
+                date_deadline=date.today(),
+                user_id=user_id,
+                state="today",
+                done=False,
+                notification_sent=False,
             )
         )
         # Already notified
         await Activity.create(
             Activity(
-                res_model="lead", res_id=2, activity_type_id=at_id,
-                date_deadline=date.today(), user_id=user_id,
-                state="today", done=False, notification_sent=True,
+                res_model="lead",
+                res_id=2,
+                activity_type_id=at_id,
+                date_deadline=date.today(),
+                user_id=user_id,
+                state="today",
+                done=False,
+                notification_sent=True,
             )
         )
 

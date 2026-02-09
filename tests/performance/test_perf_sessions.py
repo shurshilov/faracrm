@@ -70,7 +70,9 @@ class TestSessionPerformance:
         async with perf_timer(perf_report, MODULE, "get — single by id", 1):
             await Session.get(1)
 
-    async def test_search_by_user(self, db_pool, seed_sessions, seed_users, perf_report):
+    async def test_search_by_user(
+        self, db_pool, seed_sessions, seed_users, perf_report
+    ):
         """Search sessions for a specific user (~100 results in 1M)."""
         from backend.base.crm.security.models.sessions import Session
 
@@ -99,7 +101,9 @@ class TestSessionPerformance:
             )
         assert len(result) == n
 
-    async def test_search_token_exact(self, db_pool, seed_sessions, perf_report):
+    async def test_search_token_exact(
+        self, db_pool, seed_sessions, perf_report
+    ):
         """Lookup session by token (indexed char field) — hot path."""
         from backend.base.crm.security.models.sessions import Session
 
@@ -117,7 +121,9 @@ class TestSessionPerformance:
             )
         assert len(result) == 1
 
-    async def test_session_check_raw_sql(self, db_pool, seed_sessions, perf_report):
+    async def test_session_check_raw_sql(
+        self, db_pool, seed_sessions, perf_report
+    ):
         """session_check (raw SQL JOIN) — the real auth hot path."""
         from backend.base.crm.security.models.sessions import Session
 

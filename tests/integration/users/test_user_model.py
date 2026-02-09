@@ -385,7 +385,6 @@ class TestUserPassword:
 
     async def test_password_hash_generation(self, user_factory):
         """Test password hash generation."""
-        from backend.base.crm.users.models.users import User
 
         user = await user_factory()
 
@@ -398,7 +397,6 @@ class TestUserPassword:
 
     async def test_password_hash_different_salts(self, user_factory):
         """Test that different salts produce different hashes."""
-        from backend.base.crm.users.models.users import User
 
         user = await user_factory()
 
@@ -409,7 +407,6 @@ class TestUserPassword:
 
     async def test_password_hash_different_passwords(self, user_factory):
         """Test that different passwords produce different hashes."""
-        from backend.base.crm.users.models.users import User
 
         user = await user_factory()
 
@@ -521,7 +518,6 @@ class TestUserSession:
 
     async def test_terminate_sessions(self, user_factory, db_pool):
         """Test terminating all user sessions."""
-        from backend.base.crm.users.models.users import User
         from backend.base.crm.security.models.sessions import Session
         from datetime import timedelta
         import secrets
@@ -570,7 +566,6 @@ class TestUserSession:
         self, user_factory, db_pool
     ):
         """Test terminating sessions except current."""
-        from backend.base.crm.users.models.users import User
         from backend.base.crm.security.models.sessions import Session
         from datetime import timedelta
         import secrets

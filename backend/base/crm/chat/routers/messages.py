@@ -230,10 +230,10 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                 recipients_query = """
                     SELECT c.id, c.name as contact_value
                     FROM chat_member cm
-                    JOIN contact c ON c.partner_id = cm.partner_id 
+                    JOIN contact c ON c.partner_id = cm.partner_id
                         AND c.active = true
                         AND c.contact_type_id = %s
-                    WHERE cm.chat_id = %s 
+                    WHERE cm.chat_id = %s
                       AND cm.partner_id IS NOT NULL
                       AND cm.is_active = true
                 """

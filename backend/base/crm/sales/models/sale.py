@@ -1,7 +1,6 @@
 import datetime
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:
     # from backend.base.crm.company.models.company import Company
     from backend.project_setup import Company
@@ -17,7 +16,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Many2one,
     One2many,
-    Selection,
     Text,
 )
 from backend.base.system.schemas.base_schema import Id

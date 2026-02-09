@@ -12,20 +12,21 @@ Run:
 
 import pytest
 import asyncio
-from typing import Any
 
 from .conftest import generate_user_data
-
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DotORM Benchmarks
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestDotORMInsert:
     """DotORM INSERT benchmarks."""
 
     @pytest.mark.benchmark(group="insert-single")
-    async def test_insert_single_100(self, dotorm_pool, clean_tables, benchmark):
+    async def test_insert_single_100(
+        self, dotorm_pool, clean_tables, benchmark
+    ):
         """Insert 100 records one by one."""
         from dotorm import DotModel, Integer, Char, Boolean
         from dotorm.components import POSTGRES
@@ -54,7 +55,9 @@ class TestDotORMInsert:
         )
 
     @pytest.mark.benchmark(group="insert-bulk")
-    async def test_insert_bulk_1000(self, dotorm_pool, clean_tables, benchmark):
+    async def test_insert_bulk_1000(
+        self, dotorm_pool, clean_tables, benchmark
+    ):
         """Bulk insert 1000 records."""
         from dotorm import DotModel, Integer, Char, Boolean
         from dotorm.components import POSTGRES
@@ -82,7 +85,9 @@ class TestDotORMInsert:
         )
 
     @pytest.mark.benchmark(group="insert-bulk-large")
-    async def test_insert_bulk_10000(self, dotorm_pool, clean_tables, benchmark):
+    async def test_insert_bulk_10000(
+        self, dotorm_pool, clean_tables, benchmark
+    ):
         """Bulk insert 10000 records."""
         from dotorm import DotModel, Integer, Char, Boolean
         from dotorm.components import POSTGRES
@@ -114,11 +119,14 @@ class TestDotORMInsert:
 # Raw asyncpg Benchmarks (baseline)
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestRawAsyncpgInsert:
     """Raw asyncpg INSERT benchmarks (baseline)."""
 
     @pytest.mark.benchmark(group="insert-bulk")
-    async def test_insert_bulk_1000_raw(self, dotorm_pool, clean_tables, benchmark):
+    async def test_insert_bulk_1000_raw(
+        self, dotorm_pool, clean_tables, benchmark
+    ):
         """Bulk insert 1000 records with raw asyncpg."""
         data = generate_user_data(1000)
 
@@ -126,7 +134,7 @@ class TestRawAsyncpgInsert:
             async with dotorm_pool.acquire() as conn:
                 # Prepare data as list of tuples
                 values = [(d["name"], d["email"], d["active"]) for d in data]
-                
+
                 await conn.executemany(
                     """
                     INSERT INTO benchmark_users (name, email, active)
@@ -142,7 +150,9 @@ class TestRawAsyncpgInsert:
         )
 
     @pytest.mark.benchmark(group="insert-bulk")
-    async def test_insert_bulk_1000_copy(self, dotorm_pool, clean_tables, benchmark):
+    async def test_insert_bulk_1000_copy(
+        self, dotorm_pool, clean_tables, benchmark
+    ):
         """Bulk insert 1000 records with COPY (fastest)."""
         data = generate_user_data(1000)
 
@@ -150,7 +160,7 @@ class TestRawAsyncpgInsert:
             async with dotorm_pool.acquire() as conn:
                 # COPY is the fastest method for bulk inserts
                 values = [(d["name"], d["email"], d["active"]) for d in data]
-                
+
                 await conn.copy_records_to_table(
                     "benchmark_users",
                     records=values,
@@ -168,6 +178,7 @@ class TestRawAsyncpgInsert:
 # SQLAlchemy Benchmarks
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class TestSQLAlchemyInsert:
     """SQLAlchemy INSERT benchmarks."""
 
@@ -177,7 +188,14 @@ class TestSQLAlchemyInsert:
     ):
         """Bulk insert 1000 records with SQLAlchemy."""
         try:
-            from sqlalchemy import Column, Integer, String, Boolean, Table, MetaData
+            from sqlalchemy import (
+                Column,
+                Integer,
+                String,
+                Boolean,
+                Table,
+                MetaData,
+            )
             from sqlalchemy.dialects.postgresql import insert
         except ImportError:
             pytest.skip("SQLAlchemy not installed")
@@ -208,6 +226,7 @@ class TestSQLAlchemyInsert:
 # ═══════════════════════════════════════════════════════════════════════════
 # Tortoise ORM Benchmarks
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class TestTortoiseInsert:
     """Tortoise ORM INSERT benchmarks."""

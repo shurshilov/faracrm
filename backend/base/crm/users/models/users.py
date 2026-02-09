@@ -1,5 +1,4 @@
 import binascii
-from datetime import datetime, timedelta, timezone
 import hashlib
 import re
 import secrets
@@ -24,10 +23,8 @@ if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
     from backend.base.crm.security.models.roles import Role
     from backend.base.crm.languages.models.language import Language
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
     from backend.base.crm.partners.models.contact import Contact
 from backend.base.crm.security.models.sessions import Session
-
 
 # Зарезервированные ID пользователей
 ADMIN_USER_ID = 1
@@ -310,9 +307,9 @@ class User(DotModel):
                 SELECT role_id
                 FROM user_role_many2many
                 WHERE user_id = $1
-                
+
                 UNION
-                
+
                 SELECT rb.based_role_id
                 FROM role_tree rt
                 JOIN role_based_many2many rb ON rb.role_id = rt.role_id

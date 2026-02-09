@@ -15,8 +15,7 @@ Run tests:
 """
 
 import os
-import asyncio
-from typing import AsyncGenerator, Generator
+from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -102,14 +101,12 @@ async def _drop_database():
     )
     try:
         # Terminate all connections
-        await conn.execute(
-            f"""
+        await conn.execute(f"""
             SELECT pg_terminate_backend(pg_stat_activity.pid)
             FROM pg_stat_activity
             WHERE pg_stat_activity.datname = '{TEST_DB_NAME}'
             AND pid <> pg_backend_pid()
-        """
-        )
+        """)
         await conn.execute(f'DROP DATABASE IF EXISTS "{TEST_DB_NAME}"')
         print(f"\n✓ Dropped test database: {TEST_DB_NAME}")
     finally:

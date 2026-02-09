@@ -59,7 +59,6 @@ class ChatStrategyBase(ABC):
         Returns:
             Access token или None если не удалось получить
         """
-        pass
 
     @abstractmethod
     async def set_webhook(self, connector: "ChatConnector") -> bool:
@@ -72,7 +71,6 @@ class ChatStrategyBase(ABC):
         Returns:
             True если успешно, иначе выбрасывает исключение
         """
-        pass
 
     @abstractmethod
     async def unset_webhook(self, connector: "ChatConnector") -> Any:
@@ -85,7 +83,6 @@ class ChatStrategyBase(ABC):
         Returns:
             Ответ от API провайдера
         """
-        pass
 
     @abstractmethod
     async def chat_send_message(
@@ -109,7 +106,6 @@ class ChatStrategyBase(ABC):
         Returns:
             Tuple[external_message_id, external_chat_id]
         """
-        pass
 
     # async def chat_send_file(
     #     self,
@@ -159,7 +155,6 @@ class ChatStrategyBase(ABC):
         Returns:
             Адаптер сообщения
         """
-        pass
 
     # ========================================================================
     # Webhook обработка - шаблонный метод с общей логикой

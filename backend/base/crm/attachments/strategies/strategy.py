@@ -63,7 +63,6 @@ class StorageStrategyBase(ABC):
             - storage_parent_id: ID родительской папки (для облачных)
             - storage_parent_name: Имя родительской папки
         """
-        pass
 
     @abstractmethod
     async def read_file(
@@ -81,7 +80,6 @@ class StorageStrategyBase(ABC):
         Returns:
             Содержимое файла в байтах или None если файл не найден
         """
-        pass
 
     @abstractmethod
     async def update_file(
@@ -105,7 +103,6 @@ class StorageStrategyBase(ABC):
         Returns:
             Словарь с обновленными данными хранилища
         """
-        pass
 
     @abstractmethod
     async def delete_file(
@@ -123,7 +120,6 @@ class StorageStrategyBase(ABC):
         Returns:
             True если файл успешно удален, иначе False
         """
-        pass
 
     # ========================================================================
     # Опциональные методы - могут быть переопределены в стратегиях

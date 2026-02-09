@@ -8,7 +8,6 @@ Run with: pytest tests/unit/test_builder.py -v
 import pytest
 from dataclasses import dataclass
 
-
 # ====================
 # Mock classes for isolated testing
 # ====================

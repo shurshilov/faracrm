@@ -2,7 +2,13 @@
 
 from .pool import PoolAbstract
 from .session import SessionAbstract
-from .dialect import Dialect, PostgresDialect, MySQLDialect, ClickHouseDialect, CursorType
+from .dialect import (
+    Dialect,
+    PostgresDialect,
+    MySQLDialect,
+    ClickHouseDialect,
+    CursorType,
+)
 from .types import (
     ContainerSettings,
     PostgresPoolSettings,
