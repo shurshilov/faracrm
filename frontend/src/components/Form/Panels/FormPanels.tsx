@@ -228,9 +228,11 @@ export function FormPanelSide({
         width: panelWidth,
         minWidth: PANEL_MIN_WIDTH,
         maxWidth: PANEL_MAX_WIDTH,
+        minHeight: 0,
         display: 'flex',
         flexShrink: 0,
         position: 'relative',
+        overflow: 'hidden',
       }}>
       {/* Resize handle */}
       <Box
@@ -260,6 +262,7 @@ export function FormPanelSide({
       <Box
         style={{
           flex: 1,
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           borderLeft: '1px solid var(--mantine-color-default-border)',

@@ -11,6 +11,15 @@
 }
 
 .main {
+  /*
+   * Mantine AppShell.Main has min-height but no fixed height.
+   * Without fixed height, children using height:100% have no reference.
+   * This fixes the flex chain for side panels (messages, activities).
+   */
+  height: 100dvh;
+  padding-bottom: 0 !important;
+  overflow: hidden;
+
   @mixin light {
     background-color: var(--mantine-color-gray-0);
   }
