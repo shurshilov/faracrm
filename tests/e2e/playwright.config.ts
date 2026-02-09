@@ -20,9 +20,9 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 10_000 },
 
-  /* Параллельный запуск */
-  fullyParallel: true,
-  workers: process.env.CI ? 1 : undefined,
+  /* Параллельный запуск — ограничен из-за WS (1 соединение на user) */
+  fullyParallel: false,
+  workers: process.env.CI ? 1 : 4,
 
   /* Репортеры */
   reporter: process.env.CI

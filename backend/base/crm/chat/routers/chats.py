@@ -499,6 +499,7 @@ async def create_chat(req: Request, body: ChatCreate):
                 uid,
                 {
                     "type": "chat_created",
+                    "chat_id": chat.id,
                     "chat": chat_data,
                 },
             )

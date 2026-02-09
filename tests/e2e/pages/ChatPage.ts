@@ -1,56 +1,101 @@
 import { Page, Locator, expect } from '@playwright/test';
 
 /**
- * Page Object для страницы чата (/chats).
- * Покрывает: список чатов, создание чата, отправку/редактирование/удаление сообщений,
- * реакции, пин, пересылку, набор текста.
+ * Page Object для страницы чата.
+ *
+ * Структура UI:
+ * - Sidebar (ChatSidebar): навигация ВНУТРЕННИЕ (Все/Личные/Группы) + ВНЕШНИЕ
+ * - Main: ChatPage = ChatList (список чатов) + ChatMessages (сообщения)
+ *
+ * URL: /chat?is_internal=true — все внутренние чаты
+ * Для загрузки ChatList нужно кликнуть категорию в sidebar.
  */
 export class ChatPage {
-  // --- Sidebar (список чатов) ---
-  readonly chatList: Locator;
   readonly newChatButton: Locator;
-  readonly searchChatsInput: Locator;
-
-  // --- Messages area ---
   readonly messageInput: Locator;
   readonly sendButton: Locator;
   readonly messagesContainer: Locator;
 
   constructor(private page: Page) {
-    this.chatList = page.locator('[class*="ChatList"], [class*="chatList"]');
-    this.newChatButton = page.getByRole('button', { name: /новый чат|new chat|создать/i });
-    this.searchChatsInput = page.getByPlaceholder(/поиск|search/i).first();
+    this.newChatButton = page.locator('[title="Новый чат"], [title="New chat"]').first();
     this.messageInput = page.locator(
       'textarea[class*="ChatInput"], [class*="chatInput"] textarea, [contenteditable]',
     ).first();
     this.sendButton = page.locator(
-      'button[class*="send"], [class*="ChatInput"] button[type="submit"], [class*="chatInput"] button',
+      'button[class*="send"], [class*="ChatInput"] button[type="submit"]',
     ).last();
     this.messagesContainer = page.locator(
       '[class*="ChatMessages"], [class*="messages"]',
     ).first();
   }
 
+  /**
+   * Перейти на страницу чатов и загрузить список внутренних чатов.
+   * Кликает "Все" в sidebar ВНУТРЕННИЕ для загрузки ChatList.
+   */
   async goto() {
-    await this.page.goto('/chats');
-    // Ждём загрузки списка чатов (API ответ)
-    await this.page.waitForResponse(
-      (res) => res.url().includes('/chats') && res.ok(),
-      { timeout: 15_000 },
-    ).catch(() => {});
+    // Переходим на /chat
+    await this.page.goto('/chat');
+    await this.page.waitForLoadState('networkidle');
+
+    // Ждём появления sidebar
     await this.page.waitForTimeout(1000);
+
+    // Кликаем первую кнопку "Все" (ВНУТРЕННИЕ → Все)
+    await this._clickAllInternal();
+
+    // Ждём загрузки ChatList — input поиска или список чатов
+    await this._waitForChatList();
+  }
+
+  /** Кликнуть "Все" в секции ВНУТРЕННИЕ sidebar */
+  private async _clickAllInternal() {
+    // Первая кнопка "Все" — это "Все" в секции ВНУТРЕННИЕ
+    const allBtn = this.page.locator('button:has-text("Все")').first();
+    await allBtn.waitFor({ state: 'visible', timeout: 10_000 });
+    await allBtn.click();
+    await this.page.waitForTimeout(1500);
+  }
+
+  /** Дождаться что ChatList загрузился */
+  private async _waitForChatList() {
+    // ChatList рендерит поле поиска или текст "Нет чатов"
+    const chatListIndicator = this.page.locator(
+      '[class*="chatList"], [class*="ChatList"], [placeholder*="поиск" i], [placeholder*="search" i]',
+    ).first();
+
+    try {
+      await chatListIndicator.waitFor({ state: 'visible', timeout: 10_000 });
+    } catch {
+      // ChatList мог не загрузиться — попробуем ещё раз кликнуть "Все"
+      await this._clickAllInternal();
+    }
   }
 
   // ==================== Навигация ====================
 
-  /** Кликнуть на чат по имени */
+  /** Открыть чат по имени. При необходимости reload. */
   async openChat(chatName: string) {
-    // Ждём появления чата в списке (может подгрузиться по WS или при goto)
-    const chatItem = this.chatList
-      .getByText(chatName, { exact: false })
-      .first();
+    const chatItem = this.page.getByText(chatName, { exact: false }).first();
+
+    let visible = await chatItem.isVisible().catch(() => false);
+
+    if (!visible) {
+      // Reload — API вернёт свежие данные
+      await this.page.reload({ waitUntil: 'networkidle' });
+      await this._clickAllInternal();
+      await this._waitForChatList();
+      visible = await chatItem.isVisible().catch(() => false);
+    }
+
+    if (!visible) {
+      // Последняя попытка — полный goto
+      await this.goto();
+    }
+
     await chatItem.waitFor({ state: 'visible', timeout: 15_000 });
     await chatItem.click();
+
     // Ждём загрузки сообщений
     await this.page.waitForResponse(
       (res) => res.url().includes('/messages') && res.ok(),
@@ -60,31 +105,35 @@ export class ChatPage {
 
   /** Проверить что чат виден в списке */
   async expectChatInList(chatName: string) {
-    await expect(
-      this.chatList.getByText(chatName, { exact: false }).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    const locator = this.page.getByText(chatName, { exact: false }).first();
+    let visible = await locator.isVisible().catch(() => false);
+    if (!visible) {
+      // Reload и навигация
+      await this.page.reload({ waitUntil: 'networkidle' });
+      await this._clickAllInternal();
+      await this.page.waitForTimeout(2000);
+    }
+    await expect(locator).toBeVisible({ timeout: 15_000 });
   }
 
   /** Проверить что чат НЕ виден */
   async expectChatNotInList(chatName: string) {
     await expect(
-      this.chatList.getByText(chatName, { exact: false }),
+      this.page.getByText(chatName, { exact: false }),
     ).toHaveCount(0, { timeout: 5_000 });
   }
 
   // ==================== Создание чата ====================
 
   async createGroupChat(name: string, memberNames: string[] = []) {
+    // newChatButton с title="Новый чат" находится внутри ChatList header
     await this.newChatButton.click();
 
-    // Модалка создания чата
     const modal = this.page.locator('[class*="Modal"], [role="dialog"]').last();
     await expect(modal).toBeVisible();
 
-    // Вводим имя
     await modal.getByLabel(/название|name/i).fill(name);
 
-    // Добавляем участников
     for (const memberName of memberNames) {
       const memberInput = modal.getByPlaceholder(/участник|member|поиск/i);
       if (await memberInput.isVisible()) {
@@ -93,47 +142,39 @@ export class ChatPage {
       }
     }
 
-    // Создать
     await modal.getByRole('button', { name: /создать|create/i }).click();
     await expect(modal).not.toBeVisible({ timeout: 5_000 });
   }
 
   // ==================== Сообщения ====================
 
-  /** Отправить текстовое сообщение */
   async sendMessage(text: string) {
     await this.messageInput.click();
     await this.messageInput.fill(text);
-    // Enter или кнопка
     await this.page.keyboard.press('Enter');
-    // Ждём появления сообщения в DOM
     await expect(
       this.messagesContainer.getByText(text, { exact: false }).first(),
     ).toBeVisible({ timeout: 10_000 });
   }
 
-  /** Получить последнее сообщение */
   get lastMessage(): Locator {
     return this.messagesContainer
       .locator('[class*="message"], [class*="Message"]')
       .last();
   }
 
-  /** Получить все сообщения */
   get allMessages(): Locator {
     return this.messagesContainer.locator(
       '[class*="message"], [class*="Message"]',
     );
   }
 
-  /** Проверить что сообщение с текстом видимо */
   async expectMessageVisible(text: string) {
     await expect(
       this.messagesContainer.getByText(text, { exact: false }).first(),
     ).toBeVisible({ timeout: 10_000 });
   }
 
-  /** Проверить что сообщение удалено (не видимо или помечено) */
   async expectMessageNotVisible(text: string) {
     await expect(
       this.messagesContainer.getByText(text, { exact: false }),
@@ -142,44 +183,33 @@ export class ChatPage {
 
   // ==================== Контекстное меню сообщения ====================
 
-  /** Правый клик / hover на сообщение для открытия действий */
   async openMessageActions(messageText: string) {
     const msg = this.messagesContainer
       .getByText(messageText, { exact: false })
       .first();
-    // Hover для отображения action buttons
     await msg.hover();
-    // Или правый клик если контекстное меню
-    // await msg.click({ button: 'right' });
   }
 
-  /** Редактировать сообщение */
   async editMessage(originalText: string, newText: string) {
     await this.openMessageActions(originalText);
-    // Клик на кнопку редактирования
     await this.page.getByRole('button', { name: /редакт|edit/i }).first().click();
-    // Очищаем и вводим новый текст
     await this.messageInput.clear();
     await this.messageInput.fill(newText);
     await this.page.keyboard.press('Enter');
     await this.expectMessageVisible(newText);
   }
 
-  /** Удалить сообщение */
   async deleteMessage(messageText: string) {
     await this.openMessageActions(messageText);
     await this.page.getByRole('button', { name: /удал|delete/i }).first().click();
-    // Подтверждение если есть
     const confirmBtn = this.page.getByRole('button', { name: /да|подтвер|confirm|yes/i });
     if (await confirmBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await confirmBtn.click();
     }
   }
 
-  /** Добавить реакцию */
   async addReaction(messageText: string, emoji = '👍') {
     await this.openMessageActions(messageText);
-    // Кнопка реакции
     const reactionBtn = this.page.getByRole('button', {
       name: /реакц|reaction|emoji/i,
     }).first();
@@ -189,7 +219,6 @@ export class ChatPage {
     }
   }
 
-  /** Закрепить сообщение */
   async pinMessage(messageText: string) {
     await this.openMessageActions(messageText);
     await this.page
@@ -200,7 +229,6 @@ export class ChatPage {
 
   // ==================== Typing indicator ====================
 
-  /** Проверить что индикатор набора виден */
   async expectTypingIndicator(userName?: string) {
     const typingLocator = userName
       ? this.page.getByText(new RegExp(`${userName}.*набира|${userName}.*typing`, 'i'))

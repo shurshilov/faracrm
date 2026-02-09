@@ -63,10 +63,10 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            await chat_manager.handle_message(user_id, data)
+            await chat_manager.handle_message(websocket, user_id, data)
 
     except WebSocketDisconnect:
-        await chat_manager.disconnect(user_id)
+        await chat_manager.disconnect(websocket, user_id)
     except Exception as e:
         logger.error(f"WebSocket error for user {user_id}: {e}")
-        await chat_manager.disconnect(user_id)
+        await chat_manager.disconnect(websocket, user_id)

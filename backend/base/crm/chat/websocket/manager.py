@@ -16,16 +16,19 @@ class ConnectionManager:
     """
     Менеджер WebSocket соединений для чата.
 
+    Поддерживает множественные подключения одного пользователя
+    (несколько вкладок, устройств).
+
     Управляет:
-    - Подключениями пользователей
+    - Подключениями пользователей (1 user → N websockets)
     - Подписками на чаты
     - Рассылкой сообщений участникам чата
     - Статусами онлайн/оффлайн
     """
 
     def __init__(self):
-        # user_id -> WebSocket connection
-        self._connections: Dict[int, WebSocket] = {}
+        # user_id -> set of WebSocket connections
+        self._connections: Dict[int, Set[WebSocket]] = {}
 
         # chat_id -> set of user_ids subscribed to this chat
         self._chat_subscriptions: Dict[int, Set[int]] = {}
@@ -42,6 +45,7 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket, user_id: int) -> bool:
         """
         Подключить пользователя.
+        Поддерживает множественные подключения (вкладки, устройства).
 
         Args:
             websocket: WebSocket соединение (уже accepted)
@@ -51,28 +55,25 @@ class ConnectionManager:
             True если успешно подключен
         """
         try:
-            # websocket.accept() уже вызван в роутере
-
             async with self._lock:
-                # Закрываем предыдущее соединение если есть
-                if user_id in self._connections:
-                    old_ws = self._connections[user_id]
-                    try:
-                        await old_ws.close()
-                    except Exception:
-                        pass
-
-                self._connections[user_id] = websocket
+                if user_id not in self._connections:
+                    self._connections[user_id] = set()
+                self._connections[user_id].add(websocket)
                 self._user_activity[user_id] = datetime.now(timezone.utc)
 
                 if user_id not in self._user_subscriptions:
                     self._user_subscriptions[user_id] = set()
 
-            logger.info(f"User {user_id} connected to WebSocket")
+            was_offline = len(self._connections.get(user_id, set())) == 1
 
-            # Отправляем подтверждение подключения
-            await self._send_to_user(
-                user_id,
+            logger.info(
+                f"User {user_id} connected to WebSocket "
+                f"(total connections: {len(self._connections.get(user_id, set()))})"
+            )
+
+            # Отправляем подтверждение подключения ТОЛЬКО этому websocket
+            await self._send_to_websocket(
+                websocket,
                 {
                     "type": "connected",
                     "user_id": user_id,
@@ -80,8 +81,9 @@ class ConnectionManager:
                 },
             )
 
-            # Уведомляем других о появлении пользователя онлайн
-            await self._broadcast_presence(user_id, "online")
+            # Уведомляем других о появлении — только если это первое подключение
+            if was_offline:
+                await self._broadcast_presence(user_id, "online")
 
             return True
 
@@ -89,33 +91,47 @@ class ConnectionManager:
             logger.error(f"Error connecting user {user_id}: {e}")
             return False
 
-    async def disconnect(self, user_id: int):
+    async def disconnect(self, websocket: WebSocket, user_id: int):
         """
-        Отключить пользователя.
+        Отключить конкретное WebSocket соединение пользователя.
 
         Args:
+            websocket: WebSocket соединение для отключения
             user_id: ID пользователя
         """
+        is_last = False
+
         async with self._lock:
-            # Удаляем соединение
             if user_id in self._connections:
-                del self._connections[user_id]
+                self._connections[user_id].discard(websocket)
 
-            # Удаляем из всех подписок на чаты
-            if user_id in self._user_subscriptions:
-                for chat_id in self._user_subscriptions[user_id]:
-                    if chat_id in self._chat_subscriptions:
-                        self._chat_subscriptions[chat_id].discard(user_id)
-                del self._user_subscriptions[user_id]
+                if not self._connections[user_id]:
+                    # Последнее подключение — удаляем всё
+                    del self._connections[user_id]
+                    is_last = True
 
-            # Удаляем активность
-            if user_id in self._user_activity:
-                del self._user_activity[user_id]
+                    # Удаляем из всех подписок на чаты
+                    if user_id in self._user_subscriptions:
+                        for chat_id in self._user_subscriptions[user_id]:
+                            if chat_id in self._chat_subscriptions:
+                                self._chat_subscriptions[chat_id].discard(
+                                    user_id
+                                )
+                        del self._user_subscriptions[user_id]
 
-        logger.info(f"User {user_id} disconnected from WebSocket")
+                    # Удаляем активность
+                    if user_id in self._user_activity:
+                        del self._user_activity[user_id]
 
-        # Уведомляем других о выходе пользователя
-        await self._broadcast_presence(user_id, "offline")
+        remaining = len(self._connections.get(user_id, set()))
+        logger.info(
+            f"User {user_id} disconnected from WebSocket "
+            f"(remaining connections: {remaining})"
+        )
+
+        # Уведомляем о выходе — только если это было последнее подключение
+        if is_last:
+            await self._broadcast_presence(user_id, "offline")
 
     async def subscribe_to_chat(self, user_id: int, chat_id: int):
         """
@@ -129,6 +145,10 @@ class ConnectionManager:
             if chat_id not in self._chat_subscriptions:
                 self._chat_subscriptions[chat_id] = set()
 
+            # Запоминаем кто уже был подписан до нас
+            existing_subscribers = self._chat_subscriptions[chat_id].copy()
+            is_new = user_id not in self._chat_subscriptions[chat_id]
+
             self._chat_subscriptions[chat_id].add(user_id)
 
             if user_id not in self._user_subscriptions:
@@ -137,6 +157,18 @@ class ConnectionManager:
             self._user_subscriptions[user_id].add(chat_id)
 
         logger.debug(f"User {user_id} subscribed to chat {chat_id}")
+
+        # Если пользователь новый в этом чате — уведомляем остальных о его присутствии
+        if is_new and self.is_online(user_id):
+            presence_msg = {
+                "type": "presence",
+                "user_id": user_id,
+                "status": "online",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            for subscriber_id in existing_subscribers:
+                if subscriber_id != user_id:
+                    await self._send_to_user(subscriber_id, presence_msg)
 
     async def subscribe_to_chats(self, user_id: int, chat_ids: list[int]):
         """
@@ -228,23 +260,43 @@ class ConnectionManager:
             },
         )
 
+    async def _send_to_websocket(self, websocket: WebSocket, message: dict):
+        """Отправить сообщение в конкретный websocket."""
+        if websocket.client_state == WebSocketState.CONNECTED:
+            try:
+                await websocket.send_json(message)
+            except Exception as e:
+                logger.error(f"Error sending to websocket: {e}")
+
     async def _send_to_user(self, user_id: int, message: dict):
         """
-        Отправить сообщение конкретному пользователю.
+        Отправить сообщение во все соединения пользователя.
 
         Args:
             user_id: ID пользователя
             message: Сообщение
         """
         async with self._lock:
-            websocket = self._connections.get(user_id)
+            websockets = self._connections.get(user_id, set()).copy()
 
-        if websocket and websocket.client_state == WebSocketState.CONNECTED:
-            try:
-                await websocket.send_json(message)
-            except Exception as e:
-                logger.error(f"Error sending to user {user_id}: {e}")
-                await self.disconnect(user_id)
+        dead_websockets = []
+
+        for ws in websockets:
+            if ws.client_state == WebSocketState.CONNECTED:
+                try:
+                    await ws.send_json(message)
+                except Exception as e:
+                    logger.error(f"Error sending to user {user_id}: {e}")
+                    dead_websockets.append(ws)
+            else:
+                dead_websockets.append(ws)
+
+        # Удаляем мёртвые соединения
+        if dead_websockets:
+            async with self._lock:
+                if user_id in self._connections:
+                    for ws in dead_websockets:
+                        self._connections[user_id].discard(ws)
 
     async def _broadcast_presence(self, user_id: int, status: str):
         """
@@ -281,39 +333,42 @@ class ConnectionManager:
 
     def is_online(self, user_id: int) -> bool:
         """Проверить онлайн ли пользователь."""
-        return user_id in self._connections
+        return bool(self._connections.get(user_id))
 
     def get_online_users(self) -> list[int]:
         """Получить список онлайн пользователей."""
-        return list(self._connections.keys())
+        return [uid for uid, conns in self._connections.items() if conns]
 
     def get_chat_online_users(self, chat_id: int) -> list[int]:
         """Получить онлайн пользователей в конкретном чате."""
         subscribers = self._chat_subscriptions.get(chat_id, set())
         return [uid for uid in subscribers if self.is_online(uid)]
 
-    async def handle_message(self, user_id: int, data: dict):
+    async def handle_message(
+        self, websocket: WebSocket, user_id: int, data: dict
+    ):
         """
         Обработать входящее сообщение от клиента.
 
         Args:
+            websocket: WebSocket соединение, от которого пришло сообщение
             user_id: ID пользователя
             data: Данные сообщения
         """
         message_type = data.get("type")
 
         if message_type == "ping":
-            # Heartbeat
+            # Heartbeat — отвечаем только в этот websocket
             self._user_activity[user_id] = datetime.now(timezone.utc)
-            await self._send_to_user(user_id, {"type": "pong"})
+            await self._send_to_websocket(websocket, {"type": "pong"})
 
         elif message_type == "subscribe":
             # Подписка на чат
             chat_id = data.get("chat_id")
             if chat_id:
                 await self.subscribe_to_chat(user_id, chat_id)
-                await self._send_to_user(
-                    user_id, {"type": "subscribed", "chat_id": chat_id}
+                await self._send_to_websocket(
+                    websocket, {"type": "subscribed", "chat_id": chat_id}
                 )
 
         elif message_type == "subscribe_all":
@@ -321,8 +376,8 @@ class ConnectionManager:
             chat_ids = data.get("chat_ids", [])
             if chat_ids:
                 await self.subscribe_to_chats(user_id, chat_ids)
-                await self._send_to_user(
-                    user_id,
+                await self._send_to_websocket(
+                    websocket,
                     {
                         "type": "subscribed_all",
                         "chat_ids": chat_ids,
@@ -335,8 +390,8 @@ class ConnectionManager:
             chat_id = data.get("chat_id")
             if chat_id:
                 await self.unsubscribe_from_chat(user_id, chat_id)
-                await self._send_to_user(
-                    user_id, {"type": "unsubscribed", "chat_id": chat_id}
+                await self._send_to_websocket(
+                    websocket, {"type": "unsubscribed", "chat_id": chat_id}
                 )
 
         elif message_type == "typing":
@@ -345,7 +400,11 @@ class ConnectionManager:
             if chat_id:
                 await self.send_to_chat(
                     chat_id,
-                    {"type": "typing", "chat_id": chat_id, "user_id": user_id},
+                    {
+                        "type": "typing",
+                        "chat_id": chat_id,
+                        "user_id": user_id,
+                    },
                     exclude_user=user_id,
                 )
 
