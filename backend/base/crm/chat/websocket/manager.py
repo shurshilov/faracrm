@@ -209,6 +209,25 @@ class ConnectionManager:
         """
         await self._send_to_user(user_id, message)
 
+    async def notify_new_chat(self, user_id: int, chat_id: int):
+        """
+        Уведомить пользователя о новом чате.
+
+        Автоподписывает пользователя на WS-события чата
+        и отправляет событие chat_created для обновления списка.
+        """
+        # Автоподписка на WS-события нового чата
+        await self.subscribe_to_chat(user_id, chat_id)
+
+        # Уведомляем фронтенд о новом чате
+        await self._send_to_user(
+            user_id,
+            {
+                "type": "chat_created",
+                "chat_id": chat_id,
+            },
+        )
+
     async def _send_to_user(self, user_id: int, message: dict):
         """
         Отправить сообщение конкретному пользователю.

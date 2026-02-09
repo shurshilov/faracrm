@@ -83,20 +83,17 @@ export function ChatWebSocketProvider({
 
       // Обработка нового чата
       if (message.type === 'chat_created') {
-        const wsMsg = message as unknown as WSChatCreated;
-        console.log('New chat created:', wsMsg.chat);
+        const chatId = (message as any).chat_id;
+        console.log('New chat created:', chatId);
 
-        // Добавляем чат в кэш и делаем refetch для получения полных данных
-        dispatch(
-          chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
-            // Проверяем что чат ещё не добавлен
-            if (!draft.data.find(c => c.id === wsMsg.chat.id)) {
-              draft.data.unshift(wsMsg.chat);
-            }
-          }),
-        );
+        // Подписываемся на WS-события нового чата
+        if (chatId && wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({ type: 'subscribe', chat_id: chatId }),
+          );
+        }
 
-        // Делаем refetch чтобы получить полные данные чата
+        // Refetch списка чатов чтобы получить полные данные
         dispatch(chatApi.util.invalidateTags([{ type: 'Chat', id: 'LIST' }]));
       }
 

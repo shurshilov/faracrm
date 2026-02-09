@@ -464,6 +464,14 @@ class Chat(DotModel):
         # Первый пользователь — мембер с правами record
         await self._add_user_member(chat.id, user_id, default_perms)
 
+        # Уведомляем пользователя о новом чате через WS
+        try:
+            from backend.base.crm.chat import chat_manager
+
+            await chat_manager.notify_new_chat(user_id, chat.id)
+        except Exception:
+            pass  # WS не обязателен
+
         return chat
 
     async def _add_user_member(

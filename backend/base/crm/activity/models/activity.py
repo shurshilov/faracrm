@@ -291,6 +291,14 @@ class Activity(DotModel):
         )
         await env.models.chat_member.create(payload=member)
 
+        # Уведомляем пользователя о новом чате через WS
+        try:
+            from backend.base.crm.chat import chat_manager
+
+            await chat_manager.notify_new_chat(user_id, chat.id)
+        except Exception:
+            pass
+
         return chat.id
 
     @hybridmethod
