@@ -16,10 +16,13 @@ const ADMIN_LOGIN = process.env.ADMIN_LOGIN || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const USER2_LOGIN = process.env.USER2_LOGIN || 'test1';
 const USER2_PASSWORD = process.env.USER2_PASSWORD || 'test1';
+const USER3_LOGIN = process.env.USER3_LOGIN || 'test2';
+const USER3_PASSWORD = process.env.USER3_PASSWORD || 'test2';
 
 // Кэш сессий чтобы не логиниться каждый тест
 let adminSessionCache: Session | null = null;
 let user2SessionCache: Session | null = null;
+let user3SessionCache: Session | null = null;
 
 type TestFixtures = {
   /** API helper для подготовки данных */
@@ -44,6 +47,13 @@ type TestFixtures = {
   adminWS: WSClient;
   /** WS клиент для user2 */
   user2WS: WSClient;
+
+  /** Токен третьего пользователя (для presence-тестов) */
+  user3Token: string;
+  /** Сессия третьего пользователя */
+  user3Session: Session;
+  /** WS клиент для user3 */
+  user3WS: WSClient;
 };
 
 export const test = base.extend<TestFixtures>({
@@ -101,6 +111,30 @@ export const test = base.extend<TestFixtures>({
 
   user2WS: async ({ user2Token }, use) => {
     const ws = new WSClient(WS_URL, user2Token);
+    await ws.connect();
+    await use(ws);
+    await ws.close();
+  },
+
+  user3Session: async ({ api }, use) => {
+    if (!user3SessionCache) {
+      try {
+        user3SessionCache = await api.login(USER3_LOGIN, USER3_PASSWORD);
+      } catch (e) {
+        console.warn('User3 login failed, presence tests will fail:', e);
+        await use(null as any);
+        return;
+      }
+    }
+    await use(user3SessionCache);
+  },
+
+  user3Token: async ({ user3Session }, use) => {
+    await use(user3Session?.token || '');
+  },
+
+  user3WS: async ({ user3Token }, use) => {
+    const ws = new WSClient(WS_URL, user3Token);
     await ws.connect();
     await use(ws);
     await ws.close();

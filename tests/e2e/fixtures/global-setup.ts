@@ -14,6 +14,8 @@ const ADMIN_LOGIN = process.env.ADMIN_LOGIN || 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
 const USER2_LOGIN = process.env.USER2_LOGIN || 'test1';
 const USER2_PASSWORD = process.env.USER2_PASSWORD || 'test1';
+const USER3_LOGIN = process.env.USER3_LOGIN || 'test2';
+const USER3_PASSWORD = process.env.USER3_PASSWORD || 'test2';
 
 async function globalSetup(config: FullConfig) {
   // Убедимся что директория существует
@@ -85,6 +87,27 @@ async function globalSetup(config: FullConfig) {
       console.warn('⚠️ Could not create user2 session:', e);
       // Удаляем флаг если был
       try { fs.unlinkSync(path.join(AUTH_DIR, 'user2.ready')); } catch {}
+    }
+
+    // --- Третий пользователь (для presence-тестов, изолирован от user2) ---
+    try {
+      await api.ensureUser(adminSession.token, {
+        login: USER3_LOGIN,
+        password: USER3_PASSWORD,
+        name: 'Test User 2',
+      });
+
+      const user3Session = await api.login(USER3_LOGIN, USER3_PASSWORD);
+
+      fs.writeFileSync(
+        path.join(AUTH_DIR, 'user3.ready'),
+        JSON.stringify({ login: USER3_LOGIN, userId: user3Session.user_id?.id }),
+      );
+
+      console.log('✅ User3 session created');
+    } catch (e) {
+      console.warn('⚠️ Could not create user3 session:', e);
+      try { fs.unlinkSync(path.join(AUTH_DIR, 'user3.ready')); } catch {}
     }
   } catch (e) {
     console.error('❌ Global setup failed:', e);

@@ -228,51 +228,41 @@ test.describe('WebSocket — presence', () => {
   });
 
   test('presence:offline при отключении', async ({
-    adminToken, user2Token, adminSession, user2Session, api,
+    adminToken, adminSession, user3Token, user3Session, api,
   }) => {
+    test.setTimeout(60_000);
+
     const chat = await api.createChat(adminToken, {
       name: `Presence Off ${Date.now()}`,
-      user_ids: [user2Session.user_id.id],
+      user_ids: [user3Session.user_id.id],
     });
 
-    // user2 подключается и подписывается первым
-    const user2ws = new WSClient(WS_URL, user2Token);
-    await user2ws.connect();
-    await user2ws.subscribe(chat.id);
-
-    // Даём время стабилизироваться
-    await new Promise(r => setTimeout(r, 500));
-    user2ws.clearMessages();
-
-    // Теперь admin подключается — user2 должен получить presence:online
+    // Admin подключается и подписывается — будет слушать events
     const adminws = new WSClient(WS_URL, adminToken);
     await adminws.connect();
     await adminws.subscribe(chat.id);
 
-    // Ждём presence:online, чтобы подтвердить что presence вообще работает
-    const onlineEvent = await user2ws.waitForPresence(adminSession.user_id.id, 'online', 15_000).catch(() => null);
-    console.log('presence:online received:', !!onlineEvent);
+    await new Promise(r => setTimeout(r, 500));
+    adminws.clearMessages();
 
-    // Очищаем буфер и отключаем admin
-    user2ws.clearMessages();
-    await new Promise(r => setTimeout(r, 300));
+    // user3 подключается — ЕДИНСТВЕННОЕ соединение (user3 не используется в других тестах)
+    const user3ws = new WSClient(WS_URL, user3Token);
+    await user3ws.connect();
+    await user3ws.subscribe(chat.id);
 
-    // Закрываем admin WS — сервер должен отправить presence:offline
-    adminws.send({ type: 'ping' }); // ensure connection is alive before closing
-    await new Promise(r => setTimeout(r, 100));
+    // Ждём presence:online от user3
+    const onlineEvent = await adminws.waitForPresence(user3Session.user_id.id, 'online', 10_000).catch(() => null);
+    expect(onlineEvent, 'presence:online should be received').toBeTruthy();
+
+    // Отключаем user3 — это единственное соединение → is_last = true → offline отправится
+    adminws.clearMessages();
+    await user3ws.close();
+
+    const event = await adminws.waitForPresence(user3Session.user_id.id, 'offline', 20_000);
+    expect(event.status).toBe('offline');
+    expect(event.user_id).toBe(user3Session.user_id.id);
+
     await adminws.close();
-
-    try {
-      const event = await user2ws.waitForPresence(adminSession.user_id.id, 'offline', 20_000);
-      expect(event.status).toBe('offline');
-    } catch (err) {
-      // Диагностика: показываем все полученные сообщения
-      const allMsgs = user2ws.getMessages();
-      console.log('All messages received by user2 after admin disconnect:', JSON.stringify(allMsgs.map(m => ({ type: m.type, user_id: m.user_id, status: m.status }))));
-      throw err;
-    }
-
-    await user2ws.close();
     await api.deleteChat(adminToken, chat.id);
   });
 });
