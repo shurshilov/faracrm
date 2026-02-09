@@ -1,5 +1,8 @@
 import asyncio
+import logging
 from typing import Any, Callable, Literal, Type, Union
+
+log = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import JSONResponse
@@ -173,16 +176,14 @@ class CRUDRouterGenerator(APIRouter):
 
         # Эндпоинт для получения списка полей модели (для фильтрации)
         # ВАЖНО: должен быть ДО /{id} роутов чтобы не конфликтовать
-        print(
-            f"[CRUDRouterGenerator] Adding /fields route for {self.Model.__route__}"
-        )
+        log.debug(f"Adding /fields route for {self.Model.__route__}")
         self.add_api_route(
             f"{self.Model.__route__}/fields",
             self.get_model_fields(),
             methods=["GET"],
             dependencies=[Depends(AuthTokenApp.verify_access)],
         )
-        print(f"[CRUDRouterGenerator] Added /fields route")
+        log.debug("Added /fields route")
 
         if create_route:
             self.add_api_route(

@@ -8,7 +8,10 @@ DotORM CRUD Auto Service - автоматическая генерация CRUD 
 """
 
 from typing import TYPE_CHECKING
+import logging
 import time
+
+log = logging.getLogger(__name__)
 
 from backend.base.system.core.service import Service
 from .schema_registry import schema_registry
@@ -61,9 +64,7 @@ class DotormCrudAutoService(Service):
         schema_registry.build_all(models)
 
         schema_time = time.perf_counter()
-        print(
-            f"[CRUD Auto] Schemas generated in {schema_time - start_time:.3f}s"
-        )
+        log.info(f"Schemas generated in {schema_time - start_time:.3f}s")
 
         # Шаг 2: Создаём роутеры
         for model in models:
@@ -79,9 +80,9 @@ class DotormCrudAutoService(Service):
                 app.include_router(router)
 
         end_time = time.perf_counter()
-        print(f"[CRUD Auto] Routers created in {end_time - schema_time:.3f}s")
-        print(
-            f"[CRUD Auto] Total: {end_time - start_time:.3f}s for {len(models)} models"
+        log.info(f"Routers created in {end_time - schema_time:.3f}s")
+        log.info(
+            f"Total: {end_time - start_time:.3f}s for {len(models)} models"
         )
 
     async def startup(self, app) -> None:
