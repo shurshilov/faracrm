@@ -66,7 +66,7 @@ function UserMenu() {
     {
       model: 'users',
       id: session?.user_id.id ?? 0,
-      fields: ['id', 'name', 'image', 'lang_id', 'layout_theme'],
+      fields: ['id', 'name', 'image', 'lang_id'],
     },
     { skip: !session?.user_id },
   );
@@ -85,7 +85,6 @@ function UserMenu() {
   const userName = user?.name ?? t('common:user', 'Пользователь');
   const imageId = user?.image?.id;
   const userLangId = user?.lang_id?.id;
-  const userLayoutTheme = user?.layout_theme;
 
   const apiLanguages = (languagesData?.data as Language[]) || [];
   const languages = apiLanguages.length > 0 ? apiLanguages : FALLBACK_LANGUAGES;
@@ -107,16 +106,9 @@ function UserMenu() {
     }
   }, [currentLang?.code]);
 
-  // Синхронизируем layout theme с настройкой пользователя из БД
-  useEffect(() => {
-    if (
-      userLayoutTheme &&
-      (userLayoutTheme === 'classic' || userLayoutTheme === 'modern') &&
-      userLayoutTheme !== layoutTheme
-    ) {
-      setLayoutTheme(userLayoutTheme);
-    }
-  }, [userLayoutTheme]);
+  // Layout theme синхронизируется при логине через ThemeContext initialState.
+  // Локальные изменения сразу применяются через setLayoutTheme,
+  // а updateUser сохраняет в БД для следующего логина.
 
   useEffect(() => {
     setAvatarSrc(null);
