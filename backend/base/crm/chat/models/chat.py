@@ -179,6 +179,14 @@ class Chat(DotModel):
         description="Связанные внешние чаты",
     )
 
+    # Привязка к записи (для chat_type='record')
+    res_model: str | None = Char(
+        description="Модель записи (lead, task, partner...) — для record-чатов",
+    )
+    res_id: int | None = Integer(
+        description="ID записи — для record-чатов",
+    )
+
     def get_default_permissions(self) -> dict:
         """Получить права по умолчанию для данного чата."""
         return {
@@ -386,6 +394,75 @@ class Chat(DotModel):
 
         # Создатель - админ канала
         await self._add_user_member(chat.id, creator_id, CREATOR_PERMISSIONS)
+
+        return chat
+
+    @hybridmethod
+    async def get_or_create_record_chat(
+        self,
+        res_model: str,
+        res_id: int,
+        user_id: int,
+    ) -> "Chat":
+        """
+        Получить или создать чат для записи (lazy creation).
+
+        Если чат для записи уже существует — возвращает его и подписывает
+        пользователя если он ещё не мембер.
+        Если нет — создаёт новый record-чат с пользователем как первым мембером.
+
+        Защита от race condition: использует SELECT ... FOR UPDATE SKIP LOCKED
+        для предотвращения дублирования при параллельных запросах.
+        """
+        session = self._get_db_session()
+
+        # Атомарный поиск с блокировкой
+        lock_query = """
+            SELECT id FROM chat
+            WHERE res_model = %s AND res_id = %s
+              AND chat_type = 'record' AND active = true
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+        """
+        result = await session.execute(lock_query, (res_model, res_id))
+
+        if result:
+            chat_id = result[0]["id"]
+            chat = await self.get(chat_id)
+
+            # Подписываем пользователя если ещё не мембер
+            from backend.base.crm.chat.models.chat_member import ChatMember
+
+            membership = await ChatMember.get_membership(chat.id, user_id)
+            if not membership:
+                default_perms = DEFAULT_PERMISSIONS["record"]
+                await self._add_user_member(chat.id, user_id, default_perms)
+            return chat
+
+        # Создаём новый record-чат
+        user = env.models.user(id=user_id)
+        default_perms = DEFAULT_PERMISSIONS["record"]
+
+        now = datetime.now(timezone.utc)
+        chat = Chat(
+            name=f"{res_model}:{res_id}",
+            chat_type="record",
+            is_internal=True,
+            res_model=res_model,
+            res_id=res_id,
+            create_user_id=user,
+            create_date=now,
+            write_date=now,
+            default_can_read=default_perms["can_read"],
+            default_can_write=default_perms["can_write"],
+            default_can_invite=default_perms["can_invite"],
+            default_can_pin=default_perms["can_pin"],
+            default_can_delete_others=default_perms["can_delete_others"],
+        )
+        chat.id = await self.create(payload=chat)
+
+        # Первый пользователь — мембер с правами record
+        await self._add_user_member(chat.id, user_id, default_perms)
 
         return chat
 

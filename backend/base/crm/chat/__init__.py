@@ -22,6 +22,7 @@ from .websocket import ConnectionManager, chat_manager
 from .routers import (
     chats_router_private,
     messages_router_private,
+    record_messages_router_private,
     connectors_router_private,
     ws_router_public,
     webhook_router_public,
@@ -50,6 +51,7 @@ __all__ = [
     # Routers
     "chats_router_private",
     "messages_router_private",
+    "record_messages_router_private",
     "connectors_router_private",
     "ws_router_public",
     "webhook_router_public",

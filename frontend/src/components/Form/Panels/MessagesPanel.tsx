@@ -1,32 +1,39 @@
-import { useState, useRef, useEffect } from 'react';
+/**
+ * MessagesPanel — панель сообщений привязанных к записи.
+ *
+ * При открытии формы: GET /records/{model}/{id}/chat → find (без создания)
+ * Если чат есть → ChatMessages + ChatInput
+ * Если нет → поле ввода, при первом сообщении создаёт чат
+ *
+ * Follow/Unfollow: POST create → становишься мембером
+ * Leave: POST /chats/{id}/leave → выходишь из чата
+ */
+
+import { useState, useCallback } from 'react';
 import {
-  Stack,
   Text,
+  Loader,
+  Center,
   Group,
   ActionIcon,
-  Box,
-  Badge,
-  Avatar,
-  Loader,
-  Button,
   TextInput,
-  ScrollArea,
+  Button,
+  Tooltip,
+  Avatar,
 } from '@mantine/core';
-import { IconSend, IconUser } from '@tabler/icons-react';
-import { useTranslation } from 'react-i18next';
-import { useSearchQuery, useCreateMutation } from '@/services/api/crudApi';
+import { IconSend, IconBell, IconBellOff } from '@tabler/icons-react';
 import { useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { selectCurrentSession } from '@/slices/authSlice';
-import { AttachmentPreview, isImageMimetype } from '@/components/Attachment';
-
-const PAGE_SIZE = 80;
-
-const TYPE_COLORS: Record<string, string> = {
-  comment: 'blue',
-  notification: 'yellow',
-  system: 'gray',
-  email: 'violet',
-};
+import {
+  useFindRecordChatQuery,
+  useGetOrCreateRecordChatMutation,
+  useGetChatQuery,
+  useSendMessageMutation,
+  useLeaveChatMutation,
+} from '@/services/api/chat';
+import { ChatMessages } from '@/fara_chat/components/ChatMessages';
+import { ChatInput } from '@/fara_chat/components/ChatInput';
 
 interface MessagesPanelProps {
   resModel: string;
@@ -34,258 +41,242 @@ interface MessagesPanelProps {
 }
 
 export function MessagesPanel({ resModel, resId }: MessagesPanelProps) {
-  const { t } = useTranslation(['common']);
+  const { t } = useTranslation('chat');
   const session = useSelector(selectCurrentSession);
-  const currentUserId = session?.user_id?.id;
-  const currentUserName = session?.user_id?.name;
+  const currentUserId = session?.user_id?.id || 0;
+  const currentUserName = session?.user_id?.name || '';
+
+  // Step 1: Find existing record chat (no creation)
+  const {
+    data: findData,
+    isLoading: isFinding,
+    refetch: refetchFind,
+  } = useFindRecordChatQuery(
+    { resModel, resId },
+    { skip: !resModel || !resId },
+  );
+
+  const [getOrCreateChat] = useGetOrCreateRecordChatMutation();
+  const [sendMessage] = useSendMessageMutation();
+  const [leaveChat] = useLeaveChatMutation();
 
   const [messageText, setMessageText] = useState('');
-  const [limit, setLimit] = useState(PAGE_SIZE);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const [isSending, setIsSending] = useState(false);
 
-  const { data: messagesData, isLoading } = useSearchQuery({
-    model: 'chat_message',
-    fields: [
-      'id',
-      'body',
-      'message_type',
-      'author_user_id',
-      'author_partner_id',
-      'create_date',
-      'is_read',
-      'pinned',
-      'starred',
-    ],
-    filter: [
-      ['res_model', '=', resModel],
-      ['res_id', '=', resId],
-      ['is_deleted', '=', false],
-    ],
-    sort: 'create_date',
-    order: 'desc',
-    limit,
-  });
+  const chatId = findData?.chat_id || undefined;
 
-  const [createMessage, { isLoading: isSending }] = useCreateMutation();
-  const messages = messagesData?.data || [];
-  const total = messagesData?.total || 0;
-  const hasMore = total > messages.length;
+  // Step 2: Load full Chat object (only if chat exists)
+  const { data: chatData, isLoading: isChatLoading } = useGetChatQuery(
+    { chatId: chatId || 0 },
+    { skip: !chatId },
+  );
 
-  // Reversed for display (newest at bottom)
-  const sortedMessages = [...messages].reverse();
+  const chat = chatData?.data;
 
-  // Auto-scroll to bottom on new message
-  useEffect(() => {
-    if (viewportRef.current) {
-      viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+  // Check if current user is a member
+  const isMember = chat?.members?.some(
+    (m) => m.user_id === currentUserId && m.is_active !== false,
+  );
+
+  // Handle Follow — get_or_create chat (user becomes member)
+  const handleFollow = useCallback(async () => {
+    try {
+      await getOrCreateChat({ resModel, resId }).unwrap();
+      refetchFind();
+    } catch (error) {
+      console.error('Failed to follow:', error);
     }
-  }, [messages.length]);
+  }, [getOrCreateChat, resModel, resId, refetchFind]);
 
-  const handleSend = async () => {
+  // Handle Unfollow — leave chat
+  const handleUnfollow = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      await leaveChat({ chatId }).unwrap();
+      refetchFind();
+    } catch (error) {
+      console.error('Failed to unfollow:', error);
+    }
+  }, [leaveChat, chatId, refetchFind]);
+
+  // Handle first message — creates chat + sends message
+  const handleFirstMessage = useCallback(async () => {
     if (!messageText.trim()) return;
+    setIsSending(true);
 
     try {
-      await createMessage({
-        model: 'chat_message',
-        values: {
-          body: messageText.trim(),
-          message_type: 'comment',
-          res_model: resModel,
-          res_id: resId,
-          author_user_id: currentUserId,
-          create_date: new Date().toISOString(),
-          write_date: new Date().toISOString(),
-          is_read: false,
-          is_deleted: false,
-          starred: false,
-          pinned: false,
-          is_edited: false,
-        },
+      const result = await getOrCreateChat({ resModel, resId }).unwrap();
+      const newChatId = result.chat_id;
+
+      await sendMessage({
+        chatId: newChatId,
+        body: messageText.trim(),
+        message_type: 'comment',
       }).unwrap();
 
       setMessageText('');
+      refetchFind();
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('Failed to send first message:', error);
+    } finally {
+      setIsSending(false);
     }
-  };
+  }, [messageText, getOrCreateChat, sendMessage, resModel, resId, refetchFind]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleFirstMessage();
     }
   };
 
-  const handleLoadMore = () => {
-    setLimit((prev) => prev + PAGE_SIZE);
-  };
-
-  if (isLoading && messages.length === 0) {
+  if (isFinding) {
     return (
-      <Stack align="center" py="xl">
+      <Center py="xl" style={{ flex: 1 }}>
         <Loader size="sm" />
-      </Stack>
+      </Center>
     );
   }
 
-  return (
-    <Stack gap="sm" style={{ height: '100%', minHeight: 0 }}>
-      {/* Messages list (scrollable) */}
-      <Box
-        ref={viewportRef}
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--mantine-spacing-xs)',
-        }}
-      >
-        {/* Load more */}
-        {hasMore && (
-          <Button
-            variant="subtle"
-            size="compact-xs"
-            onClick={handleLoadMore}
-            loading={isLoading}
-            fullWidth
-            mb="xs"
-          >
-            {t('common:loadMore', 'Загрузить ещё')} ({total - messages.length})
-          </Button>
-        )}
+  // Chat exists — render full chat UI
+  if (chatId && chat) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0 }}>
+        {/* Follow/Unfollow + followers */}
+        <FollowBar
+          isMember={!!isMember}
+          members={chat.members}
+          currentUserId={currentUserId}
+          onFollow={handleFollow}
+          onUnfollow={handleUnfollow}
+        />
 
-        {sortedMessages.length === 0 && (
-          <Text size="sm" c="dimmed" ta="center" py="md">
-            {t('common:noMessages', 'Нет сообщений')}
-          </Text>
-        )}
-
-        {sortedMessages.map((msg: any) => (
-          <MessageItem
-            key={msg.id}
-            message={msg}
+        {/* Messages */}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <ChatMessages
+            chat={chat}
             currentUserId={currentUserId}
           />
-        ))}
-      </Box>
+        </div>
 
-      {/* Input */}
-      <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
+        {/* Input */}
+        <div style={{ flexShrink: 0 }}>
+          <ChatInput
+            chatId={chatId}
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Chat loading
+  if (chatId && isChatLoading) {
+    return (
+      <Center py="xl" style={{ flex: 1 }}>
+        <Loader size="sm" />
+      </Center>
+    );
+  }
+
+  // No chat yet — empty state with input
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', flex: '1 1 0%', minHeight: 0 }}>
+      <Center style={{ flex: 1 }}>
+        <Text size="sm" c="dimmed">
+          Нет сообщений
+        </Text>
+      </Center>
+      <Group gap="xs" wrap="nowrap" p="xs" style={{ flexShrink: 0 }}>
         <TextInput
           size="xs"
           style={{ flex: 1 }}
           value={messageText}
           onChange={(e) => setMessageText(e.currentTarget.value)}
           onKeyDown={handleKeyDown}
-          placeholder={t('common:message', 'Написать сообщение...')}
+          placeholder="Написать сообщение..."
+          disabled={isSending}
         />
         <ActionIcon
           variant="filled"
           size="md"
-          onClick={handleSend}
+          onClick={handleFirstMessage}
           loading={isSending}
           disabled={!messageText.trim()}
         >
           <IconSend size={16} />
         </ActionIcon>
       </Group>
-    </Stack>
+    </div>
   );
 }
 
-// ─── Message item ─────────────────────────────────────────────
+// ── Follow bar ───────────────────────────────────────────────
 
-function MessageItem({
-  message,
-  currentUserId,
-}: {
-  message: any;
-  currentUserId?: number;
-}) {
-  const authorName =
-    message.author_user_id?.name ||
-    message.author_partner_id?.name ||
-    '';
-  const isOwn =
-    message.author_user_id?.id === currentUserId ||
-    (typeof message.author_user_id === 'number' &&
-      message.author_user_id === currentUserId);
-  const typeColor = TYPE_COLORS[message.message_type] || 'gray';
+interface FollowBarProps {
+  isMember: boolean;
+  members: Array<{ user_id?: number; name?: string; is_active?: boolean }>;
+  currentUserId: number;
+  onFollow: () => void;
+  onUnfollow: () => void;
+}
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    const now = new Date();
-    const isToday = d.toDateString() === now.toDateString();
-    const time = d.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    if (isToday) return time;
-    return `${d.toLocaleDateString()} ${time}`;
-  };
-
-  const getInitials = (name: string) => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const stripHtml = (html: string) => {
-    if (!html) return '';
-    return html.replace(/<[^>]*>/g, '');
-  };
+function FollowBar({ isMember, members, currentUserId, onFollow, onUnfollow }: FollowBarProps) {
+  const activeMembers = members?.filter((m) => m.is_active !== false) || [];
 
   return (
     <Group
-      gap="xs"
-      wrap="nowrap"
-      align="flex-start"
+      justify="space-between"
+      px="xs"
+      py={4}
       style={{
-        flexDirection: isOwn ? 'row-reverse' : 'row',
+        borderBottom: '1px solid var(--mantine-color-default-border)',
+        flexShrink: 0,
       }}
     >
-      <Avatar size="sm" radius="xl" color={isOwn ? 'blue' : 'gray'}>
-        {getInitials(authorName)}
-      </Avatar>
+      {/* Followers avatars */}
+      <Group gap={4}>
+        <Avatar.Group spacing="xs">
+          {activeMembers.slice(0, 5).map((m, i) => (
+            <Tooltip key={i} label={m.name || 'User'} withArrow>
+              <Avatar size="xs" radius="xl" color="blue">
+                {(m.name || '?').slice(0, 1).toUpperCase()}
+              </Avatar>
+            </Tooltip>
+          ))}
+          {activeMembers.length > 5 && (
+            <Avatar size="xs" radius="xl" color="gray">
+              +{activeMembers.length - 5}
+            </Avatar>
+          )}
+        </Avatar.Group>
+      </Group>
 
-      <Box
-        p="xs"
-        style={{
-          borderRadius: 'var(--mantine-radius-md)',
-          background: isOwn
-            ? 'var(--mantine-color-blue-0)'
-            : 'var(--mantine-color-gray-0)',
-          maxWidth: '85%',
-          minWidth: 0,
-        }}
-      >
-        <Stack gap={2}>
-          <Group justify="space-between" gap="xs">
-            <Text size="xs" fw={500} c={isOwn ? 'blue' : undefined}>
-              {authorName}
-            </Text>
-            {message.message_type !== 'comment' && (
-              <Badge size="xs" color={typeColor} variant="light">
-                {message.message_type}
-              </Badge>
-            )}
-          </Group>
-
-          <Text size="sm" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {stripHtml(message.body || '')}
-          </Text>
-
-          <Text size="xs" c="dimmed" ta={isOwn ? 'left' : 'right'}>
-            {formatDate(message.create_date)}
-          </Text>
-        </Stack>
-      </Box>
+      {/* Follow/Unfollow button */}
+      {isMember ? (
+        <Tooltip label="Отписаться от уведомлений" withArrow>
+          <ActionIcon
+            variant="subtle"
+            size="sm"
+            color="gray"
+            onClick={onUnfollow}
+          >
+            <IconBellOff size={14} />
+          </ActionIcon>
+        </Tooltip>
+      ) : (
+        <Button
+          variant="subtle"
+          size="compact-xs"
+          leftSection={<IconBell size={14} />}
+          onClick={onFollow}
+        >
+          Подписаться
+        </Button>
+      )}
     </Group>
   );
 }
+
+export default MessagesPanel;

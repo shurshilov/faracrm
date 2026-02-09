@@ -40,7 +40,7 @@ const chatApi = api.injectEndpoints({
           const newChat: Chat = {
             id: data.data.id,
             name: data.data.name || '',
-            chat_type: data.data.chat_type as 'direct' | 'group' | 'channel',
+            chat_type: data.data.chat_type as 'direct' | 'group' | 'channel' | 'record',
             is_internal: true,
             members: [],
             unread_count: 0,
@@ -584,7 +584,7 @@ export interface ChatConnectorDetail {
 export interface Chat {
   id: number;
   name: string;
-  chat_type: 'direct' | 'group' | 'channel';
+  chat_type: 'direct' | 'group' | 'channel' | 'record';
   is_internal: boolean;
   description?: string;
   create_date?: string;
@@ -656,7 +656,7 @@ export interface GetChatResponse {
 
 export interface CreateChatArgs {
   name?: string;
-  chat_type: 'direct' | 'group' | 'channel';
+  chat_type: 'direct' | 'group' | 'channel' | 'record';
   user_ids: number[];
   partner_ids?: number[];
 }
@@ -738,7 +738,36 @@ export interface WSRead {
 
 export type WSMessage = WSNewMessage | WSTyping | WSPresence | WSRead;
 
-export { chatApi };
+// ====================== RECORD CHAT (get_or_create) ======================
+
+// Единственный уникальный эндпоинт для record-чатов.
+// Всё остальное через стандартные /chats/{chat_id}/... хуки.
+
+const recordChatApi = api.injectEndpoints({
+  endpoints: build => ({
+    // Find record chat (GET, no creation)
+    findRecordChat: build.query<
+      { chat_id: number | null; name: string | null },
+      { resModel: string; resId: number }
+    >({
+      query: ({ resModel, resId }) => `/records/${resModel}/${resId}/chat`,
+    }),
+
+    // Get or create record chat (POST, lazy creation)
+    getOrCreateRecordChat: build.mutation<
+      { chat_id: number; name: string },
+      { resModel: string; resId: number }
+    >({
+      query: ({ resModel, resId }) => ({
+        url: `/records/${resModel}/${resId}/chat`,
+        method: 'POST',
+      }),
+    }),
+  }),
+  overrideExisting: false,
+});
+
+export { chatApi, recordChatApi };
 export const {
   useGetChatsQuery,
   useGetChatQuery,
@@ -764,3 +793,8 @@ export const {
   useUnsetConnectorWebhookMutation,
   useLazyGetConnectorWebhookInfoQuery,
 } = chatApi;
+
+export const {
+  useFindRecordChatQuery,
+  useGetOrCreateRecordChatMutation,
+} = recordChatApi;

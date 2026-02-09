@@ -8,11 +8,7 @@ import {
   CloseButton,
   Tabs,
 } from '@mantine/core';
-import {
-  IconBell,
-  IconMessage,
-  IconPaperclip,
-} from '@tabler/icons-react';
+import { IconBell, IconMessage, IconPaperclip } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useSearchQuery } from '@/services/api/crudApi';
 import { ActivityPanel } from './ActivityPanel';
@@ -106,14 +102,12 @@ export function FormPanelsBadges({
         size={14}
         disabled={activityCount === 0}
         color="orange"
-        offset={4}
-      >
+        offset={4}>
         <ActionIcon
           variant={activePanel === 'activities' ? 'filled' : 'subtle'}
           size="md"
           onClick={() => onToggle('activities')}
-          title={panelTitle.activities}
-        >
+          title={panelTitle.activities}>
           <IconBell size={18} />
         </ActionIcon>
       </Indicator>
@@ -123,14 +117,12 @@ export function FormPanelsBadges({
         size={14}
         disabled={messageCount === 0}
         color="blue"
-        offset={4}
-      >
+        offset={4}>
         <ActionIcon
           variant={activePanel === 'messages' ? 'filled' : 'subtle'}
           size="md"
           onClick={() => onToggle('messages')}
-          title={panelTitle.messages}
-        >
+          title={panelTitle.messages}>
           <IconMessage size={18} />
         </ActionIcon>
       </Indicator>
@@ -140,14 +132,12 @@ export function FormPanelsBadges({
         size={14}
         disabled={attachmentCount === 0}
         color="green"
-        offset={4}
-      >
+        offset={4}>
         <ActionIcon
           variant={activePanel === 'attachments' ? 'filled' : 'subtle'}
           size="md"
           onClick={() => onToggle('attachments')}
-          title={panelTitle.attachments}
-        >
+          title={panelTitle.attachments}>
           <IconPaperclip size={18} />
         </ActionIcon>
       </Indicator>
@@ -174,45 +164,50 @@ export function FormPanelSide({
   const [panelWidth, setPanelWidth] = useState(() => {
     const saved = localStorage.getItem(PANEL_STORAGE_KEY);
     const parsed = saved ? parseInt(saved, 10) : NaN;
-    return isNaN(parsed) ? PANEL_DEFAULT_WIDTH : Math.min(Math.max(parsed, PANEL_MIN_WIDTH), PANEL_MAX_WIDTH);
+    return isNaN(parsed)
+      ? PANEL_DEFAULT_WIDTH
+      : Math.min(Math.max(parsed, PANEL_MIN_WIDTH), PANEL_MAX_WIDTH);
   });
 
   const isResizing = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    isResizing.current = true;
-    startX.current = e.clientX;
-    startWidth.current = panelWidth;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      isResizing.current = true;
+      startX.current = e.clientX;
+      startWidth.current = panelWidth;
 
-    const handleMouseMove = (ev: MouseEvent) => {
-      if (!isResizing.current) return;
-      // Drag LEFT = increase width (panel is on the right)
-      const delta = startX.current - ev.clientX;
-      const newWidth = Math.min(
-        Math.max(startWidth.current + delta, PANEL_MIN_WIDTH),
-        PANEL_MAX_WIDTH,
-      );
-      setPanelWidth(newWidth);
-    };
+      const handleMouseMove = (ev: MouseEvent) => {
+        if (!isResizing.current) return;
+        // Drag LEFT = increase width (panel is on the right)
+        const delta = startX.current - ev.clientX;
+        const newWidth = Math.min(
+          Math.max(startWidth.current + delta, PANEL_MIN_WIDTH),
+          PANEL_MAX_WIDTH,
+        );
+        setPanelWidth(newWidth);
+      };
 
-    const handleMouseUp = () => {
-      isResizing.current = false;
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = '';
-      document.body.style.userSelect = '';
-      // Persist
-      localStorage.setItem(PANEL_STORAGE_KEY, String(panelWidth));
-    };
+      const handleMouseUp = () => {
+        isResizing.current = false;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        // Persist
+        localStorage.setItem(PANEL_STORAGE_KEY, String(panelWidth));
+      };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  }, [panelWidth]);
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    },
+    [panelWidth],
+  );
 
   // Save on width changes
   useEffect(() => {
@@ -233,12 +228,10 @@ export function FormPanelSide({
         width: panelWidth,
         minWidth: PANEL_MIN_WIDTH,
         maxWidth: PANEL_MAX_WIDTH,
-        height: '100%',
         display: 'flex',
         flexShrink: 0,
         position: 'relative',
-      }}
-    >
+      }}>
       {/* Resize handle */}
       <Box
         onMouseDown={handleMouseDown}
@@ -252,11 +245,11 @@ export function FormPanelSide({
           zIndex: 10,
           background: 'transparent',
         }}
-        onMouseEnter={(e) => {
+        onMouseEnter={e => {
           (e.currentTarget as HTMLElement).style.background =
             'var(--mantine-color-blue-3)';
         }}
-        onMouseLeave={(e) => {
+        onMouseLeave={e => {
           if (!isResizing.current) {
             (e.currentTarget as HTMLElement).style.background = 'transparent';
           }
@@ -271,8 +264,7 @@ export function FormPanelSide({
           flexDirection: 'column',
           borderLeft: '1px solid var(--mantine-color-default-border)',
           overflow: 'hidden',
-        }}
-      >
+        }}>
         {/* Header */}
         <Group
           justify="space-between"
@@ -281,23 +273,24 @@ export function FormPanelSide({
           style={{
             borderBottom: '1px solid var(--mantine-color-default-border)',
             flexShrink: 0,
-          }}
-        >
+          }}>
           <Text size="sm" fw={600}>
             {panelTitles[activePanel]}
           </Text>
           <CloseButton size="sm" onClick={onClose} />
         </Group>
 
-        {/* Scrollable body */}
+        {/* Panel body */}
         <Box
-          p="sm"
+          p={activePanel === 'messages' ? 0 : 'sm'}
           style={{
             flex: 1,
-            overflowY: 'auto',
+            overflowY: activePanel === 'messages' ? 'hidden' : 'auto',
             overflowX: 'hidden',
-          }}
-        >
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0,
+          }}>
           {activePanel === 'activities' && (
             <ActivityPanel resModel={resModel} resId={resId} />
           )}
