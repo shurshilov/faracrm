@@ -19,6 +19,8 @@
                 "8090",
                 "--log-level",
                 "debug",
+                // "--log-config",
+                // "./backend/logging.ini",
                 "--reload",
                 "--reload-exclude",
                 "'filestore/*'",

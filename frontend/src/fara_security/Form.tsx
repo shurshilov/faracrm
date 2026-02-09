@@ -135,6 +135,7 @@ export function ViewFormRules(props: ViewFormProps) {
         <FormRow cols={2}>
           <Field name="name" />
           <Field name="role_id" />
+          <Field name="domain" />
         </FormRow>
         <FormSection title="Права доступа" icon={<IconLock size={18} />}>
           <FormRow cols={4}>

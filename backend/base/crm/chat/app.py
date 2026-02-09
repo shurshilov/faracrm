@@ -115,7 +115,7 @@ class ChatApp(App):
                         active=True,
                         model_id=message_model[0],
                         role_id=None,
-                        domain=[["author_id", "=", "{{user_id}}"]],
+                        domain=[["author_user_id", "=", "{{user_id}}"]],
                         perm_create=False,
                         perm_read=False,
                         perm_update=True,  # Редактировать тоже только свои

@@ -23,6 +23,7 @@ import {
   IconCheck,
 } from '@tabler/icons-react';
 import classes from './SignIn.module.css';
+import { useState } from 'react';
 import { UserInput } from '@/services/auth/types';
 import { useLoginMutation } from '@/services/auth/auth';
 import { storeSession } from '@/slices/authSlice';
@@ -93,6 +94,7 @@ export default function SignIn() {
   const dispatch = useDispatch();
   const { t, i18n } = useTranslation('common');
   const [login, { isLoading: loading }] = useLoginMutation();
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const validationSchema = yup.object({
     login: yup
@@ -112,10 +114,11 @@ export default function SignIn() {
 
   const onSubmitHandler = async (values: UserInput) => {
     try {
+      setLoginError(null);
       const session = await login(values).unwrap();
       dispatch(storeSession({ session }));
     } catch {
-      // handled by error modal
+      setLoginError(t('auth.invalidCredentials', 'Неверный логин или пароль'));
     }
   };
 
@@ -204,6 +207,13 @@ export default function SignIn() {
               className={classes.submitBtn}>
               {t('auth.signIn')}
             </Button>
+
+            {/* Ошибка авторизации */}
+            {loginError && (
+              <Text c="red" size="sm" ta="center" data-testid="login-error">
+                {loginError}
+              </Text>
+            )}
 
             {/* Соцсети */}
             <Divider

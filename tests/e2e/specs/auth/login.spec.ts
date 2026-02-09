@@ -6,11 +6,12 @@ import { LoginPage } from '../../pages/LoginPage';
 
 test.describe('Авторизация', () => {
   // Эти тесты используют чистый контекст без storageState
-  test.use({ storageState: undefined });
+  test.use({ storageState: { cookies: [], origins: [] } });
 
   test('успешный логин admin', async ({ page }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
+    await loginPage.ensureLoggedOut();
     await loginPage.login(ADMIN_LOGIN, ADMIN_PASSWORD);
     await loginPage.expectLoggedIn();
   });
@@ -18,13 +19,16 @@ test.describe('Авторизация', () => {
   test('неверный пароль показывает ошибку', async ({ page }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
+    await loginPage.ensureLoggedOut();
     await loginPage.login('admin', 'wrongpassword');
+    // Должна появиться ошибка "Неверный логин или пароль"
     await loginPage.expectError();
   });
 
   test('пустой логин — кнопка неактивна или ошибка валидации', async ({ page }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
+    await loginPage.ensureLoggedOut();
     await loginPage.login('', '');
     // Остаёмся на странице логина
     await expect(page.getByRole('button', { name: /войти|sign in/i })).toBeVisible();
@@ -33,6 +37,7 @@ test.describe('Авторизация', () => {
   test('после логина доступны страницы приложения', async ({ page }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
+    await loginPage.ensureLoggedOut();
     await loginPage.login(ADMIN_LOGIN, ADMIN_PASSWORD);
     await loginPage.expectLoggedIn();
 

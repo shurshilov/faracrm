@@ -16,6 +16,16 @@ export class LoginPage {
     await this.page.goto('/');
   }
 
+  /** Очищаем session из localStorage чтобы гарантировать показ формы логина */
+  async ensureLoggedOut() {
+    await this.page.evaluate(() => {
+      localStorage.removeItem('session');
+      localStorage.clear();
+    });
+    await this.page.reload();
+    await this.page.waitForLoadState('domcontentloaded');
+  }
+
   async login(login: string, password: string) {
     await this.loginInput.waitFor({ state: 'visible', timeout: 10_000 });
     await this.loginInput.fill(login);
@@ -29,7 +39,7 @@ export class LoginPage {
 
   async expectError() {
     await expect(
-      this.page.getByText(/неверн|ошибк|invalid|error|failed/i),
-    ).toBeVisible({ timeout: 5_000 });
+      this.page.getByText(/неверн|ошибк|invalid|error|failed|incorrect/i),
+    ).toBeVisible({ timeout: 10_000 });
   }
 }

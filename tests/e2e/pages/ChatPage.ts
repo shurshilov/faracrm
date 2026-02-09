@@ -121,6 +121,16 @@ export class ChatPage {
     ).toHaveCount(0, { timeout: 5_000 });
   }
 
+  /** Проверить что у чата есть бейдж непрочитанных сообщений */
+  async expectUnreadBadge(chatName: string) {
+    // Находим элемент чата в списке
+    const chatItem = this.page.locator('[class*="chatItem"], [class*="ChatItem"], [class*="chat-item"]')
+      .filter({ hasText: chatName }).first();
+    // Если не нашли по классу — ищем по тексту рядом с бейджем
+    const badge = chatItem.locator('[class*="badge"], [class*="Badge"], [class*="unread"]').first();
+    await expect(badge).toBeVisible({ timeout: 10_000 });
+  }
+
   // ==================== Создание чата ====================
 
   async createGroupChat(name: string, memberNames: string[] = []) {

@@ -134,7 +134,7 @@ export class ApiHelper {
       headers: this.headers(token),
       body: JSON.stringify(values),
     });
-    if (!res.ok) throw new Error(`Create ${model} failed: ${res.status}`);
+    if (!res.ok) throw new Error(`Create ${model} failed: ${res.status} ${await res.text()}`);
     return res.json();
   }
 

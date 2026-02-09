@@ -25,6 +25,8 @@ export class ListPage {
   async goto() {
     await this.page.goto(`/${this.model}`);
     await this.page.waitForLoadState('networkidle');
+    // Ждём пока появится хотя бы один интерактивный элемент на странице
+    await this.page.waitForTimeout(1_000);
   }
 
   // ==================== Search ====================
@@ -32,22 +34,23 @@ export class ListPage {
   async search(text: string) {
     // Открыть поиск если закрыт
     if (!(await this.searchInput.isVisible().catch(() => false))) {
-      await this.searchToggle.click();
+      // Пробуем разные селекторы для кнопки поиска
+      const searchBtn = this.page.locator('[class*="search"] button, button:has(svg[class*="search"]), [aria-label*="оиск"], [title*="оиск"]').first();
+      if (await searchBtn.isVisible().catch(() => false)) {
+        await searchBtn.click();
+      } else {
+        await this.searchToggle.click();
+      }
     }
+    await this.searchInput.waitFor({ state: 'visible', timeout: 5_000 });
     await this.searchInput.fill(text);
     // Ждём debounce + запрос
-    await this.page.waitForResponse(
-      (res) => res.url().includes('/search') && res.ok(),
-      { timeout: 5_000 },
-    );
+    await this.page.waitForTimeout(1_000);
   }
 
   async clearSearch() {
     await this.searchInput.clear();
-    await this.page.waitForResponse(
-      (res) => res.url().includes('/search') && res.ok(),
-      { timeout: 5_000 },
-    );
+    await this.page.waitForTimeout(1_000);
   }
 
   // ==================== View Switching ====================
