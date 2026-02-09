@@ -301,12 +301,21 @@ class CRUDMixin:
 
         val: tuple = ()
 
-        if end is not None and start is not None:
+        # Pagination: start/end → LIMIT (end-start) OFFSET start
+        # limit alone → LIMIT limit
+        # start alone → OFFSET start (no limit)
+        if start is not None and end is not None:
             stmt += "LIMIT %s OFFSET %s"
             val = (end - start, start)
-        elif limit:
+        elif start is not None and limit is not None:
+            stmt += "LIMIT %s OFFSET %s"
+            val = (limit, start)
+        elif limit is not None:
             stmt += "LIMIT %s"
             val = (limit,)
+        elif start is not None:
+            stmt += "OFFSET %s"
+            val = (start,)
 
         # Prepend where values
         if where_values:
