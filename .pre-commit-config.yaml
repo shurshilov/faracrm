@@ -1,0 +1,89 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+default_language_version:
+  python: python3
+  node: "16.17.0"
+repos:
+  - repo: https://github.com/myint/autoflake
+    rev: v2.3.1
+    hooks:
+      - id: autoflake
+        args:
+          - --expand-star-imports
+          - --ignore-init-module-imports
+          - --in-place
+          - --remove-all-unused-imports
+          - --remove-duplicate-keys
+          - --remove-unused-variables
+        exclude: /__init__\.py$
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # -   id: check-yaml
+      #     files: \.py$
+      - id: check-case-conflict
+        name: Check files conflict case-insensitive FS like MacOS HFS+ or Windows FAT.
+      - id: check-ast
+        name: Simply check whether files parse as valid python
+      - id: check-docstring-first
+        name: Checks for a common error of placing code before the docstring.
+      # - id: check-json
+      - id: debug-statements
+      - id: requirements-txt-fixer
+      - id: check-symlinks
+        name: Checks for symlinks which do not point to anything.
+      - id: check-xml
+      - id: end-of-file-fixer
+        files: \.py$
+      - id: trailing-whitespace
+        files: \.py$
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
+    hooks:
+      - id: pyupgrade
+        args: ["--keep-percent-format"]
+  - repo: https://github.com/psf/black
+    rev: 26.1.0
+    hooks:
+      - id: black
+        name: Black Python code formatting
+        # entry: bash -c 'black "$@"; git add -u' --
+        language: python
+        types: [python]
+        # default 88
+        # args: ["--line-length=100"]
+        files: \.py$
+  # - repo: https://github.com/pycqa/isort
+  #   rev: 5.12.0
+  #   hooks:
+  #     - id: isort
+  #       name: isort except __init__.py
+  #       args:
+  #         - --settings=.
+  #       exclude: /__init__\.py$
+  # - repo: https://github.com/PyCQA/pylint
+  #   rev: v2.17.4
+  #   hooks:
+  #     - id: pylint
+  #       args:
+  #       - --max-line-length=100
+  #       - --ignore-imports=yes
+  #       - --disable=invalid-name,missing-docstring,protected-access,too-few-public-methods,consider-using-assignment-expr,import-error,duplicate-code,fixme,raise-missing-from,broad-exception-caught,redefined-builtin,too-many-locals,too-many-branches,too-many-statements
+
+# # install it with pip
+# python -m pip install pre-commit
+
+# # generate a sample config (you'll want to modify it)
+# pre-commit sample-config > .pre-commit-config.yaml
+
+# # activate pre-commit in a repository
+# pre-commit install
+
+# # pre-commit will now run on future `git commit` operations!
+
+# # optionally, the tool can be run standalone too:
+# # manually run pre-commit on the current checked-in files (git add'd).
+# pre-commit run
+
+# # run pre-commit on all files selected in the config
+# pre-commit run --all-files
