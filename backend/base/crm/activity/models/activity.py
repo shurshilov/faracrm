@@ -304,7 +304,7 @@ class Activity(DotModel):
         # 1. Обновляем state для просроченных
         overdue = await self.search(
             filter=[
-                ("date_deadline", "<", str(today)),
+                ("date_deadline", "<", today),
                 ("done", "=", False),
                 ("state", "!=", "overdue"),
                 ("state", "!=", "cancelled"),
@@ -317,7 +317,7 @@ class Activity(DotModel):
         # 2. Обновляем state для сегодняшних
         today_activities = await self.search(
             filter=[
-                ("date_deadline", "=", str(today)),
+                ("date_deadline", "=", today),
                 ("done", "=", False),
                 ("state", "=", "planned"),
             ],
@@ -329,7 +329,7 @@ class Activity(DotModel):
         # 3. Отправляем уведомления для сегодняшних и просроченных (если ещё не отправляли)
         pending = await self.search(
             filter=[
-                ("date_deadline", "<=", str(today)),
+                ("date_deadline", "<=", today),
                 ("done", "=", False),
                 ("notification_sent", "=", False),
                 ("state", "!=", "cancelled"),

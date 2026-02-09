@@ -153,6 +153,11 @@ class ExtensionRegistry:
         self._applied.add(table_name)
         log.info(f"Extensions applied to {model_class.__name__}")
 
+        # Rebuild field cache to include new fields from extensions
+        if hasattr(model_class, "_build_field_cache"):
+            model_class._build_field_cache()
+            log.debug(f"  Rebuilt field cache for {model_class.__name__}")
+
         return model_class
 
     def _apply_extension(self, model: Type, namespace: Dict[str, Any]) -> None:
