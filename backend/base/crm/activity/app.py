@@ -48,7 +48,19 @@ class ActivityApp(App):
                     payload=ActivityType(**type_data),
                 )
 
-        # Крон-задача проверки дедлайнов
+        # Крон-задача проверки дедлайнов (каждые 5 минут)
+        from backend.base.system.cron.models.cron_job import CronJob
+
+        await CronJob.create_or_update(
+            env=env,
+            name="Activity: check deadlines",
+            code="await env.models.activity.check_deadlines()",
+            interval_number=5,
+            interval_type="minutes",
+            active=True,
+            priority=5,
+        )
+
         await env.models.system_settings.ensure_defaults(
             [
                 {
