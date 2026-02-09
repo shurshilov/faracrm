@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useSearchQuery } from '@/services/api/crudApi';
 import { FaraRecord, GetListParams, GetListResult } from '@/services/api/crudTypes';
+import { useFilters } from '@/components/SearchFilter/FilterContext';
 import {
   BaseQueryFn,
   TypedUseQueryHookResult,
@@ -196,12 +197,15 @@ export function Gantt<T extends FaraRecord>({
   }, [fields, startField, endField, dateField, durationField, labelField, colorField, sort]);
 
   // Загрузка данных
+  const contextFilters = useFilters();
+
   const { data: recordsData } = useSearchQuery({
     model,
     fields: queryFields,
     limit: 500,
     order: order,
     sort: sort || startField || dateField || 'id',
+    filter: contextFilters,
   }) as TypedUseQueryHookResult<GetListResult<T>, GetListParams, BaseQueryFn>;
 
   const records = recordsData?.data || [];

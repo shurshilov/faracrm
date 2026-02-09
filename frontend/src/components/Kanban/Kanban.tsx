@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Text, Badge, Group, Stack, ScrollArea, ActionIcon, Box } from '@mantine/core';
 import { IconGripVertical, IconPlus } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useSearchQuery, useUpdateMutation } from '@/services/api/crudApi';
 import { FaraRecord, GetListParams, GetListResult } from '@/services/api/crudTypes';
+import { useFilters } from '@/components/SearchFilter/FilterContext';
 import {
   DndContext,
   DragEndEvent,
@@ -201,12 +202,16 @@ export function Kanban<T extends FaraRecord>({
     ? [...fields, groupByField]
     : fields;
 
+  // Фильтры из SearchFilter контекста
+  const contextFilters = useFilters();
+
   const { data: recordsData } = useSearchQuery({
     model,
     fields: fieldsWithGroup,
     limit: 500,
     order: 'asc',
     sort: 'id',
+    filter: contextFilters,
   }) as TypedUseQueryHookResult<GetListResult<T>, GetListParams, BaseQueryFn>;
 
   // Загрузка стадий (если группировка)
@@ -270,6 +275,9 @@ export function Kanban<T extends FaraRecord>({
 
   const records = recordsData?.data || [];
   const stages = stagesData?.data || [];
+
+  // DEBUG: проверка что данные обновляются при фильтрации
+  console.log('Kanban render:', { recordsCount: records.length, filtersCount: contextFilters.length, contextFilters });
 
   // Группированный канбан
   if (groupByField && groupByModel && stages.length > 0) {

@@ -692,6 +692,18 @@ class DotModel(
                 elif mode == JsonMode.CREATE or mode == JsonMode.UPDATE:
                     fields_json[field_name] = field.id
 
+            # ЗАДАНО как int/id для Many2one (FK не развёрнут в объект)
+            elif isinstance(field, (int,)) and isinstance(
+                field_class, (Many2one, PolymorphicMany2one)
+            ):
+                if mode in (JsonMode.CREATE, JsonMode.UPDATE):
+                    fields_json[field_name] = field
+                else:
+                    fields_json[field_name] = {
+                        "id": field,
+                        "name": str(field),
+                    }
+
             # ЗАДАНО как many2many или one2many
             elif isinstance(
                 field_class, (Many2many, One2many, PolymorphicOne2many)
