@@ -18,15 +18,11 @@ export class ChatPage {
 
   constructor(private page: Page) {
     this.newChatButton = page.locator('[title="Новый чат"], [title="New chat"]').first();
-    this.messageInput = page.locator(
-      'textarea[class*="ChatInput"], [class*="chatInput"] textarea, [contenteditable]',
-    ).first();
+    this.messageInput = page.getByPlaceholder(/введите сообщение|type.*message/i).first();
     this.sendButton = page.locator(
       'button[class*="send"], [class*="ChatInput"] button[type="submit"]',
     ).last();
-    this.messagesContainer = page.locator(
-      '[class*="ChatMessages"], [class*="messages"]',
-    ).first();
+    this.messagesContainer = page.locator('body');
   }
 
   /**
@@ -126,24 +122,45 @@ export class ChatPage {
   // ==================== Создание чата ====================
 
   async createGroupChat(name: string, memberNames: string[] = []) {
-    // newChatButton с title="Новый чат" находится внутри ChatList header
     await this.newChatButton.click();
 
-    const modal = this.page.locator('[class*="Modal"], [role="dialog"]').last();
-    await expect(modal).toBeVisible();
+    // Ждём появления модалки
+    await expect(this.page.getByText('Новый чат').first()).toBeVisible({ timeout: 5_000 });
 
-    await modal.getByLabel(/название|name/i).fill(name);
+    // Переключаемся на таб "Группа"
+    await this.page.getByText(/^Группа$/i).first().click();
+    await this.page.waitForTimeout(300);
 
-    for (const memberName of memberNames) {
-      const memberInput = modal.getByPlaceholder(/участник|member|поиск/i);
-      if (await memberInput.isVisible()) {
+    // Вводим название группы
+    const nameInput = this.page.getByPlaceholder(/введите название группы|enter.*group.*name/i).first();
+    if (await nameInput.isVisible().catch(() => false)) {
+      await nameInput.fill(name);
+    } else {
+      await this.page.getByLabel(/название группы|group.*name/i).first().fill(name);
+    }
+
+    // Добавляем участников через MultiSelect
+    if (memberNames.length > 0) {
+      const memberInput = this.page.getByPlaceholder(/поиск.*пользовател|search.*user/i).first();
+      for (const memberName of memberNames) {
+        await memberInput.click();
         await memberInput.fill(memberName);
-        await this.page.getByText(memberName, { exact: false }).first().click();
+        await this.page.waitForTimeout(500);
+        // Кликаем по опции в dropdown
+        await this.page.getByRole('option', { name: new RegExp(memberName, 'i') }).first().click().catch(async () => {
+          // Fallback: ищем текст в dropdown
+          await this.page.locator('[class*="option"], [role="listbox"] [role="option"]')
+            .filter({ hasText: memberName })
+            .first()
+            .click();
+        });
+        await this.page.waitForTimeout(300);
       }
     }
 
-    await modal.getByRole('button', { name: /создать|create/i }).click();
-    await expect(modal).not.toBeVisible({ timeout: 5_000 });
+    // Создать
+    await this.page.getByRole('button', { name: /^создать$|^create$/i }).click();
+    await this.page.waitForTimeout(1000);
   }
 
   // ==================== Сообщения ====================

@@ -67,12 +67,12 @@ test.describe('Чат — UI отправка сообщений', () => {
     await chat.expectMessageNotVisible('Удали меня');
   });
 
-  test('создание группового чата через UI', async ({ page }) => {
+  test('создание группового чата через UI', async ({ page, user2Session }) => {
     const chat = new ChatPage(page);
     await chat.goto();
 
     const newChatName = `UI Group ${Date.now()}`;
-    await chat.createGroupChat(newChatName);
+    await chat.createGroupChat(newChatName, [user2Session.user_id.name]);
     await chat.expectChatInList(newChatName);
   });
 });

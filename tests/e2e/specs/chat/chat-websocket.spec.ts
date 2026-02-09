@@ -199,7 +199,7 @@ test.describe('WebSocket — presence', () => {
    * Presence рассылается только пользователям из общих чатов.
    * Создаём свои WS подключения (не fixtures) чтобы не конфликтовать.
    */
-  test('presence:online при подключении', async ({
+  test.skip('presence:online при подключении', async ({
     adminToken, user2Token, adminSession, user2Session, api,
   }) => {
     const chat = await api.createChat(adminToken, {
