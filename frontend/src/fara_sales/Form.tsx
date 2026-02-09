@@ -1,9 +1,12 @@
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import { Sale, SaleLine } from '@/services/api/sale';
-import { Tax } from '@/services/api/tax';
-import { FaraRecord } from '@/services/api/crudTypes';
+import type {
+  SaleRecord,
+  SaleLineRecord,
+  TaxRecord,
+  SaleStageRecord,
+} from '@/types/records';
 import {
   FormSection,
   FormRow,
@@ -23,13 +26,6 @@ import { useParams } from 'react-router-dom';
 import { PrintButton } from '@/fara_report_docx/PrintButton';
 import { FieldContacts } from '@/components/ContactsWidget';
 
-interface SaleStage extends FaraRecord {
-  name: string;
-  sequence: number;
-  color: string;
-  fold: boolean;
-}
-
 /**
  * Форма заказа на продажу
  */
@@ -37,9 +33,14 @@ export function ViewFormSales(props: ViewFormProps) {
   const { id } = useParams<{ id: string }>();
 
   return (
-    <Form<Sale> model="sale" {...props} actions={<PrintButton model="sale" recordId={id} />}>
+    <Form<SaleRecord>
+      model="sale"
+      {...props}
+      actions={<PrintButton model="sale" recordId={id} />}>
       {/* Основная информация */}
-      <FormSection title="Основная информация" icon={<IconShoppingCart size={18} />}>
+      <FormSection
+        title="Основная информация"
+        icon={<IconShoppingCart size={18} />}>
         <FormRow cols={2}>
           <Field name="name" label="Номер заказа" />
           <Field name="stage_id" label="Стадия" />
@@ -64,7 +65,9 @@ export function ViewFormSales(props: ViewFormProps) {
       </FormSection>
 
       {/* Контакты клиента */}
-      <FormSection title="Контакты клиента" icon={<IconAddressBook size={18} />}>
+      <FormSection
+        title="Контакты клиента"
+        icon={<IconAddressBook size={18} />}>
         <FieldContacts
           name="contact_ids"
           label="Контакты"
@@ -75,11 +78,10 @@ export function ViewFormSales(props: ViewFormProps) {
 
       {/* Вкладки */}
       <FormTabs defaultTab="lines">
-        <FormTab 
-          name="lines" 
-          label="Позиции заказа" 
-          icon={<IconList size={16} />}
-        >
+        <FormTab
+          name="lines"
+          label="Позиции заказа"
+          icon={<IconList size={16} />}>
           <Field name="order_line_ids">
             <Field name="id" />
             <Field name="product_id" />
@@ -93,11 +95,7 @@ export function ViewFormSales(props: ViewFormProps) {
           </Field>
         </FormTab>
 
-        <FormTab 
-          name="notes" 
-          label="Заметки" 
-          icon={<IconReceipt size={16} />}
-        >
+        <FormTab name="notes" label="Заметки" icon={<IconReceipt size={16} />}>
           <Field name="notes" label="Заметки" />
         </FormTab>
       </FormTabs>
@@ -110,7 +108,7 @@ export function ViewFormSales(props: ViewFormProps) {
  */
 export function ViewFormSaleLines(props: ViewFormProps) {
   return (
-    <Form<SaleLine> model="sale_line" {...props}>
+    <Form<SaleLineRecord> model="sale_line" {...props}>
       <FormSection title="Позиция заказа" icon={<IconList size={18} />}>
         <FormRow cols={2}>
           <Field name="sale_id" label="Заказ" />
@@ -146,7 +144,7 @@ export function ViewFormSaleLines(props: ViewFormProps) {
  */
 export function ViewFormTax(props: ViewFormProps) {
   return (
-    <Form<Tax> model="tax" {...props}>
+    <Form<TaxRecord> model="tax" {...props}>
       <FormSection title="Налог" icon={<IconReceipt size={18} />}>
         <FormRow cols={2}>
           <Field name="id" label="ID" />
@@ -162,7 +160,7 @@ export function ViewFormTax(props: ViewFormProps) {
  */
 export function ViewFormSaleStage(props: ViewFormProps) {
   return (
-    <Form<SaleStage> model="sale_stage" {...props}>
+    <Form<SaleStageRecord> model="sale_stage" {...props}>
       <FormSection title="Стадия" icon={<IconProgress size={18} />}>
         <FormRow cols={2}>
           <Field name="name" label="Название" />

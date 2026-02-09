@@ -1,12 +1,10 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
-import { Product } from '@/services/api/product';
-import { Category } from '@/services/api/category';
-import { Uom } from '@/services/api/uoms';
+import type { ProductRecord, CategoryRecord, UomRecord } from '@/types/records';
 
 export function ViewList() {
   return (
-    <List<Product> model="product" order="desc" sort="id">
+    <List<ProductRecord> model="product" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
       <Field name="description" />
@@ -23,7 +21,7 @@ export function ViewList() {
 
 export function ViewListCategory() {
   return (
-    <List<Category> model="category" order="desc" sort="id">
+    <List<CategoryRecord> model="category" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
     </List>
@@ -32,7 +30,7 @@ export function ViewListCategory() {
 
 export function ViewListUom() {
   return (
-    <List<Uom> model="uom" order="desc" sort="id">
+    <List<UomRecord> model="uom" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
     </List>

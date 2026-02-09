@@ -1,5 +1,5 @@
 import { Gantt } from '@/components/Gantt';
-import { Task, ProjectRecord } from './List';
+import type { TaskRecord as Task, ProjectRecord } from '@/types/records';
 
 export function ViewGanttTasks() {
   return (

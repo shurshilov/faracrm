@@ -1,19 +1,9 @@
+import type { ReportTemplateRecord as ReportTemplate } from '@/types/records';
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
 import { FormSection, FormRow } from '@/components/Form/Layout';
 import { IconFileDescription, IconSettings } from '@tabler/icons-react';
-
-interface ReportTemplate {
-  id: number;
-  name: string;
-  model_name: string;
-  python_function: string;
-  template_file: any;
-  output_format: string;
-  description?: string;
-  active: boolean;
-}
 
 /**
  * Форма шаблона отчёта

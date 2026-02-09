@@ -1,17 +1,6 @@
 /**
- * lead.ts — types only (codegen hooks removed, CRUD via generic crudApi.ts)
+ * lead.ts — re-exports from canonical records.ts
+ * @deprecated Import directly from '@/types/records' instead
  */
-export type Lead = {
-  id: number;
-  name: string;
-  active?: boolean;
-  user_id: SchemaUserNestedPartial;
-  parent_id: SchemaPartnerNestedPartial;
-  company_id: SchemaCompanyNestedPartial;
-  notes: string;
-  type?: string;
-  website: string;
-  email: string;
-  phone: string;
-  mobile: string;
-};
+export { type LeadRecord as Lead } from '@/types/records';
+export type { LeadStageRecord, TeamCrmRecord } from '@/types/records';

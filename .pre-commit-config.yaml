@@ -63,13 +63,13 @@ repos:
   #         - --settings=.
   #       exclude: /__init__\.py$
   # - repo: https://github.com/PyCQA/pylint
-  #   rev: v2.17.4
+  #   rev: v4.0.4
   #   hooks:
   #     - id: pylint
   #       args:
-  #       - --max-line-length=100
-  #       - --ignore-imports=yes
-  #       - --disable=invalid-name,missing-docstring,protected-access,too-few-public-methods,consider-using-assignment-expr,import-error,duplicate-code,fixme,raise-missing-from,broad-exception-caught,redefined-builtin,too-many-locals,too-many-branches,too-many-statements
+  #       - --max-line-length=79
+  #       # - --ignore-imports=yes
+  #       # - --disable=invalid-name,missing-docstring,protected-access,too-few-public-methods,consider-using-assignment-expr,import-error,duplicate-code,fixme,raise-missing-from,broad-exception-caught,redefined-builtin,too-many-locals,too-many-branches,too-many-statements
 
 # # install it with pip
 # python -m pip install pre-commit

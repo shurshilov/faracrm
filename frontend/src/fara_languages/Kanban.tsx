@@ -1,9 +1,9 @@
 import { Kanban } from '@/components/Kanban';
-import { FaraRecord } from '@/services/api/crudTypes';
+import type { LanguageRecord } from '@/types/records';
 
 export function ViewKanbanLanguage() {
   return (
-    <Kanban<FaraRecord>
+    <Kanban<LanguageRecord>
       model="language"
       fields={['id', 'code', 'name', 'flag']}
     />

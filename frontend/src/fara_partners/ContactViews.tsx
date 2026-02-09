@@ -49,7 +49,7 @@ export function ViewListContacts() {
   const { contactTypes } = useContactTypes();
 
   return (
-    <List model="contact">
+    <List<ContactRecord> model="contact">
       <Field name="id" label="ID" />
       <Field
         name="contact_type_id"
@@ -90,19 +90,10 @@ export function ViewListContacts() {
 }
 
 // ============ FORM ============
-interface Contact {
-  id?: number;
-  contact_type_id?: { id: number; name: string } | number | null;
-  name: string;
-  partner_id?: { id: number; name: string } | null;
-  user_id?: { id: number; name: string } | null;
-  is_primary?: boolean;
-  active?: boolean;
-}
 
 export function ViewFormContacts(props: ViewFormProps) {
   return (
-    <Form<Contact> model="contact" {...props}>
+    <Form<ContactRecord> model="contact" {...props}>
       <FormRow cols={2}>
         <Field name="contact_type_id" label="Тип контакта" />
         <Field name="name" label="Значение" />

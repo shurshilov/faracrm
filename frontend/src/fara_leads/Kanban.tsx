@@ -1,10 +1,13 @@
 import { Kanban } from '@/components/Kanban';
-import { Lead } from '@/services/api/lead';
-import { FaraRecord } from '@/services/api/crudTypes';
+import type {
+  LeadRecord,
+  LeadStageRecord,
+  TeamCrmRecord,
+} from '@/types/records';
 
 export function ViewKanbanLeads() {
   return (
-    <Kanban<Lead>
+    <Kanban<LeadRecord>
       model="lead"
       fields={['id', 'name', 'type', 'email', 'phone', 'user_id']}
       groupByField="stage_id"
@@ -15,7 +18,7 @@ export function ViewKanbanLeads() {
 
 export function ViewKanbanLeadStage() {
   return (
-    <Kanban<FaraRecord>
+    <Kanban<LeadStageRecord>
       model="lead_stage"
       fields={['id', 'name', 'sequence', 'color']}
     />
@@ -23,10 +26,5 @@ export function ViewKanbanLeadStage() {
 }
 
 export function ViewKanbanTeamCrm() {
-  return (
-    <Kanban<FaraRecord>
-      model="team_crm"
-      fields={['id', 'name']}
-    />
-  );
+  return <Kanban<TeamCrmRecord> model="team_crm" fields={['id', 'name']} />;
 }

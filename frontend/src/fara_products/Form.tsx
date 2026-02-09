@@ -1,14 +1,10 @@
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import { Product } from '@/services/api/product';
-import { Category } from '@/services/api/category';
-import { Uom } from '@/services/api/uoms';
-import {
-  FormSection,
-  FormRow,
-  FormSheet,
-} from '@/components/Form/Layout';
+import type { ProductRecord as Product } from '@/types/records';
+import type { CategoryRecord as Category } from '@/types/records';
+import type { UomRecord as Uom } from '@/types/records';
+import { FormSection, FormRow, FormSheet } from '@/components/Form/Layout';
 import {
   IconCurrencyDollar,
   IconRuler,

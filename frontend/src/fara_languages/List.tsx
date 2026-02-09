@@ -1,14 +1,7 @@
+import type { LanguageRecord as SchemaLanguage } from '@/types/records';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
-
-interface SchemaLanguage {
-  id: number;
-  code: string;
-  name: string;
-  flag: string;
-  active: boolean;
-}
 
 export function ViewListLanguage() {
   const { t } = useTranslation('languages');

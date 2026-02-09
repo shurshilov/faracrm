@@ -3,7 +3,7 @@ import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
 import { ViewFormProps } from '@/route/type';
-import { FaraRecord } from '@/services/api/crudTypes';
+import type { ChatExternalAccountRecord } from '@/types/records';
 import { FormSection, FormRow } from '@/components/Form/Layout';
 import { IconUser, IconLink, IconSettings } from '@tabler/icons-react';
 
@@ -12,7 +12,10 @@ export function ViewListExternalAccount() {
   const { t } = useTranslation('chat');
 
   return (
-    <List<FaraRecord> model="chat_external_account" order="desc" sort="id">
+    <List<ChatExternalAccountRecord>
+      model="chat_external_account"
+      order="desc"
+      sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
       <Field name="external_id" label={t('fields.external_id')} />
@@ -29,7 +32,7 @@ export function ViewFormExternalAccount(props: ViewFormProps) {
   const { t } = useTranslation('chat');
 
   return (
-    <Form<FaraRecord> model="chat_external_account" {...props}>
+    <Form<ChatExternalAccountRecord> model="chat_external_account" {...props}>
       <FormSection
         title={t('externalAccount.groups.info')}
         icon={<IconUser size={18} />}>

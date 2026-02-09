@@ -1,20 +1,6 @@
 /**
- * partner.ts — types only (codegen hooks removed, CRUD via generic crudApi.ts)
+ * partner.ts — re-exports from canonical records.ts
+ * @deprecated Import directly from '@/types/records' instead
  */
-export type Partner = {
-  id: number;
-  name: string;
-  active?: boolean;
-  parent_id: SchemaPartnerNestedPartial;
-  child_ids: SchemaSearchOutputListSchemaPartnerNestedPartial;
-  user_id: SchemaUserNestedPartial;
-  company_id: SchemaCompanyNestedPartial;
-  tz?: string;
-  lang?: string;
-  vat: string;
-  notes: string;
-  website: string;
-  email: string;
-  phone: string;
-  mobile: string;
-};
+export { type PartnerRecord as Partner } from '@/types/records';
+export type { ContactRecord, ContactTypeRecord } from '@/types/records';

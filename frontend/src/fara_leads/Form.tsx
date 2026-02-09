@@ -1,12 +1,12 @@
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import { Lead } from '@/services/api/lead';
-import { FaraRecord } from '@/services/api/crudTypes';
-import {
-  FormSection,
-  FormRow,
-} from '@/components/Form/Layout';
+import type {
+  LeadRecord,
+  LeadStageRecord,
+  TeamCrmRecord,
+} from '@/types/records';
+import { FormSection, FormRow } from '@/components/Form/Layout';
 import {
   IconUser,
   IconPhone,
@@ -16,26 +16,12 @@ import {
   IconPalette,
 } from '@tabler/icons-react';
 
-// Простой тип для TeamCrm
-export type TeamCrm = {
-  id: number;
-  name: string;
-};
-
-// Тип для LeadStage
-interface LeadStage extends FaraRecord {
-  name: string;
-  sequence: number;
-  color: string;
-  fold: boolean;
-}
-
 /**
  * Форма лида/возможности
  */
 export function ViewFormLeads(props: ViewFormProps) {
   return (
-    <Form<Lead> model="lead" {...props}>
+    <Form<LeadRecord> model="lead" {...props}>
       {/* Основная информация */}
       <FormSection title="Основная информация" icon={<IconUser size={18} />}>
         <FormRow cols={2}>
@@ -82,7 +68,7 @@ export function ViewFormLeads(props: ViewFormProps) {
  */
 export function ViewFormTeamCrm(props: ViewFormProps) {
   return (
-    <Form<TeamCrm> model="team_crm" {...props}>
+    <Form<TeamCrmRecord> model="team_crm" {...props}>
       <FormSection title="Команда CRM" icon={<IconBuilding size={18} />}>
         <FormRow cols={2}>
           <Field name="id" label="ID" />
@@ -98,7 +84,7 @@ export function ViewFormTeamCrm(props: ViewFormProps) {
  */
 export function ViewFormLeadStage(props: ViewFormProps) {
   return (
-    <Form<LeadStage> model="lead_stage" {...props}>
+    <Form<LeadStageRecord> model="lead_stage" {...props}>
       <FormSection title="Стадия" icon={<IconProgress size={18} />}>
         <FormRow cols={2}>
           <Field name="name" label="Название" />

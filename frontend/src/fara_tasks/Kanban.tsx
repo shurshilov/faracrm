@@ -1,6 +1,10 @@
 import { Kanban } from '@/components/Kanban';
-import { Task, ProjectRecord } from './List';
-import { FaraRecord } from '@/services/api/crudTypes';
+import type {
+  TaskRecord as Task,
+  ProjectRecord,
+  TaskStageRecord,
+  TaskTagRecord,
+} from '@/types/records';
 
 export function ViewKanbanTasks() {
   return (
@@ -42,7 +46,7 @@ export function ViewKanbanProjects() {
 
 export function ViewKanbanTaskStages() {
   return (
-    <Kanban<FaraRecord>
+    <Kanban<TaskStageRecord>
       model="task_stage"
       fields={['id', 'name', 'sequence', 'color', 'is_closed']}
     />
@@ -51,9 +55,6 @@ export function ViewKanbanTaskStages() {
 
 export function ViewKanbanTaskTags() {
   return (
-    <Kanban<FaraRecord>
-      model="task_tag"
-      fields={['id', 'name', 'color']}
-    />
+    <Kanban<TaskTagRecord> model="task_tag" fields={['id', 'name', 'color']} />
   );
 }

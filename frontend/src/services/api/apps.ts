@@ -1,9 +1,5 @@
 /**
- * apps.ts — types only (codegen hooks removed, CRUD via generic crudApi.ts)
+ * apps.ts — re-exports from canonical records.ts
+ * @deprecated Import directly from '@/types/records' instead
  */
-export type SchemaApp = {
-  id: number;
-  code?: string | null;
-  name?: string | null;
-  active?: boolean | null;
-};
+export { type AppRecord as SchemaApp } from '@/types/records';

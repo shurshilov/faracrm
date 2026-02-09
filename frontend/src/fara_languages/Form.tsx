@@ -1,19 +1,9 @@
+import type { LanguageRecord as SchemaLanguage } from '@/types/records';
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import {
-  FormSection,
-  FormRow,
-} from '@/components/Form/Layout';
+import { FormSection, FormRow } from '@/components/Form/Layout';
 import { IconLanguage } from '@tabler/icons-react';
-
-interface SchemaLanguage {
-  id: number;
-  code: string;
-  name: string;
-  flag: string;
-  active: boolean;
-}
 
 export function ViewFormLanguage(props: ViewFormProps) {
   return (

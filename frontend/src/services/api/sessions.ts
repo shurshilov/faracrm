@@ -22,26 +22,10 @@ const injectedRtkApi = api.injectEndpoints({
   overrideExisting: false,
 });
 
-// Types
-export type SchemaSession = {
-  id: number;
-  user_id?: any;
-  token?: string | null;
-  ttl: number;
-  active: boolean;
-  ip_address?: string | null;
-  user_agent?: string | null;
-  create_datetime?: string | null;
-  expires_at?: string | null;
-};
-
-export type Session = SchemaSession;
-
-export type SchemaModel = {
-  id: number;
-  name?: string | null;
-  model?: string | null;
-};
+// Types — canonical source: '@/types/records'
+export { type SessionRecord as SchemaSession } from '@/types/records';
+export { type SessionRecord as Session } from '@/types/records';
+export { type ModelRecord as SchemaModel } from '@/types/records';
 
 type TerminateAllArgs = {
   excludeCurrent?: boolean;

@@ -1,11 +1,8 @@
 import { Kanban } from '@/components/Kanban';
-import { FaraRecord } from '@/services/api/crudTypes';
+import type { CompanyRecord } from '@/types/records';
 
 export function ViewKanbanCompany() {
   return (
-    <Kanban<FaraRecord>
-      model="company"
-      fields={['id', 'name', 'active']}
-    />
+    <Kanban<CompanyRecord> model="company" fields={['id', 'name', 'active']} />
   );
 }

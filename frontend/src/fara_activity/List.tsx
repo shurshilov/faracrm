@@ -1,21 +1,13 @@
 import { List } from '@/components/List/List';
 import { Field } from '@/components/List/Field';
 import { ViewListProps } from '@/route/type';
-import { FaraRecord } from '@/services/api/crudTypes';
+import type { ActivityRecord, ActivityTypeRecord } from '@/types/records';
 import { useTranslation } from 'react-i18next';
 
-// ==================== Activity List ====================
+// Re-export for backward compat (used by Form.tsx)
+export type { ActivityRecord, ActivityTypeRecord } from '@/types/records';
 
-export interface ActivityRecord extends FaraRecord {
-  res_model: string;
-  res_id: number;
-  activity_type_id: { id: number; name: string };
-  summary: string;
-  date_deadline: string;
-  user_id: { id: number; name: string };
-  state: string;
-  done: boolean;
-}
+// ==================== Activity List ====================
 
 export function ViewListActivity(props: ViewListProps) {
   const { t } = useTranslation('activity');
@@ -36,12 +28,6 @@ export function ViewListActivity(props: ViewListProps) {
 }
 
 // ==================== Activity Type List ====================
-
-export interface ActivityTypeRecord extends FaraRecord {
-  icon: string;
-  color: string;
-  default_days: number;
-}
 
 export function ViewListActivityType(props: ViewListProps) {
   const { t } = useTranslation('activity');

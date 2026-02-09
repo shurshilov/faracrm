@@ -1,3 +1,12 @@
+/**
+ * FaraRecord — базовый тип для generic-компонентов (List, Form, Kanban, Gantt).
+ *
+ * [key: string]: any сохранён для обратной совместимости.
+ * Конкретные views должны использовать типы из '@/types/records':
+ *   List<LeadRecord>, Form<TaskRecord>, Kanban<SaleRecord>
+ *
+ * @see '@/types/records' — канонический источник типов для каждой модели
+ */
 export interface FaraRecord {
   id: Identifier;
   [key: string]: any;

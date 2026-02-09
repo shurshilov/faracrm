@@ -1,18 +1,9 @@
+import type { SystemSettingRecord as SystemSettingsRecord } from '@/types/records';
 import { Badge, Code } from '@mantine/core';
 import { IconLock } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
-
-interface SystemSettingsRecord {
-  id: number;
-  key: string;
-  value: any;
-  description: string;
-  module: string;
-  is_system: boolean;
-  cache_ttl: number;
-}
 
 /**
  * Форматирует TTL в читаемый вид:

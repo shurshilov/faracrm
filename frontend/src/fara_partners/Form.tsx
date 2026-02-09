@@ -1,7 +1,7 @@
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import { Partner } from '@/services/api/partner';
+import type { PartnerRecord as Partner } from '@/types/records';
 import {
   FormSection,
   FormRow,

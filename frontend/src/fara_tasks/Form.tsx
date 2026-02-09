@@ -1,7 +1,7 @@
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import { FaraRecord } from '@/services/api/crudTypes';
+
 import {
   FormRow,
   FormTabs,
@@ -16,7 +16,12 @@ import {
   IconAlignBoxLeftTop,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
-import { Task, ProjectRecord } from './List';
+import type {
+  TaskRecord as Task,
+  ProjectRecord,
+  TaskStageRecord,
+  TaskTagRecord,
+} from '@/types/records';
 
 // ==================== Task Form ====================
 
@@ -54,8 +59,7 @@ export function ViewFormTask(props: ViewFormProps) {
         <FormTab
           name="description"
           label={t('sections.description')}
-          icon={<IconAlignBoxLeftTop size={16} />}
-        >
+          icon={<IconAlignBoxLeftTop size={16} />}>
           <Field name="description" label={t('fields.description')} />
         </FormTab>
 
@@ -63,8 +67,7 @@ export function ViewFormTask(props: ViewFormProps) {
         <FormTab
           name="tags"
           label={t('sections.tags')}
-          icon={<IconTag size={16} />}
-        >
+          icon={<IconTag size={16} />}>
           <Field name="tag_ids" label={t('fields.tag_ids')}>
             <Field name="id" />
             <Field name="name" />
@@ -76,8 +79,7 @@ export function ViewFormTask(props: ViewFormProps) {
         <FormTab
           name="time"
           label={t('sections.time')}
-          icon={<IconClock size={16} />}
-        >
+          icon={<IconClock size={16} />}>
           <FormRow cols={3}>
             <Field name="planned_hours" label={t('fields.planned_hours')} />
             <Field name="effective_hours" label={t('fields.effective_hours')} />
@@ -89,8 +91,7 @@ export function ViewFormTask(props: ViewFormProps) {
         <FormTab
           name="subtasks"
           label={t('sections.subtasks')}
-          icon={<IconSubtask size={16} />}
-        >
+          icon={<IconSubtask size={16} />}>
           <Field name="child_ids" label={t('fields.child_ids')}>
             <Field name="id" />
             <Field name="name" />
@@ -134,8 +135,7 @@ export function ViewFormProject(props: ViewFormProps) {
         <FormTab
           name="description"
           label={t('sections.description')}
-          icon={<IconAlignBoxLeftTop size={16} />}
-        >
+          icon={<IconAlignBoxLeftTop size={16} />}>
           <Field name="description" label={t('fields.description')} />
         </FormTab>
 
@@ -143,8 +143,7 @@ export function ViewFormProject(props: ViewFormProps) {
         <FormTab
           name="tasks"
           label={t('sections.tasks')}
-          icon={<IconListDetails size={16} />}
-        >
+          icon={<IconListDetails size={16} />}>
           <Field name="task_ids" label={t('fields.task_ids')}>
             <Field name="id" />
             <Field name="name" />
@@ -165,7 +164,7 @@ export function ViewFormProject(props: ViewFormProps) {
 export function ViewFormTaskStage(props: ViewFormProps) {
   const { t } = useTranslation('tasks');
   return (
-    <Form<FaraRecord> model="task_stage" {...props}>
+    <Form<TaskStageRecord> model="task_stage" {...props}>
       <FormSheet>
         <FormRow cols={2}>
           <Field name="name" label={t('fields.name')} />
@@ -187,7 +186,7 @@ export function ViewFormTaskStage(props: ViewFormProps) {
 export function ViewFormTaskTag(props: ViewFormProps) {
   const { t } = useTranslation('tasks');
   return (
-    <Form<FaraRecord> model="task_tag" {...props}>
+    <Form<TaskTagRecord> model="task_tag" {...props}>
       <FormSheet>
         <FormRow cols={2}>
           <Field name="name" label={t('fields.name')} />

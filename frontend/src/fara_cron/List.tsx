@@ -1,3 +1,4 @@
+import type { CronJobRecord as SchemaCronJob } from '@/types/records';
 /**
  * Список запланированных задач (cron jobs)
  * Использует унифицированный компонент List
@@ -9,22 +10,6 @@ import { IconRefresh } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
-
-interface SchemaCronJob {
-  id: number;
-  name: string;
-  active: boolean;
-  model_path: string;
-  method_name: string;
-  interval_number: number;
-  interval_type: string;
-  nextcall: string | null;
-  lastcall: string | null;
-  last_status: string;
-  last_error: string | null;
-  run_count: number;
-  priority: number;
-}
 
 export function ViewListCronJob() {
   const { t } = useTranslation(['cron', 'common']);

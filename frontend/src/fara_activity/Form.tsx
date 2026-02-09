@@ -1,7 +1,7 @@
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import { FaraRecord } from '@/services/api/crudTypes';
+
 import {
   FormRow,
   FormTabs,

@@ -1,7 +1,7 @@
 import { Kanban } from '@/components/Kanban';
-import { Product } from '@/services/api/product';
-import { Category } from '@/services/api/category';
-import { Uom } from '@/services/api/uoms';
+import type { ProductRecord as Product } from '@/types/records';
+import type { CategoryRecord as Category } from '@/types/records';
+import type { UomRecord as Uom } from '@/types/records';
 
 export function ViewKanban() {
   return (
@@ -13,19 +13,9 @@ export function ViewKanban() {
 }
 
 export function ViewKanbanCategory() {
-  return (
-    <Kanban<Category>
-      model="category"
-      fields={['id', 'name']}
-    />
-  );
+  return <Kanban<Category> model="category" fields={['id', 'name']} />;
 }
 
 export function ViewKanbanUom() {
-  return (
-    <Kanban<Uom>
-      model="uom"
-      fields={['id', 'name']}
-    />
-  );
+  return <Kanban<Uom> model="uom" fields={['id', 'name']} />;
 }

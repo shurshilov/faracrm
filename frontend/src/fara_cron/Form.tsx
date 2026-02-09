@@ -1,3 +1,4 @@
+import type { CronJobRecord as SchemaCronJob } from '@/types/records';
 /**
  * Форма редактирования cron job
  * Использует унифицированный компонент Form
@@ -24,30 +25,6 @@ import {
 } from '@/components/Form/Layout';
 import { ViewFormProps } from '@/route/type';
 import { useRunCronJobMutation } from './cronApi';
-
-// Интерфейс для записи cron_job
-interface SchemaCronJob {
-  id: number;
-  name: string;
-  active: boolean;
-  code: string | null;
-  model_name: string | null;
-  method_name: string | null;
-  args: string;
-  kwargs: string;
-  interval_number: number;
-  interval_type: string;
-  numbercall: number;
-  doall: boolean;
-  nextcall: string | null;
-  lastcall: string | null;
-  last_status: string;
-  last_error: string | null;
-  last_duration: number | null;
-  run_count: number;
-  priority: number;
-  timeout: number;
-}
 
 export function ViewFormCronJob(props: ViewFormProps) {
   const { t } = useTranslation(['cron', 'common']);

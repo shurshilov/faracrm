@@ -1,17 +1,6 @@
 /**
- * access_list.ts — types only (codegen hooks removed, CRUD via generic crudApi.ts)
+ * access_list.ts — re-exports from canonical records.ts
+ * @deprecated Import directly from '@/types/records' instead
  */
-
-export type SchemaAccessList = {
-  id: number;
-  name?: string | null;
-  model_id?: any;
-  role_id?: any;
-  domain?: string | null;
-};
-
-export type SchemaModel = {
-  id: number;
-  name: string;
-  model?: string | null;
-};
+export { type AccessListRecord as SchemaAccessList } from '@/types/records';
+export { type ModelRecord as SchemaModel } from '@/types/records';

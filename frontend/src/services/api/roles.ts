@@ -1,10 +1,5 @@
 /**
- * roles.ts — types only (codegen hooks removed, CRUD via generic crudApi.ts)
+ * roles.ts — re-exports from canonical records.ts
+ * @deprecated Import directly from '@/types/records' instead
  */
-
-export type SchemaRole = {
-  id: number;
-  name?: string | null;
-  app_id?: any;
-  active?: boolean | null;
-};
+export { type RoleRecord as SchemaRole } from '@/types/records';

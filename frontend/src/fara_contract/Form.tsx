@@ -1,22 +1,9 @@
+import type { ContractRecord as Contract } from '@/types/records';
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
 import { FormSection, FormRow } from '@/components/Form/Layout';
 import { IconFileText, IconCalendar, IconSettings } from '@tabler/icons-react';
-
-interface Contract {
-  id: number;
-  name: string;
-  partner_id: any;
-  company_id: any;
-  type: string;
-  date_start: string;
-  date_end: string;
-  signed: boolean;
-  stamp: boolean;
-  notes?: string;
-  active: boolean;
-}
 
 /**
  * Форма договора

@@ -1,15 +1,7 @@
+import type { CompanyRecord as Company } from '@/types/records';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
-
-export type Company = {
-  id: number;
-  name: string;
-  active?: boolean;
-  sequence?: number;
-  parent_id?: { id: number; name: string } | null;
-  child_ids?: { id: number; name: string }[] | null;
-};
 
 export function ViewListCompany() {
   const { t } = useTranslation('company');

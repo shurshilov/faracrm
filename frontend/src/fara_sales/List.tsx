@@ -1,11 +1,15 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
-import { Sale, SaleLine } from '@/services/api/sale';
-import { FaraRecord } from '@/services/api/crudTypes';
+import type {
+  SaleRecord,
+  SaleLineRecord,
+  TaxRecord,
+  SaleStageRecord,
+} from '@/types/records';
 
 export function ViewListSales() {
   return (
-    <List<Sale> model="sale" order="desc" sort="id">
+    <List<SaleRecord> model="sale" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
       <Field name="date_order" />
@@ -20,7 +24,7 @@ export function ViewListSales() {
 
 export function ViewListSaleLines() {
   return (
-    <List<SaleLine> model="sale_line" order="desc" sort="id">
+    <List<SaleLineRecord> model="sale_line" order="desc" sort="id">
       <Field name="id" />
       <Field name="sale_id" />
       <Field name="product_id" />
@@ -36,7 +40,7 @@ export function ViewListSaleLines() {
 
 export function ViewListTax() {
   return (
-    <List<Tax> model="tax" order="desc" sort="id">
+    <List<TaxRecord> model="tax" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
     </List>
@@ -45,7 +49,7 @@ export function ViewListTax() {
 
 export function ViewListSaleStage() {
   return (
-    <List<FaraRecord> model="sale_stage" order="asc" sort="sequence">
+    <List<SaleStageRecord> model="sale_stage" order="asc" sort="sequence">
       <Field name="id" />
       <Field name="name" />
       <Field name="sequence" />

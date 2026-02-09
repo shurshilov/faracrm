@@ -1,6 +1,6 @@
 import { Kanban } from '@/components/Kanban';
-import { Partner } from '@/services/api/partner';
+import type { PartnerRecord } from '@/types/records';
 
 export function ViewKanbanPartners() {
-  return <Kanban<Partner> model="partners" fields={['id', 'name']} />;
+  return <Kanban<PartnerRecord> model="partners" fields={['id', 'name']} />;
 }

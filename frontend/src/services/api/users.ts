@@ -33,15 +33,8 @@ const injectedRtkApi = api.injectEndpoints({
   overrideExisting: false,
 });
 
-// Types
-export type SchemaUser = {
-  id: number;
-  name: string;
-  login?: string | null;
-  email?: string | null;
-  image?: any;
-  role_ids?: any[] | null;
-};
+// Types — canonical source: '@/types/records'
+export { type UserRecord as SchemaUser } from '@/types/records';
 
 export type ChangePasswordArgs = {
   userId: number;

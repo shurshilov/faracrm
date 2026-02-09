@@ -1,19 +1,7 @@
+import type { SavedFilterRecord } from '@/types/records';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
-
-interface SavedFilterRecord {
-  id: number;
-  name: string;
-  model_name: string;
-  filter_data: string;
-  user_id?: number;
-  is_global: boolean;
-  is_default: boolean;
-  use_count: number;
-  last_used_at?: string;
-  created_at?: string;
-}
 
 export function ViewListSavedFilters() {
   const { t } = useTranslation('saved_filters');
