@@ -9,7 +9,7 @@ const injectedRtkApi = api.injectEndpoints({
       TerminateAllResponse,
       TerminateAllArgs | void
     >({
-      query: (queryArg) => ({
+      query: queryArg => ({
         url: `/sessions/terminate_all`,
         method: 'POST',
         params: {
@@ -27,9 +27,11 @@ export type SchemaSession = {
   id: number;
   user_id?: any;
   token?: string | null;
+  ttl: number;
+  active: boolean;
   ip_address?: string | null;
   user_agent?: string | null;
-  created_at?: string | null;
+  create_datetime?: string | null;
   expires_at?: string | null;
 };
 
@@ -49,6 +51,4 @@ type TerminateAllResponse = {
   terminated_count: number;
 };
 
-export const {
-  useRouteSessionsTerminateAllMutation,
-} = injectedRtkApi;
+export const { useRouteSessionsTerminateAllMutation } = injectedRtkApi;

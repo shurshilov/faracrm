@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 from pydantic_settings import (
     SettingsConfigDict,
 )
@@ -274,7 +274,6 @@ class Apps(AppsCore):
     contract = ContractApp()
 
     dotorm_crud_auto = DotormCrudAutoService()
-    # dotorm_databases_postgres = DotormDatabasesPostgresService()
     # alise
     db = DotormDatabasesPostgresService()
     logger = LoggerService()

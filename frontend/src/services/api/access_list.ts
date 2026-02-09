@@ -12,6 +12,6 @@ export type SchemaAccessList = {
 
 export type SchemaModel = {
   id: number;
-  name?: string | null;
+  name: string;
   model?: string | null;
 };

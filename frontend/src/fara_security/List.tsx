@@ -22,20 +22,24 @@ import classes from './List.module.css';
 
 export function ViewListApps() {
   const { t } = useTranslation('security');
-  
+
   return (
     <List<SchemaApp> model="apps" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="code" label={t('fields.code')} />
       <Field name="name" label={t('fields.name')} />
-      <Field name="active" label={t('fields.active')} render={value => <BooleanCell value={value} />} />
+      <Field
+        name="active"
+        label={t('fields.active')}
+        render={value => <BooleanCell value={value} />}
+      />
     </List>
   );
 }
 
 export function ViewListAccessList() {
   const { t } = useTranslation('security');
-  
+
   return (
     <List<SchemaAccessList> model="access_list" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
@@ -71,7 +75,7 @@ export function ViewListAccessList() {
 
 export function ViewListRoles() {
   const { t } = useTranslation('security');
-  
+
   return (
     <List<SchemaRole> model="roles" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
@@ -90,12 +94,16 @@ export function ViewListRoles() {
 
 export function ViewListRules() {
   const { t } = useTranslation('security');
-  
+
   return (
     <List<SchemaRule> model="rules" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
-      <Field name="active" label={t('fields.active')} render={value => <BooleanCell value={value} />} />
+      <Field
+        name="active"
+        label={t('fields.active')}
+        render={value => <BooleanCell value={value} />}
+      />
       <Field
         name="model_id"
         label={t('fields.model_id')}
@@ -127,7 +135,7 @@ export function ViewListRules() {
 
 export function ViewListModels() {
   const { t } = useTranslation('security');
-  
+
   return (
     <List<SchemaModel> model="models" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
@@ -188,7 +196,11 @@ export function ViewListSessions() {
         rowClassName={getRowClassName}
         onRefetch={handleRefetch}>
         <Field name="id" label={t('fields.id')} />
-        <Field name="active" label={t('fields.active')} render={value => <BooleanCell value={value} />} />
+        <Field
+          name="active"
+          label={t('fields.active')}
+          render={value => <BooleanCell value={value} />}
+        />
         <Field
           name="user_id"
           label={t('fields.user_id')}

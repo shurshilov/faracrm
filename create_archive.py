@@ -114,6 +114,7 @@ def main():
         "filestore",
         "dist",
         ".venv",
+        ".venv3.14",
         "node_modules",
         "__pycache__",
         ".git",
