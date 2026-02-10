@@ -77,6 +77,11 @@ loggers:
     handlers: [fara_console]
     propagate: false
 
+  cron.worker:
+    level: INFO
+    handlers: [fara_console]
+    propagate: false
+
 root:
   level: WARNING
   handlers: [console]

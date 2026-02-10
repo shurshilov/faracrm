@@ -25,8 +25,34 @@ class LoggerService(Service):
     async def startup(self, app):
         await super().startup(app)
         """Старт сервиса"""
-        # Конфигурация логирования через logging.yaml (--log-config).
-        # basicConfig НЕ вызываем — он перезатирает yaml конфиг.
+        from backend.base.system.logger.colored import FaraFormatter
+
+        formatter = FaraFormatter(
+            fmt="%(asctime)s  %(levelname)-8s  %(name)s | %(message)s",
+            datefmt="%H:%M:%S",
+        )
+
+        # Применяем FaraFormatter ко всем fara-логгерам.
+        # Если логгер ещё не имеет handler (yaml не подхватился) — создаём.
+        for logger_name in (
+            "backend.base.crm",
+            "backend.base.system",
+            "cron",
+            "cron.worker",
+        ):
+            lgr = logging.getLogger(logger_name)
+            lgr.setLevel(logging.INFO)
+
+            if lgr.handlers:
+                # yaml подхватился — просто подменяем formatter
+                for handler in lgr.handlers:
+                    handler.setFormatter(formatter)
+            else:
+                # handler нет — создаём (cron subprocess или yaml не загрузился)
+                handler = logging.StreamHandler()
+                handler.setFormatter(formatter)
+                lgr.addHandler(handler)
+                lgr.propagate = False
 
     async def shutdown(self, app):
         """Отключение сервиса"""

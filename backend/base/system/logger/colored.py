@@ -5,15 +5,22 @@ import logging
 
 # ANSI
 GREEN = "\033[32m"
-CYAN = "\033[36m"
+BLUE = "\033[34m"
 YELLOW = "\033[33m"
 DIM = "\033[2m"
 RESET = "\033[0m"
 
 # Tag mapping: logger name prefix → (tag text, color)
+# ВАЖНО: более специфичные префиксы должны идти ПЕРВЫМИ
+#
+# Палитра:
+#   SYSTEM (инфраструктура)  → синий   — стабильный фон, не отвлекает
+#   CRM    (бизнес-логика)   → зелёный — активность, ключевые события
+#   CRON   (фоновые задачи)  → dim yellow — второстепенный, не отвлекает
 TAGS = {
-    "backend.base.crm": ("[FARA CRM]", CYAN),
-    "backend.base.system": ("[FARA SYSTEM]", GREEN),
+    "backend.base.system.cron": ("[FARA CRON]", f"{DIM}{YELLOW}"),
+    "backend.base.crm": ("[FARA CRM]", GREEN),
+    "backend.base.system": ("[FARA SYSTEM]", BLUE),
     "cron": ("[FARA CRON]", f"{DIM}{YELLOW}"),
 }
 
