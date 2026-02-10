@@ -239,6 +239,33 @@ export function ChatPage({
           }
           break;
         }
+        case 'message_deleted': {
+          const chatId = (message as any).chat_id;
+          const messageId = (message as any).message_id;
+          if (chatId && messageId) {
+            setNewMessages(prev => ({
+              ...prev,
+              [chatId]: (prev[chatId] || []).filter(m => m.id !== messageId),
+            }));
+          }
+          break;
+        }
+        case 'message_edited': {
+          const editChatId = (message as any).chat_id;
+          const editMessageId = (message as any).message_id;
+          const newBody = (message as any).body;
+          if (editChatId && editMessageId) {
+            setNewMessages(prev => ({
+              ...prev,
+              [editChatId]: (prev[editChatId] || []).map(m =>
+                m.id === editMessageId
+                  ? { ...m, body: newBody, is_edited: true }
+                  : m,
+              ),
+            }));
+          }
+          break;
+        }
         case 'messages_read': {
           const readByUserId = (message as any).user_id;
 

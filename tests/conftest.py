@@ -336,6 +336,7 @@ async def test_env(db_pool):
     env.apps.db = MagicMock()
     env.apps.db.get_session = lambda: NoTransactionSession(db_pool)
     env.apps.db.get_pool = lambda: db_pool
+    env.apps.db.fara = db_pool
 
     yield env
 
