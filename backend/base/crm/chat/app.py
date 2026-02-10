@@ -1,23 +1,26 @@
 # Copyright 2025 FARA CRM
 # Chat module - application configuration
 
+import logging
 from fastapi import FastAPI
 from typing import TYPE_CHECKING
 
-from backend.base.system.core.app import App
+from backend.base.system.core.service import Service
 from backend.base.crm.security.acl_post_init_mixin import ACL
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
+logger = logging.getLogger(__name__)
 
-class ChatApp(App):
+
+class ChatApp(Service):
     """
     Приложение чата и обмена сообщениями.
 
     Функциональность:
     - Внутренний чат между пользователями
-    - Real-time обмен через WebSocket
+    - Real-time обмен через WebSocket + PostgreSQL pub/sub
     - Интеграция с внешними мессенджерами (Telegram, WhatsApp, Avito и др.)
     - Поддержка каналов и групповых чатов
     - Вложения (файлы, изображения)
@@ -28,10 +31,12 @@ class ChatApp(App):
         "summary": "Chat and messaging module with external integrations support",
         "author": "FARA CRM",
         "category": "Communication",
-        "version": "1.0.0.0",
+        "version": "1.1.0.0",
         "license": "FARA CRM License v1.0",
         "post_init": True,
-        "depends": ["security", "users", "attachments"],
+        "service": True,
+        "depends": ["security", "users", "attachments", "db"],
+        "sequence": 90,
     }
 
     BASE_USER_ACL = {
@@ -44,6 +49,39 @@ class ChatApp(App):
         "chat_external_chat": ACL.FULL,
         "chat_external_message": ACL.FULL,
     }
+
+    async def startup(self, app: FastAPI):
+        """
+        Инициализация pg_pubsub для cross-process WebSocket events.
+        Запускает LISTEN на PostgreSQL канале 'ws_events'.
+        """
+        from .websocket.pg_pubsub import pg_pubsub
+        from .websocket import chat_manager
+
+        env: "Environment" = app.state.env
+        pool = env.apps.db.fara
+
+        if not pool:
+            logger.error(
+                "ChatApp: no asyncpg pool found — "
+                "pg_pubsub will not work, WS events won't be cross-process"
+            )
+            return
+
+        # Инициализируем pg_pubsub
+        await pg_pubsub.setup(pool)
+
+        # Запускаем LISTEN — каждый event будет обработан chat_manager
+        await pg_pubsub.start_listening(chat_manager.handle_pg_event)
+
+        logger.info("ChatApp: pg_pubsub started — WS events are cross-process")
+
+    async def shutdown(self, app: FastAPI):
+        """Остановка pg_pubsub."""
+        from .websocket.pg_pubsub import pg_pubsub
+
+        await pg_pubsub.stop()
+        logger.info("ChatApp: pg_pubsub stopped")
 
     async def post_init(self, app: FastAPI):
         await super().post_init(app)

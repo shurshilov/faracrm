@@ -58,6 +58,10 @@ class Session(DotModel):
     update_datetime: datetime = Datetime(default=datetime.now(timezone.utc))
     update_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
 
+    # Последняя активность пользователя (обновляется через WS ping).
+    # Пользователь считается онлайн если last_activity > now() - 120 секунд.
+    last_activity: datetime | None = Datetime(index=True)
+
     @classmethod
     async def get_ttl(cls) -> int:
         """Получить TTL сессии из системных настроек."""

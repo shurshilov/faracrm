@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
+from .pg_pubsub import pg_pubsub
+
 logger = logging.getLogger(__name__)
 
 
@@ -100,7 +102,6 @@ class ConnectionManager:
             user_id: ID пользователя
         """
         is_last = False
-        saved_subscriptions: Set[int] = set()
 
         async with self._lock:
             if user_id in self._connections:
@@ -110,12 +111,6 @@ class ConnectionManager:
                     # Последнее подключение — удаляем всё
                     del self._connections[user_id]
                     is_last = True
-
-                    # Сохраняем подписки ДО удаления — нужны для broadcast_presence
-                    if user_id in self._user_subscriptions:
-                        saved_subscriptions = self._user_subscriptions[
-                            user_id
-                        ].copy()
 
                     # Удаляем из всех подписок на чаты
                     if user_id in self._user_subscriptions:
@@ -138,9 +133,7 @@ class ConnectionManager:
 
         # Уведомляем о выходе — только если это было последнее подключение
         if is_last:
-            await self._broadcast_presence(
-                user_id, "offline", saved_subscriptions
-            )
+            await self._broadcast_presence(user_id, "offline")
 
     async def subscribe_to_chat(self, user_id: int, chat_id: int):
         """
@@ -221,53 +214,77 @@ class ConnectionManager:
         self, chat_id: int, message: dict, exclude_user: int | None = None
     ):
         """
-        Отправить сообщение всем участникам чата.
-
-        Args:
-            chat_id: ID чата
-            message: Сообщение для отправки
-            exclude_user: ID пользователя которому не отправлять (обычно автор)
+        Отправить сообщение всем участникам чата (CROSS-PROCESS).
+        Проходит через pg_notify → все workers.
         """
-        async with self._lock:
-            subscribers = self._chat_subscriptions.get(chat_id, set()).copy()
-
-        logger.debug(
-            f"send_to_chat: chat_id={chat_id}, subscribers={subscribers}, exclude_user={exclude_user}"
+        await pg_pubsub.publish(
+            "send_to_chat",
+            {
+                "chat_id": chat_id,
+                "message": message,
+                "exclude_user": exclude_user,
+            },
         )
-
-        for user_id in subscribers:
-            if exclude_user and user_id == exclude_user:
-                continue
-            await self._send_to_user(user_id, message)
 
     async def send_to_user(self, user_id: int, message: dict):
         """
-        Публичный метод для отправки сообщения пользователю.
-
-        Args:
-            user_id: ID пользователя
-            message: Сообщение
+        Отправить сообщение пользователю (CROSS-PROCESS).
+        Проходит через pg_notify → все workers.
         """
-        await self._send_to_user(user_id, message)
+        await pg_pubsub.publish(
+            "send_to_user",
+            {
+                "user_id": user_id,
+                "message": message,
+            },
+        )
 
     async def notify_new_chat(self, user_id: int, chat_id: int):
         """
-        Уведомить пользователя о новом чате.
-
-        Автоподписывает пользователя на WS-события чата
-        и отправляет событие chat_created для обновления списка.
+        Уведомить пользователя о новом чате (CROSS-PROCESS).
+        Проходит через pg_notify → все workers.
         """
-        # Автоподписка на WS-события нового чата
-        await self.subscribe_to_chat(user_id, chat_id)
-
-        # Уведомляем фронтенд о новом чате
-        await self._send_to_user(
-            user_id,
+        await pg_pubsub.publish(
+            "notify_new_chat",
             {
-                "type": "chat_created",
+                "user_id": user_id,
                 "chat_id": chat_id,
             },
         )
+
+    # ──────────────────────────────────────────────
+    # PG_NOTIFY EVENT HANDLER
+    # Вызывается при получении event от PostgreSQL LISTEN.
+    # Выполняет ЛОКАЛЬНУЮ доставку в WebSocket connections этого worker-а.
+    # ──────────────────────────────────────────────
+
+    async def handle_pg_event(self, event: dict):
+        """Обработчик event-ов от pg_pubsub."""
+        event_type = event.get("type")
+
+        if event_type == "send_to_chat":
+            chat_id = event["chat_id"]
+            message = event["message"]
+            exclude_user = event.get("exclude_user")
+            async with self._lock:
+                subscribers = self._chat_subscriptions.get(
+                    chat_id, set()
+                ).copy()
+            for user_id in subscribers:
+                if exclude_user and user_id == exclude_user:
+                    continue
+                await self._send_to_user(user_id, message)
+
+        elif event_type == "send_to_user":
+            await self._send_to_user(event["user_id"], event["message"])
+
+        elif event_type == "notify_new_chat":
+            user_id = event["user_id"]
+            chat_id = event["chat_id"]
+            await self.subscribe_to_chat(user_id, chat_id)
+            await self._send_to_user(
+                user_id, {"type": "chat_created", "chat_id": chat_id}
+            )
 
     async def _send_to_websocket(self, websocket: WebSocket, message: dict):
         """Отправить сообщение в конкретный websocket."""
@@ -307,20 +324,13 @@ class ConnectionManager:
                     for ws in dead_websockets:
                         self._connections[user_id].discard(ws)
 
-    async def _broadcast_presence(
-        self,
-        user_id: int,
-        status: str,
-        user_chats_override: Set[int] | None = None,
-    ):
+    async def _broadcast_presence(self, user_id: int, status: str):
         """
         Разослать уведомление о статусе пользователя.
 
         Args:
             user_id: ID пользователя
             status: Статус (online/offline)
-            user_chats_override: Если указан, используется вместо текущих подписок
-                (нужно при disconnect, когда подписки уже удалены)
         """
         message = {
             "type": "presence",
@@ -330,13 +340,8 @@ class ConnectionManager:
         }
 
         # Получаем все чаты пользователя
-        if user_chats_override is not None:
-            user_chats = user_chats_override
-        else:
-            async with self._lock:
-                user_chats = self._user_subscriptions.get(
-                    user_id, set()
-                ).copy()
+        async with self._lock:
+            user_chats = self._user_subscriptions.get(user_id, set()).copy()
 
         # Собираем всех уникальных пользователей из этих чатов
         notified_users: Set[int] = set()
