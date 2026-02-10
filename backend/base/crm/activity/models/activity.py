@@ -6,7 +6,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Text,
     Boolean,
-    Date,
     Datetime,
     Selection,
     Many2one,
@@ -55,7 +54,7 @@ class Activity(DotModel):
     note: str | None = Text(description="Подробное описание")
 
     # Дедлайн
-    date_deadline: date = Date(
+    date_deadline: datetime = Datetime(
         required=True,
         index=True,
         description="Дата завершения",

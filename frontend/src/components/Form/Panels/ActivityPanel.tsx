@@ -13,7 +13,7 @@ import {
   Tooltip,
   Loader,
 } from '@mantine/core';
-import { DatePickerInput } from '@mantine/dates';
+import { DateTimePicker } from '@mantine/dates';
 import {
   IconCheck,
   IconPlus,
@@ -321,7 +321,7 @@ function CreateActivityForm({
           create_user_id: currentUserId,
           summary: summary || null,
           note: note || null,
-          date_deadline: dateDeadline.toISOString().split('T')[0],
+          date_deadline: new Date(dateDeadline).toISOString(),
           state: 'planned',
           done: false,
           active: true,
@@ -369,12 +369,12 @@ function CreateActivityForm({
           placeholder={t('activity:summaryPlaceholder')}
         />
 
-        <DatePickerInput
+        <DateTimePicker
           size="xs"
           value={dateDeadline}
           onChange={setDateDeadline}
           label={t('activity:fields.date_deadline')}
-          valueFormat="YYYY-MM-DD"
+          valueFormat="YYYY-MM-DD HH:mm"
         />
 
         <Textarea
