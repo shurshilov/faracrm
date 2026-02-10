@@ -158,9 +158,9 @@ export function ChatHeader({
 
               <Menu.Divider />
 
-              <Menu.Item leftSection={<IconTrash size={16} />} color="red">
+              {/* <Menu.Item leftSection={<IconTrash size={16} />} color="red">
                 {chat.chat_type === 'direct' ? t('deleteChat') : t('leaveChat')}
-              </Menu.Item>
+              </Menu.Item> */}
             </Menu.Dropdown>
           </Menu>
         </Group>

@@ -694,18 +694,30 @@ async def leave_chat(req: Request, chat_id: int):
 async def delete_chat(req: Request, chat_id: int):
     """
     Удалить чат (soft delete).
-    Требует права админа.
+    - direct чат: может удалить пользователь с is_admin (администратор системы)
+    - остальные: требует права админа чата (ChatMember.is_admin)
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Только админ может удалить чат
-    await ChatMember.check_admin(chat_id, user_id)
+    chat = await env.models.chat.get(chat_id, fields=["id", "chat_type"])
 
-    chat = await env.models.chat.get(chat_id)
+    if chat.chat_type == "direct":
+        # Direct чат — проверяем членство + системный is_admin
+        await ChatMember.check_membership(chat_id, user_id)
+        if not auth_session.user_id.is_admin:
+            raise FaraException(
+                {
+                    "content": "ADMIN_REQUIRED",
+                    "status_code": HTTP_403_FORBIDDEN,
+                }
+            )
+    else:
+        # Группы/каналы — админ чата
+        await ChatMember.check_admin(chat_id, user_id)
 
-    # Soft delete - устанавливаем active = false
+    # Soft delete
     await chat.update(env.models.chat(active=False))
 
     return {"success": True}

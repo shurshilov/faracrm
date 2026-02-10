@@ -20,7 +20,7 @@
                 "--log-level",
                 "info",
                 "--log-config",
-                "./backend/logging.ini",
+                "./backend/base/system/logger/logging.yaml",
                 "--reload",
                 "--reload-exclude",
                 "'filestore/*'",

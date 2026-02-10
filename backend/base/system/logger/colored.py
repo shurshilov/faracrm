@@ -38,7 +38,8 @@ class ColoredFormatter(logging.Formatter):
 class PurpleFormatter(ColoredFormatter):
     """Magenta/purple for backend.base.system modules."""
 
-    COLOR = "\033[35m"
+    COLOR = "\x1b[32m"
+    # COLOR = "\033[35m"
 
 
 class CyanFormatter(ColoredFormatter):

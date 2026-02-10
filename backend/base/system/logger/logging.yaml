@@ -1,0 +1,99 @@
+# ============================================================
+#  FARA CRM - logging configuration
+#  uvicorn: --log-config ./backend/logging.yaml
+# ============================================================
+
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  default:
+    format: "%(asctime)s  %(levelname)-8s  %(name)s | %(message)s"
+    datefmt: "%H:%M:%S"
+
+  # Access logs - use %(message)s only (uvicorn formats the message itself)
+  access:
+    format: "%(asctime)s  %(levelname)-8s  %(message)s"
+    datefmt: "%H:%M:%S"
+
+  # Green - backend.base.system
+  system:
+    format: "\x1b[32m%(asctime)s  %(levelname)-8s  %(name)s | %(message)s\x1b[0m"
+    datefmt: "%H:%M:%S"
+
+  # Cyan/blue - backend.base.crm
+  crm:
+    format: "\x1b[36m%(asctime)s  %(levelname)-8s  %(name)s | %(message)s\x1b[0m"
+    datefmt: "%H:%M:%S"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    stream: ext://sys.stdout
+    formatter: default
+
+  access_console:
+    class: logging.StreamHandler
+    stream: ext://sys.stdout
+    formatter: access
+
+  system_console:
+    class: logging.StreamHandler
+    stream: ext://sys.stdout
+    formatter: system
+
+  crm_console:
+    class: logging.StreamHandler
+    stream: ext://sys.stdout
+    formatter: crm
+
+loggers:
+  # -- Uvicorn -----------------------------------------------
+  uvicorn:
+    level: INFO
+    handlers: [console]
+    propagate: false
+
+  # HTTP access logs (uvicorn builds the message with method/path/status)
+  # uvicorn.access:
+  #   level: INFO
+  #   handlers: [access_console]
+  #   propagate: false
+
+  # Server errors - INFO to see startup, suppress DEBUG WS frames
+  # uvicorn.error:
+  #   level: INFO
+  #   handlers: [console]
+  #   propagate: false
+
+  # -- Database / ORM ----------------------------------------
+  dotorm:
+    level: WARNING
+    handlers: [console]
+    propagate: false
+
+  asyncpg:
+    level: WARNING
+    handlers: [console]
+    propagate: false
+
+  # -- Python internals --------------------------------------
+  asyncio:
+    level: WARNING
+    handlers: [console]
+    propagate: false
+
+  # -- Application code --------------------------------------
+  backend.base.system:
+    level: INFO
+    handlers: [system_console]
+    propagate: false
+
+  backend.base.crm:
+    level: INFO
+    handlers: [crm_console]
+    propagate: false
+
+root:
+  level: WARNING
+  handlers: [console]
