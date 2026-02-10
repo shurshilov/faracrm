@@ -9,8 +9,6 @@ from datetime import datetime, timezone
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
-from .pg_pubsub import pg_pubsub
-
 logger = logging.getLogger(__name__)
 
 
@@ -43,6 +41,13 @@ class ConnectionManager:
 
         # Lock for thread-safe operations
         self._lock = asyncio.Lock()
+
+        # PubSub backend — устанавливается при startup через set_pubsub()
+        self._pubsub = None
+
+    def set_pubsub(self, backend) -> None:
+        """Установить pub/sub backend. Вызывается из ChatApp.startup()."""
+        self._pubsub = backend
 
     async def connect(self, websocket: WebSocket, user_id: int) -> bool:
         """
@@ -217,7 +222,7 @@ class ConnectionManager:
         Отправить сообщение всем участникам чата (CROSS-PROCESS).
         Проходит через pg_notify → все workers.
         """
-        await pg_pubsub.publish(
+        await self._pubsub.publish(
             "send_to_chat",
             {
                 "chat_id": chat_id,
@@ -231,7 +236,7 @@ class ConnectionManager:
         Отправить сообщение пользователю (CROSS-PROCESS).
         Проходит через pg_notify → все workers.
         """
-        await pg_pubsub.publish(
+        await self._pubsub.publish(
             "send_to_user",
             {
                 "user_id": user_id,
@@ -244,7 +249,7 @@ class ConnectionManager:
         Уведомить пользователя о новом чате (CROSS-PROCESS).
         Проходит через pg_notify → все workers.
         """
-        await pg_pubsub.publish(
+        await self._pubsub.publish(
             "notify_new_chat",
             {
                 "user_id": user_id,
@@ -258,8 +263,8 @@ class ConnectionManager:
     # Выполняет ЛОКАЛЬНУЮ доставку в WebSocket connections этого worker-а.
     # ──────────────────────────────────────────────
 
-    async def handle_pg_event(self, event: dict):
-        """Обработчик event-ов от pg_pubsub."""
+    async def handle_pubsub_event(self, event: dict):
+        """Обработчик event-ов от pubsub."""
         event_type = event.get("type")
 
         if event_type == "send_to_chat":

@@ -52,36 +52,73 @@ class ChatApp(Service):
 
     async def startup(self, app: FastAPI):
         """
-        Инициализация pg_pubsub для cross-process WebSocket events.
-        Запускает LISTEN на PostgreSQL канале 'ws_events'.
+        Инициализация pub/sub backend для cross-process WebSocket events.
+
+        Backend выбирается через настройку PUBSUB__BACKEND:
+        - "pg"    → PostgreSQL LISTEN/NOTIFY (default, zero config)
+        - "redis" → Redis Pub/Sub (requires redis server)
+
+        Настройки (.env):
+            PUBSUB__BACKEND=pg
+            PUBSUB__BACKEND=redis
+            PUBSUB__REDIS_URL=redis://localhost:6379/0
         """
-        from .websocket.pg_pubsub import pg_pubsub
+        from .websocket.pubsub import (
+            create_pubsub_backend,
+            PubSubSettings,
+        )
         from .websocket import chat_manager
 
         env: "Environment" = app.state.env
-        pool = env.apps.db.fara
 
-        if not pool:
-            logger.error(
-                "ChatApp: no asyncpg pool found — "
-                "pg_pubsub will not work, WS events won't be cross-process"
+        # Загружаем настройки из env переменных
+        try:
+            settings = PubSubSettings()
+        except Exception as e:
+            logger.warning(
+                f"ChatApp: failed to load PubSubSettings ({e}), "
+                f"using defaults (pg backend)"
             )
-            return
+            settings = PubSubSettings(backend="pg")
 
-        # Инициализируем pg_pubsub
-        await pg_pubsub.setup(pool)
+        # Создаём backend через фабрику (Strategy pattern)
+        backend = create_pubsub_backend(settings)
 
-        # Запускаем LISTEN — каждый event будет обработан chat_manager
-        await pg_pubsub.start_listening(chat_manager.handle_pg_event)
+        # Инициализируем в зависимости от типа
+        if settings.backend == "redis":
+            await backend.setup(redis_url=settings.redis_url)
+            logger.info(f"ChatApp: using Redis pub/sub ({settings.redis_url})")
+        else:
+            # PostgreSQL — нужен asyncpg pool
+            pool = env.apps.db.fara
+            if not pool:
+                logger.error(
+                    "ChatApp: no asyncpg pool — pub/sub will not work"
+                )
+                return
+            await backend.setup(pool=pool)
+            logger.info("ChatApp: using PostgreSQL pub/sub (LISTEN/NOTIFY)")
 
-        logger.info("ChatApp: pg_pubsub started — WS events are cross-process")
+        # Устанавливаем backend в chat_manager
+        chat_manager.set_pubsub(backend)
+
+        # Запускаем listener — каждый event будет обработан chat_manager
+        await backend.start_listening(chat_manager.handle_pubsub_event)
+
+        logger.info(
+            f"ChatApp: pub/sub started (backend={settings.backend}) — "
+            f"WS events are cross-process"
+        )
 
     async def shutdown(self, app: FastAPI):
-        """Остановка pg_pubsub."""
-        from .websocket.pg_pubsub import pg_pubsub
+        """Остановка pub/sub backend."""
+        from .websocket import chat_manager
 
-        await pg_pubsub.stop()
-        logger.info("ChatApp: pg_pubsub stopped")
+        if chat_manager._pubsub:
+            await chat_manager._pubsub.stop()
+            chat_manager._pubsub = None
+
+        logger.info("ChatApp: pub/sub stopped")
 
     async def post_init(self, app: FastAPI):
         await super().post_init(app)
