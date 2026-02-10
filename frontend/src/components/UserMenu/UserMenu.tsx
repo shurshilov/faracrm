@@ -17,6 +17,10 @@ import {
   IconLayout,
   IconLayoutSidebar,
   IconLayoutNavbar,
+  IconBell,
+  IconBellOff,
+  IconVolume,
+  IconVolumeOff,
 } from '@tabler/icons-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -66,7 +70,7 @@ function UserMenu() {
     {
       model: 'users',
       id: session?.user_id.id ?? 0,
-      fields: ['id', 'name', 'image', 'lang_id'],
+      fields: ['id', 'name', 'image', 'lang_id', 'notification_popup', 'notification_sound'],
     },
     { skip: !session?.user_id },
   );
@@ -170,6 +174,37 @@ function UserMenu() {
           model: 'users',
           id: session.user_id.id,
           values: { layout_theme: theme },
+        });
+      } catch (e) {
+        // Ignore
+      }
+    }
+  };
+
+  const notificationPopup = user?.notification_popup ?? true;
+  const notificationSound = user?.notification_sound ?? true;
+
+  const handleTogglePopup = async () => {
+    if (session?.user_id?.id) {
+      try {
+        await updateUser({
+          model: 'users',
+          id: session.user_id.id,
+          values: { notification_popup: !notificationPopup },
+        });
+      } catch (e) {
+        // Ignore
+      }
+    }
+  };
+
+  const handleToggleSound = async () => {
+    if (session?.user_id?.id) {
+      try {
+        await updateUser({
+          model: 'users',
+          id: session.user_id.id,
+          values: { notification_sound: !notificationSound },
         });
       } catch (e) {
         // Ignore
@@ -309,6 +344,60 @@ function UserMenu() {
                 layoutTheme === 'modern' ? classes.activeItem : undefined
               }>
               {t('common:themeModern', 'Современная')}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+
+        {/* Уведомления - подменю */}
+        <Menu
+          trigger="hover"
+          position="left-start"
+          offset={2}
+          withinPortal
+          shadow="md">
+          <Menu.Target>
+            <Box>
+              <Menu.Item
+                leftSection={
+                  <IconBell style={{ width: 16, height: 16 }} stroke={1.5} />
+                }
+                rightSection={
+                  <IconChevronRight
+                    style={{ width: 14, height: 14 }}
+                    stroke={1.5}
+                  />
+                }>
+                {t('common:notifications', 'Уведомления')}
+              </Menu.Item>
+            </Box>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Item
+              leftSection={
+                notificationPopup ? (
+                  <IconBell style={{ width: 16, height: 16 }} stroke={1.5} />
+                ) : (
+                  <IconBellOff style={{ width: 16, height: 16 }} stroke={1.5} />
+                )
+              }
+              onClick={handleTogglePopup}>
+              {t('common:notificationPopup', 'Всплывающие')}
+              {notificationPopup ? ' ✓' : ''}
+            </Menu.Item>
+            <Menu.Item
+              leftSection={
+                notificationSound ? (
+                  <IconVolume style={{ width: 16, height: 16 }} stroke={1.5} />
+                ) : (
+                  <IconVolumeOff
+                    style={{ width: 16, height: 16 }}
+                    stroke={1.5}
+                  />
+                )
+              }
+              onClick={handleToggleSound}>
+              {t('common:notificationSound', 'Звук')}
+              {notificationSound ? ' ✓' : ''}
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>

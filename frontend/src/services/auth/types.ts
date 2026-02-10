@@ -3,6 +3,8 @@ export interface User {
   name: string;
   home_page?: string | null;
   layout_theme?: 'classic' | 'modern';
+  notification_popup?: boolean;
+  notification_sound?: boolean;
 }
 export interface Session {
   id: number;

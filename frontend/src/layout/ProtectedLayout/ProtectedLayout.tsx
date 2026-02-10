@@ -17,6 +17,7 @@ import UserMenu from '@/components/UserMenu';
 import { ChatNotification } from '@/components/ChatNotification';
 import { ActivityNotification } from '@/fara_activity/ActivityNotification';
 import { ChatWebSocketProvider } from '@/fara_chat/context';
+import { NotificationToast } from '@/components/NotificationToast';
 
 // Ширина сайдбара для каждого состояния
 const SIDEBAR_WIDTH: Record<SidebarState, number> = {
@@ -54,6 +55,7 @@ export default function CollapseSideBar() {
 
   return (
     <ChatWebSocketProvider>
+      <NotificationToast />
       <SidebarContext.Provider value={sidebarContext}>
         <AppShell
           header={{ height: 50 }}

@@ -67,7 +67,7 @@ export function ChatPage({
   }, [selectedChat]);
 
   // Читаем фильтр из URL query params
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isInternalParam = searchParams.get('is_internal');
   const chatTypeParam = searchParams.get('chat_type');
   const connectorTypeParam = searchParams.get('connector_type');
@@ -105,6 +105,20 @@ export function ChatPage({
 
   // Получаем список чатов с фильтром из URL
   const { data: chatsData } = useGetChatsQuery(getChatsArgs);
+
+  // Авто-открытие чата по ?open=chatId (из notification toast)
+  useEffect(() => {
+    const openChatId = searchParams.get('open');
+    if (openChatId && chatsData?.data) {
+      const chat = chatsData.data.find(c => c.id === Number(openChatId));
+      if (chat) {
+        setSelectedChat(chat);
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('open');
+        setSearchParams(newParams, { replace: true });
+      }
+    }
+  }, [searchParams, chatsData?.data]);
 
   // Получаем пиннед сообщения для выбранного чата
   const { data: pinnedData, refetch: refetchPinned } =
@@ -257,28 +271,6 @@ export function ChatPage({
               }),
             );
           }
-          break;
-        }
-        case 'message_edited': {
-          // Удаляем старую версию из локального newMessages (если она там)
-          const editChatId = (message as any).chat_id;
-          const editMsgId = (message as any).message_id;
-          setNewMessages(prev => ({
-            ...prev,
-            [editChatId]: (prev[editChatId] || []).map(m =>
-              m.id === editMsgId ? { ...m, body: (message as any).body, is_edited: true } : m,
-            ),
-          }));
-          break;
-        }
-        case 'message_deleted': {
-          // Удаляем из локального newMessages
-          const delChatId = (message as any).chat_id;
-          const delMsgId = (message as any).message_id;
-          setNewMessages(prev => ({
-            ...prev,
-            [delChatId]: (prev[delChatId] || []).filter(m => m.id !== delMsgId),
-          }));
           break;
         }
       }

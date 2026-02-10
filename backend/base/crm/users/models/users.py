@@ -113,6 +113,16 @@ class User(DotModel):
         description="Тема интерфейса",
     )
 
+    # Настройки уведомлений
+    notification_popup: bool = Boolean(
+        default=True,
+        description="Показывать всплывающие уведомления",
+    )
+    notification_sound: bool = Boolean(
+        default=True,
+        description="Воспроизводить звук уведомлений",
+    )
+
     @hybridmethod
     async def create(self, payload: Self) -> int:
         """Создание пользователя с автоматическим добавлением языков по умолчанию."""
