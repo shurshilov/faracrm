@@ -1,5 +1,4 @@
 import logging
-from backend.base.system.core.enviroment import env
 from backend.base.system.core.service import Service
 
 LOG = logging.getLogger(__package__)
@@ -26,11 +25,8 @@ class LoggerService(Service):
     async def startup(self, app):
         await super().startup(app)
         """Старт сервиса"""
-        logging.basicConfig(
-            format="%(asctime)s [%(levelname)s] %(message)s",
-            datefmt="%H:%M:%S",
-            level=env.settings.logger.log_level,
-        )
+        # Конфигурация логирования через logging.yaml (--log-config).
+        # basicConfig НЕ вызываем — он перезатирает yaml конфиг.
 
     async def shutdown(self, app):
         """Отключение сервиса"""

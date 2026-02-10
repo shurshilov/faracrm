@@ -1,6 +1,6 @@
 # ============================================================
 #  FARA CRM - logging configuration
-#  uvicorn: --log-config ./backend/logging.yaml
+#  uvicorn: --log-config ./backend/base/system/logger/logging.yaml
 # ============================================================
 
 version: 1
@@ -11,19 +11,14 @@ formatters:
     format: "%(asctime)s  %(levelname)-8s  %(name)s | %(message)s"
     datefmt: "%H:%M:%S"
 
-  # Access logs - use %(message)s only (uvicorn formats the message itself)
   access:
     format: "%(asctime)s  %(levelname)-8s  %(message)s"
     datefmt: "%H:%M:%S"
 
-  # Green - backend.base.system
-  system:
-    format: "\x1b[32m%(asctime)s  %(levelname)-8s  %(name)s | %(message)s\x1b[0m"
-    datefmt: "%H:%M:%S"
-
-  # Cyan/blue - backend.base.crm
-  crm:
-    format: "\x1b[36m%(asctime)s  %(levelname)-8s  %(name)s | %(message)s\x1b[0m"
+  # Colored [FARA CRM] / [FARA SYSTEM] / [FARA CRON] tags
+  fara:
+    (): backend.base.system.logger.colored.FaraFormatter
+    format: "%(asctime)s  %(levelname)-8s  %(name)s | %(message)s"
     datefmt: "%H:%M:%S"
 
 handlers:
@@ -37,15 +32,10 @@ handlers:
     stream: ext://sys.stdout
     formatter: access
 
-  system_console:
+  fara_console:
     class: logging.StreamHandler
     stream: ext://sys.stdout
-    formatter: system
-
-  crm_console:
-    class: logging.StreamHandler
-    stream: ext://sys.stdout
-    formatter: crm
+    formatter: fara
 
 loggers:
   # -- Uvicorn -----------------------------------------------
@@ -53,18 +43,6 @@ loggers:
     level: INFO
     handlers: [console]
     propagate: false
-
-  # HTTP access logs (uvicorn builds the message with method/path/status)
-  # uvicorn.access:
-  #   level: INFO
-  #   handlers: [access_console]
-  #   propagate: false
-
-  # Server errors - INFO to see startup, suppress DEBUG WS frames
-  # uvicorn.error:
-  #   level: INFO
-  #   handlers: [console]
-  #   propagate: false
 
   # -- Database / ORM ----------------------------------------
   dotorm:
@@ -86,12 +64,17 @@ loggers:
   # -- Application code --------------------------------------
   backend.base.system:
     level: INFO
-    handlers: [system_console]
+    handlers: [fara_console]
     propagate: false
 
   backend.base.crm:
     level: INFO
-    handlers: [crm_console]
+    handlers: [fara_console]
+    propagate: false
+
+  cron:
+    level: INFO
+    handlers: [fara_console]
     propagate: false
 
 root:

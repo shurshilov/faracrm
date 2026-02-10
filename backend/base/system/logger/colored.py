@@ -1,48 +1,40 @@
-"""
-Colored log formatters for FARA CRM.
-
-Purple (magenta) - backend.base.system
-Cyan (blue)      - backend.base.crm
-"""
+# Copyright 2025 FARA CRM
+# Custom logging formatter with colored [FARA *] tags
 
 import logging
 
+# ANSI
+GREEN = "\033[32m"
+CYAN = "\033[36m"
+YELLOW = "\033[33m"
+DIM = "\033[2m"
+RESET = "\033[0m"
 
-class ColoredFormatter(logging.Formatter):
-    """Base colored formatter with ANSI escape codes."""
-
-    COLOR = ""
-    RESET = "\033[0m"
-
-    # Level-specific colors (bold for WARNING+)
-    LEVEL_COLORS = {
-        "WARNING": "\033[1;33m",  # bold yellow
-        "ERROR": "\033[1;31m",  # bold red
-        "CRITICAL": "\033[1;41m",  # bold red bg
-    }
-
-    def format(self, record):
-        msg = super().format(record)
-
-        # For WARNING+ use level color instead
-        level_color = self.LEVEL_COLORS.get(record.levelname)
-        if level_color:
-            return f"{level_color}{msg}{self.RESET}"
-
-        if self.COLOR:
-            return f"{self.COLOR}{msg}{self.RESET}"
-
-        return msg
+# Tag mapping: logger name prefix → (tag text, color)
+TAGS = {
+    "backend.base.crm": ("[FARA CRM]", CYAN),
+    "backend.base.system": ("[FARA SYSTEM]", GREEN),
+    "cron": ("[FARA CRON]", f"{DIM}{YELLOW}"),
+}
 
 
-class PurpleFormatter(ColoredFormatter):
-    """Magenta/purple for backend.base.system modules."""
+class FaraFormatter(logging.Formatter):
+    """
+    Добавляет цветной тег [FARA CRM] / [FARA SYSTEM] / [FARA CRON]
+    перед именем логгера. Только тег цветной, остальная строка обычная.
+    """
 
-    COLOR = "\x1b[32m"
-    # COLOR = "\033[35m"
+    def format(self, record: logging.LogRecord) -> str:
+        tag = ""
+        for prefix, (label, color) in TAGS.items():
+            if record.name.startswith(prefix):
+                tag = f"{color}{label}{RESET} "
+                break
 
+        original_name = record.name
+        if tag:
+            record.name = f"{tag}{record.name}"
 
-class CyanFormatter(ColoredFormatter):
-    """Cyan/blue for backend.base.crm modules."""
-
-    COLOR = "\033[36m"
+        result = super().format(record)
+        record.name = original_name
+        return result
