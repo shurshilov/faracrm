@@ -3,11 +3,14 @@
 
 import asyncio
 import logging
-from typing import Dict, Set
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Dict, Set
 
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
+
+if TYPE_CHECKING:
+    from .pubsub.base import PubSubBackend
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +46,16 @@ class ConnectionManager:
         self._lock = asyncio.Lock()
 
         # PubSub backend — устанавливается при startup через set_pubsub()
-        self._pubsub = None
+        self._pubsub: "PubSubBackend | None" = None
 
-    def set_pubsub(self, backend) -> None:
+    def set_pubsub(self, backend: "PubSubBackend") -> None:
         """Установить pub/sub backend. Вызывается из ChatApp.startup()."""
         self._pubsub = backend
+
+    @property
+    def pubsub(self) -> "PubSubBackend | None":
+        """Текущий pub/sub backend (read-only)."""
+        return self._pubsub
 
     async def connect(self, websocket: WebSocket, user_id: int) -> bool:
         """
@@ -74,8 +82,9 @@ class ConnectionManager:
             was_offline = len(self._connections.get(user_id, set())) == 1
 
             logger.info(
-                f"User {user_id} connected to WebSocket "
-                f"(total connections: {len(self._connections.get(user_id, set()))})"
+                "User %s connected to WebSocket (total connections: %s)",
+                user_id,
+                len(self._connections.get(user_id, set())),
             )
 
             # Отправляем подтверждение подключения ТОЛЬКО этому websocket
@@ -95,7 +104,7 @@ class ConnectionManager:
             return True
 
         except Exception as e:
-            logger.error(f"Error connecting user {user_id}: {e}")
+            logger.error("Error connecting user %s: %s", user_id, e)
             return False
 
     async def disconnect(self, websocket: WebSocket, user_id: int):
@@ -132,8 +141,9 @@ class ConnectionManager:
 
         remaining = len(self._connections.get(user_id, set()))
         logger.info(
-            f"User {user_id} disconnected from WebSocket "
-            f"(remaining connections: {remaining})"
+            "User %s disconnected from WebSocket (remaining connections: %s)",
+            user_id,
+            remaining,
         )
 
         # Уведомляем о выходе — только если это было последнее подключение
@@ -163,7 +173,7 @@ class ConnectionManager:
 
             self._user_subscriptions[user_id].add(chat_id)
 
-        logger.debug(f"User {user_id} subscribed to chat {chat_id}")
+        logger.debug("User %s subscribed to chat %s", user_id, chat_id)
 
         # Если пользователь новый в этом чате — уведомляем остальных о его присутствии
         if is_new and self.is_online(user_id):
@@ -196,7 +206,7 @@ class ConnectionManager:
                 self._chat_subscriptions[chat_id].add(user_id)
                 self._user_subscriptions[user_id].add(chat_id)
 
-        logger.info(f"User {user_id} subscribed to {len(chat_ids)} chats")
+        logger.info("User %s subscribed to %s chats", user_id, len(chat_ids))
 
     async def unsubscribe_from_chat(self, user_id: int, chat_id: int):
         """
@@ -213,7 +223,7 @@ class ConnectionManager:
             if user_id in self._user_subscriptions:
                 self._user_subscriptions[user_id].discard(chat_id)
 
-        logger.debug(f"User {user_id} unsubscribed from chat {chat_id}")
+        logger.debug("User %s unsubscribed from chat %s", user_id, chat_id)
 
     async def send_to_chat(
         self, chat_id: int, message: dict, exclude_user: int | None = None
@@ -297,7 +307,7 @@ class ConnectionManager:
             try:
                 await websocket.send_json(message)
             except Exception as e:
-                logger.error(f"Error sending to websocket: {e}")
+                logger.error("Error sending to websocket: %s", e)
 
     async def _send_to_user(self, user_id: int, message: dict):
         """
@@ -317,7 +327,7 @@ class ConnectionManager:
                 try:
                     await ws.send_json(message)
                 except Exception as e:
-                    logger.error(f"Error sending to user {user_id}: {e}")
+                    logger.error("Error sending to user %s: %s", user_id, e)
                     dead_websockets.append(ws)
             else:
                 dead_websockets.append(ws)

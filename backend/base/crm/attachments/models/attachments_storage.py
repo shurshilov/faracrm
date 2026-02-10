@@ -129,7 +129,7 @@ class AttachmentStorage(DotModel):
                 )
 
             logger.info(
-                f"Storage '{self.name}' activated with {len(routes)} routes"
+                "Storage '%s' activated with %s routes", self.name, len(routes)
             )
 
     async def deactivate(self) -> None:
@@ -156,7 +156,9 @@ class AttachmentStorage(DotModel):
             await self.update(AttachmentStorage(active=False))
 
             logger.info(
-                f"Storage '{self.name}' deactivated with {len(routes)} routes"
+                "Storage '%s' deactivated with %s routes",
+                self.name,
+                len(routes),
             )
 
     # ========================================================================
@@ -244,7 +246,7 @@ class AttachmentStorage(DotModel):
     async def _sync_one_way(self) -> None:
         from .attachments import Attachment
 
-        logger.info(f"One-way sync for storage {self.id}: {self.name}")
+        logger.info("One-way sync for storage %s: %s", self.id, self.name)
         routes = await self.get_routes()
 
         for route in routes:
@@ -262,7 +264,9 @@ class AttachmentStorage(DotModel):
                             Attachment(storage_id=self, route_id=route)
                         )
                 except Exception as e:
-                    logger.error(f"Failed to sync attachment {attach_id}: {e}")
+                    logger.error(
+                        "Failed to sync attachment %s: %s", attach_id, e
+                    )
 
     @classmethod
     async def start_two_way_sync(cls) -> None:
@@ -281,17 +285,17 @@ class AttachmentStorage(DotModel):
             has_strategy,
         )
 
-        logger.info(f"Two-way sync for storage {self.id}: {self.name}")
+        logger.info("Two-way sync for storage %s: %s", self.id, self.name)
 
         if not has_strategy(self.type):
-            logger.warning(f"No strategy for storage type {self.type}")
+            logger.warning("No strategy for storage type %s", self.type)
             return
 
         strategy = get_strategy(self.type)
 
         # Check if strategy supports listing files
         if not hasattr(strategy, "list_files"):
-            logger.debug(f"Strategy {self.type} does not support list_files")
+            logger.debug("Strategy %s does not support list_files", self.type)
             return
 
         # Get files from cloud
@@ -299,7 +303,7 @@ class AttachmentStorage(DotModel):
             cloud_files = await strategy.list_files(self)
             cloud_file_ids = {f["id"] for f in cloud_files}
         except Exception as e:
-            logger.error(f"Failed to list cloud files: {e}")
+            logger.error("Failed to list cloud files: %s", e)
             return
 
         # Get files from FARA
@@ -317,7 +321,8 @@ class AttachmentStorage(DotModel):
         missing_in_cloud = local_file_ids - cloud_file_ids
         if missing_in_cloud and self.file_missing_cloud == "cloud":
             logger.info(
-                f"Removing {len(missing_in_cloud)} attachments missing from cloud"
+                "Removing %s attachments missing from cloud",
+                len(missing_in_cloud),
             )
             for attach in attachments:
                 if attach.storage_file_id in missing_in_cloud:
@@ -325,13 +330,13 @@ class AttachmentStorage(DotModel):
                         await attach.delete()
                     except Exception as e:
                         logger.error(
-                            f"Failed to delete attachment {attach.id}: {e}"
+                            "Failed to delete attachment %s: %s", attach.id, e
                         )
 
         # Files in cloud but not in FARA
         missing_in_local = cloud_file_ids - local_file_ids
         if missing_in_local and self.file_missing_local == "cloud":
-            logger.info(f"Importing {len(missing_in_local)} files from cloud")
+            logger.info("Importing %s files from cloud", len(missing_in_local))
             cloud_files_dict = {f["id"]: f for f in cloud_files}
             for file_id in missing_in_local:
                 cloud_file = cloud_files_dict.get(file_id)
@@ -341,7 +346,9 @@ class AttachmentStorage(DotModel):
                             cloud_file, strategy
                         )
                     except Exception as e:
-                        logger.error(f"Failed to import file {file_id}: {e}")
+                        logger.error(
+                            "Failed to import file %s: %s", file_id, e
+                        )
 
     async def _import_file_from_cloud(
         self, cloud_file: dict, strategy
@@ -374,7 +381,7 @@ class AttachmentStorage(DotModel):
         )
 
         await Attachment.create(attach)
-        logger.debug(f"Imported file {cloud_file.get('id')} from cloud")
+        logger.debug("Imported file %s from cloud", cloud_file.get("id"))
 
     @classmethod
     async def start_routes_sync(cls) -> None:
@@ -390,7 +397,7 @@ class AttachmentStorage(DotModel):
 
     async def _sync_routes(self) -> None:
         """Sync routes for this storage."""
-        logger.info(f"Routes sync for storage {self.id}: {self.name}")
+        logger.info("Routes sync for storage %s: %s", self.id, self.name)
 
         # Get all routes for this storage
         routes = await self.get_routes()

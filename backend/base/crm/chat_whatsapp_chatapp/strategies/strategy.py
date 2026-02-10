@@ -129,7 +129,7 @@ class WhatsAppChatAppStrategy(ChatStrategyBase):
         )
 
         logger.info(
-            f"Generated new ChatApp access token for connector {connector.id}"
+            "Generated new ChatApp access token for connector %s", connector.id
         )
 
         return access_token, refresh_token
@@ -171,7 +171,8 @@ class WhatsAppChatAppStrategy(ChatStrategyBase):
                 raise ValueError(f"ChatApp setWebhook error: {result}")
 
             logger.info(
-                f"ChatApp webhook set successfully for connector {connector.id}"
+                "ChatApp webhook set successfully for connector %s",
+                connector.id,
             )
             return True
 
@@ -200,7 +201,7 @@ class WhatsAppChatAppStrategy(ChatStrategyBase):
                 raise ValueError(f"ChatApp unsetWebhook error: {result}")
 
             logger.info(
-                f"ChatApp webhook removed for connector {connector.id}"
+                "ChatApp webhook removed for connector %s", connector.id
             )
             return result
 
@@ -279,7 +280,9 @@ class WhatsAppChatAppStrategy(ChatStrategyBase):
             returned_chat_id = str(data.get("chatId", chat_id))
 
             logger.info(
-                f"ChatApp message sent: {message_id} to chat {returned_chat_id}"
+                "ChatApp message sent: %s to chat %s",
+                message_id,
+                returned_chat_id,
             )
 
             return message_id, returned_chat_id
@@ -346,7 +349,9 @@ class WhatsAppChatAppStrategy(ChatStrategyBase):
             data = result.get("data", {})
             message_id = str(data.get("id", ""))
 
-            logger.info(f"ChatApp file sent: {message_id} to chat {chat_id}")
+            logger.info(
+                "ChatApp file sent: %s to chat %s", message_id, chat_id
+            )
 
             return message_id, str(chat_id)
 

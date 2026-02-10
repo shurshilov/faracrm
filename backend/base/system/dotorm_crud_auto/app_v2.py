@@ -64,7 +64,7 @@ class DotormCrudAutoService(Service):
         schema_registry.build_all(models)
 
         schema_time = time.perf_counter()
-        log.info(f"Schemas generated in {schema_time - start_time:.3f}s")
+        log.info("Schemas generated in %.3fs", schema_time - start_time)
 
         # Шаг 2: Создаём роутеры
         for model in models:
@@ -80,9 +80,11 @@ class DotormCrudAutoService(Service):
                 app.include_router(router)
 
         end_time = time.perf_counter()
-        log.info(f"Routers created in {end_time - schema_time:.3f}s")
+        log.info("Routers created in %.3fs", end_time - schema_time)
         log.info(
-            f"Total: {end_time - start_time:.3f}s for {len(models)} models"
+            "Total: %.3fs for %s models",
+            end_time - start_time,
+            len(models),
         )
 
     async def startup(self, app) -> None:

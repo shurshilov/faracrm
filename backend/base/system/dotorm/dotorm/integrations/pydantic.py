@@ -1,11 +1,23 @@
-try:
-    from pydantic import create_model, ConfigDict
-    from pydantic.fields import Field
-except:
-    print("pydantic lib not installed")
-from types import UnionType
-from typing import Any, List, Literal, Optional, Type, Union
+"""Pydantic integration for DotORM models."""
 
+from types import UnionType
+from typing import (
+    Annotated,
+    Any,
+    ForwardRef,
+    List,
+    Literal,
+    Optional,
+    Type,
+    Union,
+    get_args,
+    get_origin,
+)
+
+try:
+    from pydantic import BaseModel, ConfigDict, Field, create_model
+except ImportError:
+    print("pydantic lib not installed")
 
 from ..fields import (
     Many2many,
@@ -49,16 +61,6 @@ def dotorm_to_pydantic_nested_one(cls):
         "SchemaGetInput",
         fields=(list[Union[Literal[*fields_store], *fields_relation]], ...),
     )
-
-
-from typing import (
-    Annotated,
-    ForwardRef,
-    Union,
-    get_args,
-    get_origin,
-)
-from pydantic import BaseModel, Field, create_model
 
 
 def replace_custom_types(py_type, class_map: dict[str, Type[BaseModel]]):

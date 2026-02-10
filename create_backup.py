@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
-Script to create fara_crm_context.zip archive
-Includes only specified file extensions and excludes .venv and node_modules folders
+Script to create fara_crm_context.zip archive.
+
+Includes only specified file extensions and excludes .venv
+and node_modules folders.
 """
 
 import zipfile
@@ -80,7 +82,7 @@ def create_archive(
         print("=" * 50)
         return True
 
-    except Exception as e:
+    except OSError as e:
         print()
         print("=" * 50)
         print("ERROR:")

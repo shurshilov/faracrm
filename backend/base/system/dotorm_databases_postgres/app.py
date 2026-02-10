@@ -1,3 +1,5 @@
+"""PostgreSQL database service — pool management and model binding."""
+
 from typing import TYPE_CHECKING
 
 import asyncpg

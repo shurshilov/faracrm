@@ -62,15 +62,15 @@ async def chat_webhook(
             return PlainTextResponse("OK", status_code=HTTP_200_OK)
 
         payload = json.loads(data)
-        logger.info(f"Chat webhook raw data: {payload}")
+        logger.info("Chat webhook raw data: %s", payload)
 
     except json.JSONDecodeError as e:
-        logger.error(f"Chat webhook: Invalid JSON: {e}")
+        logger.error("Chat webhook: Invalid JSON: %s", e)
         return JSONResponse(
             content={"error": "INVALID_JSON"}, status_code=HTTP_400_BAD_REQUEST
         )
     except Exception as e:
-        logger.error(f"Chat webhook: Error reading data: {e}")
+        logger.error("Chat webhook: Error reading data: %s", e)
         return JSONResponse(
             content={"error": "READ_ERROR"}, status_code=HTTP_400_BAD_REQUEST
         )
@@ -81,7 +81,7 @@ async def chat_webhook(
     # 3. Проверяем webhook_hash
     if connector.webhook_hash != webhook_hash:
         logger.warning(
-            f"Chat webhook: Invalid hash for connector {connector_id}"
+            "Chat webhook: Invalid hash for connector %s", connector_id
         )
         return JSONResponse(
             content={"error": "INVALID_HASH"},
@@ -90,7 +90,7 @@ async def chat_webhook(
 
     # 4. Проверяем активность коннектора
     if not connector.active:
-        logger.warning(f"Chat webhook: Connector {connector_id} is inactive")
+        logger.warning("Chat webhook: Connector %s is inactive", connector_id)
         return JSONResponse(
             content={"error": "CONNECTOR_INACTIVE"},
             status_code=HTTP_400_BAD_REQUEST,

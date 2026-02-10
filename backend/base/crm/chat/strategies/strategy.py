@@ -194,14 +194,18 @@ class ChatStrategyBase(ABC):
             # 2. Проверяем нужно ли пропустить
             if adapter.should_skip:
                 logger.info(
-                    f"[{self.strategy_type}] Skipping message {adapter.message_id}"
+                    "[%s] Skipping message %s",
+                    self.strategy_type,
+                    adapter.message_id,
                 )
                 return {"ok": True}
 
             # 3. Проверяем дубликат
             if await self._is_duplicate_message(env, connector, adapter):
                 logger.info(
-                    f"[{self.strategy_type}] Duplicate message {adapter.message_id}"
+                    "[%s] Duplicate message %s",
+                    self.strategy_type,
+                    adapter.message_id,
                 )
                 return {"ok": True}
 
@@ -212,11 +216,13 @@ class ChatStrategyBase(ABC):
             return {"ok": True}
 
         except NotImplementedError as e:
-            logger.warning(f"[{self.strategy_type}] Not implemented: {e}")
+            logger.warning("[%s] Not implemented: %s", self.strategy_type, e)
             return {"ok": True}
         except Exception as e:
             logger.error(
-                f"[{self.strategy_type}] Error processing webhook: {e}",
+                "[%s] Error processing webhook: %s",
+                self.strategy_type,
+                e,
                 exc_info=True,
             )
             # Возвращаем OK чтобы провайдер не повторял запрос
@@ -349,8 +355,10 @@ class ChatStrategyBase(ABC):
         )
 
         logger.info(
-            f"[{self.strategy_type}] Processed message "
-            f"{adapter.message_id} -> internal {message.id}"
+            "[%s] Processed message %s -> internal %s",
+            self.strategy_type,
+            adapter.message_id,
+            message.id,
         )
 
     async def _create_new_chat(
@@ -366,8 +374,9 @@ class ChatStrategyBase(ABC):
 
         if not operator_id:
             logger.warning(
-                f"[{self.strategy_type}] No operator available "
-                f"for connector {connector.id}"
+                "[%s] No operator available for connector %s",
+                self.strategy_type,
+                connector.id,
             )
             return None
 
@@ -415,8 +424,10 @@ class ChatStrategyBase(ABC):
         )
 
         logger.info(
-            f"[{self.strategy_type}] Created new chat {chat_id} "
-            f"for external {adapter.chat_id}"
+            "[%s] Created new chat %s for external %s",
+            self.strategy_type,
+            chat_id,
+            adapter.chat_id,
         )
 
         return chat_id
@@ -433,11 +444,13 @@ class ChatStrategyBase(ABC):
                 image_content = await self.file_download(connector, image_url)
                 # TODO: Интеграция с модулем attachments
                 logger.debug(
-                    f"[{self.strategy_type}] Downloaded image: {len(image_content)} bytes"
+                    "[%s] Downloaded image: %s bytes",
+                    self.strategy_type,
+                    len(image_content),
                 )
             except Exception as e:
                 logger.error(
-                    f"[{self.strategy_type}] Error downloading image: {e}"
+                    "[%s] Error downloading image: %s", self.strategy_type, e
                 )
 
         for file_info in adapter.files:
@@ -447,12 +460,14 @@ class ChatStrategyBase(ABC):
                 )
                 # TODO: Интеграция с модулем attachments
                 logger.debug(
-                    f"[{self.strategy_type}] Downloaded file: "
-                    f"{file_info.get('name')} ({len(file_content)} bytes)"
+                    "[%s] Downloaded file: %s (%s bytes)",
+                    self.strategy_type,
+                    file_info.get("name"),
+                    len(file_content),
                 )
             except Exception as e:
                 logger.error(
-                    f"[{self.strategy_type}] Error downloading file: {e}"
+                    "[%s] Error downloading file: %s", self.strategy_type, e
                 )
 
     # ========================================================================
@@ -594,7 +609,7 @@ class ChatStrategyBase(ABC):
                 # Пока поддерживаем отправку только одному получателю
                 if len(recipients_ids) > 1:
                     logger.warning(
-                        f"Multiple recipients not fully supported yet, using first one"
+                        "Multiple recipients not fully supported yet, using first one"
                     )
 
                 recipient = recipients_ids[0]
@@ -612,8 +627,9 @@ class ChatStrategyBase(ABC):
                 # )
             else:
                 logger.warning(
-                    f"No external_chat found for chat={chat_id}, connector={connector_id.id} "
-                    f"and no recipients provided"
+                    "No external_chat found for chat=%s, connector=%s and no recipients provided",
+                    chat_id,
+                    connector_id.id,
                 )
                 return False
 
@@ -633,7 +649,9 @@ class ChatStrategyBase(ABC):
 
             if not operator_contact:
                 logger.warning(
-                    f"No operator contact found for connector {connector_id.id}, user {user_id}"
+                    "No operator contact found for connector %s, user %s",
+                    connector_id.id,
+                    user_id,
                 )
                 return False
 
@@ -659,7 +677,9 @@ class ChatStrategyBase(ABC):
 
                     except Exception as e:
                         logger.error(
-                            f"Failed to send attachment {att.get('id')}: {e}"
+                            "Failed to send attachment %s: %s",
+                            att.get("id"),
+                            e,
                         )
 
             # Если нет вложений или есть текст без caption — отправляем текст
@@ -683,13 +703,15 @@ class ChatStrategyBase(ABC):
                 )
 
             logger.info(
-                f"Sent message to {connector_id.type}: "
-                f"internal={message_id}, external={external_msg_id}"
+                "Sent message to %s: internal=%s, external=%s",
+                connector_id.type,
+                message_id,
+                external_msg_id,
             )
             return True
 
         except Exception as e:
             logger.error(
-                f"Failed to send to external connector: {e}", exc_info=True
+                "Failed to send to external connector: %s", e, exc_info=True
             )
             return False

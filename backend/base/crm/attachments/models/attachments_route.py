@@ -189,7 +189,7 @@ class AttachmentRoute(DotModel):
         try:
             result = template.format(**context)
         except KeyError as e:
-            logger.warning(f"Missing variable in template: {e}")
+            logger.warning("Missing variable in template: %s", e)
             result = template
 
         return result

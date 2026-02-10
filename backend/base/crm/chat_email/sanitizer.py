@@ -156,7 +156,7 @@ def sanitize_email_html(html: str) -> str:
         sanitizer.feed(html)
         return "".join(sanitizer.result)
     except Exception as e:
-        logger.error(f"Email HTML sanitization failed: {e}")
+        logger.error("Email HTML sanitization failed: %s", e)
         # Fallback: strip все теги
         sanitizer = _Sanitizer()
         sanitizer.result = []

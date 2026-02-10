@@ -173,7 +173,7 @@ class SecurityApp(Service):
                 continue
 
         if registered:
-            log.info(f"Registered app icons: {', '.join(registered)}")
+            log.info("Registered app icons: %s", ", ".join(registered))
 
     async def _init_models(self, env: Environment):
         """Создаёт записи в таблице models для всех моделей."""

@@ -7,19 +7,17 @@
 подставляется при startup на основе настроек.
 
 Использование (в коде приложения):
-    from backend.base.crm.chat.websocket.pubsub import pubsub
+    chat_manager.set_pubsub(backend)
+    await chat_manager._pubsub.publish("send_to_chat", {...})
 
-    # Публикация (одинаково для любого backend):
-    await pubsub.publish("send_to_chat", {"chat_id": 1, "message": {...}})
-
-Выбор backend — через env переменную CHAT__PUBSUB_BACKEND:
-    CHAT__PUBSUB_BACKEND=pg       # PostgreSQL LISTEN/NOTIFY (default)
-    CHAT__PUBSUB_BACKEND=redis    # Redis Pub/Sub
+Выбор backend — через env переменную PUBSUB__BACKEND:
+    PUBSUB__BACKEND=pg       # PostgreSQL LISTEN/NOTIFY (default)
+    PUBSUB__BACKEND=redis    # Redis Pub/Sub
 """
 
-from abc import ABC, abstractmethod
-from typing import Callable, Awaitable
 import logging
+from abc import ABC, abstractmethod
+from typing import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +31,7 @@ class PubSubBackend(ABC):
     - start_listening() → запуск фонового listener с callback
     - publish()         → отправка события (из любого процесса)
     - stop()            → корректное завершение
+    - is_healthy()      → проверка работоспособности
     """
 
     @abstractmethod

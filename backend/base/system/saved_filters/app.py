@@ -1,3 +1,5 @@
+"""Saved filters application."""
+
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
 

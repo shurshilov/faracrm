@@ -92,7 +92,7 @@ class CronApp(Service):
             ],
             cwd=os.getcwd(),
         )
-        logger.info(f"Cron subprocess spawned (PID={proc.pid})")
+        logger.info("Cron subprocess spawned (PID=%s)", proc.pid)
         return proc
 
     async def _watchdog(self):
@@ -111,8 +111,8 @@ class CronApp(Service):
                 # exit_code 0 = нормальное завершение (advisory lock занят)
                 if exit_code != 0:
                     logger.warning(
-                        f"Cron subprocess exited with code {exit_code}, "
-                        f"restarting..."
+                        "Cron subprocess exited with code %s, restarting...",
+                        exit_code,
                     )
                     self._cron_process = self._spawn_cron()
                 else:
@@ -144,7 +144,7 @@ class CronApp(Service):
             # чтобы не отравлять env родительского процесса
         )
 
-        logger.info(f"Cron subprocess spawned (PID={self._cron_process.pid})")
+        logger.info("Cron subprocess spawned (PID=%s)", self._cron_process.pid)
 
     async def shutdown(self, app: "FastAPI"):
         """Останавливает cron subprocess."""

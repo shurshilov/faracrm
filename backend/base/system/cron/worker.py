@@ -58,8 +58,9 @@ class CronWorker:
             return
 
         logger.info(
-            f"Starting Cron Worker (interval={self.check_interval}s, "
-            f"max_threads={self.max_threads})"
+            "Starting Cron Worker (interval=%ss, max_threads=%s)",
+            self.check_interval,
+            self.max_threads,
         )
         self._running = True
         self._task = asyncio.create_task(self._run_loop())
@@ -83,7 +84,7 @@ class CronWorker:
 
         # Ждём завершения текущих задач
         if self._current_tasks:
-            logger.info(f"Waiting for {len(self._current_tasks)} tasks...")
+            logger.info("Waiting for %s tasks...", len(self._current_tasks))
             await asyncio.gather(*self._current_tasks, return_exceptions=True)
 
         logger.info("Cron Worker stopped")
@@ -96,7 +97,7 @@ class CronWorker:
             try:
                 await self._check_and_run_jobs()
             except Exception as e:
-                logger.exception(f"Error in cron check cycle: {e}")
+                logger.exception("Error in cron check cycle")
 
             # Ждём следующего цикла
             await asyncio.sleep(self.check_interval)
@@ -108,13 +109,13 @@ class CronWorker:
         try:
             jobs = await self.env.models.cron_job.get_pending_jobs(self.env)
         except Exception as e:
-            logger.error(f"Failed to get pending jobs: {e}")
+            logger.error("Failed to get pending jobs", exc_info=True)
             return
 
         if not jobs:
             return
 
-        logger.debug(f"Found {len(jobs)} pending jobs")
+        logger.debug("Found %s pending jobs", len(jobs))
 
         for job in jobs:
             # Проверяем лимит параллельных задач
@@ -135,7 +136,7 @@ class CronWorker:
         Выполняет одну задачу.
         """
 
-        logger.info(f"Executing job: {job.name} (id={job.id})")
+        logger.info("Executing job: %s (id=%s)", job.name, job.id)
         start_time = datetime.now(timezone.utc)
 
         # Помечаем как выполняющуюся
@@ -160,12 +161,14 @@ class CronWorker:
                 "nextcall": job.calculate_next_call(),
             }
 
-            logger.info(f"Job {job.name} completed (duration={duration:.2f}s)")
+            logger.info(
+                "Job %s completed (duration=%.2fs)", job.name, duration
+            )
 
             # Деактивируем если достигнут лимит
             if job.numbercall != -1 and job.run_count >= job.numbercall:
                 vals["active"] = False
-                logger.info(f"Job {job.name} reached run limit, deactivating")
+                logger.info("Job %s reached run limit, deactivating", job.name)
 
             await job.update(CronJob(**vals))
 
@@ -177,7 +180,7 @@ class CronWorker:
                     nextcall=job.calculate_next_call(),
                 )
             )
-            logger.error(f"Job {job.name} timed out")
+            logger.error("Job %s timed out", job.name)
 
         except Exception as e:
             await job.update(
@@ -187,7 +190,7 @@ class CronWorker:
                     nextcall=job.calculate_next_call(),
                 )
             )
-            logger.exception(f"Job {job.name} failed: {e}")
+            logger.exception("Job %s failed", job.name)
 
     async def run_job_now(self, job_id: int) -> dict:
         """

@@ -1,4 +1,4 @@
-"""Этот файл содержит общие типы. Type alises."""
+"""Этот файл содержит общие типы. Type aliases."""
 
 import re
 from enum import IntEnum
@@ -13,12 +13,16 @@ from pydantic_core import Url
 
 
 class Language(IntEnum):
-    # TODO: заменить накапслок
+    """Supported UI languages."""
+
+    # TODO: заменить на UPPER_CASE
     English = 1
     Russian = 2
 
 
 class IntBool(IntEnum):
+    """Integer boolean for legacy API compatibility."""
+
     FALSE = 0
     TRUE = 1
 

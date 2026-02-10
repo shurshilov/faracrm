@@ -1,5 +1,6 @@
+"""Custom logging formatter with colored [FARA *] tags."""
+
 # Copyright 2025 FARA CRM
-# Custom logging formatter with colored [FARA *] tags
 
 import logging
 

@@ -79,7 +79,9 @@ class InternalStrategy(ChatStrategyBase):
         internal_chat_id = chat_id or str(uuid.uuid4())
 
         logger.info(
-            f"Internal message sent: {internal_message_id} to chat {internal_chat_id}"
+            "Internal message sent: %s to chat %s",
+            internal_message_id,
+            internal_chat_id,
         )
 
         return internal_message_id, internal_chat_id
@@ -101,7 +103,9 @@ class InternalStrategy(ChatStrategyBase):
         internal_message_id = str(uuid.uuid4())
 
         logger.info(
-            f"Internal binary message sent: {internal_message_id} to chat {chat_id}"
+            "Internal binary message sent: %s to chat %s",
+            internal_message_id,
+            chat_id,
         )
 
         return internal_message_id, chat_id

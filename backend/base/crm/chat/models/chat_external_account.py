@@ -231,8 +231,10 @@ class ChatExternalAccount(DotModel):
             created = True
 
             logger.info(
-                f"Created Partner {partner.id} with Contact {contact.id} "
-                f"for external_id={external_id}"
+                "Created Partner %s with Contact %s for external_id=%s",
+                partner.id,
+                contact.id,
+                external_id,
             )
 
         # 6. Создаём или обновляем ExternalAccount
@@ -252,8 +254,9 @@ class ChatExternalAccount(DotModel):
             account.id = await self.create(payload=account)
 
             logger.info(
-                f"Created ChatExternalAccount {account.id} "
-                f"linked to Contact {contact.id}"
+                "Created ChatExternalAccount %s linked to Contact %s",
+                account.id,
+                contact.id,
             )
 
         return account, contact, created

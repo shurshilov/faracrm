@@ -80,7 +80,7 @@ async def oauth2_callback(req: Request):
         error_description = req.query_params.get(
             "error_description", "Unknown error"
         )
-        logger.error(f"OAuth error: {error} - {error_description}")
+        logger.error("OAuth error: %s - %s", error, error_description)
         return HTMLResponse(
             content=f"""
             <html>
@@ -116,7 +116,7 @@ async def oauth2_callback(req: Request):
     )
 
     if not storage_list:
-        logger.warning(f"Storage not found for state: {state}")
+        logger.warning("Storage not found for state: %s", state)
         return HTMLResponse(
             content="""
             <html>
@@ -135,7 +135,7 @@ async def oauth2_callback(req: Request):
 
     # Получаем credentials из JSON файла
     if not storage.google_json_credentials:
-        logger.error(f"No credentials file for storage {storage.id}")
+        logger.error("No credentials file for storage %s", storage.id)
         return HTMLResponse(
             content="""
             <html>
@@ -184,7 +184,7 @@ async def oauth2_callback(req: Request):
         ):
             authorization_response = "https:" + authorization_response[5:]
 
-        logger.info(f"Fetching token with redirect_uri: {redirect_uri}")
+        logger.info("Fetching token with redirect_uri: %s", redirect_uri)
 
         # Use the authorization server's response to fetch the OAuth 2.0 tokens.
         # Add HTTPS for localhost test
@@ -202,8 +202,9 @@ async def oauth2_callback(req: Request):
             # Нет refresh_token - возможно повторная авторизация
             auth_state = "authorized"
             logger.warning(
-                f"No refresh_token received for storage {storage.id}. "
-                "This may happen on re-authorization."
+                "No refresh_token received for storage %s. "
+                "This may happen on re-authorization.",
+                storage.id,
             )
 
         # Сохраняем credentials в storage
@@ -216,7 +217,7 @@ async def oauth2_callback(req: Request):
         await storage.update(payload=storage_new)
 
         logger.info(
-            f"Google Drive authorized successfully for storage {storage.id}"
+            "Google Drive authorized successfully for storage %s", storage.id
         )
 
         # Редирект обратно на форму storage
@@ -247,7 +248,7 @@ async def oauth2_callback(req: Request):
         )
 
     except Exception as e:
-        logger.exception(f"Error during OAuth callback: {e}")
+        logger.exception("Error during OAuth callback: %s", e)
 
         storage_new = env.models.attachment_storage(
             google_auth_state="failed",
@@ -372,7 +373,7 @@ async def oauth2_start(req: Request, storage_id: int):
             # include_granted_scopes="true",
         )
 
-        logger.info(f"Generated Google OAuth URL for storage {storage_id}")
+        logger.info("Generated Google OAuth URL for storage %s", storage_id)
 
         return JSONResponse(
             content={"authorization_url": authorization_url},
@@ -380,7 +381,7 @@ async def oauth2_start(req: Request, storage_id: int):
         )
 
     except Exception as e:
-        logger.exception(f"Error generating OAuth URL: {e}")
+        logger.exception("Error generating OAuth URL: %s", e)
         return JSONResponse(
             content={"error": str(e)},
             status_code=500,

@@ -145,7 +145,8 @@ class StorageStrategyBase(ABC):
             ID созданной папки или None если не поддерживается
         """
         logger.debug(
-            f"[{self.strategy_type}] create_folder not implemented, returning None"
+            "[%s] create_folder not implemented, returning None",
+            self.strategy_type,
         )
         return None
 
@@ -248,9 +249,12 @@ class StorageStrategyBase(ABC):
         """Логирование операции."""
         extra = ", ".join(f"{k}={v}" for k, v in kwargs.items() if v)
         logger.debug(
-            f"[{self.strategy_type}] {operation}: "
-            f"attachment_id={attachment.id}, name={attachment.name}"
-            f"{', ' + extra if extra else ''}"
+            "[%s] %s: attachment_id=%s, name=%s%s",
+            self.strategy_type,
+            operation,
+            attachment.id,
+            attachment.name,
+            ", " + extra if extra else "",
         )
 
     def _build_file_path(

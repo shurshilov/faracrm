@@ -1,3 +1,5 @@
+"""FARA CRM — FastAPI application entry point."""
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -59,7 +61,7 @@ app.add_middleware(
 )
 
 
-def add_cors(request: Request, response: JSONResponse) -> JSONResponse:
+def add_cors(_request: Request, response: JSONResponse) -> JSONResponse:
     """
     CORS headers are not automatically added to error handlers with FastAPI
     cf. https://github.com/fastapi/fastapi/discussions/8027

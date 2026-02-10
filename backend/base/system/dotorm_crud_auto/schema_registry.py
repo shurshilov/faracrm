@@ -143,11 +143,14 @@ class SchemaRegistry:
 
             except Exception as e:
                 errors.append(f"{name}: {e}")
-                log.error(f"Failed to build schemas for {name}: {e}")
+                log.error(
+                    "Failed to build schemas for %s", name, exc_info=True
+                )
 
         if errors:
             log.warning(
-                f"Schema generation completed with {len(errors)} errors"
+                "Schema generation completed with %s errors",
+                len(errors),
             )
 
         self._built = True

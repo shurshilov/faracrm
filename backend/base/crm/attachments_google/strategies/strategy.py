@@ -109,7 +109,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
 
             return build("drive", "v3", credentials=credentials)
         except Exception as e:
-            logger.error(f"Failed to create Google Drive service: {e}")
+            logger.error("Failed to create Google Drive service: %s", e)
             raise ValueError(f"Invalid Google credentials: {e}") from e
 
     async def _save_refreshed_credentials(
@@ -135,7 +135,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
         await storage.update(
             updated_storage,
         )
-        logger.debug(f"Refreshed credentials saved to storage {storage.id}")
+        logger.debug("Refreshed credentials saved to storage %s", storage.id)
 
     def _get_parent_id(self, storage: "AttachmentStorage") -> Optional[str]:
         """
@@ -217,7 +217,9 @@ class GoogleDriveStrategy(StorageStrategyBase):
             )
 
             logger.info(
-                f"File created in Google Drive: {file.get('id')} - {filename}"
+                "File created in Google Drive: %s - %s",
+                file.get("id"),
+                filename,
             )
 
             return {
@@ -228,7 +230,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             }
 
         except Exception as e:
-            logger.error(f"Failed to create file in Google Drive: {e}")
+            logger.error("Failed to create file in Google Drive: %s", e)
             raise
 
     async def read_file(
@@ -250,7 +252,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
 
         if not attachment.storage_file_id:
             logger.warning(
-                f"No storage_file_id for attachment {attachment.id}"
+                "No storage_file_id for attachment %s", attachment.id
             )
             return None
 
@@ -274,19 +276,20 @@ class GoogleDriveStrategy(StorageStrategyBase):
                 status, done = downloader.next_chunk()
                 if status:
                     logger.debug(
-                        f"Download progress: {int(status.progress() * 100)}%"
+                        "Download progress: %s%", int(status.progress() * 100)
                     )
 
             content = buffer.getvalue()
             logger.debug(
-                f"File downloaded from Google Drive: {len(content)} bytes"
+                "File downloaded from Google Drive: %s bytes", len(content)
             )
             return content
 
         except Exception as e:
             logger.error(
-                f"Failed to read file {attachment.storage_file_id} "
-                f"from Google Drive: {e}"
+                "Failed to read file %s from Google Drive: %s",
+                attachment.storage_file_id,
+                e,
             )
             return None
 
@@ -362,7 +365,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
                 ).execute()
 
             logger.info(
-                f"File updated in Google Drive: {attachment.storage_file_id}"
+                "File updated in Google Drive: %s", attachment.storage_file_id
             )
 
             return {
@@ -371,8 +374,9 @@ class GoogleDriveStrategy(StorageStrategyBase):
 
         except Exception as e:
             logger.error(
-                f"Failed to update file {attachment.storage_file_id} "
-                f"in Google Drive: {e}"
+                "Failed to update file %s in Google Drive: %s",
+                attachment.storage_file_id,
+                e,
             )
             raise
 
@@ -393,7 +397,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
         """
         if not attachment.storage_file_id:
             logger.warning(
-                f"No storage_file_id for attachment {attachment.id}"
+                "No storage_file_id for attachment %s", attachment.id
             )
             return False
 
@@ -410,14 +414,16 @@ class GoogleDriveStrategy(StorageStrategyBase):
             ).execute()
 
             logger.info(
-                f"File deleted from Google Drive: {attachment.storage_file_id}"
+                "File deleted from Google Drive: %s",
+                attachment.storage_file_id,
             )
             return True
 
         except Exception as e:
             logger.error(
-                f"Failed to delete file {attachment.storage_file_id} "
-                f"from Google Drive: {e}"
+                "Failed to delete file %s from Google Drive: %s",
+                attachment.storage_file_id,
+                e,
             )
             return False
 
@@ -443,7 +449,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             ID созданной/существующей папки
         """
         logger.debug(
-            f"[google] create_folder: {folder_name}, parent={parent_id}"
+            "[google] create_folder: %s, parent=%s", folder_name, parent_id
         )
 
         service = await self._get_service(storage)
@@ -485,7 +491,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
             # Если папка существует - возвращаем её ID
             if response.get("files"):
                 folder_id = response["files"][0].get("id")
-                logger.debug(f"Folder already exists: {folder_id}")
+                logger.debug("Folder already exists: %s", folder_id)
                 return folder_id
 
             # Создаем новую папку
@@ -514,11 +520,11 @@ class GoogleDriveStrategy(StorageStrategyBase):
             )
 
             folder_id = folder.get("id")
-            logger.info(f"Folder created in Google Drive: {folder_id}")
+            logger.info("Folder created in Google Drive: %s", folder_id)
             return folder_id
 
         except Exception as e:
-            logger.error(f"Failed to create folder in Google Drive: {e}")
+            logger.error("Failed to create folder in Google Drive: %s", e)
             return None
 
     async def validate_connection(self, storage: "AttachmentStorage") -> bool:
@@ -541,13 +547,13 @@ class GoogleDriveStrategy(StorageStrategyBase):
             about = service.about().get(fields="user").execute()
 
             logger.info(
-                f"Google Drive connected as: "
-                f"{about.get('user', {}).get('emailAddress')}"
+                "Google Drive connected as: %s",
+                about.get("user", {}).get("emailAddress"),
             )
             return True
 
         except Exception as e:
-            logger.error(f"Google Drive connection failed: {e}")
+            logger.error("Google Drive connection failed: %s", e)
             return False
 
     async def get_file_url(
@@ -632,8 +638,9 @@ class GoogleDriveStrategy(StorageStrategyBase):
             )
 
             logger.info(
-                f"File moved in Google Drive: {attachment.storage_file_id} "
-                f"-> {new_parent_id}"
+                "File moved in Google Drive: %s -> %s",
+                attachment.storage_file_id,
+                new_parent_id,
             )
 
             return {
@@ -642,6 +649,6 @@ class GoogleDriveStrategy(StorageStrategyBase):
 
         except Exception as e:
             logger.error(
-                f"Failed to move file {attachment.storage_file_id}: {e}"
+                "Failed to move file %s: %s", attachment.storage_file_id, e
             )
             raise

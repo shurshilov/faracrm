@@ -68,8 +68,9 @@ repos:
   #     - id: pylint
   #       args:
   #       - --max-line-length=79
-  #       # - --ignore-imports=yes
-  #       # - --disable=invalid-name,missing-docstring,protected-access,too-few-public-methods,consider-using-assignment-expr,import-error,duplicate-code,fixme,raise-missing-from,broad-exception-caught,redefined-builtin,too-many-locals,too-many-branches,too-many-statements
+  #       - --disable=duplicate-code,unused-import,import-error,line-too-long,consider-using-sys-exit,too-few-public-methods,wrong-import-position,redefined-builtin,import-outside-toplevel
+  #       exclude: 'tests/'
+  #       files: \.py$
 
 # # install it with pip
 # python -m pip install pre-commit

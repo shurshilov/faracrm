@@ -82,11 +82,11 @@ class EmailStrategy(ChatStrategyBase):
             await imap.logout()
 
             logger.info(
-                f"Email IMAP connection verified for connector {connector.id}"
+                "Email IMAP connection verified for connector %s", connector.id
             )
             return True
         except Exception as e:
-            logger.error(f"Email IMAP connection failed: {e}")
+            logger.error("Email IMAP connection failed: %s", e)
             raise ValueError(f"IMAP connection error: {e}")
 
     async def unset_webhook(self, connector: "ChatConnector") -> Any:
@@ -195,11 +195,11 @@ class EmailStrategy(ChatStrategyBase):
                 timeout=self.TIMEOUT,
             )
 
-            logger.info(f"Email sent: {message_id} to {recipients}")
+            logger.info("Email sent: %s to %s", message_id, recipients)
             return message_id, recipients[0]
 
         except Exception as e:
-            logger.error(f"Email send error: {e}")
+            logger.error("Email send error: %s", e)
             raise ValueError(f"SMTP error: {e}")
 
     async def chat_send_message_binary(
@@ -284,12 +284,12 @@ class EmailStrategy(ChatStrategyBase):
             )
 
             logger.info(
-                f"Email with attachment sent: {message_id} to {recipients}"
+                "Email with attachment sent: %s to %s", message_id, recipients
             )
             return message_id, recipients[0]
 
         except Exception as e:
-            logger.error(f"Email send error: {e}")
+            logger.error("Email send error: %s", e)
             raise ValueError(f"SMTP error: {e}")
 
     async def fetch_emails(
@@ -344,7 +344,7 @@ class EmailStrategy(ChatStrategyBase):
                 # FETCH * (UID) — '*' означает последнее сообщение в mailbox
                 # Это O(1) вместо SEARCH ALL который возвращает все seq numbers
                 fetch_resp = await imap.fetch("*", "(UID)")
-                logger.debug(f"IMAP fetch * UID response: {fetch_resp}")
+                logger.debug("IMAP fetch * UID response: %s", fetch_resp)
 
                 if fetch_resp.result == "OK" and fetch_resp.lines:
                     # Парсим UID из ответа типа "1 FETCH (UID 12345)"
@@ -361,7 +361,8 @@ class EmailStrategy(ChatStrategyBase):
                                     type(connector)(imap_last_uid=max_uid)
                                 )
                                 logger.info(
-                                    f"Email first run: set last_uid to {max_uid}"
+                                    "Email first run: set last_uid to %s",
+                                    max_uid,
                                 )
                                 break
 
@@ -371,10 +372,12 @@ class EmailStrategy(ChatStrategyBase):
             # Последующие запуски: получаем только новые письма
             # Используем IMAP search с критерием UID
             search_criteria = f"UID {last_uid + 1}:*"
-            logger.info(f"IMAP searching with criteria: {search_criteria}")
+            logger.info("IMAP searching with criteria: %s", search_criteria)
             response = await imap.search(search_criteria)
             logger.info(
-                f"IMAP search response: result={response.result}, lines={response.lines}"
+                "IMAP search response: result=%s, lines=%s",
+                response.result,
+                response.lines,
             )
 
             # if response.result != "OK":
@@ -394,7 +397,7 @@ class EmailStrategy(ChatStrategyBase):
             # Ответ в формате [b'123 456 789', b'SEARCH completed (Success)']
             seq_str = ""
             for line in response.lines:
-                logger.debug(f"Response line: {type(line)} = {line}")
+                logger.debug("Response line: %s = %s", type(line), line)
                 if isinstance(line, bytes):
                     line = line.decode()
                 # Ищем строку с числами (не содержит SEARCH/completed)
@@ -407,12 +410,12 @@ class EmailStrategy(ChatStrategyBase):
                     seq_str = line
                     break
 
-            logger.info(f"Parsed seq_str: '{seq_str}'")
+            logger.info("Parsed seq_str: '%s'", seq_str)
             seq_list = seq_str.strip().split() if seq_str else []
-            logger.info(f"Parsed seq_list: {seq_list}")
+            logger.info("Parsed seq_list: %s", seq_list)
 
             if not seq_list:
-                logger.info(f"No new messages found (last_uid={last_uid})")
+                logger.info("No new messages found (last_uid=%s)", last_uid)
                 await imap.logout()
                 return []
 
@@ -420,7 +423,7 @@ class EmailStrategy(ChatStrategyBase):
             if len(seq_list) > max_messages:
                 seq_list = seq_list[:max_messages]
 
-            logger.info(f"Found {len(seq_list)} new messages to process")
+            logger.info("Found %s new messages to process", len(seq_list))
 
             import re
 
@@ -429,7 +432,9 @@ class EmailStrategy(ChatStrategyBase):
                     # Получаем UID и тело письма одним запросом
                     fetch_response = await imap.fetch(seq, "(UID BODY.PEEK[])")
                     logger.debug(
-                        f"IMAP fetch response: {fetch_response.result}, lines count: {len(fetch_response.lines)}"
+                        "IMAP fetch response: %s, lines count: %s",
+                        fetch_response.result,
+                        len(fetch_response.lines),
                     )
 
                     if (
@@ -467,18 +472,23 @@ class EmailStrategy(ChatStrategyBase):
                                 uid_int = int(match.group(1))
 
                     logger.debug(
-                        f"Parsed: uid={uid_int}, has_body={raw_email is not None}"
+                        "Parsed: uid=%s, has_body=%s",
+                        uid_int,
+                        raw_email is not None,
                     )
 
                     if not uid_int or uid_int <= last_uid:
                         logger.debug(
-                            f"Skipping seq={seq}, uid={uid_int}, last_uid={last_uid}"
+                            "Skipping seq=%s, uid=%s, last_uid=%s",
+                            seq,
+                            uid_int,
+                            last_uid,
                         )
                         continue
 
                     if not raw_email:
                         logger.warning(
-                            f"No body found for seq={seq}, uid={uid_int}"
+                            "No body found for seq=%s, uid=%s", seq, uid_int
                         )
                         continue
 
@@ -492,13 +502,13 @@ class EmailStrategy(ChatStrategyBase):
                             "parsed": email_message,
                         }
                     )
-                    logger.info(f"Successfully fetched email uid={uid_int}")
+                    logger.info("Successfully fetched email uid=%s", uid_int)
 
                     if uid_int > new_max_uid:
                         new_max_uid = uid_int
 
                 except Exception as e:
-                    logger.error(f"Error fetching seq={seq}: {e}")
+                    logger.error("Error fetching seq=%s: %s", seq, e)
                     continue
 
             await imap.logout()
@@ -509,11 +519,11 @@ class EmailStrategy(ChatStrategyBase):
                     type(connector)(imap_last_uid=new_max_uid)
                 )
 
-            logger.info(f"Email fetched {len(messages)} new messages")
+            logger.info("Email fetched %s new messages", len(messages))
             return messages
 
         except Exception as e:
-            logger.error(f"Email IMAP fetch error: {e}")
+            logger.error("Email IMAP fetch error: %s", e)
             return []
 
     def create_message_adapter(
@@ -581,7 +591,8 @@ class EmailStrategy(ChatStrategyBase):
                 # Проверяем что IMAP настроен
                 if not connector.imap_host or not connector.email_username:
                     logger.debug(
-                        f"Connector {connector.id} IMAP not configured, skipping"
+                        "Connector %s IMAP not configured, skipping",
+                        connector.id,
                     )
                     continue
 
@@ -609,7 +620,8 @@ class EmailStrategy(ChatStrategyBase):
 
                         if is_duplicate:
                             logger.debug(
-                                f"Duplicate email {adapter.message_id}, skipping"
+                                "Duplicate email %s, skipping",
+                                adapter.message_id,
                             )
                             continue
 
@@ -623,18 +635,20 @@ class EmailStrategy(ChatStrategyBase):
 
                     except Exception as e:
                         logger.error(
-                            f"Error processing email: {e}", exc_info=True
+                            "Error processing email: %s", e, exc_info=True
                         )
                         errors += 1
 
             except Exception as e:
                 logger.error(
-                    f"Error fetching emails from connector {connector.id}: {e}",
+                    "Error fetching emails from connector %s: %s",
+                    connector.id,
+                    e,
                     exc_info=True,
                 )
                 errors += 1
 
         logger.info(
-            f"Email cron completed: processed={processed}, errors={errors}"
+            "Email cron completed: processed=%s, errors=%s", processed, errors
         )
         return {"processed": processed, "errors": errors}

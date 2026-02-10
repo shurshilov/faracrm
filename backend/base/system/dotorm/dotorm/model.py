@@ -51,6 +51,8 @@ from .fields import (
 
 
 class JsonMode(IntEnum):
+    """Modes for JSON serialization of model instances."""
+
     FORM = 1
     LIST = 2
     CREATE = 3
@@ -59,7 +61,8 @@ class JsonMode(IntEnum):
 
 
 @dataclass_transform(kw_only_default=True, field_specifiers=(Field,))
-class ModelMetaclass(ABCMeta): ...
+class ModelMetaclass(ABCMeta):
+    """Metaclass for DotModel with dataclass_transform support."""
 
 
 # Import mixins here to avoid circular imports
@@ -200,7 +203,7 @@ class DotModel(
         cls._cache_has_json_fields = bool(json_fields)
         cls._cache_has_compute_fields = bool(compute_fields)
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         # Fast path: bulk-assign all kwargs via __dict__
         self.__dict__.update(kwargs)
 
@@ -298,7 +301,7 @@ class DotModel(
         if not r:
             return None
         if len(r) > 1:
-            raise Exception("More than 1 record in form")
+            raise ValueError("More than 1 record in form")
         record = cls(**r[0])
         return record
 
@@ -331,7 +334,7 @@ class DotModel(
         Заменяет m2m и o2m с списка Model на list[{id:Model}]
         """
         if len(r) != 1:
-            raise
+            raise ValueError(f"Expected exactly 1 record, got {len(r)}")
         record = cls(**r[0])
         return record
 
@@ -689,7 +692,7 @@ class DotModel(
                     }
                 elif mode == JsonMode.FORM:
                     fields_json[field_name] = field.json()
-                elif mode == JsonMode.CREATE or mode == JsonMode.UPDATE:
+                elif mode in (JsonMode.CREATE, JsonMode.UPDATE):
                     fields_json[field_name] = field.id
 
             # ЗАДАНО как int/id для Many2one (FK не развёрнут в объект)
@@ -756,8 +759,8 @@ class DotModel(
 
     def json(
         self,
-        include={},
-        exclude={},
+        include=None,
+        exclude=None,
         exclude_none=False,
         exclude_unset=False,
         only_store=None,

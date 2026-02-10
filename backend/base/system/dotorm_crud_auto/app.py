@@ -1,3 +1,5 @@
+"""Auto CRUD service — generates routers from DotModel classes."""
+
 from typing import TYPE_CHECKING
 from backend.base.system.core.service import Service
 from ..dotorm.dotorm.integrations.pydantic import generate_pydantic_models
@@ -59,5 +61,4 @@ class DotormCrudAutoService(Service):
         await self.create_autocrud(app, env)
 
     async def shutdown(self, app):
-        """Отключение сервиса"""
-        ...
+        """Отключение сервиса."""

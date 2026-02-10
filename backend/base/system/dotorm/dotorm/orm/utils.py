@@ -34,6 +34,6 @@ async def execute_maybe_parallel(
             result = await coro
             results.append(result)
         return results
-    else:
-        # Outside transaction - execute in parallel
-        return list(await asyncio.gather(*coroutines))
+
+    # Outside transaction - execute in parallel
+    return list(await asyncio.gather(*coroutines))

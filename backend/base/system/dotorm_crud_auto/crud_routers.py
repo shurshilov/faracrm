@@ -1,3 +1,5 @@
+"""Auto-generated CRUD routers for DotModel."""
+
 import asyncio
 import logging
 from typing import Any, Callable, Literal, Type, Union
@@ -176,7 +178,7 @@ class CRUDRouterGenerator(APIRouter):
 
         # Эндпоинт для получения списка полей модели (для фильтрации)
         # ВАЖНО: должен быть ДО /{id} роутов чтобы не конфликтовать
-        log.debug(f"Adding /fields route for {self.Model.__route__}")
+        log.debug("Adding /fields route for %s", self.Model.__route__)
         self.add_api_route(
             f"{self.Model.__route__}/fields",
             self.get_model_fields(),

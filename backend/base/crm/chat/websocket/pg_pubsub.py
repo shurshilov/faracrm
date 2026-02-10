@@ -93,7 +93,7 @@ class PgPubSub:
             PG_CHANNEL, self._on_notification
         )
 
-        logger.info(f"PgPubSub: listening on channel '{PG_CHANNEL}'")
+        logger.info("PgPubSub: listening on channel '%s'", PG_CHANNEL)
 
     def _on_notification(
         self, connection, pid: int, channel: str, payload: str
@@ -106,7 +106,7 @@ class PgPubSub:
             data = json.loads(payload)
         except json.JSONDecodeError:
             logger.error(
-                f"PgPubSub: invalid JSON in notification: {payload[:100]}"
+                "PgPubSub: invalid JSON in notification: %s", payload[:100]
             )
             return
 
@@ -118,7 +118,7 @@ class PgPubSub:
         try:
             await self._callback(data)
         except Exception as e:
-            logger.error(f"PgPubSub: error in callback: {e}", exc_info=True)
+            logger.error("PgPubSub: error in callback: %s", e, exc_info=True)
 
     async def publish(self, event_type: str, data: dict) -> None:
         """
@@ -137,8 +137,9 @@ class PgPubSub:
 
         if len(payload.encode("utf-8")) > PG_NOTIFY_MAX_PAYLOAD:
             logger.error(
-                f"PgPubSub: payload too large ({len(payload)} bytes), "
-                f"event_type={event_type}"
+                "PgPubSub: payload too large (%s bytes), event_type=%s",
+                len(payload),
+                event_type,
             )
             return
 

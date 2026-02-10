@@ -126,7 +126,7 @@ class FileStoreStrategy(StorageStrategyBase):
         with open(file_path, "wb") as f:
             f.write(content)
 
-        logger.info(f"[file] Created file: {file_path}")
+        logger.info("[file] Created file: %s", file_path)
 
         return {
             "storage_file_url": file_path,
@@ -156,12 +156,12 @@ class FileStoreStrategy(StorageStrategyBase):
         file_path = attachment.storage_file_url
         if not file_path:
             logger.warning(
-                f"[file] No file path for attachment {attachment.id}"
+                "[file] No file path for attachment %s", attachment.id
             )
             return None
 
         if not os.path.exists(file_path):
-            logger.warning(f"[file] File not found: {file_path}")
+            logger.warning("[file] File not found: %s", file_path)
             return None
 
         with open(file_path, "rb") as f:
@@ -221,7 +221,7 @@ class FileStoreStrategy(StorageStrategyBase):
                     # Try to remove empty parent directories
                     self._cleanup_empty_dirs(os.path.dirname(old_path))
                 except Exception as e:
-                    logger.warning(f"[file] Failed to remove old file: {e}")
+                    logger.warning("[file] Failed to remove old file: %s", e)
 
             result["storage_file_url"] = new_path
             result["checksum"] = checksum
@@ -258,7 +258,7 @@ class FileStoreStrategy(StorageStrategyBase):
             return True  # Nothing to delete
 
         if not os.path.exists(file_path):
-            logger.debug(f"[file] File already deleted: {file_path}")
+            logger.debug("[file] File already deleted: %s", file_path)
             return True
 
         try:
@@ -267,11 +267,11 @@ class FileStoreStrategy(StorageStrategyBase):
             # Try to remove empty parent directories
             self._cleanup_empty_dirs(os.path.dirname(file_path))
 
-            logger.info(f"[file] Deleted file: {file_path}")
+            logger.info("[file] Deleted file: %s", file_path)
             return True
 
         except Exception as e:
-            logger.error(f"[file] Failed to delete file {file_path}: {e}")
+            logger.error("[file] Failed to delete file %s: %s", file_path, e)
             return False
 
     def _cleanup_empty_dirs(self, dir_path: str) -> None:
@@ -290,7 +290,7 @@ class FileStoreStrategy(StorageStrategyBase):
                 else:
                     break
         except Exception as e:
-            logger.debug(f"[file] Could not cleanup directories: {e}")
+            logger.debug("[file] Could not cleanup directories: %s", e)
 
     async def create_folder(
         self,
@@ -324,7 +324,7 @@ class FileStoreStrategy(StorageStrategyBase):
         # Create the directory
         os.makedirs(folder_path, exist_ok=True)
 
-        logger.debug(f"[file] Created folder: {folder_path}")
+        logger.debug("[file] Created folder: %s", folder_path)
         return folder_path
 
     async def validate_connection(self, storage: "AttachmentStorage") -> bool:
@@ -348,5 +348,5 @@ class FileStoreStrategy(StorageStrategyBase):
             os.remove(test_file)
             return True
         except Exception as e:
-            logger.error(f"[file] Storage validation failed: {e}")
+            logger.error("[file] Storage validation failed: %s", e)
             return False

@@ -373,6 +373,9 @@ async def app(test_env):
 
     yield app
 
+    # Cleanup: stop services to release PubSub LISTEN connection
+    await test_env.stop_services(app)
+
 
 @pytest_asyncio.fixture
 async def client(app) -> AsyncGenerator:

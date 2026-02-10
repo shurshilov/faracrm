@@ -20,7 +20,7 @@ Backend устанавливается в chat_manager через set_pubsub() �
 import logging
 
 from .base import PubSubBackend
-from .pg_backend import PgPubSubBackend
+from .pg_backend import PgPubSubBackend  # noqa: F401 (re-export)
 from .settings import PubSubSettings
 
 logger = logging.getLogger(__name__)

@@ -123,7 +123,7 @@ async def generate_report(
             content={"error": str(e)},
         )
     except Exception as e:
-        log.exception(f"Data preparation error: {e}")
+        log.exception("Data preparation error: %s", e)
         return JSONResponse(
             status_code=HTTP_400_BAD_REQUEST,
             content={"error": f"Data error: {e}"},
@@ -149,7 +149,7 @@ async def generate_report(
             content={"error": str(e)},
         )
     except Exception as e:
-        log.exception(f"Render error: {e}")
+        log.exception("Render error: %s", e)
         return JSONResponse(
             status_code=HTTP_400_BAD_REQUEST,
             content={"error": f"Render error: {e}"},

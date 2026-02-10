@@ -85,11 +85,12 @@ class TelegramStrategy(ChatStrategyBase):
                 error_msg = result.get(
                     "description", "Unknown error setting webhook"
                 )
-                logger.error(f"Telegram setWebhook error: {error_msg}")
+                logger.error("Telegram setWebhook error: %s", error_msg)
                 raise ValueError(f"Telegram API error: {error_msg}")
 
             logger.info(
-                f"Telegram webhook set successfully for connector {connector.id}"
+                "Telegram webhook set successfully for connector %s",
+                connector.id,
             )
             return True
 
@@ -112,11 +113,11 @@ class TelegramStrategy(ChatStrategyBase):
                 error_msg = result.get(
                     "description", "Unknown error deleting webhook"
                 )
-                logger.error(f"Telegram deleteWebhook error: {error_msg}")
+                logger.error("Telegram deleteWebhook error: %s", error_msg)
                 raise ValueError(f"Telegram API error: {error_msg}")
 
             logger.info(
-                f"Telegram webhook deleted for connector {connector.id}"
+                "Telegram webhook deleted for connector %s", connector.id
             )
             return result
 
@@ -186,14 +187,14 @@ class TelegramStrategy(ChatStrategyBase):
                 error_msg = result.get(
                     "description", "Unknown error sending message"
                 )
-                logger.error(f"Telegram sendMessage error: {error_msg}")
+                logger.error("Telegram sendMessage error: %s", error_msg)
                 raise ValueError(f"Telegram API error: {error_msg}")
 
             message_data = result.get("result", {})
             message_id = str(message_data.get("message_id", ""))
 
             logger.info(
-                f"Telegram message sent: {message_id} to chat {chat_id}"
+                "Telegram message sent: %s to chat %s", message_id, chat_id
             )
 
             return message_id, str(chat_id)
@@ -249,13 +250,15 @@ class TelegramStrategy(ChatStrategyBase):
                 error_msg = result.get(
                     "description", "Unknown error sending file"
                 )
-                logger.error(f"Telegram {method} error: {error_msg}")
+                logger.error("Telegram %s error: %s", method, error_msg)
                 raise ValueError(f"Telegram API error: {error_msg}")
 
             message_data = result.get("result", {})
             message_id = str(message_data.get("message_id", ""))
 
-            logger.info(f"Telegram file sent: {message_id} to chat {chat_id}")
+            logger.info(
+                "Telegram file sent: %s to chat %s", message_id, chat_id
+            )
 
             return message_id, str(chat_id)
 

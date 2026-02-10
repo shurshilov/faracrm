@@ -74,10 +74,11 @@ class ChatApp(Service):
         # Загружаем настройки из env переменных
         try:
             settings = PubSubSettings()
-        except Exception as e:
+        except Exception:
             logger.warning(
-                f"ChatApp: failed to load PubSubSettings ({e}), "
-                f"using defaults (pg backend)"
+                "ChatApp: failed to load PubSubSettings, "
+                "using defaults (pg backend)",
+                exc_info=True,
             )
             settings = PubSubSettings(backend="pg")
 
@@ -87,7 +88,9 @@ class ChatApp(Service):
         # Инициализируем в зависимости от типа
         if settings.backend == "redis":
             await backend.setup(redis_url=settings.redis_url)
-            logger.info(f"ChatApp: using Redis pub/sub ({settings.redis_url})")
+            logger.info(
+                "ChatApp: using Redis pub/sub (%s)", settings.redis_url
+            )
         else:
             # PostgreSQL — нужен asyncpg pool
             pool = env.apps.db.fara
@@ -106,17 +109,18 @@ class ChatApp(Service):
         await backend.start_listening(chat_manager.handle_pubsub_event)
 
         logger.info(
-            f"ChatApp: pub/sub started (backend={settings.backend}) — "
-            f"WS events are cross-process"
+            "ChatApp: pub/sub started (backend=%s) — "
+            "WS events are cross-process",
+            settings.backend,
         )
 
     async def shutdown(self, app: FastAPI):
         """Остановка pub/sub backend."""
         from .websocket import chat_manager
 
-        if chat_manager._pubsub:
-            await chat_manager._pubsub.stop()
-            chat_manager._pubsub = None
+        if chat_manager.pubsub:
+            await chat_manager.pubsub.stop()
+            chat_manager.set_pubsub(None)
 
         logger.info("ChatApp: pub/sub stopped")
 

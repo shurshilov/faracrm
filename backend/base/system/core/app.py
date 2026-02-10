@@ -51,7 +51,9 @@ class App(ACLPostInitMixin):
     def __init__(self) -> None:
         super().__init__()
         log.info(
-            f"Start App: {self.info.get('name')} {self.info.get('version')}"
+            "Start App: %s %s",
+            self.info.get("name"),
+            self.info.get("version"),
         )
 
     async def post_init(self, app: FastAPI):
@@ -67,7 +69,7 @@ class App(ACLPostInitMixin):
             await self._init_acl(app.state.env)
 
     def handler_errors(self, app_server: FastAPI):
-        ...
+        """Регистрация обработчиков ошибок приложения (override в наследниках)."""
         # async def catch_exception_handler_500(request: Request, exc: Exception):
         #     return JSONResponse(
         #         content={"error": "#INTERNAL_SERVER_ERROR"},

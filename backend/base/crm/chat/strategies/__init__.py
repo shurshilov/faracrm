@@ -23,7 +23,7 @@ def register_strategy(strategy_class: Type[ChatStrategyBase]) -> None:
     """
     strategy = strategy_class()
     _strategies[strategy.strategy_type] = strategy
-    logger.info(f"Registered chat strategy: {strategy.strategy_type}")
+    logger.info("Registered chat strategy: %s", strategy.strategy_type)
 
 
 def get_strategy(strategy_type: str) -> ChatStrategyBase:

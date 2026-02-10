@@ -300,7 +300,7 @@ class ChatConnector(DotModel):
             await env.models.contact.update_bulk(
                 ids, env.models.contact(active=False)
             )
-            logger.info(f"Reactivated {len(ids)} contacts for operators")
+            logger.info("Reactivated %s contacts for operators", len(ids))
 
         # Создаём новые контакты для операторов без существующих
         new_contacts = []
@@ -321,7 +321,7 @@ class ChatConnector(DotModel):
 
         if new_contacts:
             await env.models.contact.create_bulk(new_contacts)
-            logger.info(f"Created {len(new_contacts)} contacts for operators")
+            logger.info("Created %s contacts for operators", len(new_contacts))
 
         # Batch: деактивируем Contact для удалённых операторов
         if removed:
@@ -338,7 +338,7 @@ class ChatConnector(DotModel):
                     ids, env.models.contact(active=False)
                 )
                 logger.info(
-                    f"Deactivated {len(ids)} contacts for removed operators"
+                    "Deactivated %s contacts for removed operators", len(ids)
                 )
 
     async def get_next_operator(self):

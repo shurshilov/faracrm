@@ -31,7 +31,7 @@ async def try_acquire_cron_lock(pool) -> bool:
         result = await conn.fetchval(
             "SELECT pg_try_advisory_lock($1)", CRON_LOCK_ID
         )
-        logger.debug(f"Advisory lock acquire attempt: {result}")
+        logger.debug("Advisory lock acquire attempt: %s", result)
         return result
 
 
@@ -41,5 +41,5 @@ async def release_cron_lock(pool) -> None:
         async with pool.acquire() as conn:
             await conn.fetchval("SELECT pg_advisory_unlock($1)", CRON_LOCK_ID)
             logger.debug("Advisory lock released")
-    except Exception as e:
-        logger.warning(f"Failed to release advisory lock: {e}")
+    except OSError:
+        logger.warning("Failed to release advisory lock", exc_info=True)

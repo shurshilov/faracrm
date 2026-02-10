@@ -107,7 +107,7 @@ class AvitoStrategy(ChatStrategyBase):
         connector.access_token_expired = start + timedelta(seconds=expires_in)
 
         logger.info(
-            f"Generated new Avito access token for connector {connector.id}"
+            "Generated new Avito access token for connector %s", connector.id
         )
 
         return access_token, token_type
@@ -146,7 +146,7 @@ class AvitoStrategy(ChatStrategyBase):
                 raise ValueError(f"Avito setWebhook error: {result}")
 
             logger.info(
-                f"Avito webhook set successfully for connector {connector.id}"
+                "Avito webhook set successfully for connector %s", connector.id
             )
             return True
 
@@ -175,7 +175,7 @@ class AvitoStrategy(ChatStrategyBase):
                 )
 
             result = response.json()
-            logger.info(f"Avito webhook removed for connector {connector.id}")
+            logger.info("Avito webhook removed for connector %s", connector.id)
             return result
 
     async def get_webhook_info(self, connector: "ChatConnector") -> dict:
@@ -254,7 +254,9 @@ class AvitoStrategy(ChatStrategyBase):
             result = response.json()
             message_id = str(result.get("id", ""))
 
-            logger.info(f"Avito message sent: {message_id} to chat {chat_id}")
+            logger.info(
+                "Avito message sent: %s to chat %s", message_id, chat_id
+            )
 
             return message_id, str(chat_id)
 
@@ -319,7 +321,7 @@ class AvitoStrategy(ChatStrategyBase):
             result = response.json()
             message_id = str(result.get("id", ""))
 
-            logger.info(f"Avito image sent: {message_id} to chat {chat_id}")
+            logger.info("Avito image sent: %s to chat %s", message_id, chat_id)
 
             return message_id, str(chat_id)
 

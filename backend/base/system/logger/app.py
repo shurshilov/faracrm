@@ -1,3 +1,5 @@
+"""Logger service — configures colored log formatting."""
+
 import logging
 from backend.base.system.core.service import Service
 
@@ -23,8 +25,8 @@ class LoggerService(Service):
     }
 
     async def startup(self, app):
+        """Старт сервиса — настройка форматирования логов."""
         await super().startup(app)
-        """Старт сервиса"""
         from backend.base.system.logger.colored import FaraFormatter
 
         formatter = FaraFormatter(
@@ -55,5 +57,4 @@ class LoggerService(Service):
                 lgr.propagate = False
 
     async def shutdown(self, app):
-        """Отключение сервиса"""
-        ...
+        """Отключение сервиса."""

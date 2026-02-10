@@ -18,6 +18,7 @@ import sys
 
 
 def main():
+    """Entry point for standalone cron process."""
     logger = logging.getLogger("cron")
 
     # Отключаем cron spawn внутри lifespan (иначе рекурсия)

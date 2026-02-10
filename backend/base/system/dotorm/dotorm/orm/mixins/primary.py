@@ -62,9 +62,9 @@ class OrmPrimaryMixin(_Base):
         if cls._dialect.name == "postgres":
             # ANY($1::int[]) — ids as single array param
             return await session.execute(stmt, [ids], cursor="void")
-        else:
-            # IN (%s, %s, ...) — ids as individual params
-            return await session.execute(stmt, ids, cursor="void")
+
+        # IN (%s, %s, ...) — ids as individual params
+        return await session.execute(stmt, ids, cursor="void")
 
     async def update(
         self,
@@ -254,7 +254,7 @@ class OrmPrimaryMixin(_Base):
     async def get(
         self,
         id,
-        fields: list[str] = [],
+        fields: list[str] | None = None,
         fields_nested: dict[str, list[str]] | None = None,
         session=None,
     ) -> Self:
@@ -304,7 +304,7 @@ class OrmPrimaryMixin(_Base):
     async def get_or_none(
         self,
         id,
-        fields: list[str] = [],
+        fields: list[str] | None = None,
         fields_nested: dict[str, list[str]] | None = None,
         session=None,
     ) -> Self | None:
@@ -338,7 +338,7 @@ class OrmPrimaryMixin(_Base):
         # Фильтруем fields — оставляем только store поля для SQL
         store_fields = cls.get_store_fields()
         fields_store = (
-            [f for f in fields if f in store_fields] if fields else []
+            [f for f in (fields or []) if f in store_fields] if fields else []
         )
         if not fields_store:
             fields_store = list(store_fields)
@@ -365,14 +365,20 @@ class OrmPrimaryMixin(_Base):
 
     @hybridmethod
     async def table_len(self, session=None) -> int:
+        """Return total number of records in the table."""
         cls = self.__class__
         session = cls._get_db_session(session)
         stmt, values = cls._builder.build_table_len()
 
-        if cls._dialect == POSTGRES:
-            prepare = lambda rows: [r["count"] for r in rows]
-        else:
-            prepare = lambda rows: [r["COUNT(*)"] for r in rows]
+        def _prepare_postgres(rows):
+            return [r["count"] for r in rows]
+
+        def _prepare_other(rows):
+            return [r["COUNT(*)"] for r in rows]
+
+        prepare = (
+            _prepare_postgres if cls._dialect == POSTGRES else _prepare_other
+        )
 
         records = await session.execute(stmt, values, prepare=prepare)
         assert records is not None

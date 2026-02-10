@@ -133,7 +133,9 @@ class CronJob(DotModel):
 
         if rows:
             logger.info(
-                f"Claimed {len(rows)} jobs: {[r['name'] for r in rows]}"
+                "Claimed %s jobs: %s",
+                len(rows),
+                [r["name"] for r in rows],
             )
 
         return [dict(r) for r in rows]

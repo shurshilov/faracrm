@@ -1,11 +1,9 @@
 """
-Этот мдуль содержит пидантик классы,
-которые позволяют динамически изменять уже существующие пидантик модели.
+Этот модуль содержит pydantic классы,
+которые позволяют динамически изменять уже существующие pydantic модели.
 Используется для автоматической генерации схем валидации в crud routes.
 """
 
-from pydantic import BaseModel, ConfigDict, Field
-from pydantic_core import PydanticUndefined
 from typing import (
     Any,
     Literal,
@@ -17,6 +15,9 @@ from typing import (
     get_args,
     Annotated,
 )
+
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic_core import PydanticUndefined
 
 from backend.base.system.dotorm_crud_auto.crud_pydantic_schemas import (
     SchemaRelationNested,

@@ -20,14 +20,14 @@ Redis Pub/Sub реализация PubSubBackend.
   pip install redis[hiredis]
 
 Настройки (.env):
-  CHAT__PUBSUB_BACKEND=redis
-  CHAT__REDIS_URL=redis://localhost:6379/0
+  PUBSUB__BACKEND=redis
+  PUBSUB__REDIS_URL=redis://localhost:6379/0
 """
 
 import asyncio
 import json
 import logging
-from typing import Callable, Awaitable
+from typing import Any, Awaitable, Callable
 
 from .base import PubSubBackend
 
@@ -39,25 +39,28 @@ REDIS_CHANNEL = "ws_events"
 class RedisPubSubBackend(PubSubBackend):
     """Redis Pub/Sub backend."""
 
-    def __init__(self):
-        self._redis = None
-        self._pubsub = None
+    def __init__(self) -> None:
+        self._redis: Any = None
+        self._pubsub: Any = None
         self._callback: Callable[[dict], Awaitable[None]] | None = None
         self._listener_task: asyncio.Task | None = None
-        self._running = False
+        self._running: bool = False
 
     async def setup(self, **kwargs) -> None:
         """
+        Инициализация Redis соединения.
+
         Args:
-            redis_url: Redis connection URL (default: redis://localhost:6379/0)
+            **kwargs: redis_url — URL Redis сервера
+                (default: "redis://localhost:6379/0").
         """
         try:
             import redis.asyncio as aioredis
-        except ImportError:
+        except ImportError as exc:
             raise ImportError(
                 "Redis pub/sub backend requires 'redis' package. "
                 "Install with: pip install redis[hiredis]"
-            )
+            ) from exc
 
         redis_url = kwargs.get("redis_url", "redis://localhost:6379/0")
         self._redis = aioredis.from_url(
@@ -71,14 +74,17 @@ class RedisPubSubBackend(PubSubBackend):
         # Проверяем соединение
         try:
             await self._redis.ping()
-            logger.info(f"RedisPubSubBackend: connected to {redis_url}")
-        except Exception as e:
-            logger.error(f"RedisPubSubBackend: connection failed: {e}")
+            logger.info("RedisPubSubBackend: connected to %s", redis_url)
+        except Exception:
+            logger.error(
+                "RedisPubSubBackend: connection failed", exc_info=True
+            )
             raise
 
     async def start_listening(
         self, callback: Callable[[dict], Awaitable[None]]
     ) -> None:
+        """Запустить подписку на Redis канал."""
         if self._running:
             logger.warning("RedisPubSubBackend: already listening")
             return
@@ -95,7 +101,7 @@ class RedisPubSubBackend(PubSubBackend):
         )
 
         logger.info(
-            f"RedisPubSubBackend: listening on channel '{REDIS_CHANNEL}'"
+            "RedisPubSubBackend: listening on channel '%s'", REDIS_CHANNEL
         )
 
     async def _listen_loop(self) -> None:
@@ -117,42 +123,49 @@ class RedisPubSubBackend(PubSubBackend):
                         data = json.loads(message["data"])
                     except (json.JSONDecodeError, TypeError):
                         logger.error(
-                            f"RedisPubSubBackend: invalid JSON: "
-                            f"{str(message['data'])[:100]}"
+                            "RedisPubSubBackend: invalid JSON: %s",
+                            str(message["data"])[:100],
                         )
                         continue
 
                     if self._callback:
-                        try:
-                            await self._callback(data)
-                        except Exception as e:
-                            logger.error(
-                                f"RedisPubSubBackend: error in callback: {e}",
-                                exc_info=True,
-                            )
+                        await self._safe_callback(data)
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except Exception:
                 if not self._running:
                     break
                 logger.error(
-                    f"RedisPubSubBackend: listener error: {e}, "
-                    f"reconnecting in 1s..."
+                    "RedisPubSubBackend: listener error, "
+                    "reconnecting in 1s...",
+                    exc_info=True,
                 )
                 await asyncio.sleep(1)
+                await self._reconnect()
 
-                # Reconnect
-                try:
-                    if self._pubsub:
-                        await self._pubsub.close()
-                    self._pubsub = self._redis.pubsub()
-                    await self._pubsub.subscribe(REDIS_CHANNEL)
-                    logger.info("RedisPubSubBackend: reconnected")
-                except Exception as re:
-                    logger.error(f"RedisPubSubBackend: reconnect failed: {re}")
+    async def _reconnect(self) -> None:
+        """Переподключение к Redis Pub/Sub."""
+        try:
+            if self._pubsub:
+                await self._pubsub.close()
+            self._pubsub = self._redis.pubsub()
+            await self._pubsub.subscribe(REDIS_CHANNEL)
+            logger.info("RedisPubSubBackend: reconnected")
+        except Exception:
+            logger.error("RedisPubSubBackend: reconnect failed", exc_info=True)
+
+    async def _safe_callback(self, data: dict) -> None:
+        """Обёртка callback с обработкой ошибок."""
+        try:
+            await self._callback(data)
+        except Exception:
+            logger.error(
+                "RedisPubSubBackend: error in callback", exc_info=True
+            )
 
     async def publish(self, event_type: str, data: dict) -> None:
+        """Опубликовать событие в Redis канал."""
         payload = json.dumps(
             {"type": event_type, **data},
             ensure_ascii=False,
@@ -161,12 +174,11 @@ class RedisPubSubBackend(PubSubBackend):
 
         try:
             await self._redis.publish(REDIS_CHANNEL, payload)
-        except Exception as e:
-            logger.error(
-                f"RedisPubSubBackend: publish failed: {e}", exc_info=True
-            )
+        except Exception:
+            logger.error("RedisPubSubBackend: publish failed", exc_info=True)
 
     async def stop(self) -> None:
+        """Остановить listener и закрыть соединение."""
         self._running = False
 
         if self._listener_task and not self._listener_task.done():
@@ -180,18 +192,19 @@ class RedisPubSubBackend(PubSubBackend):
             try:
                 await self._pubsub.unsubscribe(REDIS_CHANNEL)
                 await self._pubsub.close()
-            except Exception:
+            except (OSError, RuntimeError):
                 pass
 
         if self._redis:
             try:
                 await self._redis.close()
-            except Exception:
+            except (OSError, RuntimeError):
                 pass
 
         logger.info("RedisPubSubBackend: stopped")
 
     def is_healthy(self) -> bool:
+        """Проверить что Redis listener работает."""
         return (
             self._running
             and self._redis is not None

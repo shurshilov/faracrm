@@ -44,7 +44,7 @@ class CronProcess:
     def __init__(self, env: "Environment"):
         self.env = env
         self.settings = CronSettings()
-        self.pool: asyncpg.Pool | None = None
+        self.pool: asyncpg.Pool
         self._running = False
 
     async def run(self) -> None:
@@ -66,9 +66,10 @@ class CronProcess:
             return
 
         logger.info(
-            f"Cron process started (PID={os.getpid()}, "
-            f"interval={self.settings.check_interval}s, "
-            f"max_workers={self.settings.max_threads})"
+            "Cron process started (PID=%s, interval=%ss, max_workers=%s)",
+            os.getpid(),
+            self.settings.check_interval,
+            self.settings.max_threads,
         )
 
         self._running = True
@@ -103,7 +104,7 @@ class CronProcess:
             try:
                 await self._tick()
             except Exception as e:
-                logger.exception(f"Error in cron tick: {e}")
+                logger.exception("Error in cron tick")
 
             try:
                 await asyncio.wait_for(
@@ -136,7 +137,7 @@ class CronProcess:
         job_id = job_data["id"]
         job_name = job_data["name"]
 
-        logger.info(f"Executing: {job_name} (id={job_id})")
+        logger.info("Executing: %s (id=%s)", job_name, job_id)
         start = datetime.now(timezone.utc)
 
         try:
@@ -170,9 +171,9 @@ class CronProcess:
                 deactivate=deactivate,
             )
 
-            logger.info(f"Completed: {job_name} ({duration:.2f}s)")
+            logger.info("Completed: %s (%.2fs)", job_name, duration)
             if deactivate:
-                logger.info(f"Deactivated: {job_name} (reached run limit)")
+                logger.info("Deactivated: %s (reached run limit)", job_name)
 
         except asyncio.TimeoutError:
             duration = (datetime.now(timezone.utc) - start).total_seconds()
@@ -189,7 +190,7 @@ class CronProcess:
                     interval_type=job_data.get("interval_type", "days"),
                 ).calculate_next_call(),
             )
-            logger.error(f"Timeout: {job_name}")
+            logger.error("Timeout: %s", job_name)
 
         except Exception as e:
             duration = (datetime.now(timezone.utc) - start).total_seconds()
@@ -206,7 +207,7 @@ class CronProcess:
                     interval_type=job_data.get("interval_type", "days"),
                 ).calculate_next_call(),
             )
-            logger.exception(f"Failed: {job_name}: {e}")
+            logger.exception("Failed: %s", job_name)
 
     async def _write_heartbeat(self) -> None:
         try:

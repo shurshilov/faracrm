@@ -118,7 +118,7 @@ class ExtensionRegistry:
             self._extensions[table_name] = []
         self._extensions[table_name].append(namespace)
 
-        log.info(f"Registered extension for {_get_model_name(target)}")
+        log.info("Registered extension for %s", _get_model_name(target))
 
     def apply_to_model(self, model_class: Type) -> Type:
         """
@@ -151,12 +151,12 @@ class ExtensionRegistry:
             self._apply_extension(model_class, ext)
 
         self._applied.add(table_name)
-        log.info(f"Extensions applied to {model_class.__name__}")
+        log.info("Extensions applied to %s", model_class.__name__)
 
         # Rebuild field cache to include new fields from extensions
         if hasattr(model_class, "_build_field_cache"):
             model_class._build_field_cache()
-            log.debug(f"  Rebuilt field cache for {model_class.__name__}")
+            log.debug("  Rebuilt field cache for %s", model_class.__name__)
 
         return model_class
 
@@ -188,7 +188,7 @@ class ExtensionRegistry:
                 else:
                     # Обычное поле - добавляем/заменяем
                     setattr(model, name, value)
-                    log.debug(f"  + field '{name}'")
+                    log.debug("  + field '%s'", name)
 
             elif callable(value) and not isinstance(value, type):
                 # Добавляем/переопределяем метод
@@ -215,7 +215,7 @@ class ExtensionRegistry:
 
         # Устанавливаем новый метод
         setattr(model, name, new_method)
-        log.debug(f"  + method '{name}'")
+        log.debug("  + method '%s'", name)
 
     def get_original_method(
         self, model: Union[Type, str], method_name: str
@@ -378,7 +378,7 @@ class ExtensibleMixin:
             try:
                 package = importlib.import_module(package_path)
             except ImportError as e:
-                log.debug(f"Package {package_path} not found, skipping: {e}")
+                log.debug("Package %s not found, skipping", package_path)
                 continue
 
             # Получаем директорию пакета
@@ -410,13 +410,15 @@ class ExtensibleMixin:
                 if is_extension:
                     try:
                         importlib.import_module(module_name)
-                        log.debug(f"Loaded extension: {module_name}")
+                        log.debug("Loaded extension: %s", module_name)
                         loaded += 1
                     except ImportError as e:
-                        log.warning(f"Could not import {module_name}: {e}")
+                        log.warning(
+                            "Could not import %s", module_name, exc_info=True
+                        )
 
         if loaded:
-            log.info(f"Autodiscover: loaded {loaded} extension module(s)")
+            log.info("Autodiscover: loaded %s extension module(s)", loaded)
 
         cls._autodiscover_done = True
 

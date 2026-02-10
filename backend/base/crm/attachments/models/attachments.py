@@ -183,7 +183,9 @@ class Attachment(DotModel):
                 if records:
                     return records[0]
         except Exception as e:
-            logger.debug(f"Could not get record {res_model}/{res_id}: {e}")
+            logger.debug(
+                "Could not get record %s/%s: %s", res_model, res_id, e
+            )
         return None
 
     async def _resolve_route_and_folder(
@@ -223,7 +225,7 @@ class Attachment(DotModel):
         # 2. Получаем storage из route
         storage = route.storage_id
         if not storage or not storage.active:
-            logger.warning(f"Route {route.id} has no active storage")
+            logger.warning("Route %s has no active storage", route.id)
             return route, None, None, None
 
         # 3. Проверяем локальный кеш batch'а (только для create_bulk)
@@ -259,7 +261,7 @@ class Attachment(DotModel):
             Содержимое файла в байтах или None если файл не найден
         """
         if not self.storage_id:
-            logger.warning(f"Attachment {self.id} has no storage configured")
+            logger.warning("Attachment %s has no storage configured", self.id)
             return None
 
         try:
@@ -267,7 +269,7 @@ class Attachment(DotModel):
             self.content = await strategy.read_file(self.storage_id, self)
             return self.content
         except Exception as e:
-            logger.error(f"Failed to read attachment {self.id}: {e}")
+            logger.error("Failed to read attachment %s: %s", self.id, e)
             return None
 
     @hybridmethod
@@ -279,7 +281,7 @@ class Attachment(DotModel):
             try:
                 content_bytes = base64.b64decode(payload.content)
             except Exception as e:
-                logger.error(f"Failed to decode content: {e}")
+                logger.error("Failed to decode content: %s", e)
                 raise ValueError("Invalid base64 content") from e
 
             if not payload.size:
@@ -296,7 +298,7 @@ class Attachment(DotModel):
                 storage = await AttachmentStorage.get_or_create_default()
 
             if not has_strategy(storage.type):
-                logger.warning(f"Strategy '{storage.type}' not found")
+                logger.warning("Strategy '%s' not found", storage.type)
                 return await super().create(payload, session)
 
             payload.storage_id = storage
@@ -326,7 +328,9 @@ class Attachment(DotModel):
             )
 
             logger.info(
-                f"Creating attachment '{payload.name}' in storage '{storage.name}'"
+                "Creating attachment '%s' in storage '%s'",
+                payload.name,
+                storage.name,
             )
 
             return await super().create(payload, session)
@@ -342,7 +346,7 @@ class Attachment(DotModel):
                 try:
                     content_bytes = base64.b64decode(payload.content)
                 except Exception as e:
-                    logger.error(f"Failed to decode content: {e}")
+                    logger.error("Failed to decode content: %s", e)
                     raise ValueError("Invalid base64 content") from e
 
                 if not payload.size:
@@ -392,7 +396,9 @@ class Attachment(DotModel):
                     content_bytes = base64.b64decode(attachment.content)
                 except Exception as e:
                     logger.error(
-                        f"Failed to decode content for '{attachment.name}': {e}"
+                        "Failed to decode content for '%s': %s",
+                        attachment.name,
+                        e,
                     )
                     continue
 
@@ -456,7 +462,7 @@ class Attachment(DotModel):
                 await strategy.delete_file(self.storage_id, self)
             except Exception as e:
                 logger.error(
-                    f"Failed to delete file for attachment {self.id}: {e}"
+                    "Failed to delete file for attachment %s: %s", self.id, e
                 )
                 # Продолжаем удаление записи даже если файл не удален
 

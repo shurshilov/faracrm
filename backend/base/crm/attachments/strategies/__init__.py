@@ -31,12 +31,13 @@ def register_strategy(strategy_class: Type[StorageStrategyBase]) -> None:
 
     if strategy.strategy_type in _strategies:
         logger.warning(
-            f"Strategy '{strategy.strategy_type}' already registered, "
-            f"replacing with {strategy_class.__name__}"
+            "Strategy '%s' already registered, replacing with %s",
+            strategy.strategy_type,
+            strategy_class.__name__,
         )
 
     _strategies[strategy.strategy_type] = strategy
-    logger.info(f"Registered storage strategy: {strategy.strategy_type}")
+    logger.info("Registered storage strategy: %s", strategy.strategy_type)
 
 
 def get_strategy(strategy_type: str) -> StorageStrategyBase:

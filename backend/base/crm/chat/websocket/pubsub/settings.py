@@ -16,6 +16,8 @@
     PUBSUB__REDIS_URL=redis://localhost:6379/0
 """
 
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,7 +30,7 @@ class PubSubSettings(BaseSettings):
     )
 
     # Бэкенд: "pg" или "redis"
-    backend: str = "pg"
+    backend: Literal["pg", "redis"] = "pg"
 
     # ── Redis ──
     redis_url: str = "redis://localhost:6379/0"

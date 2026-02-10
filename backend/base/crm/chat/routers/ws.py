@@ -50,7 +50,7 @@ async def websocket_endpoint(websocket: WebSocket):
         user_id = user_session.user_id.id
 
     except Exception as e:
-        logger.error(f"WebSocket auth error: {e}")
+        logger.error("WebSocket auth error: %s", e)
         await websocket.close(code=4001, reason="Auth error")
         return
 
@@ -68,5 +68,5 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         await chat_manager.disconnect(websocket, user_id)
     except Exception as e:
-        logger.error(f"WebSocket error for user {user_id}: {e}")
+        logger.error("WebSocket error for user %s: %s", user_id, e)
         await chat_manager.disconnect(websocket, user_id)
