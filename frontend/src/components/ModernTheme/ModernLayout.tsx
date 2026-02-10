@@ -18,6 +18,7 @@ import UserMenu from '@/components/UserMenu';
 import { ChatNotification } from '@/components/ChatNotification';
 import { ActivityNotification } from '@/fara_activity/ActivityNotification';
 import { ChatWebSocketProvider } from '@/fara_chat/context';
+import { NotificationListener } from '@/components/NotificationToast/NotificationToast';
 import { AppLauncher } from './AppLauncher';
 import { HorizontalMenu } from './HorizontalMenu';
 import { ChatSidebar } from './ChatSidebar';
@@ -67,6 +68,7 @@ export function ModernLayout() {
 
   return (
     <ChatWebSocketProvider>
+      <NotificationListener />
       <AppShell
         header={{ height: 60 }}
         navbar={

@@ -1,1 +1,1 @@
-export { NotificationToast } from './NotificationToast';
+export { NotificationListener } from './NotificationToast';
