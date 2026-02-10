@@ -17,6 +17,16 @@ const chatApi = api.injectEndpoints({
           ...(args?.connector_type && { connector_type: args.connector_type }),
         },
       }),
+      providesTags: result =>
+        result
+          ? [
+              ...result.data.map(chat => ({
+                type: 'Chat' as const,
+                id: chat.id,
+              })),
+              { type: 'Chat', id: 'LIST' },
+            ]
+          : [{ type: 'Chat', id: 'LIST' }],
     }),
 
     // Get single chat details
@@ -40,7 +50,11 @@ const chatApi = api.injectEndpoints({
           const newChat: Chat = {
             id: data.data.id,
             name: data.data.name || '',
-            chat_type: data.data.chat_type as 'direct' | 'group' | 'channel' | 'record',
+            chat_type: data.data.chat_type as
+              | 'direct'
+              | 'group'
+              | 'channel'
+              | 'record',
             is_internal: true,
             members: [],
             unread_count: 0,
@@ -763,7 +777,15 @@ export interface WSMessagePinned {
   pinned: boolean;
 }
 
-export type WSMessage = WSNewMessage | WSTyping | WSPresence | WSRead | WSReactionChanged | WSMessageEdited | WSMessageDeleted | WSMessagePinned;
+export type WSMessage =
+  | WSNewMessage
+  | WSTyping
+  | WSPresence
+  | WSRead
+  | WSReactionChanged
+  | WSMessageEdited
+  | WSMessageDeleted
+  | WSMessagePinned;
 
 // ====================== RECORD CHAT (get_or_create) ======================
 
@@ -821,7 +843,5 @@ export const {
   useLazyGetConnectorWebhookInfoQuery,
 } = chatApi;
 
-export const {
-  useFindRecordChatQuery,
-  useGetOrCreateRecordChatMutation,
-} = recordChatApi;
+export const { useFindRecordChatQuery, useGetOrCreateRecordChatMutation } =
+  recordChatApi;

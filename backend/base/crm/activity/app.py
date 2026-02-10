@@ -55,7 +55,7 @@ class ActivityApp(App):
             env=env,
             name="Activity: check deadlines",
             code="await env.models.activity.check_deadlines()",
-            interval_number=5,
+            interval_number=1,
             interval_type="minutes",
             active=True,
             priority=5,

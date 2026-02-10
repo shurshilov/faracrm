@@ -304,14 +304,14 @@ class Activity(DotModel):
     async def check_deadlines(self):
         """
         Крон-задача: проверяет дедлайны и отправляет уведомления.
-        Вызывается периодически (например каждый час).
+        Вызывается периодически (например каждые 5 минут).
         """
-        today = date.today()
+        now = datetime.now(timezone.utc)
 
-        # 1. Обновляем state для просроченных
+        # 1. Обновляем state для просроченных (дедлайн прошёл)
         overdue = await self.search(
             filter=[
-                ("date_deadline", "<", today),
+                ("date_deadline", "<", now),
                 ("done", "=", False),
                 ("state", "!=", "overdue"),
                 ("state", "!=", "cancelled"),
@@ -321,22 +321,10 @@ class Activity(DotModel):
         for activity in overdue:
             await activity.update(Activity(state="overdue"))
 
-        # 2. Обновляем state для сегодняшних
-        today_activities = await self.search(
-            filter=[
-                ("date_deadline", "=", today),
-                ("done", "=", False),
-                ("state", "=", "planned"),
-            ],
-            fields=["id", "state"],
-        )
-        for activity in today_activities:
-            await activity.update(Activity(state="today"))
-
-        # 3. Отправляем уведомления для сегодняшних и просроченных (если ещё не отправляли)
+        # 2. Отправляем уведомления (дедлайн наступил и ещё не отправляли)
         pending = await self.search(
             filter=[
-                ("date_deadline", "<=", today),
+                ("date_deadline", "<=", now),
                 ("done", "=", False),
                 ("notification_sent", "=", False),
                 ("state", "!=", "cancelled"),
@@ -361,7 +349,7 @@ class Activity(DotModel):
             summary = activity.summary or "Активность"
             is_overdue = activity.state == "overdue"
             emoji = "🔴" if is_overdue else "🔔"
-            status = "просрочена" if is_overdue else "на сегодня"
+            status = "просрочена" if is_overdue else "срок наступил"
 
             await self._send_notification(
                 user_id=activity.user_id.id,

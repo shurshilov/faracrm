@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
-import { chatApi, WSMessage, WSNewMessage, WSReactionChanged, WSMessageEdited, WSMessageDeleted, WSMessagePinned, Chat } from '@/services/api/chat';
+import { chatApi, WSMessage, WSNewMessage, Chat } from '@/services/api/chat';
 import type { RootState } from '@/store/store';
 
 interface ChatWebSocketContextValue {
@@ -140,6 +140,12 @@ export function ChatWebSocketProvider({
             ),
           );
         }
+      }
+
+      // Обработка notification (системные уведомления, cron, активности)
+      // Перечитываем список чатов чтобы обновить unread_count и last_message
+      if (message.type === 'notification') {
+        dispatch(chatApi.util.invalidateTags([{ type: 'Chat', id: 'LIST' }]));
       }
 
       // Обработка messages_read:
