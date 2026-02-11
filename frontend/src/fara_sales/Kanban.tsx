@@ -4,7 +4,7 @@ import type { SaleRecord, SaleStageRecord, TaxRecord } from '@/types/records';
 export function ViewKanbanSales() {
   return (
     <Kanban<SaleRecord>
-      model="sale"
+      model="sales"
       fields={['id', 'name', 'partner_id', 'user_id', 'date_order']}
       groupByField="stage_id"
       groupByModel="sale_stage"

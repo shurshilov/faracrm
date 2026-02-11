@@ -4,7 +4,7 @@ import type { TaskRecord as Task, ProjectRecord } from '@/types/records';
 export function ViewGanttTasks() {
   return (
     <Gantt<Task>
-      model="task"
+      model="tasks"
       fields={[
         'id',
         'name',

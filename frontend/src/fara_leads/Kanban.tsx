@@ -8,7 +8,7 @@ import type {
 export function ViewKanbanLeads() {
   return (
     <Kanban<LeadRecord>
-      model="lead"
+      model="leads"
       fields={['id', 'name', 'type', 'email', 'phone', 'user_id']}
       groupByField="stage_id"
       groupByModel="lead_stage"

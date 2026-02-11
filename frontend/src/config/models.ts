@@ -87,7 +87,7 @@ export const modelsConfig: Record<string, ModelConfig> = {
   },
 
   // === CRM ===
-  lead: {
+  leads: {
     menu: MenuGroups.crm,
     list: () =>
       import('@/fara_leads/List').then(m => ({ default: m.ViewListLeads })),
@@ -203,7 +203,7 @@ export const modelsConfig: Record<string, ModelConfig> = {
   },
 
   // === Sales ===
-  sale: {
+  sales: {
     menu: MenuGroups.sales,
     list: () =>
       import('@/fara_sales/List').then(m => ({ default: m.ViewListSales })),
@@ -427,7 +427,7 @@ export const modelsConfig: Record<string, ModelConfig> = {
       })),
   },
   // === Projects & Tasks ===
-  task: {
+  tasks: {
     menu: MenuGroups.projects,
     list: () =>
       import('@/fara_tasks/List').then(m => ({ default: m.ViewListTasks })),

@@ -34,9 +34,9 @@ export function ViewFormSales(props: ViewFormProps) {
 
   return (
     <Form<SaleRecord>
-      model="sale"
+      model="sales"
       {...props}
-      actions={<PrintButton model="sale" recordId={id} />}>
+      actions={<PrintButton model="sales" recordId={id} />}>
       {/* Основная информация */}
       <FormSection
         title="Основная информация"

@@ -9,7 +9,7 @@ import type {
 
 export function ViewListSales() {
   return (
-    <List<SaleRecord> model="sale" order="desc" sort="id">
+    <List<SaleRecord> model="sales" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
       <Field name="date_order" />

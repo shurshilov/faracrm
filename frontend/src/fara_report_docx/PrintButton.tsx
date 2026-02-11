@@ -2,7 +2,7 @@
  * Кнопка печати с выпадающим меню шаблонов отчётов.
  *
  * Использование:
- *   <Form model="sale" actions={<PrintButton model="sale" recordId={id} />}>
+ *   <Form model="sales" actions={<PrintButton model="sales" recordId={id} />}>
  *
  * Кнопка автоматически скрывается если нет шаблонов для модели.
  */

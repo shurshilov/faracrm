@@ -28,7 +28,7 @@ import type {
 export function ViewFormTask(props: ViewFormProps) {
   const { t } = useTranslation('tasks');
   return (
-    <Form<Task> model="task" {...props}>
+    <Form<Task> model="tasks" {...props}>
       {/* Основные поля — Sheet (без рамки, компактно сверху) */}
       <FormSheet>
         <FormRow cols={2}>

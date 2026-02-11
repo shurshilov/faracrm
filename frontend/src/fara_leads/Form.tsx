@@ -21,7 +21,7 @@ import {
  */
 export function ViewFormLeads(props: ViewFormProps) {
   return (
-    <Form<LeadRecord> model="lead" {...props}>
+    <Form<LeadRecord> model="leads" {...props}>
       {/* Основная информация */}
       <FormSection title="Основная информация" icon={<IconUser size={18} />}>
         <FormRow cols={2}>

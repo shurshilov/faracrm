@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 export function ViewListLeads() {
   const { t } = useTranslation('leads');
   return (
-    <List<LeadRecord> model="lead" order="desc" sort="id">
+    <List<LeadRecord> model="leads" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
       <Field name="type" label={t('fields.type')} />

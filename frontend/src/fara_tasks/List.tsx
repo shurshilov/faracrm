@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 export function ViewListTasks() {
   const { t } = useTranslation('tasks');
   return (
-    <List<TaskRecord> model="task" order="desc" sort="id">
+    <List<TaskRecord> model="tasks" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
       <Field name="project_id" label={t('fields.project_id')} />

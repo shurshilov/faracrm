@@ -9,7 +9,7 @@ import type {
 export function ViewKanbanTasks() {
   return (
     <Kanban<Task>
-      model="task"
+      model="tasks"
       fields={[
         'id',
         'name',
