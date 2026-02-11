@@ -4,7 +4,7 @@ import type { ProductRecord, CategoryRecord, UomRecord } from '@/types/records';
 
 export function ViewList() {
   return (
-    <List<ProductRecord> model="product" order="desc" sort="id">
+    <List<ProductRecord> model="products" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
       <Field name="description" />

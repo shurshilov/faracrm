@@ -14,7 +14,7 @@ import {
 
 export function ViewForm(props: ViewFormProps) {
   return (
-    <Form<Product> model="product" {...props}>
+    <Form<Product> model="products" {...props}>
       {/* Основной блок с изображением и ключевыми данными */}
       <FormSheet avatar={<Field name="image" />}>
         <FormRow cols={2}>
