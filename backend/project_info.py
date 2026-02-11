@@ -4,22 +4,22 @@ VERSION = "1.0.0"
 
 
 DESCRIPTION = """
-<img src="/static/images/logo.png" alt="drawing" width="25%"/>
 
-FARA ERP API helps you business work easy🚀
+<div>
+FARA CRM API helps you business work easy🚀
 
-Readme and source code [Github](https://github.com/faraerp)
+Readme and source code [Github](https://github.com/faracrm)
 
-Visit our website [Production website](https://faraerp.com))
+Visit our website [Production website](https://faracrm.com)
+</div>
+<img src="/static/logo.svg" alt="drawing" width="100%"/>
 """
 
 
-TAGS_METADATA = [
-    {"name": "API", "description": "Operations with api methods"},
-]
+TAGS_METADATA = []
 
 
-TITLE = f"FARA ERP {VERSION}"
+TITLE = f"FARA CRM {VERSION}"
 
 
 TIMEZONE = "Europe/Moscow"

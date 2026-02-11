@@ -23,7 +23,7 @@ class SwaggerOfflainService(Service):
     info = {
         "name": "App swagger offline docs",
         "summary": "Swagger offline docs",
-        "author": "KDP",
+        "author": "Artem Shurshilov",
         "category": "Base",
         "version": "1.0.0",
         "license": "MIT",

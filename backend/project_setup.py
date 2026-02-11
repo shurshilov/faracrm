@@ -166,6 +166,7 @@ from backend.base.crm.contract.app import ContractApp
 # services
 from backend.base.system.logger.app import LoggerService
 from backend.base.system.swagger_offlain.app import SwaggerOfflainService
+from backend.base.system.docs_developer.app import DocsApp
 from backend.base.system.dotorm_databases_postgres.app import (
     DotormDatabasesPostgresService,
 )
@@ -281,6 +282,7 @@ class Apps(AppsCore):
     logger = LoggerService()
     swagger_offlain = SwaggerOfflainService()
     # mkdocs = MkdocsService()
+    docs_developer = DocsApp()
 
 
 # MONKEY PATCH TRICK
