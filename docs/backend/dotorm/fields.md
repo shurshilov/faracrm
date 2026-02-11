@@ -14,9 +14,9 @@ from backend.base.system.dotorm.dotorm.fields import (
 class Product(DotModel):
     __table__ = "products"
 
-    quantity = Integer(default=0)
-    price_cents = BigInteger()
-    sort_order = SmallInteger(default=0)
+    quantity: int = Integer(default=0)
+    price_cents: int = BigInteger()
+    sort_order: int = SmallInteger(default=0)
 ```
 
 | Поле | PostgreSQL | Python |
@@ -41,8 +41,8 @@ class User(DotModel):
 ### Boolean
 
 ```python
-is_active = Boolean(default=True)     # BOOLEAN DEFAULT true
-is_deleted = Boolean(default=False)
+is_active: bool = Boolean(default=True)     # BOOLEAN DEFAULT true
+is_deleted: bool = Boolean(default=False)
 ```
 
 ### Datetime / Date / Time
@@ -53,10 +53,10 @@ from backend.base.system.dotorm.dotorm.fields import Datetime, Date, Time
 class Task(DotModel):
     __table__ = "tasks"
 
-    due_date = Date()                              # DATE
-    reminder_time = Time()                         # TIME
-    created_at = Datetime(default="now")           # TIMESTAMPTZ DEFAULT now()
-    updated_at = Datetime(default="now")
+    due_date: date = Date()                              # DATE
+    reminder_time: time = Time()                         # TIME
+    created_at: datetime = Datetime(default="now")           # TIMESTAMPTZ DEFAULT now()
+    updated_at: datetime = Datetime(default="now")
 ```
 
 ### Float / Decimal
@@ -64,8 +64,8 @@ class Task(DotModel):
 ```python
 from backend.base.system.dotorm.dotorm.fields import Float, Decimal
 
-weight = Float()                                   # FLOAT
-price = Decimal(precision=10, scale=2)             # NUMERIC(10, 2)
+weight: float = Float()                                   # FLOAT
+price: float = Decimal(precision=10, scale=2)             # NUMERIC(10, 2)
 ```
 
 ### JSONField
@@ -73,8 +73,8 @@ price = Decimal(precision=10, scale=2)             # NUMERIC(10, 2)
 ```python
 from backend.base.system.dotorm.dotorm.fields import JSONField
 
-metadata = JSONField(default={})      # JSONB DEFAULT '{}'
-tags = JSONField(default=[])          # JSONB DEFAULT '[]'
+metadata: list | dict = JSONField(default={})      # JSONB DEFAULT '{}'
+tags: list | dict = JSONField(default=[])          # JSONB DEFAULT '[]'
 ```
 
 !!! tip "asyncpg и JSONB"
@@ -90,7 +90,7 @@ from backend.base.system.dotorm.dotorm.fields import Selection
 class Chat(DotModel):
     __table__ = "chats"
 
-    chat_type = Selection(
+    chat_type: str = Selection(
         selection=[
             ("direct", "Личный"),
             ("group", "Группа"),
@@ -118,14 +118,14 @@ class Chat(DotModel):
 | `readonly` | `bool` | `False` | Не обновлять через API |
 
 ```python
-name = Char(
+name: str = Char(
     max_length=255,
     required=True,       # NOT NULL
     unique=True,         # UNIQUE
     index=True,          # CREATE INDEX
 )
 
-created_at = Datetime(
+created_at: datetime = Datetime(
     default="now",
     readonly=True,       # нельзя изменить через API
 )
@@ -144,13 +144,13 @@ class ChatMessage(DotModel):
     __table__ = "chat_messages"
 
     # FK → chats.id
-    chat_id = Many2one["Chat"](
+    chat_id: "Chat" = Many2one["Chat"](
         relation_table="chats",
         required=True,
     )
 
     # FK → users.id (nullable)
-    author_user_id = Many2one["User"](
+    author_user_id: "User" = Many2one["User"](
         relation_table="users",
     )
 ```
@@ -173,7 +173,7 @@ from backend.base.system.dotorm.dotorm.fields import One2many
 class Chat(DotModel):
     __table__ = "chats"
 
-    messages = One2many["ChatMessage"](
+    messages: list["ChatMessage"] = One2many["ChatMessage"](
         relation_table="chat_messages",      # таблица дочерних записей
         relation_table_field="chat_id",      # FK в дочерней таблице
     )
@@ -192,7 +192,7 @@ from backend.base.system.dotorm.dotorm.fields import Many2many
 class User(DotModel):
     __table__ = "users"
 
-    role_ids = Many2many["Role"](
+    role_ids: list["Role"] = Many2many["Role"](
         relation_table="roles",              # целевая таблица
         many2many_table="user_roles",        # промежуточная таблица
         column1="user_id",                   # FK на текущую модель
@@ -220,7 +220,7 @@ from backend.base.system.dotorm.dotorm.fields import One2one
 class User(DotModel):
     __table__ = "users"
 
-    profile = One2one["UserProfile"](
+    profile: "UserProfile" = One2one["UserProfile"](
         relation_table="user_profiles",
         relation_table_field="user_id",
     )
