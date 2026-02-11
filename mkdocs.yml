@@ -1,0 +1,132 @@
+site_name: FARA CRM — Developer Documentation
+site_description: Internal documentation for FARA CRM backend and frontend developers
+site_url: https://docs.fara.dev
+
+repo_name: fara-crm
+repo_url: https://github.com/example/fara-crm
+
+theme:
+  name: material
+  language: ru
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Тёмная тема
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Светлая тема
+  font:
+    text: Inter
+    code: JetBrains Mono
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+plugins:
+  - search:
+      lang:
+        - ru
+        - en
+  - tags
+
+markdown_extensions:
+  # Code blocks
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: .
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  # Tabs
+  - pymdownx.tabbed:
+      alternate_style: true
+  # Admonitions
+  - admonition
+  - pymdownx.details
+  # Lists & formatting
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.mark
+  - pymdownx.keys
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/example/fara-crm
+  generator: false
+
+extra_css:
+  - assets/css/custom.css
+
+nav:
+  - Главная: index.md
+
+  - Backend:
+    - backend/index.md
+    - Архитектура:
+      - backend/architecture/overview.md
+      - backend/architecture/services.md
+      - backend/architecture/environment.md
+    - DotORM:
+      - backend/dotorm/index.md
+      - backend/dotorm/models.md
+      - backend/dotorm/fields.md
+      - backend/dotorm/queries.md
+      - backend/dotorm/relations.md
+      - backend/dotorm/crud-auto.md
+    - Модули:
+      - backend/modules/chat.md
+      - backend/modules/security.md
+    - Тестирование:
+      - backend/testing/index.md
+      - backend/testing/integration.md
+
+  - Frontend:
+    - frontend/index.md
+    - Архитектура:
+      - frontend/architecture/overview.md
+      - frontend/architecture/state.md
+    - Модули:
+      - frontend/modules/chat.md
+    - API-сервисы:
+      - frontend/services/crud-api.md
+
+  - Гайды:
+    - guides/index.md
+    - guides/new-module.md
+    - guides/websocket.md
