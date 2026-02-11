@@ -197,3 +197,5 @@ export function FieldContacts({
     </FieldWrapper>
   );
 }
+
+FieldContacts.displayName = 'FieldContacts';

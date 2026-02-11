@@ -82,3 +82,5 @@ export function FormSection({
     </Paper>
   );
 }
+
+FormSection.displayName = 'FormSection';

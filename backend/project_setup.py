@@ -15,7 +15,8 @@ from backend.base.system.core.enviroment import env
 from backend.base.system.dotorm_databases_postgres.settings import (
     PostgresSettings,
 )
-from backend.base.crm.attachments.settings import AttachmentsSettings
+
+# from backend.base.crm.attachments.settings import AttachmentsSettings
 from backend.base.crm.chat.settings import ChatSettings
 from backend.base.system.logger.settings import LoggerSettings
 
@@ -186,7 +187,7 @@ class Settings(SettingsCore):
 
     logger: LoggerSettings
     dotorm_databases_postgres: dict[str, PostgresSettings]
-    attachments: AttachmentsSettings = AttachmentsSettings()
+    # attachments: AttachmentsSettings = AttachmentsSettings()
     chat: ChatSettings = ChatSettings()
 
 

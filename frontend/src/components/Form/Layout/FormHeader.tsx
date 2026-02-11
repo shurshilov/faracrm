@@ -102,3 +102,7 @@ export function FormAvatarField({
     </Box>
   );
 }
+
+FormHeader.displayName = 'FormHeader';
+FormSheet.displayName = 'FormSheet';
+FormAvatarField.displayName = 'FormAvatarField';

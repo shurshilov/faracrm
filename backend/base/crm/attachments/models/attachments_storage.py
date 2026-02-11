@@ -116,7 +116,7 @@ class AttachmentStorage(DotModel):
         from .attachments_route import AttachmentRoute
 
         async with env.apps.db.get_transaction():
-            await self.update(AttachmentStorage(active=True))
+            await super().update(AttachmentStorage(active=True))
 
             routes = await AttachmentRoute.search(
                 filter=[("storage_id", "=", self.id)],
@@ -153,7 +153,7 @@ class AttachmentStorage(DotModel):
             await AttachmentCache.clear_storage_cache(self.id)
 
             # Деактивируем storage
-            await self.update(AttachmentStorage(active=False))
+            await super().update(AttachmentStorage(active=False))
 
             logger.info(
                 "Storage '%s' deactivated with %s routes",

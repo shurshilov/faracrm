@@ -118,3 +118,6 @@ export function FormTabs({
     </Box>
   );
 }
+
+FormTab.displayName = 'FormTab';
+FormTabs.displayName = 'FormTabs';

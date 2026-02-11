@@ -88,3 +88,6 @@ export function FormCol({ children, span = 1, gap }: FormColProps) {
     </Box>
   );
 }
+
+FormRow.displayName = 'FormRow';
+FormCol.displayName = 'FormCol';

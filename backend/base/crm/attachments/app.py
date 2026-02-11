@@ -69,6 +69,7 @@ class AttachmentsApp(App):
                 payload=AttachmentStorage(
                     name="Local File Storage",
                     type="file",
+                    active=True,
                 ),
             )
 

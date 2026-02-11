@@ -1,0 +1,64 @@
+services:
+
+  # ─── PostgreSQL ────────────────────────────────────────
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: fara
+      POSTGRES_USER: openpg
+      POSTGRES_PASSWORD: openpgpwd
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openpg -d fara"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ─── Backend (FastAPI) ─────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # env_file:
+    #   - .env
+    environment:
+      # DB config (env_nested_delimiter="__")
+      DOTORM_DATABASES_POSTGRES__FARA__HOST: postgres
+      DOTORM_DATABASES_POSTGRES__FARA__PORT: 5432
+      DOTORM_DATABASES_POSTGRES__FARA__USER: openpg
+      DOTORM_DATABASES_POSTGRES__FARA__PASSWORD: openpgpwd
+      DOTORM_DATABASES_POSTGRES__FARA__DATABASE: fara
+      DOTORM_DATABASES_POSTGRES__FARA__DRIVER: asyncpg
+      DOTORM_DATABASES_POSTGRES__FARA__SYNC_DB: true
+      # Disable SSL for local Docker postgres
+      PGSSLMODE: disable
+
+      # Logger
+      LOGGER__LOG_LEVEL: DEBUG
+    ports:
+      - "8000:8000"
+    volumes:
+      - filestore_docker:/app/filestore
+
+  # ─── Frontend (Nginx + React SPA) ─────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "7777:80"
+
+volumes:
+  pgdata:
+  filestore_docker:

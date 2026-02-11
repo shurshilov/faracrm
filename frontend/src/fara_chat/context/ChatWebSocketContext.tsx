@@ -299,7 +299,7 @@ export function ChatWebSocketProvider({
 
     isConnectingRef.current = true;
 
-    const apiUrl = new URL(API_BASE_URL);
+    const apiUrl = new URL(API_BASE_URL, window.location.origin);
     const protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${apiUrl.host}/ws/chat?token=${token}`;
 

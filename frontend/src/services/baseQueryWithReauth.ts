@@ -9,7 +9,7 @@ import queryString from 'query-string';
 import { logOut } from '@/slices/authSlice';
 import { apiErrorEmitter, ApiError } from '@/components/ErrorModal';
 
-export const API_BASE_URL = 'http://127.0.0.1:8090';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const baseQuery = fetchBaseQuery({
   baseUrl: `${API_BASE_URL}/`,
