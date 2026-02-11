@@ -1,0 +1,22 @@
+<svg width="300" height="60"
+    xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" preserveAspectRatio="xMidYMid">
+    <defs>
+        <linearGradient id="editing-gradow-gradient" x1="0" x2="1" y1="0.5" y2="0.5">
+            <stop offset="0" stop-color="#009982"></stop>
+            <stop offset="1" stop-color="#009982"></stop>
+        </linearGradient>
+        <filter id="editing-gradow-filter" x="-100%" y="-100%" width="300%" height="300%">
+            <feFlood flood-color="rgba(253,253,253,0)" result="flood"></feFlood>
+            <feComposite operator="in" in2="SourceAlpha" in="flood" result="shadow"></feComposite>
+            <feOffset dx="-4" dy="-4" in="SourceGraphic" result="offset-1"></feOffset>
+            <feOffset dx="4" dy="4" in="shadow" result="offset-2"></feOffset>
+            <feMerge>
+                <feMergeNode in="offset-2"></feMergeNode>
+                <feMergeNode in="offset-1"></feMergeNode>
+            </feMerge>
+        </filter>
+    </defs>
+    <g filter="url(#editing-gradow-filter)">
+        <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-weight="100" font-family="Arial Black, sans-serif" font-size="62px" fill="url(#editing-gradow-gradient)">FARA</text>
+    </g>
+</svg>
