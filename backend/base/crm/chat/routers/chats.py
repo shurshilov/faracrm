@@ -210,7 +210,6 @@ async def get_chats(
             {
                 "id": m["id"],
                 "name": m["name"],
-                "email": m["email"],
                 "member_type": m["member_type"],
                 "permissions": {
                     "can_read": m["can_read"],
@@ -367,7 +366,6 @@ async def get_chat(req: Request, chat_id: int):
         {
             "id": m["id"],
             "name": m["name"],
-            "email": m["email"],
             "member_type": m["member_type"],
             "permissions": {
                 "can_read": m["can_read"],
