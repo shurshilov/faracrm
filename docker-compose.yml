@@ -37,7 +37,7 @@ services:
       DOTORM_DATABASES_POSTGRES__FARA__PASSWORD: openpgpwd
       DOTORM_DATABASES_POSTGRES__FARA__DATABASE: fara
       DOTORM_DATABASES_POSTGRES__FARA__DRIVER: asyncpg
-      DOTORM_DATABASES_POSTGRES__FARA__SYNC_DB: true
+      DOTORM_DATABASES_POSTGRES__FARA__SYNC_DB: "true"
       # Disable SSL for local Docker postgres
       PGSSLMODE: disable
 
