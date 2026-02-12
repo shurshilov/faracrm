@@ -30,14 +30,16 @@ docker compose up --build
 - Backend API: http://localhost:7777/api/
 - Backend direct: http://localhost:8000
 
-### Локально
+### Локально для разработки
 
 **Backend:**
 ```bash
+# F5 если используете VS code
+# или:
 cd backend
 pip install -r requirements.txt
 cp .env.example .env
-python main.py
+uvicorn backend.main:app --host 0.0.0.0 --port 8090
 ```
 
 **Frontend:**
