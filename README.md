@@ -2,8 +2,8 @@
 
 **Модульная CRM-система на FastAPI + React с кастомным ORM (DotORM), real-time чатом через WebSocket и интеграцией с внешними мессенджерами.**
 
-**Официальный сайт:** [docs.faracrm.com](https://faracrm.com)
-**Демо версия:** [docs.faracrm.com](https://demo.faracrm.com)
+**Официальный сайт:** [faracrm.com](https://faracrm.com)
+**Демо версия:** [demo.faracrm.com](https://demo.faracrm.com)
 📖 **Полная документация:** [docs.faracrm.com](https://docs.faracrm.com)
 
 ---
@@ -12,7 +12,7 @@
 
 | Слой | Технологии |
 |------|-----------|
-| **Backend** | Python 3.12, FastAPI, asyncpg, PostgreSQL |
+| **Backend** | Python 3.12+, FastAPI, asyncpg, PostgreSQL |
 | **ORM** | DotORM (собственный async ORM) |
 | **Frontend** | React 18, TypeScript, Mantine UI v8, Redux Toolkit |
 | **Real-time** | WebSocket + PostgreSQL LISTEN/NOTIFY |
