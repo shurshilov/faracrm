@@ -129,7 +129,6 @@ async def get_chats(
         SELECT cm.chat_id,
                COALESCE(u.id, p.id) as id,
                COALESCE(u.name, p.name) as name,
-               COALESCE(u.email, p.email) as email,
                CASE WHEN cm.user_id IS NOT NULL THEN 'user' ELSE 'partner' END as member_type,
                cm.can_read,
                cm.can_write,
@@ -351,7 +350,6 @@ async def get_chat(req: Request, chat_id: int):
         SELECT
             COALESCE(u.id, p.id) as id,
             COALESCE(u.name, p.name) as name,
-            COALESCE(u.email, p.email) as email,
             CASE WHEN cm.user_id IS NOT NULL THEN 'user' ELSE 'partner' END as member_type,
             cm.can_read,
             cm.can_write,

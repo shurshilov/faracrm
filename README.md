@@ -15,7 +15,7 @@
 | **Backend** | Python 3.12+, FastAPI, asyncpg, PostgreSQL |
 | **ORM** | DotORM (собственный async ORM) |
 | **Frontend** | React 18, TypeScript, Mantine UI v8, Redux Toolkit |
-| **Real-time** | WebSocket + PostgreSQL LISTEN/NOTIFY |
+| **Real-time** | WebSocket + PostgreSQL LISTEN/NOTIFY (redis optional) |
 | **Интеграции** | Telegram, WhatsApp, Avito, Email (IMAP/SMTP) |
 
 ## Быстрый старт

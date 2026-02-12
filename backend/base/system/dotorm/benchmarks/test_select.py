@@ -223,7 +223,7 @@ class TestRawAsyncpgSelect:
         async def run():
             async with dotorm_pool.acquire() as conn:
                 rows = await conn.fetch("""
-                    SELECT u.id, u.name, u.email, u.active,
+                    SELECT u.id, u.name, u.active,
                            r.id as role_id, r.name as role_name
                     FROM benchmark_users u
                     LEFT JOIN benchmark_roles r ON u.role_id = r.id
