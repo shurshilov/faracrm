@@ -6,6 +6,8 @@
   height: 40px;
   border-radius: var(--mantine-radius-md);
   transition: all 150ms ease;
+  position: relative;
+  z-index: 1;
 
   @mixin light {
     color: var(--mantine-color-gray-7);
@@ -19,6 +21,16 @@
     &:hover {
       background-color: var(--mantine-color-dark-5);
     }
+  }
+}
+
+/* Когда overlay открыт — кнопка поверх него, белая */
+.launcherButtonActive {
+  z-index: 10000;
+  color: white !important;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.15) !important;
   }
 }
 
@@ -51,12 +63,20 @@
   position: relative;
 }
 
-.closeButton {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  color: rgba(255, 255, 255, 0.8);
-  z-index: 1;
+/* Кнопка-иконка закрытия поверх overlay — та же IconApps, в той же позиции что и в header */
+.overlayToggle {
+  position: fixed;
+  top: 4px;
+  left: 8px;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--mantine-radius-md);
+  color: rgba(255, 255, 255, 0.85);
+  transition: all 150ms ease;
 
   &:hover {
     color: white;

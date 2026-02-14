@@ -211,7 +211,8 @@ const Logo = () => (
     height="60"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 300 120"
-    preserveAspectRatio="xMidYMid">
+    preserveAspectRatio="xMidYMid"
+    style={{ maxWidth: '260px', height: 'auto' }}>
     <defs>
       <linearGradient
         id="editing-gradow-gradient"
@@ -249,8 +250,8 @@ const Logo = () => (
         y="55%"
         dominantBaseline="middle"
         textAnchor="middle"
-        fontWeight="100"
-        fontFamily="Arial Black, sans-serif"
+        fontWeight="900"
+        fontFamily="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
         fontSize="62px"
         fill="url(#editing-gradow-gradient)">
         FARA

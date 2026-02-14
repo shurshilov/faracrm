@@ -75,6 +75,14 @@ export function AppLauncher({ items, onSelectGroup }: AppLauncherProps) {
       {opened && (
         <Portal>
           <Box className={classes.overlay} onClick={handleBackdropClick}>
+            {/* Та же иконка-кнопка для закрытия — в верхнем левом углу поверх overlay */}
+            <UnstyledButton
+              className={classes.overlayToggle}
+              onClick={() => setOpened(false)}
+              aria-label="Close app launcher">
+              <IconApps size={24} />
+            </UnstyledButton>
+
             <Box className={classes.content} onClick={e => e.stopPropagation()}>
               <Text className={classes.title}>
                 {t('common:applications', 'Приложения')}

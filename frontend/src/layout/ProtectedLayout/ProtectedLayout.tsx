@@ -68,8 +68,8 @@ export default function CollapseSideBar() {
           transitionDuration={200}
           transitionTimingFunction="ease">
           <AppShell.Header className={classes.navbar}>
-            <Flex justify="space-between" align="center" h="100%">
-              <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }}>
+            <Flex justify="space-between" align="center" h="100%" wrap="nowrap">
+              <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }} style={{ flexShrink: 0 }}>
                 {/* Мобильная кнопка бургер */}
                 <Group hiddenFrom="sm">
                   <SidebarToggle
@@ -85,8 +85,10 @@ export default function CollapseSideBar() {
                   />
                 </Group>
               </Group>
-              <Logo />
-              <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }}>
+              <Box style={{ flexShrink: 1, minWidth: 0 }}>
+                <Logo />
+              </Box>
+              <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }} wrap="nowrap" style={{ flexShrink: 0 }}>
                 {/* ThemeToggle — только tablet+ */}
                 <Box visibleFrom="sm">
                   <ThemeToggle />
