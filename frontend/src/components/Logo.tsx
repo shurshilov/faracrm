@@ -212,7 +212,7 @@ const Logo = () => (
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 300 120"
     preserveAspectRatio="xMidYMid"
-    style={{ maxWidth: '260px', height: 'auto' }}>
+    style={{ maxWidth: '260px', height: 'auto', display: 'block' }}>
     <defs>
       <linearGradient
         id="editing-gradow-gradient"
@@ -247,8 +247,8 @@ const Logo = () => (
     <g filter="url(#editing-gradow-filter)">
       <text
         x="50%"
-        y="55%"
-        dominantBaseline="middle"
+        y="50%"
+        dominantBaseline="central"
         textAnchor="middle"
         fontWeight="900"
         fontFamily="'Arial Black', 'Helvetica Neue', Arial, sans-serif"

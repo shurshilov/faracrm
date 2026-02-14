@@ -47,12 +47,12 @@ export function NotificationListener() {
   const navigateRef = useRef(navigate);
   navigateRef.current = navigate;
 
-  // Настройки уведомлений пользователя (default: true)
+  // Настройки уведомлений — тот же запрос что и в UserMenu (RTK Query кеширует по ключу)
   const { data: userData } = useReadQuery(
     {
       model: 'users',
       id: currentUserId,
-      fields: ['id', 'notification_popup', 'notification_sound'],
+      fields: ['id', 'name', 'image', 'lang_id', 'layout_theme', 'notification_popup', 'notification_sound'],
     },
     { skip: !currentUserId },
   );

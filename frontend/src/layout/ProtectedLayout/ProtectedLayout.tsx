@@ -85,7 +85,7 @@ export default function CollapseSideBar() {
                   />
                 </Group>
               </Group>
-              <Box style={{ flexShrink: 1, minWidth: 0 }}>
+              <Box style={{ flexShrink: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
                 <Logo />
               </Box>
               <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }} wrap="nowrap" style={{ flexShrink: 0 }}>

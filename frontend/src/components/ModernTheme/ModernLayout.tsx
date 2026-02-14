@@ -91,7 +91,7 @@ export function ModernLayout() {
             </Group>
 
             {/* Логотип — скрываем на маленьких mobile чтобы дать место меню */}
-            <Box visibleFrom="xs">
+            <Box visibleFrom="xs" style={{ display: 'flex', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
               <Logo />
             </Box>
 
