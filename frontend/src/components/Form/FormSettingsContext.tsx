@@ -1,4 +1,5 @@
 import { createContext, useContext, ReactNode } from 'react';
+import { useMediaQuery } from '@mantine/hooks';
 
 export type LabelPosition = 'left' | 'top';
 
@@ -25,8 +26,12 @@ export function FormSettingsProvider({
   labelPosition = 'left',
   labelWidth = 140,
 }: FormSettingsProviderProps) {
+  // На mobile автоматически переключаем на top-позицию лейблов
+  const isMobile = useMediaQuery('(max-width: 575px)');
+  const effectivePosition: LabelPosition = isMobile ? 'top' : labelPosition;
+
   return (
-    <FormSettingsContext.Provider value={{ labelPosition, labelWidth }}>
+    <FormSettingsContext.Provider value={{ labelPosition: effectivePosition, labelWidth }}>
       {children}
     </FormSettingsContext.Provider>
   );

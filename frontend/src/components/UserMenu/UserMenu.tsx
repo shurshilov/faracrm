@@ -25,6 +25,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useMediaQuery } from '@mantine/hooks';
 import { logOut, selectCurrentSession } from '@/slices/authSlice';
 import { authApi } from '@/services/auth/auth';
 import {
@@ -212,6 +213,10 @@ function UserMenu() {
     }
   };
 
+  // На touch-устройствах hover на вложенных меню не работает — используем click
+  const isTouchDevice = useMediaQuery('(hover: none)');
+  const subMenuTrigger = isTouchDevice ? 'click' as const : 'click-hover' as const;
+
   return (
     <Menu
       width={200}
@@ -250,7 +255,7 @@ function UserMenu() {
 
         {/* Язык - подменю */}
         <Menu
-          trigger="hover"
+          trigger={subMenuTrigger}
           position="left-start"
           offset={2}
           withinPortal
@@ -297,7 +302,7 @@ function UserMenu() {
 
         {/* Тема интерфейса - подменю */}
         <Menu
-          trigger="hover"
+          trigger={subMenuTrigger}
           position="left-start"
           offset={2}
           withinPortal
@@ -350,7 +355,7 @@ function UserMenu() {
 
         {/* Уведомления - подменю */}
         <Menu
-          trigger="hover"
+          trigger={subMenuTrigger}
           position="left-start"
           offset={2}
           withinPortal

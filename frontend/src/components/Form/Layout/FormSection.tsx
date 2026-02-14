@@ -48,7 +48,7 @@ export function FormSection({
     <Paper
       className={classes.sectionPaper}
       withBorder={withBorder}
-      p={withPadding ? 'md' : 0}
+      p={withPadding ? { base: 'sm', sm: 'md' } : 0}
       radius="md"
     >
       {title && (

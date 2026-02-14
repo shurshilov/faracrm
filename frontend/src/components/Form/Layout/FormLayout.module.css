@@ -73,6 +73,15 @@
   flex-shrink: 0;
 }
 
+.headerGroup {
+  flex-wrap: nowrap;
+}
+
+.headerContent {
+  flex: 1;
+  min-width: 0;
+}
+
 /* FormSheet (без рамки) */
 .sheetContainer {
   margin-bottom: var(--mantine-spacing-lg);
@@ -88,6 +97,15 @@
   flex-shrink: 0;
 }
 
+.sheetGroup {
+  flex-wrap: nowrap;
+}
+
+.sheetContent {
+  flex: 1;
+  min-width: 0;
+}
+
 .avatarField {
   display: flex;
   flex-direction: column;
@@ -96,16 +114,22 @@
 
 /* Responsive */
 @media (max-width: 575px) {
-  .headerPaper > div,
-  .sheetContainer > div {
+  /* На mobile: аватар сверху по центру, поля ниже на всю ширину */
+  .headerGroup,
+  .sheetGroup {
+    flex-wrap: wrap !important;
     flex-direction: column;
     align-items: center;
-    text-align: center;
   }
-  
+
   .headerAvatar,
   .sheetAvatar {
     margin-bottom: var(--mantine-spacing-sm);
+  }
+
+  .headerContent,
+  .sheetContent {
+    width: 100%;
   }
 
   .sectionPaper {
@@ -134,15 +158,20 @@
 }
 
 @media (min-width: 576px) and (max-width: 767px) {
-  .headerPaper > div,
-  .sheetContainer > div {
+  .headerGroup,
+  .sheetGroup {
+    flex-wrap: wrap !important;
     flex-direction: column;
     align-items: center;
-    text-align: center;
   }
 
   .headerAvatar,
   .sheetAvatar {
     margin-bottom: var(--mantine-spacing-md);
+  }
+
+  .headerContent,
+  .sheetContent {
+    width: 100%;
   }
 }

@@ -25,15 +25,15 @@ export function FormHeader({
   subtitle,
 }: FormHeaderProps) {
   return (
-    <Paper className={classes.headerPaper} withBorder p="md" radius="md">
-      <Group align="flex-start" gap="lg" wrap="nowrap">
+    <Paper className={classes.headerPaper} withBorder p={{ base: 'sm', sm: 'md' }} radius="md">
+      <Group align="flex-start" gap={{ base: 'md', sm: 'lg' }} wrap="wrap" className={classes.headerGroup}>
         {avatar && (
           <Box className={classes.headerAvatar}>
             {avatar}
           </Box>
         )}
         
-        <Stack gap="sm" style={{ flex: 1 }}>
+        <Stack gap="sm" className={classes.headerContent}>
           {(title || subtitle) && (
             <Box mb="xs">
               {title && <Title order={4}>{title}</Title>}
@@ -65,14 +65,14 @@ export function FormSheet({
   return (
     <>
       <Box className={classes.sheetContainer}>
-        <Group align="flex-start" gap="xl" wrap="nowrap">
+        <Group align="flex-start" gap={{ base: 'md', sm: 'xl' }} wrap="wrap" className={classes.sheetGroup}>
           {avatar && (
             <Box className={classes.sheetAvatar}>
               {avatar}
             </Box>
           )}
           
-          <Stack gap="sm" style={{ flex: 1 }}>
+          <Stack gap="sm" className={classes.sheetContent}>
             {children}
           </Stack>
         </Group>
