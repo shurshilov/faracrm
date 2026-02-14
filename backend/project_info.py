@@ -8,7 +8,7 @@ DESCRIPTION = """
 <div>
 FARA CRM API helps you business work easy🚀
 
-Readme and source code [Github](https://github.com/faracrm)
+Readme and source code [Github](https://github.com/shurshilov/faracrm)
 
 Visit our website [Production website](https://faracrm.com)
 </div>

@@ -67,25 +67,25 @@ const SOCIAL_LINKS = [
   {
     icon: IconBrandTelegram,
     label: 'Telegram',
-    href: 'https://t.me/fara_crm',
+    href: 'https://t.me/faracrm',
     color: '#2AABEE',
   },
   {
     icon: IconBrandGithub,
     label: 'GitHub',
-    href: 'https://github.com/fara-crm',
+    href: 'https://github.com/shurshilov/faracrm',
     color: '#333',
   },
-  {
-    icon: IconBrandYoutube,
-    label: 'YouTube',
-    href: 'https://youtube.com/@fara_crm',
-    color: '#FF0000',
-  },
+  // {
+  //   icon: IconBrandYoutube,
+  //   label: 'YouTube',
+  //   href: 'https://youtube.com/@fara_crm',
+  //   color: '#FF0000',
+  // },
   {
     icon: IconRuTube,
     label: 'RuTube',
-    href: 'https://rutube.ru/channel/fara_crm',
+    href: 'https://rutube.ru/channel/75678685',
     color: '#1B1F3B',
   },
 ];
