@@ -1,7 +1,8 @@
 .menuContainer {
   flex: 1;
   overflow-x: auto;
-  padding: 0 var(--mantine-spacing-md);
+  padding: 0 var(--mantine-spacing-xs);
+  min-width: 0;
   
   /* Скрываем скроллбар но оставляем функционал */
   scrollbar-width: none;
@@ -11,8 +12,14 @@
   }
 }
 
+@media (min-width: 768px) {
+  .menuContainer {
+    padding: 0 var(--mantine-spacing-md);
+  }
+}
+
 .menuItem {
-  padding: 8px 16px;
+  padding: 6px 12px;
   border-radius: var(--mantine-radius-md);
   white-space: nowrap;
   transition: all 150ms ease;

@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
   AppShell,
+  Box,
   Flex,
   Group,
   ScrollArea,
   ActionIcon,
-  Box,
 } from '@mantine/core';
 import { useLocation } from 'react-router-dom';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
@@ -70,44 +70,54 @@ export function ModernLayout() {
     <ChatWebSocketProvider>
       <NotificationListener />
       <AppShell
-        header={{ height: 60 }}
+        header={{ height: { base: 48, sm: 60 } }}
         navbar={
           isInChat
             ? {
                 width: chatNavbarWidth,
                 breakpoint: 'sm',
-                collapsed: { desktop: chatSidebarCollapsed },
+                collapsed: { mobile: chatSidebarCollapsed, desktop: chatSidebarCollapsed },
               }
             : undefined
         }
-        padding="md"
+        padding={{ base: 'xs', sm: 'md' }}
         transitionDuration={200}
         transitionTimingFunction="ease">
         <AppShell.Header className={classes.header}>
-          <Flex align="center" h="100%" gap="md">
+          <Flex align="center" h="100%" gap={{ base: 'xs', sm: 'md' }}>
             {/* Кнопка App Launcher */}
-            <Group px="md">
+            <Group px={{ base: 'xs', sm: 'md' }}>
               <AppLauncher items={items} onSelectGroup={setActiveGroup} />
             </Group>
 
-            {/* Логотип */}
-            <Logo />
+            {/* Логотип — скрываем на маленьких mobile чтобы дать место меню */}
+            <Box visibleFrom="xs">
+              <Logo />
+            </Box>
 
-            {/* Горизонтальное меню */}
-            {/* В чатах показываем только "Настройки", остальное в ChatSidebar */}
-            {isInChat ? (
-              <HorizontalMenu
-                activeGroup={activeGroup}
-                filterCategories={['category_comm_settings']}
-              />
-            ) : (
-              <HorizontalMenu activeGroup={activeGroup} />
-            )}
+            {/* Горизонтальное меню — только tablet+ */}
+            <Box visibleFrom="md" style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+              {isInChat ? (
+                <HorizontalMenu
+                  activeGroup={activeGroup}
+                  filterCategories={['category_comm_settings']}
+                />
+              ) : (
+                <HorizontalMenu activeGroup={activeGroup} />
+              )}
+            </Box>
+
+            {/* Спейсер для mobile (когда нет HorizontalMenu) */}
+            <Box hiddenFrom="md" style={{ flex: 1 }} />
 
             {/* Правая часть */}
-            <Group h="100%" px="md" gap="sm" style={{ marginLeft: 'auto' }}>
-              <ThemeToggle />
-              <ActivityNotification />
+            <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }} style={{ flexShrink: 0 }}>
+              <Box visibleFrom="sm">
+                <ThemeToggle />
+              </Box>
+              <Box visibleFrom="lg">
+                <ActivityNotification />
+              </Box>
               <ChatNotification />
               <UserMenu />
             </Group>
@@ -123,22 +133,24 @@ export function ModernLayout() {
               </ScrollArea>
             </AppShell.Navbar>
 
-            {/* Кнопка сворачивания сайдбара */}
-            <ActionIcon
-              className={classes.collapseButton}
-              variant="default"
-              size="sm"
-              radius="xl"
-              onClick={() => setChatSidebarCollapsed(!chatSidebarCollapsed)}
-              style={{
-                left: chatSidebarCollapsed ? 4 : 268,
-              }}>
-              {chatSidebarCollapsed ? (
-                <IconChevronRight size={14} />
-              ) : (
-                <IconChevronLeft size={14} />
-              )}
-            </ActionIcon>
+            {/* Кнопка сворачивания сайдбара — только desktop */}
+            <Box visibleFrom="sm">
+              <ActionIcon
+                className={classes.collapseButton}
+                variant="default"
+                size="sm"
+                radius="xl"
+                onClick={() => setChatSidebarCollapsed(!chatSidebarCollapsed)}
+                style={{
+                  left: chatSidebarCollapsed ? 4 : 268,
+                }}>
+                {chatSidebarCollapsed ? (
+                  <IconChevronRight size={14} />
+                ) : (
+                  <IconChevronLeft size={14} />
+                )}
+              </ActionIcon>
+            </Box>
           </>
         )}
 

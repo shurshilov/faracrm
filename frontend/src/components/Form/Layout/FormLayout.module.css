@@ -95,7 +95,7 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 575px) {
   .headerPaper > div,
   .sheetContainer > div {
     flex-direction: column;
@@ -103,6 +103,44 @@
     text-align: center;
   }
   
+  .headerAvatar,
+  .sheetAvatar {
+    margin-bottom: var(--mantine-spacing-sm);
+  }
+
+  .sectionPaper {
+    margin-bottom: var(--mantine-spacing-sm);
+  }
+
+  .tabsList {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .tabsList::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab {
+    font-size: var(--mantine-font-size-sm);
+    white-space: nowrap;
+  }
+
+  .tabPanel {
+    padding-top: var(--mantine-spacing-sm);
+  }
+}
+
+@media (min-width: 576px) and (max-width: 767px) {
+  .headerPaper > div,
+  .sheetContainer > div {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
   .headerAvatar,
   .sheetAvatar {
     margin-bottom: var(--mantine-spacing-md);

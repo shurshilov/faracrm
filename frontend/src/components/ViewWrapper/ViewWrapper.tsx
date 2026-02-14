@@ -155,9 +155,9 @@ export function ViewWrapper({
     <FilterContext.Provider value={filterContextValue}>
       <div className={classes.container}>
         <div className={classes.header}>
-          <Group justify="space-between" gap="xs" p="xs" wrap="nowrap">
+          <Group justify="space-between" gap="xs" p="xs" wrap="wrap">
             {/* Левая часть - поиск (показывается при клике) */}
-            <Box style={{ flex: 1 }}>
+            <Box style={{ flex: 1, minWidth: 0 }}>
               {!hideSearch && isSearchOpen && (
                 <SearchFilter
                   model={model}
@@ -168,7 +168,7 @@ export function ViewWrapper({
             </Box>
 
             {/* Правая часть - иконка поиска + ViewSwitcher */}
-            <Group gap="xs" wrap="nowrap">
+            <Group gap="xs" wrap="nowrap" style={{ flexShrink: 0 }}>
               {!hideSearch && (
                 <Tooltip label={isSearchOpen ? 'Закрыть поиск' : 'Поиск'}>
                   <ActionIcon

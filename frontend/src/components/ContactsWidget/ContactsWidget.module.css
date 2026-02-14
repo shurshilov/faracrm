@@ -231,3 +231,32 @@
     color: var(--mantine-color-gray-4);
   }
 }
+
+/* ── Mobile: компактнее ────────────────────────── */
+@media (max-width: 575px) {
+  .contactItem {
+    padding: 4px 6px 4px 4px;
+    gap: 4px;
+  }
+
+  .contactIcon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .contactValue {
+    font-size: 12px;
+  }
+
+  .contactType {
+    font-size: 10px;
+  }
+
+  .contactActions {
+    opacity: 1;
+  }
+
+  .listContainer {
+    gap: 6px;
+  }
+}

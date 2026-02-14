@@ -13,7 +13,8 @@ import {
   useState,
   useCallback,
 } from 'react';
-import { Box } from '@mantine/core';
+import { Box, Drawer } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import {
   useReadDefaultValuesQuery,
   useReadQuery,
@@ -259,6 +260,9 @@ export const Form = <RecordType extends FaraRecord>({
     [model, fieldsServer, setFieldsServer, handleFieldChange, onchangeFields],
   );
 
+  // Mobile detection для панели: Drawer вместо inline
+  const isMobile = useMediaQuery('(max-width: 575px)');
+
   return (
     <FormFieldsContext.Provider value={formFieldsContextValue}>
       <FormSettingsProvider
@@ -289,14 +293,36 @@ export const Form = <RecordType extends FaraRecord>({
                 )}
               </Box>
 
-              {/* Side panel (resizable) */}
+              {/* Side panel — mobile: bottom Drawer, desktop: inline resizable */}
               {showPanels && activePanel && (
-                <FormPanelSide
-                  resModel={model}
-                  resId={Number(id)}
-                  activePanel={activePanel}
-                  onClose={handleClosePanel}
-                />
+                isMobile ? (
+                  <Drawer
+                    opened={!!activePanel}
+                    onClose={handleClosePanel}
+                    position="bottom"
+                    size="85%"
+                    withOverlay
+                    overlayProps={{ backgroundOpacity: 0.35 }}
+                    styles={{
+                      content: { borderRadius: '16px 16px 0 0' },
+                      body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' },
+                    }}
+                  >
+                    <FormPanelSide
+                      resModel={model}
+                      resId={Number(id)}
+                      activePanel={activePanel}
+                      onClose={handleClosePanel}
+                    />
+                  </Drawer>
+                ) : (
+                  <FormPanelSide
+                    resModel={model}
+                    resId={Number(id)}
+                    activePanel={activePanel}
+                    onClose={handleClosePanel}
+                  />
+                )
               )}
             </Box>
           </ExtensionsContext.Provider>

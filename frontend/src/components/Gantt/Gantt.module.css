@@ -6,9 +6,15 @@
 }
 
 .toolbar {
-  padding: 8px 12px;
+  padding: 6px 8px;
   border-bottom: 1px solid var(--mantine-color-gray-3);
   background: var(--mantine-color-gray-0);
+}
+
+@media (min-width: 768px) {
+  .toolbar {
+    padding: 8px 12px;
+  }
 }
 
 [data-mantine-color-scheme='dark'] .toolbar {
@@ -71,12 +77,20 @@
 }
 
 .labelColumn {
-  width: 180px;
-  min-width: 180px;
-  padding: 0 12px;
+  width: 120px;
+  min-width: 120px;
+  padding: 0 8px;
   display: flex;
   align-items: center;
   border-right: 1px solid var(--mantine-color-gray-2);
+}
+
+@media (min-width: 768px) {
+  .labelColumn {
+    width: 180px;
+    min-width: 180px;
+    padding: 0 12px;
+  }
 }
 
 [data-mantine-color-scheme='dark'] .labelColumn {
@@ -92,10 +106,18 @@
   justify-content: center;
 }
 
+/* Mobile: скрыть колонку длительности */
+@media (max-width: 575px) {
+  .durationColumn {
+    display: none;
+  }
+}
+
 /* Область таймлайна */
 .timelineArea {
   flex: 1;
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .timelineContent {

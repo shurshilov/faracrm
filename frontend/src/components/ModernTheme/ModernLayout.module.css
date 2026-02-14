@@ -29,6 +29,13 @@
   }
 }
 
+/* Mobile: уменьшаем padding чтобы контент не жался */
+@media (max-width: 575px) {
+  .main {
+    /* padding уже управляется через AppShell padding prop */
+  }
+}
+
 .chatNavbar {
   padding: var(--mantine-spacing-sm);
 

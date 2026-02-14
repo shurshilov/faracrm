@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { AppShell, Flex, Group, ScrollArea } from '@mantine/core';
+import { AppShell, Box, Flex, Group, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 
 import ThemeToggle from '@/components/ThemeToggle';
@@ -58,18 +58,18 @@ export default function CollapseSideBar() {
       <NotificationListener />
       <SidebarContext.Provider value={sidebarContext}>
         <AppShell
-          header={{ height: 50 }}
+          header={{ height: { base: 48, sm: 56 } }}
           navbar={{
             width: navbarWidth,
             breakpoint: 'sm',
             collapsed: { mobile: !mobileOpened, desktop: isHidden },
           }}
-          padding="md"
+          padding={{ base: 'xs', sm: 'md' }}
           transitionDuration={200}
           transitionTimingFunction="ease">
           <AppShell.Header className={classes.navbar}>
             <Flex justify="space-between" align="center" h="100%">
-              <Group h="100%" px="md">
+              <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }}>
                 {/* Мобильная кнопка бургер */}
                 <Group hiddenFrom="sm">
                   <SidebarToggle
@@ -86,9 +86,15 @@ export default function CollapseSideBar() {
                 </Group>
               </Group>
               <Logo />
-              <Group h="100%" px="md">
-                <ThemeToggle />
-                <ActivityNotification />
+              <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }}>
+                {/* ThemeToggle — только tablet+ */}
+                <Box visibleFrom="sm">
+                  <ThemeToggle />
+                </Box>
+                {/* ActivityNotification — только desktop */}
+                <Box visibleFrom="md">
+                  <ActivityNotification />
+                </Box>
                 <ChatNotification />
                 <UserMenu />
               </Group>
@@ -114,7 +120,7 @@ export default function CollapseSideBar() {
           </AppShell.Navbar>
 
           <AppShell.Main className={classes.main}>
-            <FaraRouters></FaraRouters>
+            <FaraRouters />
           </AppShell.Main>
         </AppShell>
       </SidebarContext.Provider>

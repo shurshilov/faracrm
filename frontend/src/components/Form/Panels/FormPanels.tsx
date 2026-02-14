@@ -8,6 +8,7 @@ import {
   CloseButton,
   Tabs,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconBell, IconMessage, IconPaperclip } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useSearchQuery } from '@/services/api/crudApi';
@@ -222,41 +223,47 @@ export function FormPanelSide({
     attachments: t('common:attachments', 'Вложения'),
   };
 
+  // На mobile панель рендерится внутри Drawer — не нужны фиксированные размеры и resize
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 576;
+
   return (
     <Box
       style={{
-        width: panelWidth,
-        minWidth: PANEL_MIN_WIDTH,
-        maxWidth: PANEL_MAX_WIDTH,
+        width: isMobile ? '100%' : panelWidth,
+        minWidth: isMobile ? 0 : PANEL_MIN_WIDTH,
+        maxWidth: isMobile ? '100%' : PANEL_MAX_WIDTH,
         minHeight: 0,
+        height: isMobile ? '100%' : undefined,
         display: 'flex',
         flexShrink: 0,
         position: 'relative',
         overflow: 'hidden',
       }}>
-      {/* Resize handle */}
-      <Box
-        onMouseDown={handleMouseDown}
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: 4,
-          cursor: 'col-resize',
-          zIndex: 10,
-          background: 'transparent',
-        }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.background =
-            'var(--mantine-color-blue-3)';
-        }}
-        onMouseLeave={e => {
-          if (!isResizing.current) {
-            (e.currentTarget as HTMLElement).style.background = 'transparent';
-          }
-        }}
-      />
+      {/* Resize handle — только на desktop */}
+      {!isMobile && (
+        <Box
+          onMouseDown={handleMouseDown}
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            cursor: 'col-resize',
+            zIndex: 10,
+            background: 'transparent',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background =
+              'var(--mantine-color-blue-3)';
+          }}
+          onMouseLeave={e => {
+            if (!isResizing.current) {
+              (e.currentTarget as HTMLElement).style.background = 'transparent';
+            }
+          }}
+        />
+      )}
 
       {/* Panel content */}
       <Box
@@ -265,7 +272,7 @@ export function FormPanelSide({
           minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
-          borderLeft: '1px solid var(--mantine-color-default-border)',
+          borderLeft: isMobile ? 'none' : '1px solid var(--mantine-color-default-border)',
           overflow: 'hidden',
         }}>
         {/* Header */}

@@ -152,7 +152,7 @@ export function SearchFilter({
   );
 
   return (
-    <Box pos="relative" style={{ minWidth: 300, maxWidth: 500, flex: 1 }}>
+    <Box pos="relative" style={{ minWidth: 0, flex: 1 }}>
       <LoadingOverlay
         visible={fieldsLoading}
         zIndex={1000}
@@ -167,6 +167,7 @@ export function SearchFilter({
           wrap="wrap"
           style={{
             flex: 1,
+            minWidth: 0,
             border: '1px solid var(--mantine-color-gray-4)',
             borderRadius: 'var(--mantine-radius-sm)',
             padding: '4px 8px',
@@ -222,7 +223,7 @@ export function SearchFilter({
               onKeyDown={handleKeyDown}
               style={{
                 flex: 1,
-                minWidth: 100,
+                minWidth: 60,
                 border: 'none',
                 outline: 'none',
                 background: 'transparent',
@@ -238,7 +239,7 @@ export function SearchFilter({
           onChange={setFilterPopoverOpen}
           position="bottom-start"
           shadow="md"
-          width={500}
+          width="target"
           trapFocus
           closeOnClickOutside={false}>
           <Popover.Target>

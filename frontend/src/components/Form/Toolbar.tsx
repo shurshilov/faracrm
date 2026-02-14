@@ -83,7 +83,7 @@ export const Toolbar = <RecordType extends FaraRecord>({
 
   return (
     <Flex
-      mih={50}
+      mih={{ base: 44, sm: 50 }}
       gap="xs"
       justify="space-between"
       align="center"

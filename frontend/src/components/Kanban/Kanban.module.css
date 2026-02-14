@@ -1,23 +1,52 @@
 .kanbanContainer {
-  height: calc(100vh - 140px);
+  height: calc(100dvh - 140px);
   width: 100%;
 }
 
 .columnsWrapper {
   display: flex;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
   min-width: max-content;
 }
 
+@media (min-width: 768px) {
+  .columnsWrapper {
+    gap: 16px;
+    padding: 16px;
+  }
+}
+
+/* Mobile: scroll-snap для свайпа между колонками */
+@media (max-width: 575px) {
+  .kanbanContainer {
+    height: calc(100dvh - 120px);
+  }
+  
+  .columnsWrapper {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 .column {
-  width: 300px;
-  min-width: 300px;
+  width: 280px;
+  min-width: 280px;
   background-color: var(--mantine-color-gray-0);
   border-radius: var(--mantine-radius-md);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100dvh - 180px);
+}
+
+/* Mobile: колонка почти на весь экран + snap */
+@media (max-width: 575px) {
+  .column {
+    width: 85vw;
+    min-width: 85vw;
+    scroll-snap-align: start;
+    max-height: calc(100dvh - 160px);
+  }
 }
 
 [data-mantine-color-scheme='dark'] .column {
@@ -25,10 +54,16 @@
 }
 
 .columnHeader {
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-top: 3px solid;
   border-radius: var(--mantine-radius-md) var(--mantine-radius-md) 0 0;
   background-color: var(--mantine-color-gray-1);
+}
+
+@media (min-width: 768px) {
+  .columnHeader {
+    padding: 12px 16px;
+  }
 }
 
 [data-mantine-color-scheme='dark'] .columnHeader {
@@ -50,6 +85,13 @@
   transform: translateY(-2px);
 }
 
+/* На touch-устройствах убираем hover transform */
+@media (hover: none) {
+  .card:hover {
+    transform: none;
+  }
+}
+
 .dragOverlay {
   cursor: grabbing;
   box-shadow: var(--mantine-shadow-xl);
@@ -57,7 +99,15 @@
 
 .simpleKanban {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  padding: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 12px;
+}
+
+@media (min-width: 768px) {
+  .simpleKanban {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+    padding: 16px;
+  }
 }

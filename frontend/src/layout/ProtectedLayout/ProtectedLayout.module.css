@@ -23,5 +23,20 @@
 
 .body {
     padding-top: var(--mantine-spacing-md);
-    /* padding-bottom: 100px; */
+}
+
+/* ── Responsive ────────────────────────────────── */
+
+/* Mobile: компактнее */
+@media (max-width: 575px) {
+    .body {
+        padding-top: var(--mantine-spacing-sm);
+    }
+}
+
+/* Tablet+: стандартные отступы */
+@media (min-width: 576px) {
+    .body {
+        padding-top: var(--mantine-spacing-md);
+    }
 }
