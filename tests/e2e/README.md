@@ -38,14 +38,14 @@ npm run report
 
 ## Требования
 
-- Запущенный бэкенд: `http://localhost:8000`
+- Запущенный бэкенд: `http://localhost:8090`
 - Запущенный фронтенд: `http://localhost:5173`
 - Пользователь `admin` / `admin`
 
 Переменные окружения:
 ```bash
 BASE_URL=http://localhost:5173
-API_URL=http://localhost:8000
+API_URL=http://localhost:8090
 ```
 
 ## Структура

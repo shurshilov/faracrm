@@ -47,6 +47,9 @@ class DotormCrudAutoService(Service):
         "service": True,
     }
 
+    # Prefix для всех auto_crud роутов — исключает конфликт с кастомными
+    CRUD_PREFIX = "/auto"
+
     def __init__(self, default_auto_crud: bool = True) -> None:
         super().__init__()
         self.default_auto_crud = default_auto_crud
@@ -77,14 +80,15 @@ class DotormCrudAutoService(Service):
                     schema_registry=schema_registry,
                     tags=[f"{model.__table__} AUTO CRUD"],
                 )
-                app.include_router(router)
+                app.include_router(router, prefix=self.CRUD_PREFIX)
 
         end_time = time.perf_counter()
         log.info("Routers created in %.3fs", end_time - schema_time)
         log.info(
-            "Total: %.3fs for %s models",
+            "Total: %.3fs for %s models (prefix: %s)",
             end_time - start_time,
             len(models),
+            self.CRUD_PREFIX,
         )
 
     async def startup(self, app) -> None:

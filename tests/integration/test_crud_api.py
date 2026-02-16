@@ -9,6 +9,8 @@ Run: pytest tests/integration/test_crud_api.py -v -m integration
 
 import pytest
 
+from tests.conftest import auto
+
 pytestmark = [pytest.mark.integration, pytest.mark.api]
 
 
@@ -28,7 +30,7 @@ class TestPartnersAPI:
         await partner_factory(name="API Partner 2")
 
         response = await client.post(
-            "/partners/search",
+            auto("/partners/search"),
             json={"fields": ["id", "name"], "limit": 10},
         )
         assert response.status_code == 200
@@ -43,7 +45,7 @@ class TestPartnersAPI:
         await partner_factory(name="Filtered Partner")
 
         response = await client.post(
-            "/partners/search",
+            auto("/partners/search"),
             json={
                 "fields": ["id", "name"],
                 "filter": [["name", "=", "Filtered Partner"]],
@@ -61,7 +63,7 @@ class TestPartnersAPI:
         partner = await partner_factory(name="Get Me")
 
         response = await client.post(
-            f"/partners/{partner.id}",
+            auto(f"/partners/{partner.id}"),
             json={"fields": ["id", "name"]},
         )
         assert response.status_code == 200
@@ -71,7 +73,7 @@ class TestPartnersAPI:
         client, _, _ = authenticated_client
 
         response = await client.post(
-            "/partners",
+            auto("/partners"),
             json={
                 "name": "New API Partner",
             },
@@ -85,7 +87,7 @@ class TestPartnersAPI:
         partner = await partner_factory(name="Before")
 
         response = await client.put(
-            f"/partners/{partner.id}",
+            auto(f"/partners/{partner.id}"),
             json={"name": "After"},
         )
         assert response.status_code == 200
@@ -101,12 +103,12 @@ class TestPartnersAPI:
         client, _, _ = authenticated_client
         partner = await partner_factory(name="Delete Me")
 
-        response = await client.delete(f"/partners/{partner.id}")
+        response = await client.delete(auto(f"/partners/{partner.id}"))
         assert response.status_code == 200
 
     async def test_search_partners_unauthorized(self, client):
         response = await client.post(
-            "/partners/search",
+            auto("/partners/search"),
             json={"fields": ["id", "name"]},
         )
         assert response.status_code in [401, 403]
@@ -126,7 +128,7 @@ class TestLeadsAPI:
         await lead_factory(name="Lead Beta")
 
         response = await client.post(
-            "/leads/search",
+            auto("/leads/search"),
             json={"fields": ["id", "name"], "limit": 10},
         )
         assert response.status_code == 200
@@ -138,7 +140,7 @@ class TestLeadsAPI:
         lead = await lead_factory(name="Specific Lead")
 
         response = await client.post(
-            f"/leads/{lead.id}",
+            auto(f"/leads/{lead.id}"),
             json={"fields": ["id", "name"]},
         )
         assert response.status_code == 200
@@ -149,7 +151,7 @@ class TestLeadsAPI:
         lead = await lead_factory(name="Original Lead")
 
         response = await client.put(
-            f"/leads/{lead.id}",
+            auto(f"/leads/{lead.id}"),
             json={"name": "Updated Lead"},
         )
         assert response.status_code == 200
@@ -158,11 +160,13 @@ class TestLeadsAPI:
         client, _, _ = authenticated_client
         lead = await lead_factory(name="Delete Lead")
 
-        response = await client.delete(f"/leads/{lead.id}")
+        response = await client.delete(auto(f"/leads/{lead.id}"))
         assert response.status_code == 200
 
     async def test_search_leads_unauthorized(self, client):
-        response = await client.post("/leads/search", json={"fields": ["id"]})
+        response = await client.post(
+            auto("/leads/search"), json={"fields": ["id"]}
+        )
         assert response.status_code in [401, 403]
 
 
@@ -180,7 +184,7 @@ class TestSalesAPI:
         await sale_factory(name="SO-0002")
 
         response = await client.post(
-            "/sales/search",
+            auto("/sales/search"),
             json={"fields": ["id", "name"], "limit": 10},
         )
         assert response.status_code == 200
@@ -191,7 +195,7 @@ class TestSalesAPI:
         sale = await sale_factory(name="SO-TEST")
 
         response = await client.post(
-            f"/sales/{sale.id}",
+            auto(f"/sales/{sale.id}"),
             json={"fields": ["id", "name"]},
         )
         assert response.status_code == 200
@@ -201,7 +205,7 @@ class TestSalesAPI:
         sale = await sale_factory()
 
         response = await client.put(
-            f"/sales/{sale.id}",
+            auto(f"/sales/{sale.id}"),
             json={"name": "SO-UPDATED"},
         )
         assert response.status_code == 200
@@ -210,11 +214,13 @@ class TestSalesAPI:
         client, _, _ = authenticated_client
         sale = await sale_factory()
 
-        response = await client.delete(f"/sales/{sale.id}")
+        response = await client.delete(auto(f"/sales/{sale.id}"))
         assert response.status_code == 200
 
     async def test_search_sales_unauthorized(self, client):
-        response = await client.post("/sales/search", json={"fields": ["id"]})
+        response = await client.post(
+            auto("/sales/search"), json={"fields": ["id"]}
+        )
         assert response.status_code in [401, 403]
 
 
@@ -234,7 +240,7 @@ class TestProductsAPI:
         await product_factory(name="Product B", price=200)
 
         response = await client.post(
-            "/products/search",
+            auto("/products/search"),
             json={"fields": ["id", "name", "list_price"], "limit": 10},
         )
         assert response.status_code == 200
@@ -247,7 +253,7 @@ class TestProductsAPI:
         product = await product_factory(name="Widget")
 
         response = await client.post(
-            f"/products/{product.id}",
+            auto(f"/products/{product.id}"),
             json={"fields": ["id", "name"]},
         )
         assert response.status_code == 200
@@ -256,7 +262,7 @@ class TestProductsAPI:
         client, _, _ = authenticated_client
 
         response = await client.post(
-            "/products",
+            auto("/products"),
             json={"name": "API Product", "list_price": 49.99},
         )
         assert response.status_code in [200, 201]
@@ -266,7 +272,7 @@ class TestProductsAPI:
         product = await product_factory(name="Old Product")
 
         response = await client.put(
-            f"/products/{product.id}",
+            auto(f"/products/{product.id}"),
             json={"name": "New Product"},
         )
         assert response.status_code == 200
@@ -275,7 +281,7 @@ class TestProductsAPI:
         client, _, _ = authenticated_client
         product = await product_factory(name="Delete Product")
 
-        response = await client.delete(f"/products/{product.id}")
+        response = await client.delete(auto(f"/products/{product.id}"))
         assert response.status_code == 200
 
 
@@ -304,7 +310,7 @@ class TestTasksAPI:
         await self._create_task()
 
         response = await client.post(
-            "/tasks/search",
+            auto("/tasks/search"),
             json={"fields": ["id", "name"], "limit": 10},
         )
         assert response.status_code == 200
@@ -315,7 +321,7 @@ class TestTasksAPI:
         task_id = await self._create_task()
 
         response = await client.post(
-            f"/tasks/{task_id}",
+            auto(f"/tasks/{task_id}"),
             json={"fields": ["id", "name"]},
         )
         assert response.status_code == 200
@@ -325,7 +331,7 @@ class TestTasksAPI:
         task_id = await self._create_task()
 
         response = await client.put(
-            f"/tasks/{task_id}",
+            auto(f"/tasks/{task_id}"),
             json={"name": "Updated Task"},
         )
         assert response.status_code == 200
@@ -334,7 +340,7 @@ class TestTasksAPI:
         client, _, _ = authenticated_client
         task_id = await self._create_task()
 
-        response = await client.delete(f"/tasks/{task_id}")
+        response = await client.delete(auto(f"/tasks/{task_id}"))
         assert response.status_code == 200
 
 
@@ -382,7 +388,7 @@ class TestCronAPI:
         await self._create_job()
 
         response = await client.post(
-            "/cron_jobs/search",
+            auto("/cron_jobs/search"),
             json={"fields": ["id", "name", "active"], "limit": 10},
         )
         # Endpoint name may vary (cron_job vs cron_jobs)

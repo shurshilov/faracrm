@@ -10,7 +10,7 @@ const injectedRtkApi = api.injectEndpoints({
       RouteUsersSearchPostApiArg
     >({
       query: queryArg => ({
-        url: `/users/search`,
+        url: `/auto/users/search`,
         method: 'POST',
         body: queryArg.userSearchInput,
       }),

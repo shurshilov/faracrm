@@ -43,6 +43,16 @@ except ImportError:
 # Configuration
 # ====================
 
+# Prefix для auto_crud роутов. Используй auto() для формирования URL.
+# Пример: auto("/users/search") → "/auto/users/search"
+AUTO_CRUD_PREFIX = "/auto"
+
+
+def auto(path: str) -> str:
+    """Добавляет prefix auto_crud к пути. auto("/users/1") → "/auto/users/1" """
+    return f"{AUTO_CRUD_PREFIX}{path}"
+
+
 TEST_DB_NAME = os.getenv("TEST_DB_NAME", "fara_crm_test")
 DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))

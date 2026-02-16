@@ -24,7 +24,7 @@ import {
   isTextFieldType,
   formatFilterLabel,
 } from './types';
-import { useGetFieldsQuery } from './api';
+import { useGetFieldsQuery } from '@/services/api/crudApi';
 
 export function SearchFilter({
   model,

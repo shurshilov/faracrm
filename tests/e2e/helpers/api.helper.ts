@@ -11,6 +11,10 @@ export interface Session {
 export class ApiHelper {
   constructor(private apiUrl: string) {}
 
+  /** URL для auto CRUD эндпоинтов */
+  private autoUrl(path: string) {
+    return `${this.apiUrl}/auto${path}`;
+  }
   // ==================== Auth ====================
 
   async login(login: string, password: string): Promise<Session> {
@@ -90,7 +94,7 @@ export class ApiHelper {
     });
     if (roleSearch.data.length > 0) {
       const roleId = roleSearch.data[0].id;
-      await fetch(`${this.apiUrl}/users/${newUserId}`, {
+      await fetch(this.autoUrl(`/users/${newUserId}`), {
         method: 'PUT',
         headers: this.headers(token),
         body: JSON.stringify({
@@ -115,7 +119,7 @@ export class ApiHelper {
       order?: string;
     },
   ): Promise<{ data: any[]; total: string }> {
-    const res = await fetch(`${this.apiUrl}/${model}/search`, {
+    const res = await fetch(this.autoUrl(`/${model}/search`), {
       method: 'POST',
       headers: this.headers(token),
       body: JSON.stringify(params),
@@ -129,7 +133,7 @@ export class ApiHelper {
     model: string,
     values: Record<string, any>,
   ): Promise<any> {
-    const res = await fetch(`${this.apiUrl}/${model}`, {
+    const res = await fetch(this.autoUrl(`/${model}`), {
       method: 'POST',
       headers: this.headers(token),
       body: JSON.stringify(values),
@@ -139,7 +143,7 @@ export class ApiHelper {
   }
 
   async deleteRecord(token: string, model: string, id: number): Promise<void> {
-    await fetch(`${this.apiUrl}/${model}/${id}`, {
+    await fetch(this.autoUrl(`/${model}/${id}`), {
       method: 'DELETE',
       headers: this.headers(token),
     });

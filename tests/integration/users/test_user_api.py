@@ -12,6 +12,8 @@ Run: pytest tests/integration/users/test_user_api.py -v -m integration
 
 import pytest
 
+from tests.conftest import auto
+
 pytestmark = [pytest.mark.integration, pytest.mark.api]
 
 
@@ -332,7 +334,7 @@ class TestUserCRUDAPI:
         await user_factory(name="API Search 2", login="api_search_2")
 
         response = await client.post(
-            "/users/search",
+            auto("/users/search"),
             json={
                 "fields": ["id", "name", "login"],
                 "limit": 10,
@@ -354,7 +356,7 @@ class TestUserCRUDAPI:
         await user_factory(name="Filter API Test", login="filter_api_test")
 
         response = await client.post(
-            "/users/search",
+            auto("/users/search"),
             json={
                 "fields": ["id", "name", "login"],
                 "filter": [["login", "=", "filter_api_test"]],
@@ -373,7 +375,7 @@ class TestUserCRUDAPI:
         user = await user_factory(name="Get By ID", login="get_by_id")
 
         response = await client.post(
-            f"/users/{user.id}",
+            auto(f"/users/{user.id}"),
             json={
                 "fields": ["id", "name", "login"],
             },
@@ -406,7 +408,7 @@ class TestUserCRUDAPI:
             lang_id = langs[0].id
 
         response = await client.post(
-            "/users",
+            auto("/users"),
             json={
                 "name": "API Created User",
                 "login": "api_created",
@@ -433,7 +435,7 @@ class TestUserCRUDAPI:
         user = await user_factory(name="Before Update", login="before_update")
 
         response = await client.put(
-            f"/users/{user.id}",
+            auto(f"/users/{user.id}"),
             json={
                 "name": "After Update",
             },
@@ -456,7 +458,7 @@ class TestUserCRUDAPI:
         user = await user_factory(name="To Delete API", login="to_delete_api")
         user_id = user.id
 
-        response = await client.delete(f"/users/{user_id}")
+        response = await client.delete(auto(f"/users/{user_id}"))
 
         assert response.status_code == 200
 
@@ -481,7 +483,7 @@ class TestUserCRUDAPI:
 
         response = await client.request(
             "DELETE",
-            "/users/bulk",
+            auto("/users/bulk"),
             json=ids,
         )
 
@@ -505,7 +507,7 @@ class TestUserAuthorization:
     async def test_unauthenticated_request(self, client):
         """Test that unauthenticated requests are rejected."""
         response = await client.post(
-            "/users/search",
+            auto("/users/search"),
             json={
                 "fields": ["id", "name"],
             },
@@ -518,7 +520,7 @@ class TestUserAuthorization:
         client.headers["Authorization"] = "Bearer invalid_token_12345"
 
         response = await client.post(
-            "/users/search",
+            auto("/users/search"),
             json={
                 "fields": ["id", "name"],
             },
@@ -566,7 +568,7 @@ class TestUserAuthorization:
         client.headers["Authorization"] = f"Bearer {token}"
 
         response = await client.post(
-            "/users/search",
+            auto("/users/search"),
             json={
                 "fields": ["id", "name"],
             },

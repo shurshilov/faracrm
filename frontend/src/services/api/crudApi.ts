@@ -19,6 +19,9 @@ import {
   ReadResult,
 } from './crudTypes';
 
+// Prefix для автогенерированных CRUD роутов бекенда
+const AUTO = '/auto';
+
 // Define a service using a base URL and expected endpoints
 export const crudApi = createApi({
   reducerPath: 'crudApi',
@@ -31,7 +34,7 @@ export const crudApi = createApi({
     search: build.query<GetListResult<FaraRecord>, GetListParams>({
       query: queryArg => ({
         method: 'POST',
-        url: `/${queryArg.model}/search`,
+        url: `${AUTO}/${queryArg.model}/search`,
         body: {
           end: queryArg.end,
           order: queryArg.order,
@@ -63,7 +66,7 @@ export const crudApi = createApi({
     searchMany2many: build.query<GetListResult<FaraRecord>, GetListM2mParams>({
       query: queryArg => ({
         method: 'GET',
-        url: `/${queryArg.model}/search_many2many`,
+        url: `${AUTO}/${queryArg.model}/search_many2many`,
         params: queryArg,
       }),
       providesTags: (result, error, arg) => [
@@ -73,7 +76,7 @@ export const crudApi = createApi({
 
     deleteBulk: build.mutation<DeleteListResult, DeleteListParams>({
       query: queryArg => ({
-        url: `/${queryArg.model}/bulk`,
+        url: `${AUTO}/${queryArg.model}/bulk`,
         method: 'DELETE',
         body: queryArg.ids,
       }),
@@ -152,7 +155,7 @@ export const crudApi = createApi({
 
     read: build.query<ReadResult<FaraRecord>, ReadParams>({
       query: queryArg => ({
-        url: `/${queryArg.model}/${queryArg.id}`,
+        url: `${AUTO}/${queryArg.model}/${queryArg.id}`,
         // params: { fields: queryArg.fields },
         method: 'POST',
         body: {
@@ -169,7 +172,7 @@ export const crudApi = createApi({
       ReadDefaultValuesParams
     >({
       query: queryArg => ({
-        url: `/${queryArg.model}/default_values`,
+        url: `${AUTO}/${queryArg.model}/default_values`,
         method: 'POST',
         body: {
           fields: queryArg.fields,
@@ -180,7 +183,7 @@ export const crudApi = createApi({
 
     update: build.mutation<EditResult<FaraRecord>, EditParams<FaraRecord>>({
       query: queryArg => ({
-        url: `/${queryArg.model}/${queryArg.id}`,
+        url: `${AUTO}/${queryArg.model}/${queryArg.id}`,
         method: 'PUT',
         body: queryArg.values,
       }),
@@ -235,7 +238,7 @@ export const crudApi = createApi({
 
     create: build.mutation<CreateResult, CreateParams<Omit<FaraRecord, 'id'>>>({
       query: queryArg => ({
-        url: `/${queryArg.model}`,
+        url: `${AUTO}/${queryArg.model}`,
         method: 'POST',
         body: queryArg.values,
       }),
@@ -334,8 +337,25 @@ export const crudApi = createApi({
         body: { model, trigger_field, values },
       }),
     }),
+
+    // Получение списка полей модели для фильтрации
+    getFields: build.query<FieldInfoResponse[], string>({
+      query: model => ({
+        url: `${AUTO}/${model}/fields`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, model) => [{ type: 'Fields', id: model }],
+    }),
   }),
 });
+
+export interface FieldInfoResponse {
+  name: string;
+  type: string;
+  relation?: string;
+  options?: string[];
+  required?: boolean;
+}
 
 export const {
   useLazySearchQuery,
@@ -349,4 +369,5 @@ export const {
   useCreateMutation,
   useGetOnchangeFieldsQuery,
   useExecuteOnchangeMutation,
+  useGetFieldsQuery,
 } = crudApi;
