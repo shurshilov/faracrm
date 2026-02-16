@@ -6,8 +6,20 @@ type AuthState = {
   session?: Session;
 };
 
+function loadSession(): Session | undefined {
+  try {
+    const raw = localStorage.getItem('session');
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw);
+    // Проверяем что это валидная сессия, а не пустой объект
+    return parsed?.token ? (parsed as Session) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const initialState: AuthState = {
-  session: undefined,
+  session: loadSession(),
 };
 
 const slice = createSlice({
@@ -41,7 +53,7 @@ const slice = createSlice({
 
     logOut: () => {
       localStorage.setItem('session', '');
-      return initialState;
+      return { session: undefined };
     },
   },
 });

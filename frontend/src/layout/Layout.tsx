@@ -1,8 +1,8 @@
-import { Suspense, lazy, useLayoutEffect, useMemo } from 'react';
+import { Suspense, lazy, useMemo } from 'react';
 import LoadingScreen from '@components/LoadingScreen/LoadingScreen';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import ProtectedLayout from './ProtectedLayout/ProtectedLayout';
-import { getSession, selectIsLoggedIn } from '@/slices/authSlice';
+import { selectIsLoggedIn } from '@/slices/authSlice';
 import {
   LayoutThemeProvider,
   useLayoutTheme,
@@ -21,14 +21,9 @@ function ThemedLayout() {
 }
 
 export function Layout() {
-  const dispatch = useDispatch();
   const authenticated = useSelector(selectIsLoggedIn);
   // navigator.serviceWorker.register('/sw.js');
-  // console.log(authenticated, 'authenticated');
-
-  useLayoutEffect(() => {
-    dispatch(getSession());
-  }, [dispatch]);
+  console.log(authenticated, 'authenticated');
 
   const AppLayout = useMemo(() => {
     if (authenticated) {

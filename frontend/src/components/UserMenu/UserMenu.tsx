@@ -26,7 +26,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMediaQuery } from '@mantine/hooks';
-import { logOut, selectCurrentSession } from '@/slices/authSlice';
+import { logOut, storeSession, selectCurrentSession } from '@/slices/authSlice';
 import { authApi } from '@/services/auth/auth';
 import {
   useReadQuery,
@@ -71,7 +71,14 @@ function UserMenu() {
     {
       model: 'users',
       id: session?.user_id.id ?? 0,
-      fields: ['id', 'name', 'image', 'lang_id', 'notification_popup', 'notification_sound'],
+      fields: [
+        'id',
+        'name',
+        'image',
+        'lang_id',
+        'notification_popup',
+        'notification_sound',
+      ],
     },
     { skip: !session?.user_id },
   );
@@ -167,8 +174,9 @@ function UserMenu() {
   };
 
   const handleLayoutThemeChange = async (theme: 'classic' | 'modern') => {
-    setLayoutTheme(theme);
-
+    // Сначала сохраняем в БД, потом переключаем UI.
+    // При смене темы layout перемонтируется → async код прервётся,
+    // поэтому updateUser должен завершиться ДО setLayoutTheme.
     if (session?.user_id?.id) {
       try {
         await updateUser({
@@ -177,9 +185,22 @@ function UserMenu() {
           values: { layout_theme: theme },
         });
       } catch (e) {
-        // Ignore
+        // БД не обновилась — не переключаем тему
+        return;
       }
     }
+    // Обновляем session в redux + localStorage чтобы F5 сразу показал правильную тему
+    if (session) {
+      dispatch(
+        storeSession({
+          session: {
+            ...session,
+            user_id: { ...session.user_id, layout_theme: theme },
+          },
+        }),
+      );
+    }
+    setLayoutTheme(theme);
   };
 
   const notificationPopup = user?.notification_popup ?? true;
@@ -215,7 +236,9 @@ function UserMenu() {
 
   // На touch-устройствах hover на вложенных меню не работает — используем click
   const isTouchDevice = useMediaQuery('(hover: none)');
-  const subMenuTrigger = isTouchDevice ? 'click' as const : 'click-hover' as const;
+  const subMenuTrigger = isTouchDevice
+    ? ('click' as const)
+    : ('click-hover' as const);
 
   return (
     <Menu
