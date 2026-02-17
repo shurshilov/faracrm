@@ -81,6 +81,7 @@ class Activity(DotModel):
             ("done", "Done"),
             ("cancelled", "Cancelled"),
         ],
+        index=True,
         default="planned",
         description="Состояние: planned/today/overdue/done/cancelled",
     )

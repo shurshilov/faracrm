@@ -788,25 +788,32 @@ class TestDotorm:
     ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.crm.activity.models.activity_type import ActivityType
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
         types = await ActivityType.search(fields=["id"], limit=1)
 
-        async with bench(self.ORM, "create — single", 1):
-            await Activity.create(
-                Activity(
-                    res_model="lead",
-                    res_id=1,
-                    summary="Bench single",
-                    date_deadline=date.today(),
-                    user_id=1,
-                    activity_type_id=types[0].id,
-                    state="planned",
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(self.ORM, "create — single", 1):
+                await Activity.create(
+                    Activity(
+                        res_model="lead",
+                        res_id=1,
+                        summary="Bench single",
+                        date_deadline=date.today(),
+                        user_id=1,
+                        activity_type_id=types[0].id,
+                        state="planned",
+                    )
                 )
-            )
 
     async def test_create_bulk(self, db_pool, dotorm_ready, comparison_report):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.crm.activity.models.activity_type import ActivityType
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
         from tests.performance.conftest import chunked_create_bulk
 
         types = await ActivityType.search(fields=["id"], limit=1)
@@ -825,95 +832,138 @@ class TestDotorm:
             for i in range(BULK_CREATE_N)
         ]
 
-        async with bench(
-            self.ORM, f"create_bulk — {BULK_CREATE_N:,}", BULK_CREATE_N
-        ):
-            await chunked_create_bulk(Activity, payload)
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(
+                self.ORM, f"create_bulk — {BULK_CREATE_N:,}", BULK_CREATE_N
+            ):
+                await chunked_create_bulk(Activity, payload)
 
     async def test_get_single(self, db_pool, dotorm_ready, comparison_report):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
-        async with bench(self.ORM, "get — single by id", 1):
-            await Activity.get(1)
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(self.ORM, "get — single by id", 1):
+                await Activity.get(1)
 
     async def test_search_filter_user(
         self, db_pool, dotorm_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
-        async with bench(self.ORM, "search — filter user_id", SEARCH_LIMIT):
-            await Activity.search(
-                fields=["id", "summary", "state", "date_deadline"],
-                filter=[("user_id", "=", 1)],
-                limit=SEARCH_LIMIT,
-            )
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(
+                self.ORM, "search — filter user_id", SEARCH_LIMIT
+            ):
+                await Activity.search(
+                    fields=["id", "summary", "state", "date_deadline"],
+                    filter=[("user_id", "=", 1)],
+                    limit=SEARCH_LIMIT,
+                )
 
     async def test_search_filter_res_model(
         self, db_pool, dotorm_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
-        async with bench(
-            self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
-        ):
-            await Activity.search(
-                fields=["id", "summary", "state", "res_id"],
-                filter=[("res_model", "=", "lead"), ("done", "=", False)],
-                limit=SEARCH_LIMIT,
-            )
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(
+                self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
+            ):
+                await Activity.search(
+                    fields=["id", "summary", "state", "res_id"],
+                    filter=[("res_model", "=", "lead"), ("done", "=", False)],
+                    limit=SEARCH_LIMIT,
+                )
 
     async def test_search_filter_state(
         self, db_pool, dotorm_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
-        async with bench(self.ORM, "search — state='overdue'", SEARCH_LIMIT):
-            await Activity.search(
-                fields=["id", "summary", "user_id", "date_deadline"],
-                filter=[("state", "=", "overdue"), ("done", "=", False)],
-                limit=SEARCH_LIMIT,
-            )
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(
+                self.ORM, "search — state='overdue'", SEARCH_LIMIT
+            ):
+                await Activity.search(
+                    fields=["id", "summary", "user_id", "date_deadline"],
+                    filter=[("state", "=", "overdue"), ("done", "=", False)],
+                    limit=SEARCH_LIMIT,
+                )
 
     async def test_search_count(
         self, db_pool, dotorm_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
-        async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
-            await Activity.search_count()
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
+                await Activity.search_count()
 
     async def test_update_single(
         self, db_pool, dotorm_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
         obj = await Activity.get(1)
-        async with bench(self.ORM, "update — single", 1):
-            await obj.update(Activity(state="done", done=True))
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(self.ORM, "update — single", 1):
+                await obj.update(Activity(state="done", done=True))
 
     async def test_update_bulk(self, db_pool, dotorm_ready, comparison_report):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
         ids = list(range(1, BULK_UPDATE_N + 1))
-        async with bench(
-            self.ORM, f"update_bulk — {BULK_UPDATE_N:,}", BULK_UPDATE_N
-        ):
-            await Activity.update_bulk(ids, Activity(notification_sent=True))
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(
+                self.ORM, f"update_bulk — {BULK_UPDATE_N:,}", BULK_UPDATE_N
+            ):
+                await Activity.update_bulk(
+                    ids, Activity(notification_sent=True)
+                )
 
     async def test_delete_single(
         self, db_pool, dotorm_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
         obj = await Activity.get(SEED_COUNT)
-        async with bench(self.ORM, "delete — single", 1):
-            await obj.delete()
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(self.ORM, "delete — single", 1):
+                await obj.delete()
 
     async def test_delete_bulk(self, db_pool, dotorm_ready, comparison_report):
         from backend.base.crm.activity.models.activity import Activity
+        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+            ContainerTransaction,
+        )
 
         ids = list(range(SEED_COUNT - BULK_DELETE_N, SEED_COUNT))
-        async with bench(
-            self.ORM, f"delete_bulk — {BULK_DELETE_N:,}", BULK_DELETE_N
-        ):
-            await Activity.delete_bulk(ids)
+        async with ContainerTransaction(db_pool) as session:
+            async with bench(
+                self.ORM, f"delete_bulk — {BULK_DELETE_N:,}", BULK_DELETE_N
+            ):
+                await Activity.delete_bulk(ids)
