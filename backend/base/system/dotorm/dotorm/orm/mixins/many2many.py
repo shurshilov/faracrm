@@ -141,47 +141,50 @@ class OrmMany2manyMixin(_Base):
             req = request_list[index]
 
             if isinstance(req.field, (Many2one, PolymorphicMany2one)):
-                # Сначала инициализируем все записи None
+                # Build lookup dict: id → related object
+                result_by_id = {
+                    res_model.id: res_model for res_model in result
+                }
+                # Map related objects to records
                 for rec in records:
                     rec_field_raw = getattr(rec, req.field_name)
                     if isinstance(rec_field_raw, Field):
                         setattr(rec, req.field_name, None)
-                # Теперь маппим найденные результаты
-                for rec in records:
-                    rec_field_raw = getattr(rec, req.field_name)
-                    for res_model in result:
-                        if rec_field_raw == res_model.id:
-                            setattr(rec, req.field_name, res_model)
-                            break
+                    else:
+                        setattr(
+                            rec,
+                            req.field_name,
+                            result_by_id.get(rec_field_raw),
+                        )
 
             if isinstance(req.field, One2many):
-                # Сначала инициализируем все записи пустым списком
-                for rec in records:
-                    old_value = getattr(rec, req.field_name)
-                    if isinstance(old_value, Field):
-                        setattr(rec, req.field_name, [])
-                # Теперь добавляем найденные результаты
+                # Build lookup: parent_id → [children]
+                o2m_map: dict[int, list] = {}
                 for res_model in result:
-                    res_field_id = getattr(
+                    parent_id = getattr(
                         res_model, req.field.relation_table_field
                     )
-                    for rec in records:
-                        if rec.id == res_field_id:
-                            getattr(rec, req.field_name).append(res_model)
-                            break
+                    o2m_map.setdefault(parent_id, []).append(res_model)
+                # Map to records
+                for rec in records:
+                    # old_value = getattr(rec, req.field_name)
+                    # if isinstance(old_value, Field):
+                    #     setattr(rec, req.field_name, o2m_map.get(rec.id, []))
+                    # else:
+                    setattr(rec, req.field_name, o2m_map.get(rec.id, []))
 
             if isinstance(req.field, Many2many):
-                # Сначала инициализируем все записи пустым списком
-                for rec in records:
-                    old_value = getattr(rec, req.field_name)
-                    if isinstance(old_value, Field):
-                        setattr(rec, req.field_name, [])
-                # Теперь добавляем найденные результаты
+                # Build lookup: parent_id → [related]
+                m2m_map: dict[int, list] = {}
                 for res_model in result:
-                    for rec in records:
-                        if rec.id == res_model.m2m_id:
-                            getattr(rec, req.field_name).append(res_model)
-                            break
+                    m2m_map.setdefault(res_model.m2m_id, []).append(res_model)
+                # Map to records
+                for rec in records:
+                    # old_value = getattr(rec, req.field_name)
+                    # if isinstance(old_value, Field):
+                    #     setattr(rec, req.field_name, m2m_map.get(rec.id, []))
+                    # else:
+                    setattr(rec, req.field_name, m2m_map.get(rec.id, []))
                 # Удаляем служебный атрибут m2m_id
                 for res_model in result:
                     del res_model.__dict__["m2m_id"]

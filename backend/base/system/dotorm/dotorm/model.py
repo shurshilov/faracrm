@@ -188,6 +188,9 @@ class DotModel(
         cls._cache_store_fields_dict = {
             name: field for name, field in fields.items() if field.store
         }
+        cls._cache_relation_fields = [
+            (name, field) for name, field in fields.items() if field.relation
+        ]
         json_fields = [
             name
             for name, field in fields.items()
@@ -390,12 +393,8 @@ class DotModel(
 
     @classmethod
     def get_relation_fields(cls):
-        """Только те поля, которые имеют связи. Ассоциации."""
-        return [
-            (name, field)
-            for name, field in cls.get_fields().items()
-            if field.relation
-        ]
+        """Только те поля, которые имеют связи. Ассоциации. Кешируется."""
+        return cls._cache_relation_fields
 
     @classmethod
     def get_relation_fields_m2m(cls):

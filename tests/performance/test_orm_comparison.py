@@ -98,6 +98,17 @@ async def raw_pool():
     )
     async with pool.acquire() as conn:
         await conn.execute("DROP TABLE IF EXISTS bench_activity_raw CASCADE")
+        await conn.execute("DROP TABLE IF EXISTS bench_user_raw CASCADE")
+        await conn.execute("""
+            CREATE TABLE bench_user_raw (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL
+            )
+        """)
+        await conn.execute("""
+            INSERT INTO bench_user_raw (name)
+            SELECT 'User ' || g FROM generate_series(1, 10000) g
+        """)
         await conn.execute("""
             CREATE TABLE bench_activity_raw (
                 id SERIAL PRIMARY KEY,
@@ -106,7 +117,7 @@ async def raw_pool():
                 summary VARCHAR(255),
                 note TEXT,
                 date_deadline DATE NOT NULL,
-                user_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL REFERENCES bench_user_raw(id),
                 state VARCHAR(20) NOT NULL DEFAULT 'planned',
                 done BOOLEAN NOT NULL DEFAULT false,
                 active BOOLEAN NOT NULL DEFAULT true,
@@ -144,6 +155,7 @@ async def raw_pool():
     yield pool
     async with pool.acquire() as conn:
         await conn.execute("DROP TABLE IF EXISTS bench_activity_raw CASCADE")
+        await conn.execute("DROP TABLE IF EXISTS bench_user_raw CASCADE")
     await pool.close()
 
 
@@ -193,7 +205,11 @@ class TestRawAsyncpg:
         async with raw_pool.acquire() as conn:
             async with bench(self.ORM, "get — single by id", 1):
                 await conn.fetchrow(
-                    "SELECT * FROM bench_activity_raw WHERE id = $1", 1
+                    """SELECT a.*, u.id as uid, u.name as uname
+                       FROM bench_activity_raw a
+                       JOIN bench_user_raw u ON a.user_id = u.id
+                       WHERE a.id = $1""",
+                    1,
                 )
 
     async def test_search_filter_user(self, raw_pool):
@@ -202,8 +218,11 @@ class TestRawAsyncpg:
                 self.ORM, "search — filter user_id", SEARCH_LIMIT
             ):
                 rows = await conn.fetch(
-                    """SELECT id,summary,state,date_deadline
-                       FROM bench_activity_raw WHERE user_id=$1 LIMIT $2""",
+                    """SELECT a.id, a.summary, a.state, a.date_deadline,
+                              u.id as uid, u.name as uname
+                       FROM bench_activity_raw a
+                       JOIN bench_user_raw u ON a.user_id = u.id
+                       WHERE a.user_id=$1 LIMIT $2""",
                     1,
                     SEARCH_LIMIT,
                 )
@@ -214,9 +233,11 @@ class TestRawAsyncpg:
                 self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
             ):
                 rows = await conn.fetch(
-                    """SELECT id,summary,state,res_id
-                       FROM bench_activity_raw
-                       WHERE res_model=$1 AND done=$2 LIMIT $3""",
+                    """SELECT a.id, a.summary, a.state, a.res_id,
+                              u.id as uid, u.name as uname
+                       FROM bench_activity_raw a
+                       JOIN bench_user_raw u ON a.user_id = u.id
+                       WHERE a.res_model=$1 AND a.done=$2 LIMIT $3""",
                     "lead",
                     False,
                     SEARCH_LIMIT,
@@ -228,9 +249,11 @@ class TestRawAsyncpg:
                 self.ORM, "search — state='overdue'", SEARCH_LIMIT
             ):
                 rows = await conn.fetch(
-                    """SELECT id,summary,user_id,date_deadline
-                       FROM bench_activity_raw
-                       WHERE state=$1 AND done=$2 LIMIT $3""",
+                    """SELECT a.id, a.summary, a.user_id, a.date_deadline,
+                              u.id as uid, u.name as uname
+                       FROM bench_activity_raw a
+                       JOIN bench_user_raw u ON a.user_id = u.id
+                       WHERE a.state=$1 AND a.done=$2 LIMIT $3""",
                     "overdue",
                     False,
                     SEARCH_LIMIT,
@@ -294,7 +317,12 @@ try:
         create_async_engine,
         async_sessionmaker,
     )
-    from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+    from sqlalchemy.orm import (
+        DeclarativeBase,
+        Mapped,
+        mapped_column,
+        relationship,
+    )
     from sqlalchemy import (
         String,
         Integer as SAInteger,
@@ -302,11 +330,13 @@ try:
         Date as SADate,
         DateTime as SADateTime,
         Text as SAText,
+        ForeignKey,
         select,
         func,
         update as sa_update,
         delete as sa_delete,
     )
+    from sqlalchemy.orm import selectinload
 
     HAS_SQLALCHEMY = True
 except ImportError:
@@ -318,6 +348,12 @@ if HAS_SQLALCHEMY:
     class SABase(DeclarativeBase):
         pass
 
+    class SAUser(SABase):
+        __tablename__ = "bench_user_sa"
+
+        id: Mapped[int] = mapped_column(primary_key=True)
+        name: Mapped[str] = mapped_column(String(255))
+
     class SAActivity(SABase):
         __tablename__ = "bench_activity_sa"
 
@@ -327,7 +363,10 @@ if HAS_SQLALCHEMY:
         summary: Mapped[str | None] = mapped_column(String(255))
         note: Mapped[str | None] = mapped_column(SAText)
         date_deadline: Mapped[date] = mapped_column(SADate, index=True)
-        user_id: Mapped[int] = mapped_column(SAInteger, index=True)
+        user_id: Mapped[int] = mapped_column(
+            ForeignKey("bench_user_sa.id"), index=True
+        )
+        user: Mapped["SAUser"] = relationship(lazy="raise")
         state: Mapped[str] = mapped_column(
             String(20), index=True, default="planned"
         )
@@ -366,6 +405,10 @@ async def sa_session():
         max_size=5,
     )
     async with raw_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO bench_user_sa (name)
+            SELECT 'User ' || g FROM generate_series(1, 10000) g
+        """)
         await conn.execute(f"""
             INSERT INTO bench_activity_sa
                 (res_model, res_id, summary, date_deadline, user_id, state, done,
@@ -436,7 +479,12 @@ class TestSQLAlchemy:
     async def test_get_single(self, sa_session):
         async with sa_session() as s:
             async with bench(self.ORM, "get — single by id", 1):
-                await s.get(SAActivity, 1)
+                result = await s.execute(
+                    select(SAActivity)
+                    .options(selectinload(SAActivity.user))
+                    .where(SAActivity.id == 1)
+                )
+                result.scalar_one()
 
     async def test_search_filter_user(self, sa_session):
         async with sa_session() as s:
@@ -445,6 +493,7 @@ class TestSQLAlchemy:
             ):
                 result = await s.execute(
                     select(SAActivity)
+                    .options(selectinload(SAActivity.user))
                     .where(SAActivity.user_id == 1)
                     .limit(SEARCH_LIMIT)
                 )
@@ -457,6 +506,7 @@ class TestSQLAlchemy:
             ):
                 result = await s.execute(
                     select(SAActivity)
+                    .options(selectinload(SAActivity.user))
                     .where(
                         SAActivity.res_model == "lead",
                         SAActivity.done == False,
@@ -472,6 +522,7 @@ class TestSQLAlchemy:
             ):
                 result = await s.execute(
                     select(SAActivity)
+                    .options(selectinload(SAActivity.user))
                     .where(
                         SAActivity.state == "overdue", SAActivity.done == False
                     )
@@ -543,6 +594,13 @@ except ImportError:
 
 if HAS_TORTOISE:
 
+    class TortoiseUser(TortoiseModel):
+        id = fields.IntField(pk=True)
+        name = fields.CharField(max_length=255)
+
+        class Meta:
+            table = "bench_user_tortoise"
+
     class TortoiseActivity(TortoiseModel):
         id = fields.IntField(pk=True)
         res_model = fields.CharField(max_length=255, index=True)
@@ -550,7 +608,9 @@ if HAS_TORTOISE:
         summary = fields.CharField(max_length=255, null=True)
         note = fields.TextField(null=True)
         date_deadline = fields.DateField(index=True)
-        user_id = fields.IntField(index=True)
+        user = fields.ForeignKeyField(
+            "models.TortoiseUser", related_name="activities", index=True
+        )
         state = fields.CharField(max_length=20, default="planned", index=True)
         done = fields.BooleanField(default=False, index=True)
         active = fields.BooleanField(default=True)
@@ -583,6 +643,10 @@ async def tortoise_db():
         max_size=5,
     )
     async with raw_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO bench_user_tortoise (name)
+            SELECT 'User ' || g FROM generate_series(1, 10000) g
+        """)
         await conn.execute(f"""
             INSERT INTO bench_activity_tortoise
                 (res_model, res_id, summary, date_deadline, user_id, state, done,
@@ -619,6 +683,7 @@ async def tortoise_db():
         await conn.execute(
             "DROP TABLE IF EXISTS bench_activity_tortoise CASCADE"
         )
+        await conn.execute("DROP TABLE IF EXISTS bench_user_tortoise CASCADE")
     await clean_pool.close()
 
 
@@ -658,12 +723,13 @@ class TestTortoise:
 
     async def test_get_single(self, tortoise_db):
         async with bench(self.ORM, "get — single by id", 1):
-            await TortoiseActivity.get(id=1)
+            await TortoiseActivity.get(id=1).select_related("user")
 
     async def test_search_filter_user(self, tortoise_db):
         async with bench(self.ORM, "search — filter user_id", SEARCH_LIMIT):
             rows = (
                 await TortoiseActivity.filter(user_id=1)
+                .select_related("user")
                 .limit(SEARCH_LIMIT)
                 .all()
             )
@@ -674,6 +740,7 @@ class TestTortoise:
         ):
             rows = await (
                 TortoiseActivity.filter(res_model="lead", done=False)
+                .select_related("user")
                 .limit(SEARCH_LIMIT)
                 .all()
             )
@@ -682,6 +749,7 @@ class TestTortoise:
         async with bench(self.ORM, "search — state='overdue'", SEARCH_LIMIT):
             rows = await (
                 TortoiseActivity.filter(state="overdue", done=False)
+                .select_related("user")
                 .limit(SEARCH_LIMIT)
                 .all()
             )
@@ -906,13 +974,10 @@ class TestDotorm:
         self, db_pool, dotorm_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
-        from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
-            ContainerTransaction,
-        )
 
-        async with ContainerTransaction(db_pool) as session:
-            async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
-                await Activity.search_count()
+        # async with ContainerTransaction(db_pool) as session:
+        async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
+            await Activity.search_count()
 
     async def test_update_single(
         self, db_pool, dotorm_ready, comparison_report
