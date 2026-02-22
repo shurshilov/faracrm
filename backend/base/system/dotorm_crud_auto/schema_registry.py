@@ -19,7 +19,6 @@ from typing import (
     Any,
     Literal,
     Optional,
-    Tuple,
     Union,
     get_args,
     get_origin,
@@ -73,7 +72,6 @@ class SchemaRegistry:
         self._search_output_schemas: dict[str, type[BaseModel]] = {}
         self._read_output_schemas: dict[str, type[BaseModel]] = {}
         self._search_input_schemas: dict[str, type[BaseModel]] = {}
-        self._triplets: dict[str, list] = {}
         self._built = False
 
     def build_all(self, models: list[type]) -> None:
@@ -137,9 +135,6 @@ class SchemaRegistry:
                 self._search_input_schemas[name] = (
                     self._build_search_input_schema(name, base, model)
                 )
-
-                # Triplets для фильтрации
-                self._triplets[name] = self._build_search_triplets(base)
 
             except Exception as e:
                 errors.append(f"{name}: {e}")
@@ -209,11 +204,6 @@ class SchemaRegistry:
             )
         return self._search_input_schemas[name]
 
-    def get_triplets(self, model: type) -> list:
-        """Получить триплеты для фильтрации."""
-        name = model.__name__
-        return self._triplets.get(name, [])
-
     def reset(self) -> None:
         """
         Сбросить все кэшированные схемы.
@@ -225,7 +215,6 @@ class SchemaRegistry:
         self._search_output_schemas.clear()
         self._read_output_schemas.clear()
         self._search_input_schemas.clear()
-        self._triplets.clear()
         self._built = False
 
     @property
@@ -435,14 +424,9 @@ class SchemaRegistry:
     ) -> type[BaseModel]:
         """Схема для ввода поиска."""
         allowed_fields = list(model.get_all_fields().keys())
-        triplets = self._build_search_triplets(base)
-
         # Защита от пустых списков
         if not allowed_fields:
             allowed_fields = ["id"]
-
-        if not triplets:
-            triplets = [Tuple[Literal["id"], Literal["="], int]]
 
         # Literal требует хотя бы одно значение
         fields_literal = (
@@ -461,60 +445,10 @@ class SchemaRegistry:
             sort=(sort_literal, "id"),
             start=(Optional[int], None),
             limit=(Optional[int], None),
-            # filter принимает FilterExpression: список триплетов [field, op, value]
-            # и логических операторов 'and'/'or'
-            # Пример: [["name", "=", "test"], "or", ["id", ">", 5]]
+            # filter: валидация структуры происходит в FilterParser (ORM)
             filter=(Optional[list[Union[list, Literal["and", "or"]]]], None),
             raw=(bool, False),
         )
-
-    def _build_search_triplets(self, base: type[BaseModel]) -> list:
-        """Генерирует типы триплетов для фильтрации.
-
-        JSON не поддерживает tuple, поэтому принимаем list.
-        Валидация структуры происходит в filter_parser.py.
-        """
-        # Собираем все допустимые имена полей и операторы
-        triplets = []
-
-        for field_name, field_info in base.model_fields.items():
-            metadata = self._get_field_metadata(field_info)
-
-            if metadata and metadata[0] in RELATION_TYPES:
-                if metadata[0] in SINGLE_RELATIONS:
-                    ops = Literal["=", ">", "<", "!=", ">=", "<="]
-                    triplets.append(Tuple[Literal[field_name], ops, Id])
-                else:
-                    ops = Literal["in", "not in"]
-                    triplets.append(Tuple[Literal[field_name], ops, list[Id]])
-            else:
-                annotation = field_info.annotation
-                # Убираем Optional
-                if get_origin(annotation) is Union:
-                    args = [
-                        a for a in get_args(annotation) if a is not type(None)
-                    ]
-                    if args:
-                        annotation = args[0]
-
-                if annotation == str:
-                    ops = Literal[
-                        "=",
-                        "like",
-                        "ilike",
-                        "=like",
-                        "=ilike",
-                        "not ilike",
-                        "not like",
-                    ]
-                elif annotation == bool:
-                    ops = Literal["=", "!="]
-                else:
-                    ops = Literal["=", ">", "<", "!=", ">=", "<="]
-
-                triplets.append(Tuple[Literal[field_name], ops, annotation])
-
-        return triplets
 
     # ==================== Утилиты ====================
 
