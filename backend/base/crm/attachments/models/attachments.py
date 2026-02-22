@@ -11,6 +11,7 @@ from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Binary,
     Char,
+    Field,
     Integer,
     Boolean,
     Many2one,
@@ -44,6 +45,16 @@ class Attachment(DotModel):
     """
 
     __table__ = "attachments"
+
+    def json_list(self):
+        """Добавляет checksum в LIST сериализацию для cache busting."""
+        result = super().json_list()
+        checksum = getattr(self, "checksum", None)
+        if checksum and not isinstance(checksum, Field):
+            result["checksum"] = checksum
+        else:
+            result["checksum"] = None
+        return result
 
     id: int = Integer(primary_key=True)
 

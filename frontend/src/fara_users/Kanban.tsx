@@ -30,6 +30,7 @@ function UserCard({ user, onClick }: UserCardProps) {
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
 
   const imageId = user.image?.id;
+  const imageChecksum = user.image?.checksum;
 
   // Проверяем является ли пользователь админом
   const isAdmin = (user as any).is_admin === true;
@@ -39,8 +40,8 @@ function UserCard({ user, onClick }: UserCardProps) {
     setAvatarSrc(null);
     if (!imageId || imageId <= 0) return;
 
-    setAvatarSrc(attachmentPreviewUrl(imageId, 200, 200));
-  }, [imageId]);
+    setAvatarSrc(attachmentPreviewUrl(imageId, 200, 200, imageChecksum));
+  }, [imageId, imageChecksum]);
 
   // Получаем инициалы для fallback аватара
   const getInitials = (name: string) => {

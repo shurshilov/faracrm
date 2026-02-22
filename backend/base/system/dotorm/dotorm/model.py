@@ -685,10 +685,7 @@ class DotModel(
             elif isinstance(field, DotModel):
                 if mode == JsonMode.LIST:
                     # обрубаем, исключаем все релейшен поля
-                    fields_json[field_name] = {
-                        "id": field.id,
-                        "name": getattr(field, "name", str(field.id)),
-                    }
+                    fields_json[field_name] = field.json_list()
                 elif mode == JsonMode.FORM:
                     fields_json[field_name] = field.json()
                 elif mode in (JsonMode.CREATE, JsonMode.UPDATE):
@@ -755,6 +752,17 @@ class DotModel(
             else:
                 fields_json[field_name] = field
         return fields_json
+
+    def json_list(self):
+        """Сериализация для LIST mode (вложенный M2O).
+
+        По умолчанию возвращает {id, name}.
+        Модели могут переопределить для добавления полей.
+        """
+        return {
+            "id": self.id,
+            "name": getattr(self, "name", str(self.id)),
+        }
 
     def json(
         self,

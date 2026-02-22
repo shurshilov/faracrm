@@ -3,7 +3,7 @@
 Используется для автоматической генерации схем валидации в crud routes.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from backend.base.system.schemas.base_schema import Id
 
@@ -59,10 +59,13 @@ class SchemaCreateOutput(BaseModel):
 
 class SchemaRelationNested(BaseModel):
     """Используется при чтении одиночной записи или мнодества записей.
-    Оставляя на каком-либо уровне вложенности только id и name поля"""
+    Оставляя на каком-либо уровне вложенности только id и name поля.
+    extra="allow" для поддержки fields_nested (например checksum)."""
+
+    model_config = ConfigDict(extra="allow")
 
     id: Id
-    name: str
+    name: str | None = None
 
 
 class SchemaRelationMany2ManyUpdateCreate[Model](BaseModel):
