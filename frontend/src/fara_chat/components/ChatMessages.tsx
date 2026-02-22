@@ -218,6 +218,7 @@ export function ChatMessages({
         id: a.id,
         name: a.name,
         mimetype: a.mimetype,
+        checksum: a.checksum,
       })),
     );
     setGalleryIndex(attachmentIndex);

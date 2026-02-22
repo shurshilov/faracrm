@@ -626,6 +626,7 @@ export interface MessageAttachment {
   name: string;
   mimetype: string;
   size: number;
+  checksum?: string | null;
   is_voice?: boolean;
   show_preview?: boolean;
 }

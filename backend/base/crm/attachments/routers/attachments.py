@@ -129,6 +129,7 @@ async def attachment_preview(
             "model",
             "res_id",
             "name",
+            "checksum",
             "storage_file_url",
             "storage_file_id",
             "mimetype",
@@ -157,9 +158,19 @@ async def attachment_preview(
             # Если ресайз не удался, возвращаем оригинал
             pass
 
+    # ETag на основе checksum + размеров (уникальный ключ варианта)
+    etag = f'"{attach.checksum or attach.id}-{w or 0}-{h or 0}"'
+
+    # Если клиент прислал If-None-Match и checksum совпадает — 304
+    if_none_match = req.headers.get("if-none-match")
+    if if_none_match and if_none_match == etag:
+        return Response(status_code=304, headers={"ETag": etag})
+
     return Response(
         headers={
-            "Content-Disposition": f"inline; filename={quote(attach.name, safe="")}"
+            "Content-Disposition": f"inline; filename={quote(attach.name, safe='')}",
+            "Cache-Control": "private, max-age=86400, immutable",
+            "ETag": etag,
         },
         media_type=attach.mimetype,
         content=attachment_content,

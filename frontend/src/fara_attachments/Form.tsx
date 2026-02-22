@@ -100,7 +100,14 @@ function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
     if (attachment.show_preview === false) return;
 
     setIsLoading(true);
-    setImageSrc(attachmentPreviewUrl(attachment.id));
+    setImageSrc(
+      attachmentPreviewUrl(
+        attachment.id,
+        undefined,
+        undefined,
+        attachment.checksum,
+      ),
+    );
     setIsLoading(false);
   }, [attachment]);
 

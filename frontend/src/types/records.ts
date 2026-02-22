@@ -386,6 +386,15 @@ export interface ChatExternalMessageRecord extends BaseRecord {
 export interface AttachmentRecord extends BaseRecord {
   name: string;
   active: boolean;
+  mimetype: string | null;
+  size: number | null;
+  checksum: string | null;
+  public: boolean;
+  folder: boolean;
+  is_voice: boolean;
+  show_preview: boolean;
+  content: string | null;
+  storage_file_url: string | null;
   res_model: string | null;
   res_id: number | null;
   storage_id: RelationRecord | null;

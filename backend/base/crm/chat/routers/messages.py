@@ -86,6 +86,7 @@ async def get_messages(
                 "name",
                 "mimetype",
                 "size",
+                "checksum",
                 "res_id",
                 "is_voice",
                 "show_preview",
@@ -103,6 +104,7 @@ async def get_messages(
                     "name": att.name,
                     "mimetype": att.mimetype,
                     "size": att.size,
+                    "checksum": att.checksum,
                     "is_voice": att.is_voice or False,
                     "show_preview": att.show_preview,
                 }

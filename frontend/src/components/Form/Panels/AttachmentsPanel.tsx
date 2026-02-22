@@ -7,8 +7,6 @@ import {
   useCreateMutation,
   useDeleteBulkMutation,
 } from '@/services/api/crudApi';
-import { useSelector } from 'react-redux';
-import { selectCurrentSession } from '@/slices/authSlice';
 import {
   AttachmentPreview,
   ImageGalleryModal,
@@ -69,6 +67,7 @@ export function AttachmentsPanel({ resModel, resId }: AttachmentsPanelProps) {
     id: att.id,
     name: att.name || undefined,
     mimetype: att.mimetype || undefined,
+    checksum: att.checksum || undefined,
   }));
 
   const handleOpenGallery = useCallback(

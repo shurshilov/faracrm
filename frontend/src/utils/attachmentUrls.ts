@@ -23,12 +23,15 @@ export function attachmentPreviewUrl(
   id: number | string,
   width?: number,
   height?: number,
+  checksum?: string | null,
 ): string {
   const base = `${API_BASE_URL}/attachments/${id}/content/preview`;
-  if (width && height) return `${base}?w=${width}&h=${height}`;
-  if (width) return `${base}?w=${width}`;
-  if (height) return `${base}?h=${height}`;
-  return base;
+  const params = new URLSearchParams();
+  if (width) params.set('w', String(width));
+  if (height) params.set('h', String(height));
+  if (checksum) params.set('v', checksum);
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
 }
 
 /** URL для скачивания (download link, cookie auth) */

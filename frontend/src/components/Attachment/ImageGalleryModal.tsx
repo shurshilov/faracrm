@@ -19,7 +19,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
 } from '@tabler/icons-react';
-import { attachmentPreviewUrl, attachmentContentUrl } from '@/utils/attachmentUrls';
+import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
 import { isImageMimetype } from './fileIcons';
 import classes from './ImagePreviewModal.module.css';
 
@@ -27,6 +27,7 @@ export interface GalleryItem {
   id?: number;
   name?: string;
   mimetype?: string;
+  checksum?: string | null;
   content?: string; // base64
 }
 
@@ -85,7 +86,14 @@ export function ImageGalleryModal({
 
     // Прямой URL через cookie auth
     if (currentItem.id) {
-      setLoadedSrc(attachmentPreviewUrl(currentItem.id));
+      setLoadedSrc(
+        attachmentPreviewUrl(
+          currentItem.id,
+          undefined,
+          undefined,
+          currentItem.checksum,
+        ),
+      );
     }
   }, [opened, currentIndex, currentItem]);
 

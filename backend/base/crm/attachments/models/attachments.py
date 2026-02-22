@@ -3,6 +3,7 @@
 # OPTIMIZED: priority-based routing, folder cache in separate table
 
 import base64
+import hashlib
 import logging
 from typing import Self, TYPE_CHECKING, Optional, Tuple
 
@@ -287,6 +288,8 @@ class Attachment(DotModel):
             if not payload.size:
                 payload.size = len(content_bytes)
 
+            payload.checksum = hashlib.sha1(content_bytes).hexdigest()
+
             route, storage, parent_folder_id, parent_folder_name = (
                 await self._resolve_route_and_folder(
                     res_model=payload.res_model,
@@ -352,6 +355,8 @@ class Attachment(DotModel):
                 if not payload.size:
                     payload.size = len(content_bytes)
 
+                payload.checksum = hashlib.sha1(content_bytes).hexdigest()
+
                 strategy = get_strategy(self.storage_id.type)
                 result = await strategy.update_file(
                     storage=self.storage_id,
@@ -404,6 +409,8 @@ class Attachment(DotModel):
 
                 if not attachment.size:
                     attachment.size = len(content_bytes)
+
+                attachment.checksum = hashlib.sha1(content_bytes).hexdigest()
 
                 route, storage, parent_folder_id, parent_folder_name = (
                     await self._resolve_route_and_folder(

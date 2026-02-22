@@ -29,6 +29,7 @@ export interface AttachmentData {
   name?: string | null;
   mimetype?: string | null;
   size?: number | null;
+  checksum?: string | null;
   content?: string | null;
   storage_file_url?: string | null;
   is_voice?: boolean;
@@ -49,11 +50,11 @@ interface AttachmentPreviewProps {
 
 /** Прямой URL для превью — через cookie auth, без fetch+blob */
 function getPreviewUrl(
-  attachId: number,
+  attach: AttachmentData,
   width?: number,
   height?: number,
 ): string {
-  return attachmentPreviewUrl(attachId, width, height);
+  return attachmentPreviewUrl(attach.id!, width, height, attach.checksum);
 }
 
 export function AttachmentPreview({
@@ -135,12 +136,13 @@ export function AttachmentPreview({
     // showPreview=true → ставим прямой URL (cookie auth, браузер грузит сам)
     if (canFetchFromApi && typeof attachment.id === 'number') {
       const size = previewSize * 2;
-      setThumbnailSrc(getPreviewUrl(attachment.id, size, size));
+      setThumbnailSrc(getPreviewUrl(attachment, size, size));
       loadedForIdRef.current = attachId ?? null;
     }
   }, [
     attachment.id,
     attachment.content,
+    attachment.checksum,
     attachment.storage_file_url,
     attachment.mimetype,
     isImage,
@@ -192,7 +194,7 @@ export function AttachmentPreview({
     // Нужно загрузить оригинал с сервера
     if (canFetchFromApi && typeof attachment.id === 'number') {
       // Прямой URL без размеров → оригинал
-      const src = getPreviewUrl(attachment.id);
+      const src = getPreviewUrl(attachment);
       setOriginalSrc(src);
       if (!thumbnailSrc) {
         setThumbnailSrc(src);

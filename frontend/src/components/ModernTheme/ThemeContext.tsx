@@ -41,6 +41,14 @@ export function LayoutThemeProvider({ children }: ThemeProviderProps) {
     return 'modern';
   });
 
+  // // Синхронизация темы при загрузке/обновлении сессии
+  // useEffect(() => {
+  //   const fromSession = session?.user_id?.layout_theme;
+  //   if (fromSession === 'classic' || fromSession === 'modern') {
+  //     setLayoutTheme(fromSession);
+  //   }
+  // }, [session?.user_id?.layout_theme]);
+
   useEffect(() => {
     document.body.setAttribute('data-layout-theme', layoutTheme);
   }, [layoutTheme]);

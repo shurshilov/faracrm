@@ -162,7 +162,9 @@ function AttachmentCard({
     }
 
     setIsLoading(true);
-    setThumbSrc(attachmentPreviewUrl(attachment.id, 200, 200));
+    setThumbSrc(
+      attachmentPreviewUrl(attachment.id, 200, 200, attachment.checksum),
+    );
     setIsLoading(false);
   }, [attachment.id, isImage, shouldShowPreview]);
 
@@ -390,6 +392,7 @@ export function ViewKanbanAttachments() {
       'name',
       'mimetype',
       'size',
+      'checksum',
       'public',
       'folder',
       'is_voice',
