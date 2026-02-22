@@ -17,13 +17,11 @@ import {
   IconX,
   IconPhotoOff,
 } from '@tabler/icons-react';
-import { useSelector } from 'react-redux';
 import { FileIcon } from './FileIcon';
 import { ImagePreviewModal } from './ImagePreviewModal';
 import { AudioPlayer } from './AudioPlayer';
 import { isImageMimetype, isAudioMimetype, formatFileSize } from './fileIcons';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
-import { selectCurrentSession } from '@/slices/authSlice';
+import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
 import classes from './AttachmentPreview.module.css';
 
 export interface AttachmentData {
@@ -49,31 +47,13 @@ interface AttachmentPreviewProps {
   compact?: boolean;
 }
 
-/** Загрузка картинки с сервера, возвращает data URL или null */
-function fetchImageFromApi(
+/** Прямой URL для превью — через cookie auth, без fetch+blob */
+function getPreviewUrl(
   attachId: number,
-  token: string,
   width?: number,
   height?: number,
-): Promise<string | null> {
-  const params = width && height ? `?w=${width}&h=${height}` : '';
-  return fetch(`${API_BASE_URL}/attachments/${attachId}/preview${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-    .then(response => {
-      if (!response.ok) throw new Error('Failed to load');
-      return response.blob();
-    })
-    .then(blob => {
-      // Пустой ответ = файл не найден
-      if (blob.size === 0) throw new Error('Empty response');
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Read failed'));
-        reader.readAsDataURL(blob);
-      });
-    });
+): string {
+  return attachmentPreviewUrl(attachId, width, height);
 }
 
 export function AttachmentPreview({
@@ -103,7 +83,6 @@ export function AttachmentPreview({
   const loadedForIdRef = useRef<number | string | null>(null);
   const errorForIdRef = useRef<number | string | null>(null);
 
-  const session = useSelector(selectCurrentSession);
   const isImage = isImageMimetype(attachment.mimetype);
   const isAudio = isAudioMimetype(attachment.mimetype);
 
@@ -111,8 +90,7 @@ export function AttachmentPreview({
     isImage &&
     attachment.id &&
     typeof attachment.id === 'number' &&
-    attachment.id > 0 &&
-    !!session?.token;
+    attachment.id > 0;
 
   // --- Загрузка thumbnail при showPreview=true ---
   useEffect(() => {
@@ -154,26 +132,11 @@ export function AttachmentPreview({
     // showPreview=false → НЕ грузим, покажем иконку
     if (!showPreview) return;
 
-    // showPreview=true → грузим thumbnail
-    if (
-      canFetchFromApi &&
-      typeof attachment.id === 'number' &&
-      session?.token
-    ) {
-      setIsLoadingThumbnail(true);
-      // Превью в размере previewSize * 2 для retina
+    // showPreview=true → ставим прямой URL (cookie auth, браузер грузит сам)
+    if (canFetchFromApi && typeof attachment.id === 'number') {
       const size = previewSize * 2;
-      fetchImageFromApi(attachment.id, session.token, size, size)
-        .then(src => {
-          loadedForIdRef.current = attachment.id ?? null;
-          setThumbnailSrc(src);
-          setThumbnailError(false);
-        })
-        .catch(() => {
-          errorForIdRef.current = attachment.id ?? null;
-          setThumbnailError(true);
-        })
-        .finally(() => setIsLoadingThumbnail(false));
+      setThumbnailSrc(getPreviewUrl(attachment.id, size, size));
+      loadedForIdRef.current = attachId ?? null;
     }
   }, [
     attachment.id,
@@ -182,7 +145,6 @@ export function AttachmentPreview({
     attachment.mimetype,
     isImage,
     isAudio,
-    session?.token,
     showPreview,
     canFetchFromApi,
     previewSize,
@@ -228,31 +190,15 @@ export function AttachmentPreview({
     }
 
     // Нужно загрузить оригинал с сервера
-    if (
-      canFetchFromApi &&
-      typeof attachment.id === 'number' &&
-      session?.token &&
-      !isLoadingOriginal
-    ) {
-      setIsLoadingOriginal(true);
-      // Без w/h → оригинал
-      fetchImageFromApi(attachment.id, session.token)
-        .then(src => {
-          if (src) {
-            setOriginalSrc(src);
-            // Если thumbnail не был загружен (showPreview=false), покажем его тоже
-            if (!thumbnailSrc) {
-              setThumbnailSrc(src);
-              loadedForIdRef.current = attachment.id ?? null;
-            }
-            setImageModalOpened(true);
-          }
-        })
-        .catch(() => {
-          errorForIdRef.current = attachment.id ?? null;
-          setThumbnailError(true);
-        })
-        .finally(() => setIsLoadingOriginal(false));
+    if (canFetchFromApi && typeof attachment.id === 'number') {
+      // Прямой URL без размеров → оригинал
+      const src = getPreviewUrl(attachment.id);
+      setOriginalSrc(src);
+      if (!thumbnailSrc) {
+        setThumbnailSrc(src);
+        loadedForIdRef.current = attachment.id ?? null;
+      }
+      setImageModalOpened(true);
     }
   }, [
     onClick,
@@ -263,8 +209,6 @@ export function AttachmentPreview({
     attachment.id,
     attachment.content,
     canFetchFromApi,
-    session?.token,
-    isLoadingOriginal,
     onDownload,
   ]);
 
@@ -354,8 +298,7 @@ export function AttachmentPreview({
             style={{
               width: previewSize,
               height: previewSize,
-              cursor:
-                isImage || onClick || onDownload ? 'pointer' : undefined,
+              cursor: isImage || onClick || onDownload ? 'pointer' : undefined,
             }}
             onClick={handleClick}>
             {isLoading || isLoadingAny ? (

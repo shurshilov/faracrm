@@ -28,12 +28,12 @@ import { useTranslation } from 'react-i18next';
 import { useMediaQuery } from '@mantine/hooks';
 import { logOut, storeSession, selectCurrentSession } from '@/slices/authSlice';
 import { authApi } from '@/services/auth/auth';
+import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
 import {
   useReadQuery,
   useSearchQuery,
   useUpdateMutation,
 } from '@/services/api/crudApi';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
 import { flags } from '@/assets/flags';
 import { useLayoutTheme } from '@/components/ModernTheme';
 import classes from './UserMenu.module.css';
@@ -118,28 +118,12 @@ function UserMenu() {
     }
   }, [currentLang?.code]);
 
-  // Layout theme синхронизируется при логине через ThemeContext initialState.
-  // Локальные изменения сразу применяются через setLayoutTheme,
-  // а updateUser сохраняет в БД для следующего логина.
-
   useEffect(() => {
     setAvatarSrc(null);
-    if (!imageId || !session?.token) return;
+    if (!imageId) return;
 
-    fetch(`${API_BASE_URL}/attachments/${imageId}/preview?w=50&h=50`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    })
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to load avatar');
-        return response.blob();
-      })
-      .then(blob => {
-        const reader = new FileReader();
-        reader.onload = () => setAvatarSrc(reader.result as string);
-        reader.readAsDataURL(blob);
-      })
-      .catch(() => setAvatarSrc(null));
-  }, [imageId, session?.token]);
+    setAvatarSrc(attachmentPreviewUrl(imageId, 50, 50));
+  }, [imageId]);
 
   const handleLogout = () => {
     dispatch(logOut());

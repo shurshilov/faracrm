@@ -13,6 +13,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export const baseQuery = fetchBaseQuery({
   baseUrl: `${API_BASE_URL}/`,
+  credentials: 'include', // Отправлять cookie (guard_token) с каждым запросом
   prepareHeaders: (headers, { getState }) => {
     const token = (getState() as RootState).auth.session?.token;
     if (token) {

@@ -19,6 +19,13 @@ router_private = APIRouter(
     tags=["Attachment"],
     dependencies=[Depends(AuthTokenApp.verify_access)],
 )
+# Роутер для бинарного контента — поддержка авторизации через cookie
+# Позволяет использовать <img src="...">, <a href="...">, <audio src="...">
+# без необходимости передавать Authorization header
+router_content = APIRouter(
+    tags=["Attachment"],
+    dependencies=[Depends(AuthTokenApp.verify_access_by_cookie)],
+)
 
 # Типы изображений, которые можно ресайзить
 RESIZABLE_MIMETYPES = {
@@ -157,3 +164,27 @@ async def attachment_preview(
         media_type=attach.mimetype,
         content=attachment_content,
     )
+
+
+# ── Cookie-based routes for binary content ──────────────
+# Дублируют /attachments/{id} и /attachments/{id}/preview
+# но авторизуются через HttpOnly cookie (cookie_token).
+# Фронт может использовать <img src="/api/content/attachments/123/preview">
+# без Authorization header — cookie отправится автоматически.
+
+
+@router_content.get("/attachments/{attachment_id}/content")
+async def attachment_content_cookie(req: Request, attachment_id: Id):
+    """Скачать файл (авторизация через cookie)"""
+    return await attachment_content(req, attachment_id)
+
+
+@router_content.get("/attachments/{attachment_id}/content/preview")
+async def attachment_preview_cookie(
+    req: Request,
+    attachment_id: Id,
+    w: Optional[int] = Query(None, ge=1, le=2000, description="Width"),
+    h: Optional[int] = Query(None, ge=1, le=2000, description="Height"),
+):
+    """Превью файла (авторизация через cookie)"""
+    return await attachment_preview(req, attachment_id, w, h)

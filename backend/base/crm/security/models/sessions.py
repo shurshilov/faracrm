@@ -50,6 +50,11 @@ class Session(DotModel):
     active: bool = Boolean(default=True)
     user_id: "User" = Many2one(relation_table=lambda: env.models.user)
     token: str = Char(max_length=256, index=True)
+    cookie_token: str | None = Char(
+        max_length=256,
+        index=True,
+        description="HttpOnly cookie token for XSS protection (Token Binding)",
+    )
     ttl: int = Integer()
     expired_datetime: datetime | None = Datetime()
 
@@ -74,10 +79,11 @@ class Session(DotModel):
             return cls.DEFAULT_TTL
 
     @hybridmethod
-    async def session_check(self, token: str):
+    async def session_check(self, token: str, cookie_token: str | None = None):
         """Метод проверяет валидность сессии.
         1. Проверить существование активной сессии по токену
         2. Проверить истекла сессии или нет
+        3. Проверить cookie_token (Token Binding — обязателен)
         """
         session = self._get_db_session()
 
@@ -89,6 +95,7 @@ class Session(DotModel):
                 s.create_datetime,
                 s.expired_datetime,
                 s.active,
+                s.cookie_token,
                 u.id as user_id,
                 u.is_admin,
                 u.name
@@ -118,7 +125,72 @@ class Session(DotModel):
             )
             raise AuthException.SessionExpired()
 
+        # Token Binding: cookie_token обязателен.
+        # На будущее для мобильных: добавить client_type + device_id.
+        stored_cookie = session_id.get("cookie_token")
+        if (
+            not stored_cookie
+            or not cookie_token
+            or cookie_token != stored_cookie
+        ):
+            raise AuthException.SessionNotExist()
+
         # Создаём объект сессии с user_id содержащим is_admin
+        session_obj = Session(
+            id=session_id["id"],
+            ttl=session_id["ttl"],
+            create_datetime=session_id["create_datetime"],
+            active=session_id["active"],
+            user_id=env.models.user(
+                id=session_id["user_id"],
+                is_admin=session_id["is_admin"],
+                name=session_id["name"],
+            ),
+        )
+
+        return session_obj
+
+    @hybridmethod
+    async def session_check_by_cookie(self, cookie_token: str):
+        """Проверка сессии по cookie_token (из HttpOnly cookie).
+
+        Используется для бинарного контента (attachments), где невозможно
+        передать Authorization header (<img src>, <a href>).
+        """
+        session = self._get_db_session()
+
+        stmt = """
+            SELECT
+                s.id,
+                s.ttl,
+                s.create_datetime,
+                s.expired_datetime,
+                s.active,
+                u.id as user_id,
+                u.is_admin,
+                u.name
+            FROM sessions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.cookie_token = %s AND s.active = true
+            LIMIT 1
+        """
+
+        result = await session.execute(stmt, [cookie_token])
+
+        if not result:
+            raise AuthException.SessionNotExist()
+
+        session_id = result[0]
+        now = datetime.now(timezone.utc)
+        expired = session_id["expired_datetime"]
+
+        if expired < now:
+            await session.execute(
+                "UPDATE sessions SET active = false WHERE id = %s",
+                [session_id["id"]],
+            )
+            raise AuthException.SessionExpired()
+
         session_obj = Session(
             id=session_id["id"],
             ttl=session_id["ttl"],

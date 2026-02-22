@@ -53,7 +53,7 @@ app = FastAPI(
 # для обработки JS запросов отправленных с другого источника
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,7 +70,7 @@ def add_cors(_request: Request, response: JSONResponse) -> JSONResponse:
         "Access-Control-Allow-Methods": "*",
         "Access-Control-Allow-Headers": "*",
         "Access-Control-Allow-Credentials": "true",
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": "http://localhost:5173",
     }
 
     response.headers.update(cors_headers)

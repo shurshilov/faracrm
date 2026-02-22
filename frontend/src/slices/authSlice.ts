@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { Session } from '@services/auth/types';
 import { RootState } from '@store/store';
+import { API_BASE_URL } from '@services/baseQueryWithReauth';
 
 type AuthState = {
   session?: Session;
@@ -15,6 +16,26 @@ function loadSession(): Session | undefined {
     return parsed?.token ? (parsed as Session) : undefined;
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Серверный logout — деактивирует сессию в БД и удаляет guard cookie.
+ * Fire-and-forget: не ждём ответа, не блокируем UI.
+ */
+function serverLogout(token?: string) {
+  if (!token) return;
+  try {
+    fetch(`${API_BASE_URL}/sessions/logout`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+    }).catch(() => {});
+  } catch {
+    // ignore
   }
 }
 
@@ -51,7 +72,9 @@ const slice = createSlice({
       state.session = session;
     },
 
-    logOut: () => {
+    logOut: state => {
+      // Деактивируем сессию на сервере (fire-and-forget)
+      serverLogout(state.session?.token);
       localStorage.setItem('session', '');
       return { session: undefined };
     },

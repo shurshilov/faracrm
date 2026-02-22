@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, timezone
+import os
 import secrets
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from backend.base.crm.auth_token.app import AuthTokenApp
+from backend.base.crm.auth_token.app import AuthTokenApp, COOKIE_TOKEN_NAME
 from backend.base.crm.security.exceptions import AuthException
 from backend.base.crm.users.models.users import User
 from backend.base.crm.users.schemas.users import (
@@ -201,8 +202,9 @@ async def signin(req: Request, payload: UserSigninInput):
         if password_hash != user_id.password_hash:
             raise AuthException.PasswordFailed()
 
-        # генерация токена
+        # генерация токенов
         token = secrets.token_urlsafe(nbytes=64)
+        cookie_token = secrets.token_urlsafe(nbytes=64)
 
         # создать сессию
         now = datetime.now(timezone.utc)
@@ -215,6 +217,7 @@ async def signin(req: Request, payload: UserSigninInput):
         session = Session(
             user_id=clear_user_id,
             token=token,
+            cookie_token=cookie_token,
             ttl=ttl,
             expired_datetime=now + timedelta(seconds=ttl),
             create_user_id=clear_user_id,
@@ -222,6 +225,20 @@ async def signin(req: Request, payload: UserSigninInput):
         )
         await env.models.session.create(payload=session)
 
-        # вернуть токен, для сохранения в локал сторейдж
-        # и последующего использования на фронтенде
-        return session
+        # JSON response с данными сессии + HttpOnly cookie (обязательна)
+        # jsonable_encoder конвертирует datetime → ISO string
+        from fastapi.encoders import jsonable_encoder
+
+        response = JSONResponse(
+            content=jsonable_encoder(session.json(exclude={"cookie_token"}))
+        )
+        response.set_cookie(
+            key=COOKIE_TOKEN_NAME,
+            value=cookie_token,
+            httponly=True,
+            secure=os.getenv("COOKIE_SECURE", "false").lower() != "false",
+            samesite="lax",
+            max_age=ttl,
+            path="/",
+        )
+        return response

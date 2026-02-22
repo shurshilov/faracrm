@@ -25,7 +25,6 @@ import {
   IconPhoto,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { useSearchQuery } from '@/services/api/crudApi';
 import { GetListParams, GetListResult } from '@/services/api/crudTypes';
 import {
@@ -48,8 +47,10 @@ import {
   isVideoMimetype,
   formatFileSize,
 } from '@/components/Attachment/fileIcons';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
-import { selectCurrentSession } from '@/slices/authSlice';
+import {
+  attachmentPreviewUrl,
+  attachmentContentUrl,
+} from '@/utils/attachmentUrls';
 import { useTranslation } from 'react-i18next';
 import classes from './Kanban.module.css';
 
@@ -112,7 +113,6 @@ function AttachmentCard({
   onOpenGallery,
   showAllPreviews,
 }: AttachmentCardProps) {
-  const session = useSelector(selectCurrentSession);
   const [thumbSrc, setThumbSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [manuallyLoaded, setManuallyLoaded] = useState(false);
@@ -132,7 +132,11 @@ function AttachmentCard({
     // Если show_preview явно установлено в true - показываем
     if (attachment.show_preview === true) return true;
     // Если show_preview явно установлено в false и нет ручной загрузки - не показываем
-    if (attachment.show_preview === false && !manuallyLoaded && !showAllPreviews)
+    if (
+      attachment.show_preview === false &&
+      !manuallyLoaded &&
+      !showAllPreviews
+    )
       return false;
     // Если глобальная галочка включена - показываем
     if (showAllPreviews) return true;
@@ -151,42 +155,26 @@ function AttachmentCard({
 
   // Загрузка превью для карточки
   useEffect(() => {
-    if (!isImage || !attachment.id || !session?.token) return;
+    if (!isImage || !attachment.id) return;
     if (!shouldShowPreview) {
       setThumbSrc(null);
       return;
     }
 
     setIsLoading(true);
-    fetch(`${API_BASE_URL}/attachments/${attachment.id}/preview?w=200&h=200`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    })
-      .then(res => (res.ok ? res.blob() : Promise.reject()))
-      .then(blob => {
-        const reader = new FileReader();
-        reader.onload = () => setThumbSrc(reader.result as string);
-        reader.readAsDataURL(blob);
-      })
-      .catch(() => setThumbSrc(null))
-      .finally(() => setIsLoading(false));
-  }, [attachment.id, isImage, session?.token, shouldShowPreview]);
+    setThumbSrc(attachmentPreviewUrl(attachment.id, 200, 200));
+    setIsLoading(false);
+  }, [attachment.id, isImage, shouldShowPreview]);
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!attachment.id || !session?.token) return;
+    if (!attachment.id) return;
 
-    fetch(`${API_BASE_URL}/attachments/${attachment.id}`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    })
-      .then(res => res.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = attachment.name || 'file';
-        a.click();
-        URL.revokeObjectURL(url);
-      });
+    // Скачивание через cookie auth — прямая ссылка
+    const a = document.createElement('a');
+    a.href = attachmentContentUrl(attachment.id);
+    a.download = attachment.name || 'file';
+    a.click();
   };
 
   const handlePreview = (e: React.MouseEvent) => {

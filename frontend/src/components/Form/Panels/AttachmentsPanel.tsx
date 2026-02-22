@@ -1,16 +1,6 @@
 import { useRef, useState, useCallback } from 'react';
-import {
-  Stack,
-  Text,
-  Button,
-  Group,
-  ActionIcon,
-  Box,
-  Tooltip,
-  Loader,
-  SimpleGrid,
-} from '@mantine/core';
-import { IconUpload, IconDownload, IconTrash } from '@tabler/icons-react';
+import { Stack, Text, Button, Loader } from '@mantine/core';
+import { IconUpload } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import {
   useSearchQuery,
@@ -23,10 +13,9 @@ import {
   AttachmentPreview,
   ImageGalleryModal,
   isImageMimetype,
-  formatFileSize,
 } from '@/components/Attachment';
 import type { GalleryItem } from '@/components/Attachment';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
+import { attachmentContentUrl } from '@/utils/attachmentUrls';
 
 const PAGE_SIZE = 80;
 
@@ -37,7 +26,6 @@ interface AttachmentsPanelProps {
 
 export function AttachmentsPanel({ resModel, resId }: AttachmentsPanelProps) {
   const { t } = useTranslation(['common']);
-  const session = useSelector(selectCurrentSession);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -138,21 +126,10 @@ export function AttachmentsPanel({ resModel, resId }: AttachmentsPanelProps) {
   };
 
   const handleDownload = (id: number) => {
-    if (!session?.token) return;
-
-    fetch(`${API_BASE_URL}/attachments/${id}`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    })
-      .then(res => res.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download =
-          attachments.find((att: any) => att.id === id)?.name || 'file';
-        a.click();
-        URL.revokeObjectURL(url);
-      });
+    const a = document.createElement('a');
+    a.href = attachmentContentUrl(id);
+    a.download = attachments.find((att: any) => att.id === id)?.name || 'file';
+    a.click();
   };
 
   const handleLoadMore = () => {

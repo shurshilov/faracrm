@@ -9,14 +9,8 @@ import {
   Box,
   Tooltip,
 } from '@mantine/core';
-import {
-  IconMail,
-  IconUser,
-  IconShieldCheck,
-  IconCrown,
-} from '@tabler/icons-react';
+import { IconUser, IconCrown } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { useSearchQuery } from '@/services/api/crudApi';
 import { SchemaUser } from '@/services/api/users';
 import { GetListParams, GetListResult } from '@/services/api/crudTypes';
@@ -24,8 +18,7 @@ import {
   BaseQueryFn,
   TypedUseQueryHookResult,
 } from '@reduxjs/toolkit/query/react';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
-import { selectCurrentSession } from '@/slices/authSlice';
+import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
 import classes from './Kanban.module.css';
 
 interface UserCardProps {
@@ -34,7 +27,6 @@ interface UserCardProps {
 }
 
 function UserCard({ user, onClick }: UserCardProps) {
-  const session = useSelector(selectCurrentSession);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
 
   const imageId = user.image?.id;
@@ -45,22 +37,10 @@ function UserCard({ user, onClick }: UserCardProps) {
   // Загружаем аватар как в UserMenu
   useEffect(() => {
     setAvatarSrc(null);
-    if (!imageId || imageId <= 0 || !session?.token) return;
+    if (!imageId || imageId <= 0) return;
 
-    fetch(`${API_BASE_URL}/attachments/${imageId}/preview?w=200&h=200`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    })
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to load avatar');
-        return response.blob();
-      })
-      .then(blob => {
-        const reader = new FileReader();
-        reader.onload = () => setAvatarSrc(reader.result as string);
-        reader.readAsDataURL(blob);
-      })
-      .catch(() => setAvatarSrc(null));
-  }, [imageId, session?.token]);
+    setAvatarSrc(attachmentPreviewUrl(imageId, 200, 200));
+  }, [imageId]);
 
   // Получаем инициалы для fallback аватара
   const getInitials = (name: string) => {

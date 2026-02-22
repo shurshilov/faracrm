@@ -72,6 +72,10 @@ class Environment:
                 router_private = getattr(module, "router_private", None)
                 if isinstance(router_private, APIRouter):
                     self.__add_router(app, router_private)
+                # добавить маршруты для бинарного контента (cookie auth)
+                router_content = getattr(module, "router_content", None)
+                if isinstance(router_content, APIRouter):
+                    self.__add_router(app, router_content)
 
     async def setup_services(self):
         for app in self.apps.get_list():

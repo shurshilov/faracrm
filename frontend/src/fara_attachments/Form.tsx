@@ -52,10 +52,12 @@ import {
   isVideoMimetype,
   formatFileSize,
 } from '@/components/Attachment/fileIcons';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
+import {
+  attachmentPreviewUrl,
+  attachmentContentUrl,
+} from '@/utils/attachmentUrls';
 import { selectCurrentSession } from '@/slices/authSlice';
 import classes from './Form.module.css';
-import { FieldOne2many } from '@/components/Form/Fields/FieldOne2many';
 
 // Тип для маршрута (UPDATED: removed is_default, folder_id, folder_model_name; added priority)
 interface AttachmentRoute {
@@ -94,39 +96,21 @@ function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
 
   // Загружаем превью для изображений
   useEffect(() => {
-    if (!attachment || !isImageMimetype(attachment.mimetype) || !session?.token)
-      return;
+    if (!attachment || !isImageMimetype(attachment.mimetype)) return;
     if (attachment.show_preview === false) return;
 
     setIsLoading(true);
-    fetch(`${API_BASE_URL}/attachments/${attachment.id}/preview`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    })
-      .then(res => (res.ok ? res.blob() : Promise.reject()))
-      .then(blob => {
-        const reader = new FileReader();
-        reader.onload = () => setImageSrc(reader.result as string);
-        reader.readAsDataURL(blob);
-      })
-      .catch(() => setImageSrc(null))
-      .finally(() => setIsLoading(false));
-  }, [attachment, session?.token]);
+    setImageSrc(attachmentPreviewUrl(attachment.id));
+    setIsLoading(false);
+  }, [attachment]);
 
   const handleDownload = () => {
-    if (!attachment?.id || !session?.token) return;
+    if (!attachment?.id) return;
 
-    fetch(`${API_BASE_URL}/attachments/${attachment.id}/download`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    })
-      .then(res => res.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = attachment.name || 'file';
-        a.click();
-        URL.revokeObjectURL(url);
-      });
+    const a = document.createElement('a');
+    a.href = attachmentContentUrl(attachment.id);
+    a.download = attachment.name || 'file';
+    a.click();
   };
 
   if (!attachment) {

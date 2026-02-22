@@ -40,6 +40,8 @@ services:
       DOTORM_DATABASES_POSTGRES__FARA__SYNC_DB: "true"
       # Disable SSL for local Docker postgres
       PGSSLMODE: disable
+      # Cookie only https, because use double token pattern
+      COOKIE_SECURE: "true"
 
       # Logger
       LOGGER__LOG_LEVEL: DEBUG

@@ -19,9 +19,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
 } from '@tabler/icons-react';
-import { useSelector } from 'react-redux';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
-import { selectCurrentSession } from '@/slices/authSlice';
+import { attachmentPreviewUrl, attachmentContentUrl } from '@/utils/attachmentUrls';
 import { isImageMimetype } from './fileIcons';
 import classes from './ImagePreviewModal.module.css';
 
@@ -54,8 +52,6 @@ export function ImageGalleryModal({
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  const session = useSelector(selectCurrentSession);
-
   // Фильтруем только изображения для навигации
   const imageItems = items.filter(item => isImageMimetype(item.mimetype));
   const currentItem = imageItems[currentIndex];
@@ -87,34 +83,11 @@ export function ImageGalleryModal({
       return;
     }
 
-    // Загружаем через API
-    if (currentItem.id && session?.token) {
-      setIsLoading(true);
-
-      fetch(`${API_BASE_URL}/attachments/${currentItem.id}/preview`, {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
-      })
-        .then(response => {
-          if (!response.ok) throw new Error('Failed to load image');
-          return response.blob();
-        })
-        .then(blob => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            setLoadedSrc(reader.result as string);
-          };
-          reader.readAsDataURL(blob);
-        })
-        .catch(() => {
-          setImageError(true);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+    // Прямой URL через cookie auth
+    if (currentItem.id) {
+      setLoadedSrc(attachmentPreviewUrl(currentItem.id));
     }
-  }, [opened, currentIndex, currentItem, session?.token]);
+  }, [opened, currentIndex, currentItem]);
 
   // Навигация
   const goToPrevious = useCallback(() => {

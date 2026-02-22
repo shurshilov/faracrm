@@ -1,9 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Box, ActionIcon, Text, Group, Slider } from '@mantine/core';
 import { IconPlayerPlay, IconPlayerPause } from '@tabler/icons-react';
-import { useSelector } from 'react-redux';
-import { selectCurrentSession } from '@/slices/authSlice';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
+import { attachmentContentUrl } from '@/utils/attachmentUrls';
 import classes from './AudioPlayer.module.css';
 
 interface AudioPlayerProps {
@@ -87,7 +85,6 @@ export function AudioPlayer({
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const session = useSelector(selectCurrentSession);
 
   // Загрузка аудио
   useEffect(() => {
@@ -102,28 +99,9 @@ export function AudioPlayer({
       return;
     }
 
-    // Загружаем с сервера
-    if (attachmentId && session?.token) {
-      setIsLoading(true);
-      fetch(`${API_BASE_URL}/attachments/${attachmentId}`, {
-        headers: {
-          Authorization: `Bearer ${session.token}`,
-        },
-      })
-        .then(response => {
-          if (!response.ok) throw new Error('Failed to load audio');
-          return response.blob();
-        })
-        .then(blob => {
-          const url = URL.createObjectURL(blob);
-          setAudioSrc(url);
-        })
-        .catch(err => {
-          console.error('Error loading audio:', err);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
+    // Загружаем с сервера через cookie auth
+    if (attachmentId) {
+      setAudioSrc(attachmentContentUrl(attachmentId));
     }
 
     return () => {
@@ -132,7 +110,7 @@ export function AudioPlayer({
         URL.revokeObjectURL(audioSrc);
       }
     };
-  }, [attachmentId, content, mimetype, session?.token]);
+  }, [attachmentId, content, mimetype]);
 
   // Audio event handlers
   useEffect(() => {
