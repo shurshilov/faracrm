@@ -265,11 +265,13 @@ class TestSessions:
 
         user = await user_factory()
         token = secrets.token_urlsafe(64)
+        cookie_token = secrets.token_urlsafe(64)
 
         session_id = await Session.create(
             Session(
                 user_id=user.id,
                 token=token,
+                cookie_token=cookie_token,
                 ttl=3600,
                 expired_datetime=datetime.now(timezone.utc)
                 + timedelta(hours=1),
@@ -296,6 +298,7 @@ class TestSessions:
             Session(
                 user_id=user.id,
                 token=expired_token,
+                cookie_token=secrets.token_urlsafe(64),
                 ttl=3600,
                 expired_datetime=datetime.now(timezone.utc)
                 - timedelta(hours=1),  # Past
@@ -311,6 +314,7 @@ class TestSessions:
             Session(
                 user_id=user.id,
                 token=valid_token,
+                cookie_token=secrets.token_urlsafe(64),
                 ttl=3600,
                 expired_datetime=datetime.now(timezone.utc)
                 + timedelta(hours=1),  # Future
@@ -347,6 +351,7 @@ class TestSessions:
             Session(
                 user_id=user.id,
                 token=token,
+                cookie_token=secrets.token_urlsafe(64),
                 ttl=3600,
                 expired_datetime=datetime.now(timezone.utc)
                 + timedelta(hours=1),
@@ -374,6 +379,7 @@ class TestSessions:
             Session(
                 user_id=user.id,
                 token=token,
+                cookie_token=secrets.token_urlsafe(64),
                 ttl=3600,
                 expired_datetime=datetime.now(timezone.utc)
                 + timedelta(hours=1),

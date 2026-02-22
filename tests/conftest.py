@@ -431,9 +431,11 @@ async def authenticated_client(client, test_env) -> AsyncGenerator:
     import secrets
 
     token = secrets.token_urlsafe(64)
+    cookie_token = secrets.token_urlsafe(64)
     session = Session(
         user_id=user_id,
         token=token,
+        cookie_token=cookie_token,
         ttl=3600,
         expired_datetime=datetime.now(timezone.utc) + timedelta(hours=1),
         create_user_id=user_id,
@@ -442,8 +444,9 @@ async def authenticated_client(client, test_env) -> AsyncGenerator:
     )
     await Session.create(session)
 
-    # Add auth header
+    # Add auth header + HttpOnly cookie
     client.headers["Authorization"] = f"Bearer {token}"
+    client.cookies.set("session_cookie", cookie_token)
 
     yield client, user_id, token
 

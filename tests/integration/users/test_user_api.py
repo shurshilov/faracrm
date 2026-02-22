@@ -68,6 +68,9 @@ class TestSigninAPI:
         assert "user_id" in data
         assert data["user_id"]["name"] == "Test User"
 
+        # Verify HttpOnly cookie is set
+        assert "session_cookie" in response.cookies
+
     async def test_signin_wrong_password(self, client):
         """Test signin with wrong password."""
         from backend.base.crm.users.models.users import User
@@ -552,10 +555,12 @@ class TestUserAuthorization:
 
         # Create expired session
         token = secrets.token_urlsafe(64)
+        cookie_token = secrets.token_urlsafe(64)
         await Session.create(
             Session(
                 user_id=user_id,
                 token=token,
+                cookie_token=cookie_token,
                 ttl=3600,
                 expired_datetime=datetime.now(timezone.utc)
                 - timedelta(hours=1),  # Expired
@@ -566,6 +571,7 @@ class TestUserAuthorization:
         )
 
         client.headers["Authorization"] = f"Bearer {token}"
+        client.cookies.set("session_cookie", cookie_token)
 
         response = await client.post(
             auto("/users/search"),
