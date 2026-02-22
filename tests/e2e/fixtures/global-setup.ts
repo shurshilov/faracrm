@@ -31,9 +31,20 @@ async function globalSetup(config: FullConfig) {
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
 
+    // Устанавливаем session_cookie в browser context
+    const apiHost = new URL(API_URL).hostname;
+    await adminContext.addCookies([{
+      name: 'session_cookie',
+      value: adminSession.cookieToken,
+      domain: apiHost,
+      path: '/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    }]);
+
     await adminPage.goto(BASE_URL);
     await adminPage.evaluate((session) => {
-      localStorage.setItem('session', JSON.stringify(session));
+      const { cookieToken, ...sessionData } = session; localStorage.setItem('session', JSON.stringify(sessionData));
     }, adminSession);
 
     // Перезагружаем чтобы app подхватил session
@@ -52,7 +63,7 @@ async function globalSetup(config: FullConfig) {
     // Автоматически создаёт test1/test1 с ролью Internal User
     try {
       // Создаём пользователя если не существует
-      await api.ensureUser(adminSession.token, {
+      await api.ensureUser(adminSession, {
         login: USER2_LOGIN,
         password: USER2_PASSWORD,
         name: 'Test User 1',
@@ -62,9 +73,19 @@ async function globalSetup(config: FullConfig) {
       const user2Context = await browser.newContext();
       const user2Page = await user2Context.newPage();
 
+      // Устанавливаем session_cookie в browser context
+      await user2Context.addCookies([{
+        name: 'session_cookie',
+        value: user2Session.cookieToken,
+        domain: apiHost,
+        path: '/',
+        httpOnly: true,
+        sameSite: 'Lax',
+      }]);
+
       await user2Page.goto(BASE_URL);
       await user2Page.evaluate((session) => {
-        localStorage.setItem('session', JSON.stringify(session));
+        const { cookieToken, ...sessionData } = session; localStorage.setItem('session', JSON.stringify(sessionData));
       }, user2Session);
 
       await user2Page.goto(BASE_URL);
@@ -91,7 +112,7 @@ async function globalSetup(config: FullConfig) {
 
     // --- Третий пользователь (для presence-тестов, изолирован от user2) ---
     try {
-      await api.ensureUser(adminSession.token, {
+      await api.ensureUser(adminSession, {
         login: USER3_LOGIN,
         password: USER3_PASSWORD,
         name: 'Test User 2',

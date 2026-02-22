@@ -8,9 +8,9 @@ import { ChatPage } from '../../pages/ChatPage';
 test.describe('Чат — direct и непрочитанные', () => {
   let chatId: number;
 
-  test.afterEach(async ({ api, adminToken }) => {
+  test.afterEach(async ({ api, adminToken, adminSession }) => {
     if (chatId) {
-      await api.deleteChat(adminToken, chatId).catch(() => {});
+      await api.deleteChat(adminSession, chatId).catch(() => {});
     }
   });
 
@@ -20,10 +20,10 @@ test.describe('Чат — direct и непрочитанные', () => {
     api,
     user2Token,
     user2Session,
-    adminToken,
+    adminToken, adminSession,
   }) => {
     // Создаём direct-чат между user2 и admin
-    const chat = await api.createChat(user2Token, {
+    const chat = await api.createChat(user2Session, {
       name: '',
       chat_type: 'direct',
       user_ids: [1], // admin user_id = 1

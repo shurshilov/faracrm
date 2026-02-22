@@ -38,7 +38,7 @@ export function LayoutThemeProvider({ children }: ThemeProviderProps) {
     const fromSession = session?.user_id?.layout_theme;
     if (fromSession === 'classic' || fromSession === 'modern')
       return fromSession;
-    return 'classic';
+    return 'modern';
   });
 
   useEffect(() => {

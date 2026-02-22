@@ -5,6 +5,7 @@
 
 export interface Session {
   token: string;
+  cookieToken: string;
   user_id: { id: number; name: string };
 }
 
@@ -24,17 +25,37 @@ export class ApiHelper {
       body: JSON.stringify({ login, password }),
     });
     if (!res.ok) throw new Error(`Login failed: ${res.status} ${await res.text()}`);
-    return res.json();
+
+    // Извлекаем session_cookie из Set-Cookie заголовка
+    const cookieToken = this.extractCookieToken(res);
+    const data = await res.json();
+    return { ...data, cookieToken };
+  }
+
+  /** Извлечь значение session_cookie из Set-Cookie заголовков ответа */
+  private extractCookieToken(res: Response): string {
+    // Node 20+: getSetCookie() возвращает массив отдельных cookie
+    // Node 18-19: fallback на get('set-cookie') где undici склеивает через ", "
+    const cookies: string[] =
+      typeof res.headers.getSetCookie === 'function'
+        ? res.headers.getSetCookie()
+        : (res.headers.get('set-cookie') || '').split(', ');
+
+    for (const cookie of cookies) {
+      const match = cookie.match(/session_cookie=([^;]+)/);
+      if (match) return match[1];
+    }
+    return '';
   }
 
   // ==================== Users ====================
 
   async ensureUser(
-    token: string,
+    session: Session,
     data: { login: string; password: string; name: string },
   ): Promise<number> {
     // Проверяем существование
-    const searchRes = await this.searchRecords(token, 'users', {
+    const searchRes = await this.searchRecords(session, 'users', {
       fields: ['id', 'login'],
       filter: [['login', '=', data.login]],
       limit: 1,
@@ -45,7 +66,7 @@ export class ApiHelper {
     }
 
     // Получаем ID admin пользователя (source для копирования)
-    const adminSearch = await this.searchRecords(token, 'users', {
+    const adminSearch = await this.searchRecords(session, 'users', {
       fields: ['id'],
       filter: [['login', '=', process.env.ADMIN_LOGIN || 'admin']],
       limit: 1,
@@ -58,7 +79,7 @@ export class ApiHelper {
     // Создаём через copy_user (надёжный endpoint)
     const copyRes = await fetch(`${this.apiUrl}/users/copy`, {
       method: 'POST',
-      headers: this.headers(token),
+      headers: this.headers(session),
       body: JSON.stringify({
         source_user_id: sourceUserId,
         name: data.name,
@@ -76,7 +97,7 @@ export class ApiHelper {
     // Устанавливаем пароль
     const pwRes = await fetch(`${this.apiUrl}/users/password_change`, {
       method: 'POST',
-      headers: this.headers(token),
+      headers: this.headers(session),
       body: JSON.stringify({
         user_id: newUserId,
         password: data.password,
@@ -87,7 +108,7 @@ export class ApiHelper {
     }
 
     // Назначаем роль Internal User (code=base_user)
-    const roleSearch = await this.searchRecords(token, 'roles', {
+    const roleSearch = await this.searchRecords(session, 'roles', {
       fields: ['id'],
       filter: [['code', '=', 'base_user']],
       limit: 1,
@@ -96,7 +117,7 @@ export class ApiHelper {
       const roleId = roleSearch.data[0].id;
       await fetch(this.autoUrl(`/users/${newUserId}`), {
         method: 'PUT',
-        headers: this.headers(token),
+        headers: this.headers(session),
         body: JSON.stringify({
           role_ids: { selected: [roleId] },
         }),
@@ -109,7 +130,7 @@ export class ApiHelper {
   // ==================== Generic CRUD ====================
 
   async searchRecords(
-    token: string,
+    session: Session,
     model: string,
     params: {
       fields: string[];
@@ -121,7 +142,7 @@ export class ApiHelper {
   ): Promise<{ data: any[]; total: string }> {
     const res = await fetch(this.autoUrl(`/${model}/search`), {
       method: 'POST',
-      headers: this.headers(token),
+      headers: this.headers(session),
       body: JSON.stringify(params),
     });
     if (!res.ok) throw new Error(`Search ${model} failed: ${res.status}`);
@@ -129,35 +150,35 @@ export class ApiHelper {
   }
 
   async createRecord(
-    token: string,
+    session: Session,
     model: string,
     values: Record<string, any>,
   ): Promise<any> {
     const res = await fetch(this.autoUrl(`/${model}`), {
       method: 'POST',
-      headers: this.headers(token),
+      headers: this.headers(session),
       body: JSON.stringify(values),
     });
     if (!res.ok) throw new Error(`Create ${model} failed: ${res.status} ${await res.text()}`);
     return res.json();
   }
 
-  async deleteRecord(token: string, model: string, id: number): Promise<void> {
+  async deleteRecord(session: Session, model: string, id: number): Promise<void> {
     await fetch(this.autoUrl(`/${model}/${id}`), {
       method: 'DELETE',
-      headers: this.headers(token),
+      headers: this.headers(session),
     });
   }
 
   // ==================== Chat ====================
 
   async createChat(
-    token: string,
+    session: Session,
     data: { name: string; chat_type?: string; user_ids?: number[] },
   ): Promise<{ id: number }> {
     const res = await fetch(`${this.apiUrl}/chats`, {
       method: 'POST',
-      headers: this.headers(token),
+      headers: this.headers(session),
       body: JSON.stringify({
         name: data.name,
         chat_type: data.chat_type || 'group',
@@ -171,14 +192,14 @@ export class ApiHelper {
   }
 
   async sendMessage(
-    token: string,
+    session: Session,
     chatId: number,
     body: string,
     attachments: any[] = [],
   ): Promise<{ data: any }> {
     const res = await fetch(`${this.apiUrl}/chats/${chatId}/messages`, {
       method: 'POST',
-      headers: this.headers(token),
+      headers: this.headers(session),
       body: JSON.stringify({ body, attachments }),
     });
     if (!res.ok) throw new Error(`Send message failed: ${res.status}`);
@@ -186,31 +207,32 @@ export class ApiHelper {
   }
 
   async getMessages(
-    token: string,
+    session: Session,
     chatId: number,
     limit = 50,
   ): Promise<{ data: any[] }> {
     const res = await fetch(
       `${this.apiUrl}/chats/${chatId}/messages?limit=${limit}`,
-      { headers: this.headers(token) },
+      { headers: this.headers(session) },
     );
     if (!res.ok) throw new Error(`Get messages failed: ${res.status}`);
     return res.json();
   }
 
-  async deleteChat(token: string, chatId: number): Promise<void> {
+  async deleteChat(session: Session, chatId: number): Promise<void> {
     await fetch(`${this.apiUrl}/chats/${chatId}`, {
       method: 'DELETE',
-      headers: this.headers(token),
+      headers: this.headers(session),
     });
   }
 
   // ==================== Utils ====================
 
-  private headers(token: string) {
+  private headers(session: Session) {
     return {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${session.token}`,
+      Cookie: `session_cookie=${session.cookieToken}`,
     };
   }
 }

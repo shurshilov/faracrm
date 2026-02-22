@@ -6,18 +6,18 @@ test.describe('Чат — UI отправка сообщений', () => {
   let chatId: number;
   let chatName: string;
 
-  test.beforeEach(async ({ api, adminToken, user2Session }) => {
+  test.beforeEach(async ({ api, adminToken, adminSession, user2Session }) => {
     chatName = `E2E Chat ${Date.now()}`;
-    const result = await api.createChat(adminToken, {
+    const result = await api.createChat(adminSession, {
       name: chatName,
       user_ids: [user2Session.user_id.id],
     });
     chatId = result.id;
   });
 
-  test.afterEach(async ({ api, adminToken }) => {
+  test.afterEach(async ({ api, adminToken, adminSession }) => {
     if (chatId) {
-      await api.deleteChat(adminToken, chatId).catch(() => {});
+      await api.deleteChat(adminSession, chatId).catch(() => {});
     }
   });
 

@@ -14,76 +14,76 @@ test.describe('WebSocket — подключение и heartbeat', () => {
     expect(pong.type).toBe('pong');
   });
 
-  test('подписка на чат через WS', async ({ adminWS, api, adminToken }) => {
-    const chat = await api.createChat(adminToken, { name: 'WS Sub Test' });
+  test('подписка на чат через WS', async ({ adminWS, api, adminToken, adminSession }) => {
+    const chat = await api.createChat(adminSession, { name: 'WS Sub Test' });
     adminWS.clearMessages();
     const result = await adminWS.subscribe(chat.id);
     expect(result.type).toBe('subscribed');
     expect(result.chat_id).toBe(chat.id);
-    await api.deleteChat(adminToken, chat.id);
+    await api.deleteChat(adminSession, chat.id);
   });
 
-  test('subscribe_all на несколько чатов', async ({ adminWS, api, adminToken }) => {
-    const chat1 = await api.createChat(adminToken, { name: 'WS Multi 1' });
-    const chat2 = await api.createChat(adminToken, { name: 'WS Multi 2' });
+  test('subscribe_all на несколько чатов', async ({ adminWS, api, adminToken, adminSession }) => {
+    const chat1 = await api.createChat(adminSession, { name: 'WS Multi 1' });
+    const chat2 = await api.createChat(adminSession, { name: 'WS Multi 2' });
     adminWS.clearMessages();
     const result = await adminWS.subscribeAll([chat1.id, chat2.id]);
     expect(result.type).toBe('subscribed_all');
     expect(result.count).toBe(2);
-    await api.deleteChat(adminToken, chat1.id);
-    await api.deleteChat(adminToken, chat2.id);
+    await api.deleteChat(adminSession, chat1.id);
+    await api.deleteChat(adminSession, chat2.id);
   });
 });
 
 test.describe('WebSocket — new_message', () => {
   let chatId: number;
 
-  test.beforeEach(async ({ api, adminToken, user2Session }) => {
-    const chat = await api.createChat(adminToken, {
+  test.beforeEach(async ({ api, adminToken, adminSession, user2Session }) => {
+    const chat = await api.createChat(adminSession, {
       name: `WS Msg ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
     chatId = chat.id;
   });
 
-  test.afterEach(async ({ api, adminToken }) => {
-    await api.deleteChat(adminToken, chatId).catch(() => {});
+  test.afterEach(async ({ api, adminToken, adminSession }) => {
+    await api.deleteChat(adminSession, chatId).catch(() => {});
   });
 
-  test('user2 получает new_message от admin', async ({ adminToken, user2WS, api }) => {
+  test('user2 получает new_message от admin', async ({ adminToken, adminSession, user2WS, api }) => {
     await user2WS.subscribe(chatId);
     user2WS.clearMessages();
-    await api.sendMessage(adminToken, chatId, 'Привет от admin!');
+    await api.sendMessage(adminSession, chatId, 'Привет от admin!');
     const event = await user2WS.waitForNewMessage(chatId);
     expect(event.type).toBe('new_message');
     expect(event.chat_id).toBe(chatId);
     expect(event.message.body).toBe('Привет от admin!');
   });
 
-  test('admin получает new_message от user2', async ({ adminWS, user2Token, api }) => {
+  test('admin получает new_message от user2', async ({ adminWS, user2Token, user2Session, api }) => {
     await adminWS.subscribe(chatId);
     adminWS.clearMessages();
-    await api.sendMessage(user2Token, chatId, 'Привет от user2!');
+    await api.sendMessage(user2Session, chatId, 'Привет от user2!');
     const event = await adminWS.waitForNewMessage(chatId);
     expect(event.message.body).toBe('Привет от user2!');
   });
 
-  test('отправитель НЕ получает своё сообщение', async ({ adminWS, adminToken, api }) => {
+  test('отправитель НЕ получает своё сообщение', async ({ adminWS, adminToken, adminSession, api }) => {
     await adminWS.subscribe(chatId);
     adminWS.clearMessages();
-    await api.sendMessage(adminToken, chatId, 'Моё сообщение');
+    await api.sendMessage(adminSession, chatId, 'Моё сообщение');
     await adminWS.expectNoEvent(
       (msg) => msg.type === 'new_message' && msg.chat_id === chatId,
       3_000,
     );
   });
 
-  test('несколько сообщений в правильном порядке', async ({ adminToken, user2WS, api }) => {
+  test('несколько сообщений в правильном порядке', async ({ adminToken, adminSession, user2WS, api }) => {
     await user2WS.subscribe(chatId);
     user2WS.clearMessages();
-    await api.sendMessage(adminToken, chatId, 'Msg 1');
-    await api.sendMessage(adminToken, chatId, 'Msg 2');
-    await api.sendMessage(adminToken, chatId, 'Msg 3');
+    await api.sendMessage(adminSession, chatId, 'Msg 1');
+    await api.sendMessage(adminSession, chatId, 'Msg 2');
+    await api.sendMessage(adminSession, chatId, 'Msg 3');
     await user2WS.waitFor((msg) => msg.type === 'new_message' && msg.message?.body === 'Msg 3');
     const msgs = user2WS.getMessages().filter((m) => m.type === 'new_message' && m.chat_id === chatId);
     expect(msgs).toHaveLength(3);
@@ -95,16 +95,16 @@ test.describe('WebSocket — new_message', () => {
 test.describe('WebSocket — typing', () => {
   let chatId: number;
 
-  test.beforeEach(async ({ api, adminToken, user2Session }) => {
-    const chat = await api.createChat(adminToken, {
+  test.beforeEach(async ({ api, adminToken, adminSession, user2Session }) => {
+    const chat = await api.createChat(adminSession, {
       name: `WS Typing ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
     chatId = chat.id;
   });
 
-  test.afterEach(async ({ api, adminToken }) => {
-    await api.deleteChat(adminToken, chatId).catch(() => {});
+  test.afterEach(async ({ api, adminToken, adminSession }) => {
+    await api.deleteChat(adminSession, chatId).catch(() => {});
   });
 
   test('user2 получает typing от admin', async ({ adminWS, user2WS, adminSession }) => {
@@ -127,38 +127,38 @@ test.describe('WebSocket — typing', () => {
 test.describe('WebSocket — edit/delete', () => {
   let chatId: number;
 
-  test.beforeEach(async ({ api, adminToken, user2Session }) => {
-    const chat = await api.createChat(adminToken, {
+  test.beforeEach(async ({ api, adminToken, adminSession, user2Session }) => {
+    const chat = await api.createChat(adminSession, {
       name: `WS Edit ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
     chatId = chat.id;
   });
 
-  test.afterEach(async ({ api, adminToken }) => {
-    await api.deleteChat(adminToken, chatId).catch(() => {});
+  test.afterEach(async ({ api, adminToken, adminSession }) => {
+    await api.deleteChat(adminSession, chatId).catch(() => {});
   });
 
-  test('user2 получает message_edited', async ({ adminToken, user2WS, api }) => {
+  test('user2 получает message_edited', async ({ adminToken, adminSession, user2WS, api }) => {
     await user2WS.subscribe(chatId);
-    const { data: msg } = await api.sendMessage(adminToken, chatId, 'Оригинал');
+    const { data: msg } = await api.sendMessage(adminSession, chatId, 'Оригинал');
     user2WS.clearMessages();
     await fetch(`${API_URL}/chats/${chatId}/messages/${msg.id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}`, Cookie: `session_cookie=${adminSession.cookieToken}` },
       body: JSON.stringify({ body: 'Отредактировано' }),
     });
     const event = await user2WS.waitForMessageEdited(chatId, msg.id);
     expect(event.type).toBe('message_edited');
   });
 
-  test('user2 получает message_deleted', async ({ adminToken, user2WS, api }) => {
+  test('user2 получает message_deleted', async ({ adminToken, adminSession, user2WS, api }) => {
     await user2WS.subscribe(chatId);
-    const { data: msg } = await api.sendMessage(adminToken, chatId, 'Удали');
+    const { data: msg } = await api.sendMessage(adminSession, chatId, 'Удали');
     user2WS.clearMessages();
     await fetch(`${API_URL}/chats/${chatId}/messages/${msg.id}`, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: { Authorization: `Bearer ${adminToken}`, Cookie: `session_cookie=${adminSession.cookieToken}` },
     });
     const event = await user2WS.waitForMessageDeleted(chatId);
     expect(event.message_id).toBe(msg.id);
@@ -168,24 +168,24 @@ test.describe('WebSocket — edit/delete', () => {
 test.describe('WebSocket — messages_read', () => {
   let chatId: number;
 
-  test.beforeEach(async ({ api, adminToken, user2Session }) => {
-    const chat = await api.createChat(adminToken, {
+  test.beforeEach(async ({ api, adminToken, adminSession, user2Session }) => {
+    const chat = await api.createChat(adminSession, {
       name: `WS Read ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
     chatId = chat.id;
   });
 
-  test.afterEach(async ({ api, adminToken }) => {
-    await api.deleteChat(adminToken, chatId).catch(() => {});
+  test.afterEach(async ({ api, adminToken, adminSession }) => {
+    await api.deleteChat(adminSession, chatId).catch(() => {});
   });
 
   test('admin получает messages_read от user2', async ({
-    adminWS, user2WS, adminToken, user2Session, api,
+    adminWS, user2WS, adminToken, adminSession, user2Session, api,
   }) => {
     await adminWS.subscribe(chatId);
     await user2WS.subscribe(chatId);
-    await api.sendMessage(adminToken, chatId, 'Прочитай это');
+    await api.sendMessage(adminSession, chatId, 'Прочитай это');
     adminWS.clearMessages();
     user2WS.sendRead(chatId);
     const event = await adminWS.waitForMessagesRead(chatId);
@@ -202,7 +202,7 @@ test.describe('WebSocket — presence', () => {
   test.skip('presence:online при подключении', async ({
     adminToken, user2Token, adminSession, user2Session, api,
   }) => {
-    const chat = await api.createChat(adminToken, {
+    const chat = await api.createChat(adminSession, {
       name: `Presence ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
@@ -224,7 +224,7 @@ test.describe('WebSocket — presence', () => {
 
     await adminws.close();
     await user2ws.close();
-    await api.deleteChat(adminToken, chat.id);
+    await api.deleteChat(adminSession, chat.id);
   });
 
   test('presence:offline при отключении', async ({
@@ -232,7 +232,7 @@ test.describe('WebSocket — presence', () => {
   }) => {
     test.setTimeout(60_000);
 
-    const chat = await api.createChat(adminToken, {
+    const chat = await api.createChat(adminSession, {
       name: `Presence Off ${Date.now()}`,
       user_ids: [user3Session.user_id.id],
     });
@@ -257,7 +257,7 @@ test.describe('WebSocket — presence', () => {
       // через createChat (server-side subscribe). Это не баг — skip.
       console.log('[DIAG] presence:online not received — likely already subscribed via createChat');
       await adminws.close();
-      await api.deleteChat(adminToken, chat.id);
+      await api.deleteChat(adminSession, chat.id);
       test.skip();
       return;
     }
@@ -271,14 +271,14 @@ test.describe('WebSocket — presence', () => {
     expect(event.user_id).toBe(user3Session.user_id.id);
 
     await adminws.close();
-    await api.deleteChat(adminToken, chat.id);
+    await api.deleteChat(adminSession, chat.id);
   });
 });
 
 test.describe('WebSocket — chat_created', () => {
-  test('user2 получает chat_created', async ({ user2WS, adminToken, user2Session, api }) => {
+  test('user2 получает chat_created', async ({ user2WS, adminToken, adminSession, user2Session, api }) => {
     user2WS.clearMessages();
-    const chat = await api.createChat(adminToken, {
+    const chat = await api.createChat(adminSession, {
       name: `Realtime ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
@@ -286,24 +286,24 @@ test.describe('WebSocket — chat_created', () => {
     expect(event.type).toBe('chat_created');
     // Сервер шлёт { type: 'chat_created', chat: { id, ... } }
     expect(event.chat?.id ?? event.chat_id).toBe(chat.id);
-    await api.deleteChat(adminToken, chat.id);
+    await api.deleteChat(adminSession, chat.id);
   });
 });
 
 test.describe('WebSocket — изоляция', () => {
-  test('user2 НЕ получает из чата без подписки', async ({ adminWS, user2WS, adminToken, api }) => {
-    const chat = await api.createChat(adminToken, { name: `Isolated ${Date.now()}` });
+  test('user2 НЕ получает из чата без подписки', async ({ adminWS, user2WS, adminToken, adminSession, api }) => {
+    const chat = await api.createChat(adminSession, { name: `Isolated ${Date.now()}` });
     await adminWS.subscribe(chat.id);
     user2WS.clearMessages();
-    await api.sendMessage(adminToken, chat.id, 'Секрет');
+    await api.sendMessage(adminSession, chat.id, 'Секрет');
     await user2WS.expectNoEvent((msg) => msg.type === 'new_message' && msg.chat_id === chat.id, 3_000);
-    await api.deleteChat(adminToken, chat.id);
+    await api.deleteChat(adminSession, chat.id);
   });
 
   test('после unsubscribe сообщения не приходят', async ({
-    adminWS, user2WS, adminToken, user2Session, api,
+    adminWS, user2WS, adminToken, adminSession, user2Session, api,
   }) => {
-    const chat = await api.createChat(adminToken, {
+    const chat = await api.createChat(adminSession, {
       name: `Unsub ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
@@ -311,8 +311,8 @@ test.describe('WebSocket — изоляция', () => {
     user2WS.send({ type: 'unsubscribe', chat_id: chat.id });
     await user2WS.waitFor((msg) => msg.type === 'unsubscribed');
     user2WS.clearMessages();
-    await api.sendMessage(adminToken, chat.id, 'После отписки');
+    await api.sendMessage(adminSession, chat.id, 'После отписки');
     await user2WS.expectNoEvent((msg) => msg.type === 'new_message' && msg.chat_id === chat.id, 3_000);
-    await api.deleteChat(adminToken, chat.id);
+    await api.deleteChat(adminSession, chat.id);
   });
 });

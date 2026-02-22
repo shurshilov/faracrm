@@ -11,17 +11,17 @@ test.describe('Чат — real-time между двумя браузерами',
   let chatId: number;
   let chatName: string;
 
-  test.beforeEach(async ({ api, adminToken, user2Session }) => {
+  test.beforeEach(async ({ api, adminToken, adminSession, user2Session }) => {
     chatName = `MultiTab ${Date.now()}`;
-    const chat = await api.createChat(adminToken, {
+    const chat = await api.createChat(adminSession, {
       name: chatName,
       user_ids: [user2Session.user_id.id],
     });
     chatId = chat.id;
   });
 
-  test.afterEach(async ({ api, adminToken }) => {
-    await api.deleteChat(adminToken, chatId).catch(() => {});
+  test.afterEach(async ({ api, adminToken, adminSession }) => {
+    await api.deleteChat(adminSession, chatId).catch(() => {});
   });
 
   test('сообщение admin появляется у user2 в реальном времени', async ({
@@ -137,7 +137,7 @@ test.describe('Чат — real-time между двумя браузерами',
     page,
     user2Page,
     api,
-    adminToken,
+    adminToken, adminSession,
     user2Session,
   }) => {
     // user2 открывает страницу чатов
@@ -146,7 +146,7 @@ test.describe('Чат — real-time между двумя браузерами',
 
     // admin создаёт новый чат с user2 через API
     const newChatName = `Realtime New ${Date.now()}`;
-    const newChat = await api.createChat(adminToken, {
+    const newChat = await api.createChat(adminSession, {
       name: newChatName,
       user_ids: [user2Session.user_id.id],
     });
@@ -154,6 +154,6 @@ test.describe('Чат — real-time между двумя браузерами',
     // user2 видит новый чат в списке без перезагрузки
     await user2Chat.expectChatInList(newChatName);
 
-    await api.deleteChat(adminToken, newChat.id);
+    await api.deleteChat(adminSession, newChat.id);
   });
 });
