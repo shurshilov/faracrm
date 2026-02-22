@@ -1,11 +1,10 @@
 from datetime import datetime, timedelta, timezone
-import os
 import secrets
 from typing import TYPE_CHECKING
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import JSONResponse
 
-from backend.base.crm.auth_token.app import AuthTokenApp, COOKIE_TOKEN_NAME
+from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.crm.security.exceptions import AuthException
 from backend.base.crm.users.models.users import User
 from backend.base.crm.users.schemas.users import (
@@ -172,7 +171,7 @@ async def password_change(req: Request, payload: ChangePasswordInput):
 
 
 @router_public.post("/signin")
-async def signin(req: Request, payload: UserSigninInput):
+async def signin(req: Request, response: Response, payload: UserSigninInput):
     env: "Environment" = req.app.state.env
 
     async with env.apps.db.get_transaction():
@@ -225,20 +224,13 @@ async def signin(req: Request, payload: UserSigninInput):
         )
         await env.models.session.create(payload=session)
 
-        # JSON response с данными сессии + HttpOnly cookie (обязательна)
-        # jsonable_encoder конвертирует datetime → ISO string
-        from fastapi.encoders import jsonable_encoder
-
-        response = JSONResponse(
-            content=jsonable_encoder(session.json(exclude={"cookie_token"}))
-        )
         response.set_cookie(
-            key=COOKIE_TOKEN_NAME,
+            key=env.settings.auth.cookie_name,
             value=cookie_token,
             httponly=True,
-            secure=os.getenv("COOKIE_SECURE", "false").lower() != "false",
-            samesite="lax",
+            secure=env.settings.auth.cookie_secure,
+            samesite=env.settings.auth.cookie_samesite,
             max_age=ttl,
             path="/",
         )
-        return response
+        return session.json(exclude={"cookie_token"})

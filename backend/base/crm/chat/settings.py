@@ -23,16 +23,11 @@
 """
 
 from typing import Literal
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class ChatSettings(BaseSettings):
     """Настройки Chat модуля."""
-
-    model_config = SettingsConfigDict(
-        env_prefix="CHAT__",
-        extra="ignore",
-    )
 
     # Pub/Sub backend: "pg" (PostgreSQL LISTEN/NOTIFY) или "redis"
     pubsub_backend: Literal["pg", "redis"] = "pg"

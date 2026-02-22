@@ -2,7 +2,6 @@ from fastapi import FastAPI, Request, Security
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-
 from backend.base.system.auth.strategy_abstract import AuthStrategyAbstract
 from backend.base.system.core.app import App
 from backend.base.system.core.enviroment import Environment
@@ -12,9 +11,6 @@ from backend.base.crm.security.exceptions.AuthException import (
     SessionExpired,
     SessionNotExist,
 )
-
-# Имя HttpOnly cookie для cookie token
-COOKIE_TOKEN_NAME = "session_cookie"
 
 
 class AuthTokenApp(App, AuthStrategyAbstract):
@@ -61,11 +57,10 @@ class AuthTokenApp(App, AuthStrategyAbstract):
             raise SessionErrorFormat()
 
         # Cookie token обязателен
-        cookie_token = request.cookies.get(COOKIE_TOKEN_NAME)
+        env: Environment = request.app.state.env
+        cookie_token = request.cookies.get(env.settings.auth.cookie_name)
         if not cookie_token:
             raise SessionErrorFormat()
-
-        env: Environment = request.app.state.env
 
         session = await env.models.session.session_check(
             credentials.credentials, cookie_token=cookie_token
@@ -87,11 +82,10 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         Guard cookie содержит token привязанный к сессии — проверяем его
         через обратный lookup: cookie_token - session.
         """
-        cookie_token = request.cookies.get(COOKIE_TOKEN_NAME)
+        env: Environment = request.app.state.env
+        cookie_token = request.cookies.get(env.settings.auth.cookie_name)
         if not cookie_token:
             raise SessionErrorFormat()
-
-        env: Environment = request.app.state.env
 
         session = await env.models.session.session_check_by_cookie(
             cookie_token

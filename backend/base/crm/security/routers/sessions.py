@@ -1,10 +1,8 @@
-import os
 from typing import TYPE_CHECKING
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 
-from backend.base.crm.auth_token.app import AuthTokenApp, COOKIE_TOKEN_NAME
+from backend.base.crm.auth_token.app import AuthTokenApp
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -24,7 +22,7 @@ class TerminateAllResponse(BaseModel):
 
 
 @router_private.post("/logout")
-async def logout(req: Request):
+async def logout(req: Request, response: Response):
     """Завершить текущую сессию и удалить cookie token."""
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
@@ -36,15 +34,13 @@ async def logout(req: Request):
         [auth_session.id],
     )
 
-    # Удаляем cookie token
-    response = JSONResponse(content={"success": True})
     response.delete_cookie(
-        key=COOKIE_TOKEN_NAME,
+        key=env.settings.auth.cookie_name,
         path="/",
-        secure=os.getenv("COOKIE_SECURE", "false").lower() != "false",
-        samesite="lax",
+        secure=env.settings.auth.cookie_secure,
+        samesite=env.settings.auth.cookie_samesite,
     )
-    return response
+    return {"success": True}
 
 
 @router_private.post("/terminate_all", response_model=TerminateAllResponse)
