@@ -36,9 +36,6 @@ export class ChatPage {
     await this.page.goto('/chat');
     await this.page.waitForLoadState('networkidle');
 
-    // Ждём появления sidebar
-    await this.page.waitForTimeout(1000);
-
     // Кликаем первую кнопку "Все" (ВНУТРЕННИЕ → Все)
     await this._clickAllInternal();
 
@@ -52,7 +49,10 @@ export class ChatPage {
     const allBtn = this.page.locator('button:has-text("Все")').first();
     await allBtn.waitFor({ state: 'visible', timeout: 10_000 });
     await allBtn.click();
-    await this.page.waitForTimeout(1500);
+    // Ждём реакцию UI — список чатов или поле поиска
+    await this.page.locator(
+      '[class*="chatList"], [class*="ChatList"], [placeholder*="поиск" i], [placeholder*="search" i]',
+    ).first().waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
   }
 
   /** Дождаться что ChatList загрузился */
@@ -63,7 +63,7 @@ export class ChatPage {
     ).first();
 
     try {
-      await chatListIndicator.waitFor({ state: 'visible', timeout: 10_000 });
+      await chatListIndicator.waitFor({ state: 'visible', timeout: 5_000 });
     } catch {
       // ChatList мог не загрузиться — попробуем ещё раз кликнуть "Все"
       await this._clickAllInternal();
@@ -94,11 +94,8 @@ export class ChatPage {
     await chatItem.waitFor({ state: 'visible', timeout: 15_000 });
     await chatItem.click();
 
-    // Ждём загрузки сообщений
-    await this.page.waitForResponse(
-      (res) => res.url().includes('/messages') && res.ok(),
-      { timeout: 10_000 },
-    ).catch(() => {});
+    // Ждём загрузки области сообщений — поле ввода доступно
+    await this.messageInput.waitFor({ state: 'visible', timeout: 10_000 });
   }
 
   /** Проверить что чат виден в списке */
@@ -109,7 +106,6 @@ export class ChatPage {
       // Reload и навигация
       await this.page.reload({ waitUntil: 'networkidle' });
       await this._clickAllInternal();
-      await this.page.waitForTimeout(2000);
     }
     await expect(locator).toBeVisible({ timeout: 15_000 });
   }
@@ -141,7 +137,6 @@ export class ChatPage {
 
     // Переключаемся на таб "Группа"
     await this.page.getByText(/^Группа$/i).first().click();
-    await this.page.waitForTimeout(300);
 
     // Вводим название группы
     const nameInput = this.page.getByPlaceholder(/введите название группы|enter.*group.*name/i).first();
@@ -157,7 +152,8 @@ export class ChatPage {
       for (const memberName of memberNames) {
         await memberInput.click();
         await memberInput.fill(memberName);
-        await this.page.waitForTimeout(500);
+        // Ждём dropdown
+        await this.page.getByRole('option').first().waitFor({ state: 'visible', timeout: 3_000 }).catch(() => {});
         // Кликаем по опции в dropdown
         await this.page.getByRole('option', { name: new RegExp(memberName, 'i') }).first().click().catch(async () => {
           // Fallback: ищем текст в dropdown
@@ -166,15 +162,14 @@ export class ChatPage {
             .first()
             .click();
         });
-        await this.page.waitForTimeout(300);
       }
     }
 
     // Создать — сначала закрываем dropdown участников (кликаем вне него)
     await this.page.keyboard.press('Escape');
-    await this.page.waitForTimeout(300);
     await this.page.getByRole('button', { name: /^создать$|^create$/i }).click();
-    await this.page.waitForTimeout(1000);
+    // Ждём закрытия модалки
+    await expect(this.page.getByText('Новый чат').first()).toBeHidden({ timeout: 5_000 }).catch(() => {});
   }
 
   // ==================== Сообщения ====================
@@ -203,13 +198,13 @@ export class ChatPage {
   async expectMessageVisible(text: string) {
     await expect(
       this.messagesContainer.getByText(text, { exact: false }).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    ).toBeVisible({ timeout: 15_000 });
   }
 
   async expectMessageNotVisible(text: string) {
     await expect(
       this.messagesContainer.getByText(text, { exact: false }),
-    ).toHaveCount(0, { timeout: 5_000 });
+    ).toHaveCount(0, { timeout: 10_000 });
   }
 
   // ==================== Контекстное меню сообщения ====================
@@ -239,7 +234,8 @@ export class ChatPage {
     await editInput.fill(newText);
     // Кликаем "Сохранить" в модалке
     await this.page.getByRole('button', { name: /сохранить|save/i }).click();
-    await this.page.waitForTimeout(500);
+    // Ждём закрытия модалки вместо фиксированного timeout
+    await expect(this.page.getByRole('button', { name: /сохранить|save/i })).toBeHidden({ timeout: 5_000 }).catch(() => {});
     await this.expectMessageVisible(newText);
   }
 
@@ -252,7 +248,8 @@ export class ChatPage {
     if (await confirmBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
       await confirmBtn.click();
     }
-    await this.page.waitForTimeout(500);
+    // Ждём исчезновения сообщения вместо фиксированного timeout
+    await this.expectMessageNotVisible(messageText);
   }
 
   async addReaction(messageText: string, emoji = '👍') {
