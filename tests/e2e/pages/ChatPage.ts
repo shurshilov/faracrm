@@ -232,9 +232,15 @@ export class ChatPage {
     await editInput.waitFor({ state: 'visible', timeout: 5_000 });
     await editInput.clear();
     await editInput.fill(newText);
-    // Кликаем "Сохранить" в модалке
-    await this.page.getByRole('button', { name: /сохранить|save/i }).click();
-    // Ждём закрытия модалки вместо фиксированного timeout
+    // Кликаем "Сохранить" и ждём API ответ
+    const [response] = await Promise.all([
+      this.page.waitForResponse(
+        (res: any) => res.url().includes('/message') && (res.request().method() === 'PUT' || res.request().method() === 'PATCH'),
+        { timeout: 10_000 },
+      ).catch(() => null),
+      this.page.getByRole('button', { name: /сохранить|save/i }).click(),
+    ]);
+    // Ждём закрытия модалки
     await expect(this.page.getByRole('button', { name: /сохранить|save/i })).toBeHidden({ timeout: 5_000 }).catch(() => {});
     await this.expectMessageVisible(newText);
   }
