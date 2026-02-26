@@ -3,12 +3,9 @@
 """
 Запуск cron worker как отдельного процесса.
 
-Использует тот же FastAPI app + lifespan для полной
-инициализации сервисов (DB пулы, модели).
-
-Трюк: ставим cron.enabled=False перед lifespan,
-чтобы CronApp.startup() не спавнил subprocess рекурсивно.
-После lifespan восстанавливаем и запускаем process.
+Лёгкий startup: env.cron_mode = True пропускает сервисы
+с cron_skip=True (auto_crud, chat, docs, сам cron app).
+Это предотвращает рекурсию и экономит ~5-7с на старте.
 """
 
 import asyncio
@@ -22,20 +19,17 @@ def main():
 
     from backend.project_setup import env
 
-    # Отключаем cron spawn внутри lifespan (иначе рекурсия)
-    env.settings.cron.enabled = False
-
-    from backend.main import app, lifespan
+    # cron_mode пропускает сервисы с cron_skip=True
+    # (auto_crud, chat, docs, cron app) — нет рекурсии, нет лишней работы
+    env.cron_mode = True
     from backend.base.system.cron.process import CronProcess
+    from backend.main import app, lifespan
 
     async def run():
         async with lifespan(app):
             logger.info("=" * 50)
             logger.info("FARA CRM - Cron Process")
             logger.info("=" * 50)
-
-            # Восстанавливаем cron.enabled
-            env.settings.cron.enabled = True
 
             process = CronProcess(env=env)
             await process.run()

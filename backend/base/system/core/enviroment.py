@@ -50,6 +50,8 @@ class Environment:
         переменная router_public или router_private.
         Все роуты должны находиться в папке routers.
         """
+        if self.cron_mode:
+            return
         routers = glob(f"./**/**/**/**/routers/**") + glob(
             f"./**/**/**/**/routers/**/*"
         )
@@ -80,6 +82,9 @@ class Environment:
     async def setup_services(self):
         for app in self.apps.get_list():
             if app.info.get("service") and isinstance(app, Service):
+                # В cron_mode пропускаем сервисы с cron_skip=True
+                if self.cron_mode and app.info.get("cron_skip"):
+                    continue
                 if app.info.get("service_start_before"):
                     self.services_before.append(app)
                 else:
@@ -171,6 +176,7 @@ class Environment:
         self.services_before: list[Service] = []
         self.services_after: list[Service] = []
         self.post_init = []
+        self.cron_mode: bool = False
 
     def __new__(cls):
         if not hasattr(cls, "instance"):

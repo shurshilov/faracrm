@@ -29,6 +29,7 @@ class SwaggerOfflainService(Service):
         "license": "MIT",
         "depends": [],
         "service": True,
+        "cron_skip": True,
     }
 
     async def startup(self, app) -> None:

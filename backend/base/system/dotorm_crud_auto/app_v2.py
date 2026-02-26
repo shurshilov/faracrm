@@ -45,6 +45,7 @@ class DotormCrudAutoService(Service):
         "license": "FARA CRM License v1.0",
         "depends": [],
         "service": True,
+        "cron_skip": True,
     }
 
     # Prefix для всех auto_crud роутов — исключает конфликт с кастомными

@@ -35,6 +35,7 @@ class DocsApp(Service):
         "version": "1.0.0",
         "license": "FARA CRM License v1.0",
         "depends": [],
+        "cron_skip": True,
     }
 
     async def startup(self, app: FastAPI):

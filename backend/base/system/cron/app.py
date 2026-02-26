@@ -129,6 +129,9 @@ class CronApp(Service):
         await super().startup(app)
         env: "Environment" = app.state.env
         self.settings = env.settings.cron
+        if env.cron_mode:
+            logger.info("Cron disabled inside another cron")
+            return
         if not self.settings.enabled:
             logger.info("Cron disabled by settings")
             return

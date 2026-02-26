@@ -18,6 +18,7 @@ class AppInfo(TypedDict):
     service_aliase: NotRequired[str]
     sequence: NotRequired[int]
     post_init: NotRequired[bool]
+    cron_skip: NotRequired[bool]
 
 
 # Импортируем после определения AppInfo чтобы избежать циклических импортов
