@@ -114,7 +114,10 @@ class CronJob(DotModel):
                         SELECT id
                         FROM cron_job
                         WHERE active = true
-                          AND last_status != 'running'
+                          AND (
+                              last_status != 'running'
+                              OR (lastcall + make_interval(secs => timeout) < $1)
+                          )
                           AND (nextcall IS NULL OR nextcall <= $1)
                           AND (numbercall = -1 OR run_count < numbercall)
                         ORDER BY priority ASC

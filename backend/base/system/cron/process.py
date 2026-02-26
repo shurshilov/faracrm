@@ -120,6 +120,7 @@ class CronProcess:
 
     async def _tick(self) -> None:
         await self._write_heartbeat()
+        await self._recover_stuck_jobs()
 
         claimed = await CronJob.claim_next_jobs(
             self.pool,
@@ -131,6 +132,34 @@ class CronProcess:
 
         tasks = [self._execute_job(job_data) for job_data in claimed]
         await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _recover_stuck_jobs(self) -> None:
+        """
+        Сбрасывает задачи зависшие в статусе 'running'.
+
+        Если задача в running дольше stuck_timeout — значит
+        предыдущий cron процесс упал без graceful shutdown.
+        Сбрасываем в 'error' и пересчитываем next_call.
+        """
+        try:
+            async with self.pool.acquire() as conn:
+                stuck = await conn.fetch("""
+                    UPDATE cron_job
+                    SET last_status = 'error',
+                        last_error = 'Stuck: process crashed or timed out',
+                        nextcall = NOW()
+                    WHERE last_status = 'running'
+                      AND lastcall + make_interval(secs => timeout) < NOW()
+                    RETURNING id, name
+                    """)
+                for row in stuck:
+                    logger.warning(
+                        "Recovered stuck job: %s (id=%s)",
+                        row["name"],
+                        row["id"],
+                    )
+        except Exception:
+            logger.exception("Error recovering stuck jobs")
 
     async def _execute_job(self, job_data: dict) -> None:
         job_id = job_data["id"]
