@@ -147,7 +147,11 @@ async def attachment_preview(
     attachment_content = await attach.read_content()
 
     # Ресайз если указаны размеры и это изображение
-    if (w or h) and attach.mimetype in RESIZABLE_MIMETYPES:
+    if (
+        (w or h)
+        and attach.mimetype in RESIZABLE_MIMETYPES
+        and attachment_content is not None
+    ):
         try:
             width = w or h or 100
             height = h or w or 100
@@ -182,6 +186,8 @@ async def attachment_preview(
 # но авторизуются через HttpOnly cookie (cookie_token).
 # Фронт может использовать <img src="/api/content/attachments/123/preview">
 # без Authorization header — cookie отправится автоматически.
+# помогает избежать js overhead и использовать браузер как контент менеджера
+# с классическим механизмом кеширования
 
 
 @router_content.get("/attachments/{attachment_id}/content")

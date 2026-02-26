@@ -43,7 +43,6 @@ class UserApp(App):
                 payload=User(
                     name="Administrator",
                     login="admin",
-                    # email="admin",
                     is_admin=True,
                     password_hash="8562bbd6efff81338d44778c206328c2f20897bb5ba3472c1b8c6ee68f8c452f12753b15d8ef92cf9bad00ac3fe56078db10d656947fe1b9f1cfd1bc148ac845",
                     password_salt="04da4b9d76a371ce0e7b518d85ed255ff86c663070832f7f669641705955332903f09cbc4481a3b07dc29dfa261d48140dcff6134d2cccb7f15c002068d602dd",
@@ -60,7 +59,6 @@ class UserApp(App):
                 payload=User(
                     name="System",
                     login="system",
-                    # email="system",
                     is_admin=True,
                     password_hash="",
                     password_salt="",

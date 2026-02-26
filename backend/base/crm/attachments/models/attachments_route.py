@@ -16,6 +16,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 from backend.base.crm.attachments.strategies import get_strategy
+from .attachments_cache import AttachmentCache
 
 if TYPE_CHECKING:
     from .attachments_storage import AttachmentStorage
@@ -292,8 +293,6 @@ class AttachmentRoute(DotModel):
     async def _get_cached_root_folder(
         self, res_model: Optional[str] = None
     ) -> Tuple[Optional[str], Optional[str]]:
-        from .attachments_cache import AttachmentCache
-
         cache_key = self._get_cache_key(res_model)
         return await AttachmentCache.get_folder(self.id, cache_key)
 
@@ -303,8 +302,6 @@ class AttachmentRoute(DotModel):
         folder_name: str,
         res_model: Optional[str] = None,
     ) -> None:
-        from .attachments_cache import AttachmentCache
-
         cache_key = self._get_cache_key(res_model)
         await AttachmentCache.set_folder(
             route_id=self.id,
@@ -525,6 +522,4 @@ class AttachmentRoute(DotModel):
     # ========================================================================
 
     async def after_delete(self) -> None:
-        from .attachments_cache import AttachmentCache
-
         await AttachmentCache.clear_route_cache(self.id)
