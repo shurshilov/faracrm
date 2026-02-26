@@ -25,7 +25,6 @@ import asyncpg
 
 from .locking import try_acquire_cron_lock, release_cron_lock
 from .models.cron_job import CronJob
-from .settings import CronSettings
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -43,7 +42,7 @@ class CronProcess:
 
     def __init__(self, env: "Environment"):
         self.env = env
-        self.settings = CronSettings()
+        self.settings = env.settings.cron
         self.pool: asyncpg.Pool
         self._running = False
 

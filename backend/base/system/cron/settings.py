@@ -15,16 +15,11 @@
     CRON__MAX_THREADS=2
 """
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings
 
 
 class CronSettings(BaseSettings):
     """Настройки Cron модуля."""
-
-    model_config = SettingsConfigDict(
-        env_prefix="CRON__",
-        extra="ignore",
-    )
 
     # Включить/выключить cron worker
     enabled: bool = True

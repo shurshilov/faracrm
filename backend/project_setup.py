@@ -12,6 +12,7 @@ from backend.base.system.core.settings import SettingsCore
 from backend.base.system.core.enviroment import env
 
 # settings
+from backend.base.system.cron.settings import CronSettings
 from backend.base.system.dotorm_databases_postgres.settings import (
     PostgresSettings,
 )
@@ -175,8 +176,6 @@ from backend.base.system.dotorm_databases_postgres.app import (
 
 from backend.base.system.dotorm_crud_auto.app_v2 import DotormCrudAutoService
 
-# from backend.base.system.dotorm_crud_auto.app import DotormCrudAutoService
-
 
 class Settings(SettingsCore):
     model_config = SettingsConfigDict(
@@ -187,8 +186,8 @@ class Settings(SettingsCore):
     )
 
     logger: LoggerSettings
+    cron: CronSettings = CronSettings()
     dotorm_databases_postgres: dict[str, PostgresSettings]
-    # attachments: AttachmentsSettings = AttachmentsSettings()
     chat: ChatSettings = ChatSettings()
     auth: AuthTokenSettings = AuthTokenSettings()
 

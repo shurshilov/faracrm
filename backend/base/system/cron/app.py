@@ -22,11 +22,11 @@ from typing import TYPE_CHECKING
 
 from backend.base.system.core.service import Service
 from backend.base.crm.security.acl_post_init_mixin import ACL
-from .settings import CronSettings
 from .models.cron_job import CronJob
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
+    from backend.base.system.core.enviroment import Environment
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,6 @@ class CronApp(Service):
 
     def __init__(self):
         super().__init__()
-        self.settings = CronSettings()
         self._cron_process: subprocess.Popen | None = None
         self._watchdog_task: asyncio.Task | None = None
         self._stopping = False
@@ -127,6 +126,9 @@ class CronApp(Service):
         Если CRON__ENABLED=false (ставится в cron_main.py),
         startup пропускается — нет рекурсии.
         """
+        await super().startup(app)
+        env: "Environment" = app.state.env
+        self.settings = env.settings.cron
         if not self.settings.enabled:
             logger.info("Cron disabled by settings")
             return

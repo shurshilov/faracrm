@@ -6,14 +6,13 @@
 Использует тот же FastAPI app + lifespan для полной
 инициализации сервисов (DB пулы, модели).
 
-Трюк: ставим CRON__ENABLED=false перед lifespan,
+Трюк: ставим cron.enabled=False перед lifespan,
 чтобы CronApp.startup() не спавнил subprocess рекурсивно.
 После lifespan восстанавливаем и запускаем process.
 """
 
 import asyncio
 import logging
-import os
 import sys
 
 
@@ -21,11 +20,12 @@ def main():
     """Entry point for standalone cron process."""
     logger = logging.getLogger("cron")
 
+    from backend.project_setup import env
+
     # Отключаем cron spawn внутри lifespan (иначе рекурсия)
-    os.environ["CRON__ENABLED"] = "false"
+    env.settings.cron.enabled = False
 
     from backend.main import app, lifespan
-    from backend.project_setup import env
     from backend.base.system.cron.process import CronProcess
 
     async def run():
@@ -34,8 +34,8 @@ def main():
             logger.info("FARA CRM - Cron Process")
             logger.info("=" * 50)
 
-            # Восстанавливаем CRON__ENABLED
-            os.environ["CRON__ENABLED"] = "true"
+            # Восстанавливаем cron.enabled
+            env.settings.cron.enabled = True
 
             process = CronProcess(env=env)
             await process.run()
