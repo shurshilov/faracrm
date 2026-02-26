@@ -101,7 +101,11 @@ class Environment:
             await service.startup_depends(app)
 
     async def stop_services(self, app: FastAPI):
-        for service in self.services_before + self.services_after:
+        # Обратный порядок: сначала services_after (Chat, etc.),
+        # потом services_before (DB pool) — чтобы connections были живы при shutdown
+        for service in reversed(self.services_after):
+            await service.shutdown(app)
+        for service in reversed(self.services_before):
             await service.shutdown(app)
 
     async def start_post_init(self, app: FastAPI):

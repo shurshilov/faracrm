@@ -69,6 +69,7 @@ class CronApp(Service):
         "service": True,
         "post_init": True,
         "sequence": 100,
+        "cron_skip": True,
     }
 
     BASE_USER_ACL = {

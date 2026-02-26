@@ -29,7 +29,7 @@ from .models.cron_job import CronJob
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("cron.process")
 
 
 class CronProcess:

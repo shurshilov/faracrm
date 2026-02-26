@@ -28,7 +28,7 @@ from backend.base.system.dotorm.dotorm.model import DotModel
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("cron.jobs")
 
 
 class CronJob(DotModel):

@@ -19,7 +19,6 @@ RESET = "\033[0m"
 #   CRM    (бизнес-логика)   → зелёный — активность, ключевые события
 #   CRON   (фоновые задачи)  → dim yellow — второстепенный, не отвлекает
 TAGS = {
-    "backend.base.system.cron": ("[FARA CRON]", f"{DIM}{YELLOW}"),
     "backend.base.crm": ("[FARA CRM]", GREEN),
     "backend.base.system": ("[FARA SYSTEM]", BLUE),
     "cron": ("[FARA CRON]", f"{DIM}{YELLOW}"),
