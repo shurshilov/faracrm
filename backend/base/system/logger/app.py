@@ -41,6 +41,8 @@ class LoggerService(Service):
             "backend.base.system",
             "cron",
             "cron.worker",
+            "cron.process",
+            "cron.jobs",
         ):
             lgr = logging.getLogger(logger_name)
             lgr.setLevel(logging.INFO)
@@ -55,6 +57,40 @@ class LoggerService(Service):
                 handler.setFormatter(formatter)
                 lgr.addHandler(handler)
                 lgr.propagate = False
+
+        # Uvicorn — цветные логи как в стандартном FastAPI.
+        # Handler'ы могут не существовать при startup (uvicorn создаёт позже).
+        # Ставим свои handler'ы сразу и блокируем propagate.
+        try:
+            from uvicorn.logging import DefaultFormatter, AccessFormatter
+
+            # uvicorn.error — серверные события (startup, WebSocket, shutdown)
+            error_fmt = DefaultFormatter(
+                "%(levelprefix)s %(message)s",
+                use_colors=True,
+            )
+            for lgr_name in ("uvicorn", "uvicorn.error"):
+                lgr = logging.getLogger(lgr_name)
+                lgr.handlers.clear()
+                h = logging.StreamHandler()
+                h.setFormatter(error_fmt)
+                lgr.addHandler(h)
+                lgr.propagate = False
+
+            # uvicorn.access — HTTP запросы с цветными статус кодами
+            access_fmt = AccessFormatter(
+                '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+                use_colors=True,
+            )
+            access_lgr = logging.getLogger("uvicorn.access")
+            access_lgr.handlers.clear()
+            h = logging.StreamHandler()
+            h.setFormatter(access_fmt)
+            access_lgr.addHandler(h)
+            access_lgr.propagate = False
+
+        except ImportError:
+            pass  # uvicorn не установлен (cron subprocess)
 
     async def shutdown(self, app):
         """Отключение сервиса."""
