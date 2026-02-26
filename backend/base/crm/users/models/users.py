@@ -45,12 +45,7 @@ class User(DotModel):
     is_admin: bool = Boolean(default=False)
 
     image: Attachment | None = PolymorphicMany2one(relation_table=Attachment)
-    # image_ids: list[Attachment] = PolymorphicOne2many(
-    #     store=False,
-    #     relation_table=Attachment,
-    #     relation_table_field="res_id",
-    #     default=None,
-    # )
+
     role_ids: list["Role"] = Many2many(
         store=False,
         relation_table=lambda: env.models.role,
@@ -74,18 +69,6 @@ class User(DotModel):
         column2="user_id",
         ondelete="cascade",
     )
-
-    # Коннекторы, с которыми работает оператор
-    # DEPRECATED: Управление операторами только через ChatConnector.operator_ids
-    # connector_ids: list["ChatConnector"] = Many2many(
-    #     store=False,
-    #     relation_table=lambda: env.models.chat_connector,
-    #     many2many_table="chat_connector_operator_many2many",
-    #     column1="connector_id",
-    #     column2="user_id",
-    #     ondelete="cascade",
-    #     description="Коннекторы, с которыми работает оператор",
-    # )
 
     # Контакты (телефоны, email, telegram и т.д.)
     contact_ids: list["Contact"] = One2many(
@@ -235,7 +218,6 @@ class User(DotModel):
 
         salt = secrets.token_hex(64)
         hash = self.generate_password_hash(password, salt)
-        # token = secrets.token_urlsafe(nbytes=64)
 
         async with env.apps.db.get_transaction():
             # сохранить хеш-пароль, соль
@@ -251,19 +233,6 @@ class User(DotModel):
                 await self.terminate_sessions()
             else:
                 await self.terminate_sessions(auth_session.token)
-
-            # now = datetime.now(timezone.utc)
-            # создать сессию
-            # new_session = Session(
-            #     user_id=self,
-            #     token=token,
-            #     ttl=Session._ttl,
-            #     expired_datetime=now + timedelta(seconds=Session._ttl),
-            #     create_user_id=auth_user_id,
-            #     update_user_id=auth_user_id,
-            # )
-            # await env.models.session.create(payload=new_session)
-            # return token
 
     async def terminate_sessions(
         self,

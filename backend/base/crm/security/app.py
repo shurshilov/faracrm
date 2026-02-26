@@ -50,9 +50,7 @@ class SecurityApp(Service):
     def handler_errors(self, app_server: FastAPI):
         """Регистрирует обработчики ошибок доступа и аутентификации."""
 
-        async def password_failed_handler(
-            request: Request, exc: AuthException.PasswordFailed
-        ):
+        async def password_failed_handler(request: Request, exc: Exception):
             return JSONResponse(
                 content={
                     "error": "#PASSWORD_FAILED",
@@ -61,9 +59,7 @@ class SecurityApp(Service):
                 status_code=401,
             )
 
-        async def user_not_exist_handler(
-            request: Request, exc: AuthException.UserNotExist
-        ):
+        async def user_not_exist_handler(request: Request, exc: Exception):
             return JSONResponse(
                 content={
                     "error": "#USER_NOT_FOUND",

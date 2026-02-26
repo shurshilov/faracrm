@@ -55,5 +55,7 @@ class TasksApp(App):
             if not existing:
                 await env.models.task_tag.create(
                     session=db_session,
-                    payload=TaskTag(**tag_data),
+                    payload=TaskTag(
+                        name=tag_data["name"], color=tag_data["color"]
+                    ),
                 )

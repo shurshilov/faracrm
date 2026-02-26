@@ -153,9 +153,8 @@ class DotormDatabasesPostgresService(Service):
     def handler_errors(self, app_server: FastAPI):
         """Регистрирует глобальные обработчики ошибок ORM."""
 
-        async def record_not_found_handler(
-            request: Request, exc: RecordNotFound
-        ):
+        async def record_not_found_handler(request: Request, exc: Exception):
+            assert isinstance(exc, RecordNotFound)
             return JSONResponse(
                 content={
                     "error": "#NOT_FOUND",
@@ -166,7 +165,8 @@ class DotormDatabasesPostgresService(Service):
                 status_code=404,
             )
 
-        async def access_denied_handler(request: Request, exc: AccessDenied):
+        async def access_denied_handler(request: Request, exc: Exception):
+            assert isinstance(exc, AccessDenied)
             return JSONResponse(
                 content={"error": "#ACCESS_DENIED", "message": exc.message},
                 status_code=403,
