@@ -32,55 +32,6 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         self.env = env
 
     # =========================================================================
-    # Public API (вызывается из AccessMixin._check_access)
-    # =========================================================================
-
-    # async def check_table_access(
-    #     self,
-    #     session: "Session",
-    #     model: str,
-    #     operation: Operation,
-    # ) -> bool:
-    #     """Проверяет ACL (access_list) — доступ к таблице."""
-    #     if self._is_full_access(session):
-    #         return True
-
-    #     role_ids = await self._get_user_roles(session.user_id.id)
-    #     return await self._check_acl(role_ids, model, operation)
-
-    # async def check_row_access(
-    #     self,
-    #     session: "Session",
-    #     model: str,
-    #     operation: Operation,
-    #     record_ids: list[int],
-    # ) -> bool:
-    #     """Проверяет Rules — доступ к записям."""
-    #     if self._is_full_access(session):
-    #         return True
-
-    #     if not record_ids:
-    #         return True
-
-    #     role_ids = await self._get_user_roles(session.user_id.id)
-    #     return await self._check_rules(
-    #         role_ids, model, operation, record_ids, session.user_id.id
-    #     )
-
-    # async def get_domain_filter(
-    #     self,
-    #     session: "Session",
-    #     model: str,
-    #     operation: Operation,
-    # ) -> list:
-    #     """Возвращает domain-фильтр из Rules для search."""
-    #     if self._is_full_access(session):
-    #         return []
-
-    #     role_ids = await self._get_user_roles(session.user_id.id)
-    #     return await self._get_domains(role_ids, model, operation, session.user_id.id)
-
-    # =========================================================================
     # Оптимизированный API (для вызова из _check_access одним блоком)
     # =========================================================================
 

@@ -1,9 +1,8 @@
 from typing import TYPE_CHECKING
 import pytz
 
-from ...attachments.models.attachments import Attachment
-
-from ....system.schemas.base_schema import Id
+from backend.base.crm.attachments.models.attachments import Attachment
+from backend.base.system.schemas.base_schema import Id
 
 if TYPE_CHECKING:
     from backend.base.crm.company.models.company import Company

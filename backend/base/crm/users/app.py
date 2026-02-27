@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+    from backend.base.system.core.enviroment import Environment
+
 from backend.base.system.core.app import App
-from backend.base.system.core.enviroment import Environment
 from backend.base.crm.security.acl_post_init_mixin import ACL
 from .models.users import User, ADMIN_USER_ID, SYSTEM_USER_ID
 
@@ -25,15 +29,15 @@ class UserApp(App):
         "user": ACL.NO_CREATE,
     }
 
-    async def post_init(self, app: FastAPI):
+    async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
-        env: Environment = app.state.env
+        env: "Environment" = app.state.env
 
         await self._init_admin_user(env)
         await self._init_system_user(env)
         await self._init_user_rules(env)
 
-    async def _init_admin_user(self, env: Environment):
+    async def _init_admin_user(self, env: "Environment"):
         """Создаёт пользователя-администратора (id=1)."""
         user_admin = await env.models.user.search(
             filter=[("id", "=", ADMIN_USER_ID)], limit=1
@@ -49,7 +53,7 @@ class UserApp(App):
                 ),
             )
 
-    async def _init_system_user(self, env: Environment):
+    async def _init_system_user(self, env: "Environment"):
         """Создаёт системного пользователя (id=2) для автоматических операций."""
         user_system = await env.models.user.search(
             filter=[("id", "=", SYSTEM_USER_ID)], limit=1
@@ -65,7 +69,7 @@ class UserApp(App):
                 ),
             )
 
-    async def _init_user_rules(self, env: Environment):
+    async def _init_user_rules(self, env: "Environment"):
         """Создаёт правила безопасности для пользователей."""
         from backend.base.crm.security.models.rules import Rule
 

@@ -2,13 +2,13 @@
 # Chat module - application configuration
 
 import logging
-from fastapi import FastAPI
 from typing import TYPE_CHECKING
 
 from backend.base.system.core.service import Service
 from backend.base.crm.security.acl_post_init_mixin import ACL
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
     from backend.base.system.core.enviroment import Environment
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ class ChatApp(Service):
         "chat_external_message": ACL.FULL,
     }
 
-    async def startup(self, app: FastAPI):
+    async def startup(self, app: "FastAPI"):
         """
         Инициализация pub/sub backend для cross-process WebSocket events.
 
@@ -114,7 +114,7 @@ class ChatApp(Service):
             settings.backend,
         )
 
-    async def shutdown(self, app: FastAPI):
+    async def shutdown(self, app: "FastAPI"):
         """Остановка pub/sub backend."""
         from .websocket import chat_manager
 
@@ -124,7 +124,7 @@ class ChatApp(Service):
 
         logger.info("ChatApp: pub/sub stopped")
 
-    async def post_init(self, app: FastAPI):
+    async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
         env: "Environment" = app.state.env
 

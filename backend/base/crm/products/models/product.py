@@ -62,15 +62,12 @@ class Product(DotModel):
 
     # product
     extra_price: float | None = Float(
-        # compute="_compute_",
         string="Extra Price",
     )
     # template
     list_price: float = Float(
         string="Sales Price",
         default=1.0,
-        # compute="_compute_",
-        # inverse="_set_",
     )
     standard_price: float | None = Float(
         string="Cost Price",

@@ -1,6 +1,8 @@
 import logging
-from typing import NotRequired, TypedDict
-from fastapi import FastAPI
+from typing import NotRequired, TypedDict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 log = logging.getLogger(__package__)
 
@@ -57,7 +59,7 @@ class App(ACLPostInitMixin):
             self.info.get("version"),
         )
 
-    async def post_init(self, app: FastAPI):
+    async def post_init(self, app: "FastAPI"):
         """
         Инициализация приложения после старта.
 
@@ -69,7 +71,7 @@ class App(ACLPostInitMixin):
         if self.BASE_USER_ACL or self.ROLE_ACL:
             await self._init_acl(app.state.env)
 
-    def handler_errors(self, app_server: FastAPI):
+    def handler_errors(self, app_server: "FastAPI"):
         """Регистрация обработчиков ошибок приложения (override в наследниках)."""
         # async def catch_exception_handler_500(request: Request, exc: Exception):
         #     return JSONResponse(

@@ -1,7 +1,12 @@
-from fastapi import FastAPI
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+    from backend.base.system.core.enviroment import Environment
+
 from backend.base.system.core.app import App
-from backend.base.system.core.enviroment import Environment
 from backend.base.crm.security.acl_post_init_mixin import ACL
+from backend.base.system.cron.models.cron_job import CronJob
 from .models.activity_type import ActivityType, INITIAL_ACTIVITY_TYPES
 
 
@@ -31,9 +36,9 @@ class ActivityApp(App):
         "activity_type": ACL.FULL,
     }
 
-    async def post_init(self, app: FastAPI):
+    async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
-        env: Environment = app.state.env
+        env: "Environment" = app.state.env
         db_session = env.apps.db.get_session()
 
         # Начальные типы активностей
@@ -49,8 +54,6 @@ class ActivityApp(App):
                 )
 
         # Крон-задача проверки дедлайнов (каждые 5 минут)
-        from backend.base.system.cron.models.cron_job import CronJob
-
         await CronJob.create_or_update(
             env=env,
             name="Activity: check deadlines",

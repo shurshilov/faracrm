@@ -84,7 +84,8 @@ def get_field_metadata(field) -> tuple:
             args = get_args(annotation)
             if len(args) > 1:
                 return args[1:]
-            return find_in_annotation(args[0])
+            elif args:
+                return find_in_annotation(args[0])
 
         if origin is Union:
             for arg in get_args(annotation):
@@ -105,99 +106,6 @@ def create_class(name, *inherits):
 
     NewClass = types.new_class(name, inherits, exec_body=exec_body)
     return NewClass
-
-
-#  # Создаем новую модель с обновленными полями
-#     return type(
-#         f"Partial{cls.__name__}",
-#         (BaseModel,),
-#         {
-#             **new_fields,
-#             "__module__": cls.__module__
-#         }
-#     )
-
-
-# def to_optional_fields(model: Type[BaseModel], generated_models={}):
-#     # if not generated_models:
-#     # generated_models = {model.__name__ + "RelationNestedUpdate": None}
-#     new_fields = {}
-#     for field_name, field in model.model_fields.items():
-#         # если найдено поле m2o
-#         if field.metadata and field.metadata[0] in [Many2one, One2many, Many2many]:
-#             if field.metadata[0] == Many2one:
-#                 new_annotation = Union[Id, Literal["VirtualId"]]
-#                 if not field.is_required():
-#                     new_annotation = Optional[field.annotation]
-#                 new_fields[field_name] = (new_annotation, None)
-
-#             elif field.annotation:
-#                 # TODO: придумать что то с бесконечной вложенностью
-#                 # скоерй всего заменить на идишник во втором вложении
-#                 # как при чтении, хотя это не совсем корректное создание
-#                 # тогда вложенные созадуться а эти нет)
-#                 # получить схему
-#                 schema_origin = get_schema_origin(field)
-#                 # TODO: приумать что-то с бесконечной рекурсией
-#                 if schema_origin:
-#                     # if (
-#                     #     schema_origin.__name__ + "RelationNestedUpdate"
-#                     #     in generated_models
-#                     #     # and generated_models[
-#                     #     #     schema_origin.__name__ + "RelationNestedUpdate"
-#                     #     # ]
-#                     #     # != None
-#                     # ):
-#                     #     new_fields[field_name] = generated_models[
-#                     #         schema_origin.__name__ + "RelationNestedUpdate"
-#                     #     ]
-#                     #     continue
-#                     if field.metadata[0] == Many2many:
-#                         # schema_relation_update = create_class(
-#                         #     schema_origin.__name__ + "RelationNestedCreate",
-#                         #     schema_origin,
-#                         #     Partial,
-#                         #     OmitId,
-#                         #     RelationNestedCreate,
-#                         # )
-#                         fields = to_optional_fields(schema_origin, generated_models)
-#                         schema_relation_update = create_model(
-#                             schema_origin.__name__ + "RelationNestedUpdate",
-#                             **fields,
-#                         )
-#                         new_annotation = SchemaRelationMany2ManyUpdateCreate[
-#                             schema_relation_update
-#                         ]
-#                         if not field.is_required():
-#                             new_annotation = Optional[new_annotation]
-#                         new_fields[field_name] = (new_annotation, None)
-#                         # generated_models[
-#                         #     schema_origin.__name__ + "RelationNestedUpdate"
-#                         # ] = new_annotation
-
-#                     if field.metadata[0] == One2many:
-#                         # schema_relation_update = create_class(
-#                         #     schema_origin.__name__ + "RelationNestedCreate",
-#                         #     schema_origin,
-#                         #     Partial,
-#                         #     OmitId,
-#                         #     RelationNestedCreate,
-#                         # )
-#                         fields = to_optional_fields(schema_origin, generated_models)
-#                         schema_relation_update = create_model(
-#                             schema_origin.__name__ + "RelationNestedUpdate",
-#                             **fields,
-#                         )
-#                         new_annotation = SchemaRelationOne2ManyUpdateCreate[
-#                             schema_relation_update
-#                         ]
-#                         if not field.is_required():
-#                             new_annotation = Optional[new_annotation]
-#                         new_fields[field_name] = (new_annotation, None)
-#                         # generated_models[
-#                         #     schema_origin.__name__ + "RelationNestedUpdate"
-#                         # ] = new_annotation
-#     return new_fields
 
 
 class RelationNested(BaseModel):

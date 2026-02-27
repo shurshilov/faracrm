@@ -1,6 +1,10 @@
-from fastapi import FastAPI
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+    from backend.base.system.core.enviroment import Environment
+
 from backend.base.system.core.app import App
-from backend.base.system.core.enviroment import Environment
 from backend.base.crm.security.acl_post_init_mixin import ACL
 from .models.sale_stage import SaleStage, INITIAL_SALE_STAGES
 
@@ -28,9 +32,9 @@ class SalesApp(App):
         "tax": ACL.FULL,
     }
 
-    async def post_init(self, app: FastAPI):
+    async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
-        env: Environment = app.state.env
+        env: "Environment" = app.state.env
 
         # Создание начальных стадий продаж
         db_session = env.apps.db.get_session()

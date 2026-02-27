@@ -53,10 +53,11 @@ class CronProcess:
             return
 
         # Получаем пул из уже инициализированных сервисов
-        self.pool = self._find_pool()
-        if not self.pool:
+        pool = self._find_pool()
+        if not pool:
             logger.error("Database pool not found. Are services initialized?")
             return
+        self.pool = pool
 
         # Захватываем advisory lock
         locked = await try_acquire_cron_lock(self.pool)

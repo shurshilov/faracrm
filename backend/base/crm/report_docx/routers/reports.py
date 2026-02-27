@@ -57,16 +57,6 @@ async def generate_report(
             "template_file",
             "output_format",
         ],
-        # fields_nested={
-        #     "template_file": [
-        #         "id",
-        #         "name",
-        #         "storage_file_url",
-        #         "storage_file_id",
-        #         "mimetype",
-        #         "storage_id",
-        #     ],
-        # },
     )
     if not templates:
         return JSONResponse(
@@ -83,7 +73,6 @@ async def generate_report(
         )
     attachment = await env.models.attachment.search(
         filter=[("id", "=", attachment.id)],
-        # fields=["id", "storage_id", "storage_file_url"]
     )
     attachment = attachment[0]
     model_name = tmpl.model_name or ""
@@ -164,9 +153,6 @@ async def generate_report(
         content=file_bytes,
         media_type=content_type,
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="{filename_enc}"'
-                # f"filename*=UTF-8''{quote(filename_enc, safe="")}"
-            ),
+            "Content-Disposition": (f'attachment; filename="{filename_enc}"'),
         },
     )

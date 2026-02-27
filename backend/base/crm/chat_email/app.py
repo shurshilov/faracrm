@@ -1,9 +1,12 @@
 # Copyright 2025 FARA CRM
 # Chat Email module - application
-
-from fastapi import FastAPI
+from typing import TYPE_CHECKING
 
 from backend.base.system.core.app import App
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
+    from backend.base.system.core.enviroment import Environment
 
 
 class ChatEmailApp(App):
@@ -30,14 +33,13 @@ class ChatEmailApp(App):
 
         register_strategy(EmailStrategy)
 
-    async def post_init(self, app: FastAPI):
+    async def post_init(self, app: "FastAPI"):
         """
         Инициализация после загрузки всех модулей.
         Создаёт cron job для периодического получения email.
         """
         await super().post_init(app)
-
-        from backend.base.system.core.enviroment import env
+        env: "Environment" = app.state.env
 
         # Создаём cron job для фетчинга email
         # По умолчанию неактивен - нужно включить вручную
