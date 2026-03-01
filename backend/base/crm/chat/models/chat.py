@@ -624,8 +624,6 @@ class Chat(DotModel):
                 "connector_id": None,
                 "connector_type": "internal",
                 "connector_name": "Internal",
-                "contact_id": None,
-                "contact_value": None,
             }
         ]
 
@@ -636,9 +634,7 @@ class Chat(DotModel):
                 SELECT DISTINCT
                     cc.id as connector_id,
                     cc.type as connector_type,
-                    cc.name as connector_name,
-                    c.id as contact_id,
-                    c.name as contact_value
+                    cc.name as connector_name
                 FROM chat_member cm
                 JOIN contact c ON c.partner_id = cm.partner_id AND c.active = true
                 JOIN chat_connector cc ON cc.active = true
@@ -655,8 +651,6 @@ class Chat(DotModel):
                         "connector_id": row["connector_id"],
                         "connector_type": row["connector_type"],
                         "connector_name": row["connector_name"],
-                        "contact_id": row["contact_id"],
-                        "contact_value": row["contact_value"],
                     }
                 )
 

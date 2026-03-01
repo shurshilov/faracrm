@@ -591,8 +591,6 @@ export interface ChatConnectorDetail {
   connector_id: number;
   connector_type: string;
   connector_name: string;
-  contact_id: number | null;
-  contact_value: string;
 }
 
 export interface Chat {
