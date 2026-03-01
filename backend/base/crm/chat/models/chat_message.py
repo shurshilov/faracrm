@@ -322,7 +322,7 @@ class ChatMessage(DotModel):
                 "author_user_id",
                 "author_partner_id",
                 "create_date",
-                "pinned",
+                # "pinned",
             ],
             sort="create_date",
             order="DESC",

@@ -39,17 +39,14 @@ class ActivityApp(App):
     async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
         env: "Environment" = app.state.env
-        db_session = env.apps.db.get_session()
 
         # Начальные типы активностей
         for type_data in INITIAL_ACTIVITY_TYPES:
             existing = await env.models.activity_type.search(
-                session=db_session,
                 filter=[("name", "=", type_data["name"])],
             )
             if not existing:
                 await env.models.activity_type.create(
-                    session=db_session,
                     payload=ActivityType(**type_data),
                 )
 

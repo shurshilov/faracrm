@@ -588,11 +588,11 @@ export interface ChatConnector {
 }
 
 export interface ChatConnectorDetail {
-  external_chat_id: number;
-  external_id: string;
   connector_id: number;
   connector_type: string;
   connector_name: string;
+  contact_id: number | null;
+  contact_value: string;
 }
 
 export interface Chat {

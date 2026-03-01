@@ -34,16 +34,13 @@ class PartnersApp(App):
     async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
         env: "Environment" = app.state.env
-        db_session = env.apps.db.get_session()
 
         # Начальные типы контактов
         for type_data in INITIAL_CONTACT_TYPES:
             existing = await env.models.contact_type.search(
-                session=db_session,
                 filter=[("name", "=", type_data["name"])],
             )
             if not existing:
                 await env.models.contact_type.create(
-                    session=db_session,
                     payload=ContactType(**type_data),
                 )

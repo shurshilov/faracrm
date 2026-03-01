@@ -36,29 +36,24 @@ class TasksApp(App):
     async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
         env: "Environment" = app.state.env
-        db_session = env.apps.db.get_session()
 
         # --- Начальные стадии задач ---
         for stage_data in INITIAL_TASK_STAGES:
             existing = await env.models.task_stage.search(
-                session=db_session,
                 filter=[("name", "=", stage_data["name"])],
             )
             if not existing:
                 await env.models.task_stage.create(
-                    session=db_session,
                     payload=TaskStage(**stage_data),
                 )
 
         # --- Начальные теги ---
         for tag_data in INITIAL_TASK_TAGS:
             existing = await env.models.task_tag.search(
-                session=db_session,
                 filter=[("name", "=", tag_data["name"])],
             )
             if not existing:
                 await env.models.task_tag.create(
-                    session=db_session,
                     payload=TaskTag(
                         name=tag_data["name"], color=tag_data["color"]
                     ),

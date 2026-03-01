@@ -34,13 +34,11 @@ class LanguageApp(App):
         env: "Environment" = app.state.env
 
         # Создание начальных языков
-        db_session = env.apps.db.get_session()
         for lang_data in INITIAL_LANGUAGES:
             existing_langs = await env.models.language.search(
-                session=db_session, filter=[("code", "=", lang_data["code"])]
+                filter=[("code", "=", lang_data["code"])]
             )
             if not existing_langs:
                 await env.models.language.create(
-                    session=db_session,
                     payload=Language(**lang_data),
                 )

@@ -1,3 +1,4 @@
+import { ChatConnectorDetail } from '@/services/api/chat';
 import { ActionIcon, Menu, Tooltip, Text, Group } from '@mantine/core';
 import {
   IconBrandTelegram,
@@ -8,16 +9,8 @@ import {
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 
-export interface ConnectorOption {
-  connector_id: number | null;
-  connector_type: string;
-  connector_name: string;
-  external_chat_id?: number | null;
-  external_id?: string | null;
-}
-
 interface ConnectorSwitcherProps {
-  connectors: ConnectorOption[];
+  connectors: ChatConnectorDetail[];
   selectedConnectorId: number | null;
   onSelect: (connectorId: number | null) => void;
   disabled?: boolean;

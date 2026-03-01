@@ -37,13 +37,11 @@ class SalesApp(App):
         env: "Environment" = app.state.env
 
         # Создание начальных стадий продаж
-        db_session = env.apps.db.get_session()
         for stage_data in INITIAL_SALE_STAGES:
             existing_stages = await env.models.sale_stage.search(
-                session=db_session, filter=[("name", "=", stage_data["name"])]
+                filter=[("name", "=", stage_data["name"])]
             )
             if not existing_stages:
                 await env.models.sale_stage.create(
-                    session=db_session,
                     payload=SaleStage(**stage_data),
                 )

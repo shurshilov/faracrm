@@ -36,13 +36,11 @@ class LeadsApp(App):
         env: "Environment" = app.state.env
 
         # Создание начальных стадий лидов
-        db_session = env.apps.db.get_session()
         for stage_data in INITIAL_LEAD_STAGES:
             existing_stages = await env.models.lead_stage.search(
-                session=db_session, filter=[("name", "=", stage_data["name"])]
+                filter=[("name", "=", stage_data["name"])]
             )
             if not existing_stages:
                 await env.models.lead_stage.create(
-                    session=db_session,
                     payload=LeadStage(**stage_data),
                 )

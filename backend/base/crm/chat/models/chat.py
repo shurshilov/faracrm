@@ -621,8 +621,6 @@ class Chat(DotModel):
         """
         connectors = [
             {
-                "external_chat_id": None,
-                "external_id": None,
                 "connector_id": None,
                 "connector_type": "internal",
                 "connector_name": "Internal",
@@ -633,7 +631,7 @@ class Chat(DotModel):
 
         if not self.is_internal:
             session = self._get_db_session()
-            # Маппинг contact ↔ connector через общий contact_type_id (integer FK)
+            # Маппинг contact connector через общий contact_type_id (integer FK)
             query = """
                 SELECT DISTINCT
                     cc.id as connector_id,
@@ -654,8 +652,6 @@ class Chat(DotModel):
             for row in result:
                 connectors.append(
                     {
-                        "external_chat_id": None,
-                        "external_id": None,
                         "connector_id": row["connector_id"],
                         "connector_type": row["connector_type"],
                         "connector_name": row["connector_name"],

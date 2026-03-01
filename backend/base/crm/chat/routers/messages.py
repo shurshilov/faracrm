@@ -146,13 +146,13 @@ async def get_messages(
             "id": msg.id,
             "body": msg.body,
             "message_type": msg.message_type,
-            "create_date": (
-                msg.create_date.isoformat() if msg.create_date else None
-            ),
+            "create_date": msg.create_date.isoformat(),
             "starred": msg.starred,
             "pinned": msg.pinned,
             "is_edited": msg.is_edited,
             "is_read": msg.is_read,
+            "parent_id": msg.parent_id,
+            "connector_id": msg.connector_id,
             "author": format_message_author(msg),
             "attachments": attachments_by_message.get(msg.id, []),
             "reactions": format_reactions(msg.id),
@@ -185,7 +185,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
         message = await env.models.chat_message.post_message(
             chat_id=chat_id,
             author_user_id=user_id,
-            body=body.body or " ",
+            body=body.body,
             connector_id=body.connector_id,
             parent_id=body.parent_id,
         )
@@ -314,14 +314,12 @@ async def delete_message(req: Request, chat_id: int, message_id: int):
 
     # Проверяем членство
     member = await ChatMember.check_membership(chat_id, user_id)
-    message = await env.models.chat_message.search(
-        filter=[("id", "=", message_id)],
+    message = await env.models.chat_message.get(
+        message_id,
         fields=["author_user_id"],
+        fields_nested={"author_user_id": ["id"]},
     )
 
-    if not message:
-        raise FaraException({"content": "NOT_FOUND", "status_code": 404})
-    message = message[0]
     # Проверяем права: своё сообщение или can_delete_others
     is_own_message = (
         message.author_user_id and message.author_user_id.id == user_id
@@ -503,9 +501,7 @@ async def get_pinned_messages(req: Request, chat_id: int):
                 "id": msg.id,
                 "body": msg.body,
                 "message_type": msg.message_type,
-                "create_date": (
-                    msg.create_date.isoformat() if msg.create_date else None
-                ),
+                "create_date": msg.create_date.isoformat(),
                 "author": format_message_author(msg),
             }
         )
