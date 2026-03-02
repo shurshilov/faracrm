@@ -8,7 +8,12 @@ from starlette.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
 
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.core.exceptions.environment import FaraException
-from ..schemas.chat import ChatCreate, ChatUpdate, AddMemberInput
+from ..schemas.chat import (
+    ChatCreate,
+    ChatUpdate,
+    AddMemberInput,
+    UpdateMemberPermissions,
+)
 from ..models.chat_member import ChatMember
 
 if TYPE_CHECKING:
@@ -598,7 +603,10 @@ async def update_chat(req: Request, chat_id: int, body: ChatUpdate):
 
 @router_private.patch("/chats/{chat_id}/members/{member_id}/permissions")
 async def update_member_permissions(
-    req: Request, chat_id: int, member_id: int
+    req: Request,
+    chat_id: int,
+    member_id: int,
+    payload: UpdateMemberPermissions,
 ):
     """
     Обновить права участника чата.
@@ -606,8 +614,6 @@ async def update_member_permissions(
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
-
-    body = await req.json()
 
     # Проверяем что текущий пользователь админ
     await ChatMember.check_admin(chat_id, user_id)
@@ -619,19 +625,8 @@ async def update_member_permissions(
             {"content": "MEMBER_NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
         )
 
-    # Обновляем права
-    perm_fields = {}
-    for key in (
-        "can_read",
-        "can_write",
-        "can_invite",
-        "can_pin",
-        "can_delete_others",
-        "is_admin",
-    ):
-        if key in body:
-            perm_fields[key] = body[key]
-
+    # Обновляем только переданные поля
+    perm_fields = payload.model_dump(exclude_none=True)
     if perm_fields:
         await target_member.update(env.models.chat_member(**perm_fields))
 

@@ -67,6 +67,17 @@ class MemberPermissions(BaseModel):
     is_admin: bool = False
 
 
+class UpdateMemberPermissions(BaseModel):
+    """Schema for partial update of member permissions (PATCH)."""
+
+    can_read: bool | None = None
+    can_write: bool | None = None
+    can_invite: bool | None = None
+    can_pin: bool | None = None
+    can_delete_others: bool | None = None
+    is_admin: bool | None = None
+
+
 class ChatMember(BaseModel):
     """Schema for chat member."""
 

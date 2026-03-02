@@ -590,28 +590,6 @@ class Chat(DotModel):
             return members[0].get_permissions()
         return None
 
-    async def set_member_permissions(
-        self, user_id: int, permissions: dict
-    ) -> bool:
-        """Установить права участника в чате."""
-        members = await env.models.chat_member.search(
-            filter=[
-                ("chat_id", "=", self.id),
-                ("user_id", "=", user_id),
-                ("is_active", "=", True),
-            ],
-            limit=1,
-        )
-        if members:
-            member = members[0]
-            valid_perms = {
-                k: v for k, v in permissions.items() if hasattr(member, k)
-            }
-            if valid_perms:
-                await member.update(env.models.chat_member(**valid_perms))
-            return True
-        return False
-
     async def get_available_connectors(self) -> list[dict]:
         """
         Получить список доступных коннекторов для чата.
