@@ -418,7 +418,7 @@ class Chat(DotModel):
 
         # Атомарный поиск с блокировкой
         lock_query = """
-            SELECT id FROM chat
+            SELECT id, name FROM chat
             WHERE res_model = %s AND res_id = %s
               AND chat_type = 'record' AND active = true
             LIMIT 1
@@ -428,12 +428,13 @@ class Chat(DotModel):
 
         if result:
             chat_id = result[0]["id"]
-            chat = await self.get(chat_id)
+            chat_name = result[0]["name"]
+            chat = Chat(id=chat_id, name=chat_name)
 
             # Подписываем пользователя если ещё не мембер
-            from backend.base.crm.chat.models.chat_member import ChatMember
-
-            membership = await ChatMember.get_membership(chat.id, user_id)
+            membership = await env.models.chat_member.get_membership(
+                chat.id, user_id
+            )
             if not membership:
                 default_perms = DEFAULT_PERMISSIONS["record"]
                 await self._add_user_member(chat.id, user_id, default_perms)
@@ -552,43 +553,29 @@ class Chat(DotModel):
             return True
         return False
 
-    async def remove_partner(self, partner_id: int) -> bool:
-        """Удалить партнёра из чата (мягкое удаление)."""
-        members = await env.models.chat_member.search(
-            filter=[
-                ("chat_id", "=", self.id),
-                ("partner_id", "=", partner_id),
-                ("is_active", "=", True),
-            ],
-            limit=1,
-        )
-        if members:
-            member = members[0]
-            now = datetime.now(timezone.utc)
-            await member.update(
-                env.models.chat_member(is_active=False, left_at=now)
-            )
-            return True
-        return False
+    # async def remove_partner(self, partner_id: int) -> bool:
+    #     """Удалить партнёра из чата (мягкое удаление)."""
+    #     members = await env.models.chat_member.search(
+    #         filter=[
+    #             ("chat_id", "=", self.id),
+    #             ("partner_id", "=", partner_id),
+    #             ("is_active", "=", True),
+    #         ],
+    #         limit=1,
+    #     )
+    #     if members:
+    #         member = members[0]
+    #         now = datetime.now(timezone.utc)
+    #         await member.update(
+    #             env.models.chat_member(is_active=False, left_at=now)
+    #         )
+    #         return True
+    #     return False
 
     async def update_last_message_date(self):
         """Обновить дату последнего сообщения."""
         now = datetime.now(timezone.utc)
         await self.update(Chat(last_message_date=now, write_date=now))
-
-    async def get_member_permissions(self, user_id: int) -> dict | None:
-        """Получить права участника в чате."""
-        members = await env.models.chat_member.search(
-            filter=[
-                ("chat_id", "=", self.id),
-                ("user_id", "=", user_id),
-                ("is_active", "=", True),
-            ],
-            limit=1,
-        )
-        if members:
-            return members[0].get_permissions()
-        return None
 
     async def get_available_connectors(self) -> list[dict]:
         """
