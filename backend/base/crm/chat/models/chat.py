@@ -5,6 +5,9 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
+from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+    ContainerTransaction,
+)
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
     Char,
@@ -370,7 +373,7 @@ class Chat(DotModel):
         description: str | None = None,
     ):
         """Создать канал."""
-        creator = await env.models.user.get(creator_id)
+        creator = env.models.user(id=creator_id)
 
         default_perms = DEFAULT_PERMISSIONS["channel"]
 
@@ -411,61 +414,67 @@ class Chat(DotModel):
         пользователя если он ещё не мембер.
         Если нет — создаёт новый record-чат с пользователем как первым мембером.
 
-        Защита от race condition: использует SELECT ... FOR UPDATE SKIP LOCKED
-        для предотвращения дублирования при параллельных запросах.
+        Защита от race condition: pg_advisory_xact_lock внутри транзакции
+        блокирует по логическому ключу до commit/rollback.
         """
-        session = self._get_db_session()
-
-        # Атомарный поиск с блокировкой
-        lock_query = """
+        find_query = """
             SELECT id, name FROM chat
             WHERE res_model = %s AND res_id = %s
               AND chat_type = 'record' AND active = true
             LIMIT 1
-            FOR UPDATE SKIP LOCKED
         """
-        result = await session.execute(lock_query, (res_model, res_id))
+
+        # Fast path (99% случаев) — чат уже существует, без lock
+        session = self._get_db_session()
+        result = await session.execute(find_query, (res_model, res_id))
 
         if result:
-            chat_id = result[0]["id"]
-            chat_name = result[0]["name"]
-            chat = Chat(id=chat_id, name=chat_name)
-
-            # Подписываем пользователя если ещё не мембер
-            membership = await env.models.chat_member.get_membership(
-                chat.id, user_id
-            )
-            if not membership:
-                default_perms = DEFAULT_PERMISSIONS["record"]
-                await self._add_user_member(chat.id, user_id, default_perms)
+            chat = Chat(id=result[0]["id"], name=result[0]["name"])
+            await self._ensure_membership(chat.id, user_id)
             return chat
 
-        # Создаём новый record-чат
-        user = env.models.user(id=user_id)
-        default_perms = DEFAULT_PERMISSIONS["record"]
+        # Slow path — чат не найден, берём lock и создаём
+        # с защитой от дублей, так как чат создается лениво
+        async with ContainerTransaction() as session:
+            await session.execute(
+                "SELECT pg_advisory_xact_lock(hashtext(%s), %s)",
+                (f"chat:{res_model}", res_id),
+            )
 
-        now = datetime.now(timezone.utc)
-        chat = Chat(
-            name=f"{res_model}:{res_id}",
-            chat_type="record",
-            is_internal=True,
-            res_model=res_model,
-            res_id=res_id,
-            create_user_id=user,
-            create_date=now,
-            write_date=now,
-            default_can_read=default_perms["can_read"],
-            default_can_write=default_perms["can_write"],
-            default_can_invite=default_perms["can_invite"],
-            default_can_pin=default_perms["can_pin"],
-            default_can_delete_others=default_perms["can_delete_others"],
-        )
-        chat.id = await self.create(payload=chat)
+            # Повторная проверка под lock (мог создаться пока ждали)
+            result = await session.execute(find_query, (res_model, res_id))
 
-        # Первый пользователь — мембер с правами record
-        await self._add_user_member(chat.id, user_id, default_perms)
+            if result:
+                chat = Chat(id=result[0]["id"], name=result[0]["name"])
+                await self._ensure_membership(chat.id, user_id)
+                return chat
 
-        # Уведомляем пользователя о новом чате через WS
+            # Создаём новый record-чат
+            user = env.models.user(id=user_id)
+            default_perms = DEFAULT_PERMISSIONS["record"]
+
+            now = datetime.now(timezone.utc)
+            chat = Chat(
+                name=f"{res_model}:{res_id}",
+                chat_type="record",
+                is_internal=True,
+                res_model=res_model,
+                res_id=res_id,
+                create_user_id=user,
+                create_date=now,
+                write_date=now,
+                default_can_read=default_perms["can_read"],
+                default_can_write=default_perms["can_write"],
+                default_can_invite=default_perms["can_invite"],
+                default_can_pin=default_perms["can_pin"],
+                default_can_delete_others=default_perms["can_delete_others"],
+            )
+            chat.id = await self.create(payload=chat)
+
+            # Первый пользователь — мембер с правами record
+            await self._add_user_member(chat.id, user_id, default_perms)
+
+        # Уведомляем пользователя о новом чате через WS (вне транзакции)
         try:
             from backend.base.crm.chat import chat_manager
 
@@ -474,6 +483,15 @@ class Chat(DotModel):
             pass  # WS не обязателен
 
         return chat
+
+    async def _ensure_membership(self, chat_id: int, user_id: int):
+        """Подписать пользователя на чат если ещё не мембер."""
+        membership = await env.models.chat_member.get_membership(
+            chat_id, user_id
+        )
+        if not membership:
+            default_perms = DEFAULT_PERMISSIONS["record"]
+            await self._add_user_member(chat_id, user_id, default_perms)
 
     async def _add_user_member(
         self, chat_id: int, user_id: int, permissions: dict | None = None
