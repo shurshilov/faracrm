@@ -11,7 +11,7 @@ from backend.base.crm.auth_token.app import AuthTokenApp
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
+router_private = APIRouter(
     prefix="/web-push",
     tags=["Web Push"],
     dependencies=[Depends(AuthTokenApp.verify_access)],
@@ -28,7 +28,7 @@ class PushSubscriptionResponse(BaseModel):
     message: str = ""
 
 
-@router.post("/subscribe", response_model=PushSubscriptionResponse)
+@router_private.post("/subscribe", response_model=PushSubscriptionResponse)
 async def subscribe(req: Request, body: PushSubscriptionData):
     env = req.app.state.env
     auth_session = req.state.session
@@ -56,15 +56,19 @@ async def subscribe(req: Request, body: PushSubscriptionData):
 
     contact_type_id = contact_type[0].id
 
-    # здесь должен быть лимит 1 и не надо создавать контакт каждый раз иначе их будет слишком много?
+    # Макс подписок на пользователя (разные браузеры/устройства)
+    MAX_SUBSCRIPTIONS = 5
+
     existing = await env.models.contact.search(
         filter=[
             ("user_id", "=", user_id),
             ("contact_type_id", "=", contact_type_id),
             ("active", "=", True),
         ],
+        order="id asc",
     )
 
+    # Ищем контакт с тем же endpoint — обновляем ключи
     for contact in existing:
         try:
             data = json.loads(contact.name)
@@ -79,7 +83,26 @@ async def subscribe(req: Request, body: PushSubscriptionData):
                     success=True, message="Subscription updated"
                 )
         except (json.JSONDecodeError, TypeError):
-            continue
+            # Битый JSON — деактивируем мусорный контакт
+            await contact.update(env.models.contact(active=False))
+            logger.warning(
+                "[web_push] Deactivated broken contact %s", contact.id
+            )
+
+    # Пересчитаем после возможной деактивации битых
+    valid_count = sum(
+        1 for c in existing if c.active  # после update объект ещё в списке
+    )
+
+    # Если лимит достигнут — деактивируем самую старую подписку
+    if valid_count >= MAX_SUBSCRIPTIONS:
+        oldest = existing[0]
+        await oldest.update(env.models.contact(active=False))
+        logger.info(
+            "[web_push] Evicted oldest subscription %s for user %s",
+            oldest.id,
+            user_id,
+        )
 
     await env.models.contact.create(
         env.models.contact(
@@ -90,17 +113,13 @@ async def subscribe(req: Request, body: PushSubscriptionData):
         )
     )
 
-    logger.info(
-        "[web_push] Created subscription for user %s (total: %d)",
-        user_id,
-        len(existing) + 1,
-    )
+    logger.info("[web_push] Created subscription for user %s", user_id)
     return PushSubscriptionResponse(
         success=True, message="Subscribed successfully"
     )
 
 
-@router.post("/unsubscribe", response_model=PushSubscriptionResponse)
+@router_private.post("/unsubscribe", response_model=PushSubscriptionResponse)
 async def unsubscribe(req: Request, body: PushSubscriptionData):
     env = req.app.state.env
     auth_session = req.state.session
@@ -142,7 +161,7 @@ async def unsubscribe(req: Request, body: PushSubscriptionData):
     )
 
 
-@router.get("/vapid-key")
+@router_private.get("/vapid-key")
 async def get_vapid_public_key(req: Request):
     env = req.app.state.env
 
@@ -159,3 +178,29 @@ async def get_vapid_public_key(req: Request):
         return {"vapid_public_key": None}
 
     return {"vapid_public_key": connector[0].client_app_id}
+
+
+@router_private.get("/status")
+async def get_push_status(req: Request):
+    """
+    Check if Web Push is configured and available.
+    Frontend uses this to show/hide the push toggle in UserMenu.
+    """
+    env = req.app.state.env
+
+    connector = await env.models.chat_connector.search(
+        filter=[
+            ("type", "=", "web_push"),
+            ("active", "=", True),
+        ],
+        fields=["id", "client_app_id", "access_token"],
+        limit=1,
+    )
+
+    if not connector:
+        return {"available": False}
+
+    c = connector[0]
+    configured = bool(c.client_app_id and c.access_token)
+
+    return {"available": configured}

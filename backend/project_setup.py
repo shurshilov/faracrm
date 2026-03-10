@@ -163,6 +163,7 @@ from backend.base.crm.company.app import CompanyApp
 from backend.base.crm.chat.app import ChatApp
 from backend.base.crm.chat_telegram.app import ChatTelegramApp
 from backend.base.crm.chat_email.app import ChatEmailApp
+from backend.base.crm.chat_web_push.app import ChatWebPushApp
 from backend.base.crm.tasks.app import TasksApp
 from backend.base.crm.activity.app import ActivityApp
 from backend.base.crm.report_docx.app import ReportDocxApp
@@ -275,6 +276,7 @@ class Apps(AppsCore):
     chat = ChatApp()
     chat_telegram = ChatTelegramApp()
     chat_email = ChatEmailApp()
+    chat_web_push = ChatWebPushApp()
     task = TasksApp()
     activity = ActivityApp()
     report_docx = ReportDocxApp()

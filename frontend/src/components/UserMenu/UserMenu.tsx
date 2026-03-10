@@ -21,6 +21,7 @@ import {
   IconBellOff,
   IconVolume,
   IconVolumeOff,
+  IconBellRinging,
 } from '@tabler/icons-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -36,6 +37,7 @@ import {
 } from '@/services/api/crudApi';
 import { flags } from '@/assets/flags';
 import { useLayoutTheme } from '@/components/ModernTheme';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import classes from './UserMenu.module.css';
 
 const getFlag = (code: string): string => {
@@ -189,6 +191,9 @@ function UserMenu() {
 
   const notificationPopup = user?.notification_popup ?? true;
   const notificationSound = user?.notification_sound ?? true;
+
+  // Web Push
+  const push = usePushNotifications();
 
   const handleTogglePopup = async () => {
     if (session?.user_id?.id) {
@@ -411,6 +416,20 @@ function UserMenu() {
               {t('common:notificationSound', 'Звук')}
               {notificationSound ? ' ✓' : ''}
             </Menu.Item>
+            {push.isAvailable && (
+              <Menu.Item
+                leftSection={
+                  <IconBellRinging
+                    style={{ width: 16, height: 16 }}
+                    stroke={1.5}
+                  />
+                }
+                onClick={push.isSubscribed ? push.unsubscribe : push.subscribe}
+                disabled={push.isLoading}>
+                {t('common:notificationPush', 'Push')}
+                {push.isSubscribed ? ' ✓' : ''}
+              </Menu.Item>
+            )}
           </Menu.Dropdown>
         </Menu>
 
