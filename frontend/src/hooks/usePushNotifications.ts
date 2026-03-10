@@ -1,180 +1,152 @@
 /**
  * usePushNotifications - Web Push subscription management.
  *
- * Checks server /web-push/status to determine if push is configured.
- * If not configured (no active connector with VAPID keys) - isAvailable=false,
- * toggle is hidden in UI.
+ * Uses RTK Query for API calls (auto token via baseQueryWithReauth).
+ * Checks /web-push/status to show/hide toggle.
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { API_BASE_URL } from '@/services/baseQueryWithReauth';
-
-interface PushState {
-  /** Browser supports Push API */
-  isSupported: boolean;
-  /** Server has active configured web_push connector */
-  isAvailable: boolean;
-  /** Current browser is subscribed */
-  isSubscribed: boolean;
-  /** Loading state */
-  isLoading: boolean;
-  /** Notification permission */
-  permission: NotificationPermission | 'unsupported';
-}
+import {
+  useGetPushStatusQuery,
+  useLazyGetVapidKeyQuery,
+  usePushSubscribeMutation,
+  usePushUnsubscribeMutation,
+} from '@/services/api/pushApi';
 
 export function usePushNotifications() {
-  const [state, setState] = useState<PushState>({
-    isSupported: false,
-    isAvailable: false,
-    isSubscribed: false,
-    isLoading: true,
-    permission: 'unsupported',
-  });
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [permission, setPermission] = useState<
+    NotificationPermission | 'unsupported'
+  >('unsupported');
 
+  const isSupported =
+    typeof window !== 'undefined' &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window;
+
+  // Server status
+  const { data: statusData, isLoading: statusLoading } = useGetPushStatusQuery(
+    undefined,
+    { skip: !isSupported },
+  );
+  const isAvailable = statusData?.available === true;
+
+  // RTK Query mutations & lazy query
+  const [getVapidKey] = useLazyGetVapidKeyQuery();
+  const [subscribeMutation] = usePushSubscribeMutation();
+  const [unsubscribeMutation] = usePushUnsubscribeMutation();
+
+  // Check browser subscription on mount
   useEffect(() => {
+    if (!isSupported) {
+      setIsLoading(false);
+      return;
+    }
+
     const check = async () => {
-      // 1. Browser support
-      const isSupported =
-        'serviceWorker' in navigator &&
-        'PushManager' in window &&
-        'Notification' in window;
-
-      if (!isSupported) {
-        setState({
-          isSupported: false,
-          isAvailable: false,
-          isSubscribed: false,
-          isLoading: false,
-          permission: 'unsupported',
-        });
-        return;
-      }
-
-      // 2. Server status - is connector configured?
-      let isAvailable = false;
-      try {
-        const resp = await fetch(API_BASE_URL + '/web-push/status', {
-          credentials: 'include',
-        });
-        const data = await resp.json();
-        isAvailable = data.available === true;
-      } catch {
-        // Server unavailable or module not installed
-      }
-
-      // 3. Current subscription in browser
-      const permission = Notification.permission;
-      let isSubscribed = false;
+      setPermission(Notification.permission);
       try {
         const reg = await navigator.serviceWorker.getRegistration('/sw.js');
         if (reg) {
           const sub = await reg.pushManager.getSubscription();
-          isSubscribed = !!sub;
+          setIsSubscribed(!!sub);
         }
       } catch {}
-
-      setState({
-        isSupported: true,
-        isAvailable,
-        isSubscribed,
-        isLoading: false,
-        permission,
-      });
+      setIsLoading(false);
     };
 
     check();
-  }, []);
+  }, [isSupported]);
 
   const subscribe = useCallback(async () => {
-    setState(s => ({ ...s, isLoading: true }));
+    setIsLoading(true);
     try {
-      // Get VAPID key
-      const vr = await fetch(API_BASE_URL + '/web-push/vapid-key', {
-        credentials: 'include',
-      });
-      const { vapid_public_key } = await vr.json();
-      if (!vapid_public_key) throw new Error('Web Push not configured');
+      // 1. Get VAPID key via RTK Query
+      const { data: vapidData } = await getVapidKey();
+      if (!vapidData?.vapid_public_key)
+        throw new Error('Web Push not configured');
 
-      // Request permission
+      // 2. Request permission
       const perm = await Notification.requestPermission();
+      setPermission(perm);
       if (perm !== 'granted') {
-        setState(s => ({ ...s, isLoading: false, permission: perm }));
+        setIsLoading(false);
         return false;
       }
 
-      // Register SW & subscribe
+      // 3. Register SW & subscribe
       const reg = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
 
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: vapid_public_key,
+        applicationServerKey: vapidData.vapid_public_key,
       });
 
-      // Send subscription to backend
+      // 4. Send to backend via RTK Query
       const j = sub.toJSON();
-      const r = await fetch(API_BASE_URL + '/web-push/subscribe', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys }),
-      });
-      const res = await r.json();
+      const result = await subscribeMutation({
+        endpoint: j.endpoint!,
+        keys: j.keys as Record<string, string>,
+      }).unwrap();
 
-      setState(s => ({
-        ...s,
-        isSubscribed: res.success,
-        isLoading: false,
-        permission: 'granted',
-      }));
-      return res.success;
+      setIsSubscribed(result.success);
+      setIsLoading(false);
+      return result.success;
     } catch (e) {
       console.error('[WebPush] Subscribe failed:', e);
-      setState(s => ({ ...s, isLoading: false }));
+      setIsLoading(false);
       return false;
     }
-  }, []);
+  }, [getVapidKey, subscribeMutation]);
 
   const unsubscribe = useCallback(async () => {
-    setState(s => ({ ...s, isLoading: true }));
+    setIsLoading(true);
     try {
       const reg = await navigator.serviceWorker.getRegistration('/sw.js');
       if (!reg) {
-        setState(s => ({ ...s, isLoading: false, isSubscribed: false }));
+        setIsSubscribed(false);
+        setIsLoading(false);
         return true;
       }
 
       const sub = await reg.pushManager.getSubscription();
       if (!sub) {
-        setState(s => ({ ...s, isLoading: false, isSubscribed: false }));
+        setIsSubscribed(false);
+        setIsLoading(false);
         return true;
       }
 
-      // Unsubscribe on server
+      // Unsubscribe on server via RTK Query
       const j = sub.toJSON();
-      await fetch(API_BASE_URL + '/web-push/unsubscribe', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint: j.endpoint, keys: j.keys }),
-      });
+      await unsubscribeMutation({
+        endpoint: j.endpoint!,
+        keys: j.keys as Record<string, string>,
+      }).unwrap();
 
       // Unsubscribe in browser
       await sub.unsubscribe();
 
-      setState(s => ({
-        ...s,
-        isSubscribed: false,
-        isLoading: false,
-        permission: Notification.permission,
-      }));
+      setIsSubscribed(false);
+      setPermission(Notification.permission);
+      setIsLoading(false);
       return true;
     } catch (e) {
       console.error('[WebPush] Unsubscribe failed:', e);
-      setState(s => ({ ...s, isLoading: false }));
+      setIsLoading(false);
       return false;
     }
-  }, []);
+  }, [unsubscribeMutation]);
 
-  return { ...state, subscribe, unsubscribe };
+  return {
+    isSupported,
+    isAvailable,
+    isSubscribed,
+    isLoading: isLoading || statusLoading,
+    permission,
+    subscribe,
+    unsubscribe,
+  };
 }

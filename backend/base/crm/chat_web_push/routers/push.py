@@ -65,7 +65,8 @@ async def subscribe(req: Request, body: PushSubscriptionData):
             ("contact_type_id", "=", contact_type_id),
             ("active", "=", True),
         ],
-        order="id asc",
+        order="ASC",
+        sort="id",
     )
 
     # Ищем контакт с тем же endpoint — обновляем ключи

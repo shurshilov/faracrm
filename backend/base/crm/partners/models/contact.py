@@ -38,7 +38,6 @@ class Contact(DotModel):
 
     # Значение контакта (телефон, email, username)
     name: str = Char(
-        max_length=255,
         required=True,
         description="Значение: +79991234567, ivan@mail.ru, @username",
     )
