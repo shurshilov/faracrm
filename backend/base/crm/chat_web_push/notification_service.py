@@ -47,6 +47,7 @@ async def notify_on_new_message(
                 "contact_type_id",
                 "access_token",
                 "client_app_id",
+                "connector_url",
             ],
         )
 

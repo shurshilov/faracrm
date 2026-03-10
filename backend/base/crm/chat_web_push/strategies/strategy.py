@@ -72,12 +72,18 @@ class WebPushStrategy(ChatStrategyBase):
             from pywebpush import webpush
 
             vapid_private_key = connector.access_token
-            vapid_claims_email = (
-                connector.client_app_id or "mailto:admin@fara.com"
-            )
             if not vapid_private_key:
                 logger.error("[web_push] No VAPID private key in connector")
                 return False
+
+            # vapid_claims.sub must be a mailto: link
+            # Use connector_url field for admin email, fallback to default
+            raw_email = (connector.connector_url or "").strip()
+            if not raw_email:
+                raw_email = "admin@fara.com"
+            if not raw_email.startswith("mailto:"):
+                raw_email = f"mailto:{raw_email}"
+
             webpush(
                 subscription_info=subscription_info,
                 data=json.dumps(
@@ -90,7 +96,7 @@ class WebPushStrategy(ChatStrategyBase):
                     }
                 ),
                 vapid_private_key=vapid_private_key,
-                vapid_claims={"sub": vapid_claims_email},
+                vapid_claims={"sub": raw_email},
             )
             return True
         except Exception as e:
