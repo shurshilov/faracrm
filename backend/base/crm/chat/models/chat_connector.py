@@ -71,6 +71,7 @@ class ChatConnector(DotModel):
     category: str = Selection(
         options=[
             ("messenger", "Messenger"),
+            ("notification", "Notification"),
             ("phone", "Phone"),
             ("email", "Email"),
             ("social", "Social"),
@@ -132,6 +133,14 @@ class ChatConnector(DotModel):
     # Идентификатор внешнего аккаунта от чьего имени работаем
     external_account_id: str | None = Char(
         max_length=255, description="ID внешнего аккаунта"
+    )
+
+    # Флаг: дублировать ли уведомления через этот коннектор
+    # Если True — при новом сообщении в любом чате,
+    # пользователям-участникам отправляется уведомление через этот коннектор
+    notify: bool = Boolean(
+        default=False,
+        description="Отправлять уведомления о новых сообщениях через этот коннектор",
     )
 
     # Настройки создания лидов

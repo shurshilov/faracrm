@@ -71,6 +71,7 @@ from backend.base.crm.chat_avito.mixins import ChatConnectorAvitoMixin
 from backend.base.crm.chat_whatsapp_chatapp.mixins import (
     ChatConnectorWhatsAppChatAppMixin,
 )
+from backend.base.crm.chat_web_push.mixins import ChatConnectorWebPushMixin
 
 # Project and task
 from backend.base.crm.tasks.models.project import Project
@@ -95,6 +96,7 @@ if TYPE_CHECKING:
     )
 
     class ChatConnector(
+        ChatConnectorWebPushMixin,
         ChatConnectorTelegramMixin,
         ChatConnectorAvitoMixin,
         ChatConnectorWhatsAppChatAppMixin,

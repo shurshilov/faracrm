@@ -222,4 +222,13 @@ INITIAL_CONTACT_TYPES = [
         "pattern": r"^https?://",
         "sequence": 9,
     },
+    {
+        "name": "web_push",
+        "label": "Веб пуши",
+        "icon": "IconWorld",
+        "color": "indigo",
+        "placeholder": "Json набор web push",
+        "pattern": None,
+        "sequence": 10,
+    },
 ]

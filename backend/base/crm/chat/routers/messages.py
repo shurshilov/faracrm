@@ -9,6 +9,9 @@ from starlette.status import HTTP_403_FORBIDDEN
 from backend.base.crm.attachments.models.attachments import Attachment
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.crm.chat.websocket import chat_manager
+from backend.base.crm.chat_web_push.notification_service import (
+    notify_on_new_message,
+)
 from backend.base.system.core.exceptions.environment import FaraException
 from ..schemas.chat import (
     MessageCreate,
@@ -287,6 +290,23 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
             },
             exclude_user=user_id,
         )
+
+        # Отправляем через Web Push
+        # Отправляем push-уведомления через notify-коннекторы
+        try:
+            await notify_on_new_message(
+                chat_id=chat_id,
+                message_id=message.id,
+                author_user_id=auth_session.user_id,
+                body=body.body,
+                exclude_user_id=user_id,
+            )
+        except Exception as notify_err:
+            import logging
+
+            logging.getLogger(__name__).error(
+                "[notify] Failed: %s", notify_err, exc_info=True
+            )
 
     return {
         "data": {
