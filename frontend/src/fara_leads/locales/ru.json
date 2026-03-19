@@ -2,10 +2,13 @@
   "menu": {
     "title": "CRM",
     "lead": "Лиды",
+    "leads": "Лиды",
     "lead_stage": "Стадии",
     "team_crm": "Команды"
   },
   "leads": {
+    "id": "Ид",
+    "stage_id": "Стадия",
     "title": "Лиды",
     "name": "Название лида",
     "type": "Тип",

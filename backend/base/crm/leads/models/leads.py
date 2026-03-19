@@ -6,11 +6,13 @@ if TYPE_CHECKING:
     from backend.base.crm.partners.models.partners import Partner
     from .lead_stage import LeadStage
 
+from ...partners.models.contact import Contact
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
     Boolean,
     Many2one,
+    One2many,
     Selection,
     Text,
 )
@@ -31,22 +33,22 @@ class Lead(DotModel):
         index=True,
         ondelete="restrict",
     )
-    user_id: "User" = Many2one(
+    user_id: "User | None" = Many2one(
         lambda: env.models.user,
         string="Salesperson",
         # index=True,
         ondelete="restrict",
     )
-    parent_id: "Partner" = Many2one(
+    parent_id: "Partner | None" = Many2one(
         lambda: env.models.partner,
         string="Parent partner",
         index=True,
         ondelete="restrict",
     )
-    company_id: "Company" = Many2one(
+    company_id: "Company | None" = Many2one(
         lambda: env.models.company, string="Company"
     )
-    notes: str = Text(string="Notes")
+    notes: str | None = Text(string="Notes")
     type: str = Selection(
         options=[
             ("lead", "Lead"),
@@ -55,7 +57,16 @@ class Lead(DotModel):
         default="lead",
         string="Type",
     )
-    website: str = Char(string="Website URL")
-    email: str = Char(string="Email")
-    phone: str = Char(string="phone")
-    mobile: str = Char(string="mobile")
+    # website: str = Char(string="Website URL")
+    # email: str = Char(string="Email")
+    # phone: str = Char(string="phone")
+    # mobile: str = Char(string="mobile")
+
+    # Контакты (телефоны, email, telegram и т.д.)
+    # Внешние аккаунты доступны через contact_ids.external_account_ids
+    contact_ids: list["Contact"] = One2many(
+        store=False,
+        relation_table=lambda: env.models.contact,
+        relation_table_field="partner_id",
+        description="Контакты",
+    )

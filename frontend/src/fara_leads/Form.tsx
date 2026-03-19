@@ -44,16 +44,16 @@ export function ViewFormLeads(props: ViewFormProps) {
       </FormSection>
 
       {/* Контакты */}
-      <FormSection title="Контактная информация" icon={<IconPhone size={18} />}>
-        <FormRow cols={2}>
-          <Field name="email" label="Email" />
-          <Field name="phone" label="Телефон" />
-        </FormRow>
-        <FormRow cols={2}>
-          <Field name="mobile" label="Мобильный" />
-          <Field name="website" label="Вебсайт" />
-        </FormRow>
-      </FormSection>
+      <Field
+        name="contact_ids"
+        widget="contacts"
+        label="Контакты"
+        parentField="partner_id">
+        <Field name="id" />
+        <Field name="contact_type_id" />
+        <Field name="name" />
+        <Field name="is_primary" />
+      </Field>
 
       {/* Заметки */}
       <FormSection title="Дополнительно" icon={<IconTag size={18} />}>

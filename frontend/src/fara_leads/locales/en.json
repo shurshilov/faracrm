@@ -6,6 +6,8 @@
     "team_crm": "Teams"
   },
   "leads": {
+    "id": "Id",
+    "stage_id": "Stage",
     "title": "Leads",
     "name": "Lead Name",
     "type": "Type",

@@ -9,7 +9,7 @@ export function ViewKanbanLeads() {
   return (
     <Kanban<LeadRecord>
       model="leads"
-      fields={['id', 'name', 'type', 'email', 'phone', 'user_id']}
+      fields={['id', 'name', 'type', 'user_id']}
       groupByField="stage_id"
       groupByModel="lead_stage"
     />
