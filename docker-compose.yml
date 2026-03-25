@@ -41,7 +41,7 @@ services:
       # Disable SSL for local Docker postgres
       PGSSLMODE: disable
       # Cookie only https, because use double token pattern
-      COOKIE_SECURE: "true"
+      # COOKIE_SECURE: "true"
 
       # Logger
       LOGGER__LOG_LEVEL: DEBUG
