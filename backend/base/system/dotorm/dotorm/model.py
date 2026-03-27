@@ -457,41 +457,38 @@ class DotModel(
     @classmethod
     async def get_default_values(
         cls, fields_client_nested: dict[str, list[str]]
-    ) -> dict[str, Field]:
-        """
-        fields_client_nested - словарь вложенных полей для полей m2m и o2m
-
-        Возвращает поля с установленным значением по умолчанию.
-        Используется при создании записи(сущности) на фронтенде. Например
-        мы создаем пользователя поле active у которого по умолчанию True.
-        """
+    ):
         default_values = {}
-        for name, field in cls.get_fields().items():
-            # Для One2many и Many2many всегда возвращаем структуру x2m_default
-            if isinstance(field, (One2many, Many2many)):
-                fields_nested = fields_client_nested.get(name)
-                if fields_nested:
-                    fields_info = field.relation_table.get_fields_info_list(
-                        fields_nested
-                    )
-                    x2m_default = {
-                        "data": [],
-                        "fields": fields_info,
-                        "total": 0,
-                    }
-                    default_values.update({name: x2m_default})
 
-            elif field.default is not None:
-                if callable(field.default):
-                    # если корутина то сделать авейт
-                    if asyncio.iscoroutinefunction(field.default):
-                        res = await field.default()
-                        default_values.update({name: res})
-                    # иначе просто вызов
-                    else:
-                        default_values.update({name: field.default()})
-                else:
-                    default_values.update({name: field.default})
+        for name, field in cls.get_fields().items():
+            is_x2m = isinstance(field, (One2many, Many2many))
+
+            # 1. Получаем само значение (разрешаем callable и async)
+            value = field.default
+            if callable(value):
+                value = (
+                    await value()
+                    if asyncio.iscoroutinefunction(value)
+                    else value()
+                )
+
+            # 2. Обработка x2m полей (подготовка структуры)
+            if is_x2m:
+                nested_names = fields_client_nested.get(name)
+                # Если есть вложенные поля, создаем спец. структуру, иначе пропускаем
+                if nested_names:
+                    data = value or []
+                    default_values[name] = {
+                        "data": data,
+                        "fields": field.relation_table.get_fields_info_list(
+                            nested_names
+                        ),
+                        "total": len(data),
+                    }
+
+            # 3. Обработка обычных полей
+            elif value is not None:
+                default_values[name] = value
 
         return default_values
 

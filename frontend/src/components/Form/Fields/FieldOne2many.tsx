@@ -105,6 +105,32 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
     [records, recordsCreated],
   );
 
+  // Если его нет — поле удаляется из запроса (else { delete values[field.name] }).
+  // Дефолтные значения o2m приходят в 'fieldName' как {data, fields, total},
+  // но '_fieldName' никогда не создаётся — данные теряются при сохранении.
+  //
+  // Решение: при монтировании на форме создания (нет id) инициализируем
+  // '_fieldName.created' из записей дефолтных данных,
+  // имитируя ручное создание пользователем (O2M использует created, не selected).
+  useEffect(() => {
+    if (id) return; // только форма создания
+    if (!defaulValues?.data?.length) return; // нет дефолтных записей
+
+    const parentFormName = '_' + name;
+    if (form.getValues()[parentFormName]) return; // уже инициализировано
+
+    form.setValues({
+      [parentFormName]: {
+        created: defaulValues.data, // имитируем ручное создание строк
+        deleted: [],
+        fieldsServer: fieldsServer,
+      },
+    });
+    // Помечаем форму dirty — кнопка Create становится активной
+    form.setDirty({ [parentFormName]: true });
+  }, [defaulValues, id]);
+  // ────────────────────────────────────────────────────────────────────────
+
   // Обработчик выбора существующих записей
   const handleSelectRecords = async (selectedItems: FaraRecord[]) => {
     const relatedModel = fieldsServer[name]?.relatedModel;
@@ -157,7 +183,9 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
     if (actualData?.data) {
       const records: RecordType[] = actualData.data.map((row: FaraRecord) => ({
         ...row,
-        _color: false,
+        // На форме создания (нет id) дефолтные записи подсвечиваем зелёным —
+        // как если бы пользователь добавил их вручную
+        _color: !id ? 'new' : false,
       }));
       setRecords(records);
       setRecordsCreated([]);

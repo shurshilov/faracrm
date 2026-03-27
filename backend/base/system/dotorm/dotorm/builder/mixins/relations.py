@@ -42,14 +42,14 @@ class RelationsMixin:
                 custom_fields = fields_nested.get(name)
                 if custom_fields:
                     fields += custom_fields
-            if field.relation_table:
+            elif field.relation_table:
                 fields = field.relation_table.get_store_fields()
 
             req: RequestBuilder | None = None
 
             if isinstance(field, One2many):
                 stmt, val = field.relation_table._builder.build_search(
-                    fields=[*fields, field.relation_table_field],
+                    fields=list(set([*fields, field.relation_table_field])),
                     filter=[(field.relation_table_field, "in", ids)],
                 )
                 req = RequestBuilder(

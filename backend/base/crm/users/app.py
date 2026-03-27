@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
-from .models.users import User, ADMIN_USER_ID, SYSTEM_USER_ID
+from .models.users import User, ADMIN_USER_ID, SYSTEM_USER_ID, TEMPLATE_USER_ID
 
 
 class UserApp(App):
@@ -35,6 +35,7 @@ class UserApp(App):
 
         await self._init_admin_user(env)
         await self._init_system_user(env)
+        await self._init_template_user(env)  # ← новый шаблон
         await self._init_user_rules(env)
 
     async def _init_admin_user(self, env: "Environment"):
@@ -69,6 +70,42 @@ class UserApp(App):
                 ),
             )
 
+    async def _init_template_user(self, env: "Environment"):
+        """
+        Создаёт шаблонного пользователя (id=3, login='default_internal').
+        Используется как прототип при создании
+        """
+
+        existing = await env.models.user.search(
+            filter=[("id", "=", TEMPLATE_USER_ID)], limit=1
+        )
+        if existing:
+            return
+
+        # Назначаем роль base_user шаблону
+        base_user_role = await env.models.role.search(
+            filter=[("code", "=", "base_user")],
+            fields=["id"],
+            limit=1,
+        )
+
+        # Создаём неактивного шаблонного пользователя
+        template_id = await env.models.user.create(
+            payload=User(
+                name="Шаблон: Внутренний пользователь",
+                login="default_internal",
+                is_admin=False,
+                # Пустые хеши — пользователь не может войти в систему
+                password_hash="",
+                password_salt="",
+                home_page="/",
+                layout_theme="modern",
+                notification_popup=True,
+                notification_sound=True,
+                role_ids={"selected": base_user_role},
+            ),
+        )
+
     async def _init_user_rules(self, env: "Environment"):
         """Создаёт правила безопасности для пользователей."""
         from backend.base.crm.security.models.rules import Rule
@@ -82,45 +119,46 @@ class UserApp(App):
             return
         user_model_id = user_model[0]
 
-        # Правило 1: Запрет удаления admin и system пользователей
-        # Domain: id NOT IN (1, 2) - можно удалять только если id не 1 и не 2
-        rule_name = "Protect admin and system users from deletion"
-        existing = await env.models.rule.search(
-            filter=[("name", "=", rule_name)],
-            limit=1,
-        )
-        if not existing:
-            await env.models.rule.create(
-                payload=Rule(
-                    name=rule_name,
-                    active=True,
-                    model_id=user_model_id,
-                    role_id=None,  # Для всех ролей
-                    domain=[["id", "not in", [1, 2]]],
-                    perm_create=False,
-                    perm_read=False,
-                    perm_update=False,
-                    perm_delete=True,  # Применяется только к delete
-                ),
-            )
+        rules = [
+            # Правило 1: Запрет удаления admin и system пользователей
+            # Domain: id NOT IN (1, 2, 3) - можно удалять только если id не 1 и не 2 и не 3
+            {
+                "name": "Protect admin and system users from deletion",
+                "domain": [
+                    [
+                        "id",
+                        "not in",
+                        [ADMIN_USER_ID, SYSTEM_USER_ID, TEMPLATE_USER_ID],
+                    ]
+                ],
+                "perm_delete": True,
+            },
+            # Правило 2: Пользователь может редактировать только себя
+            {
+                "name": "User can only edit own profile",
+                "domain": [["id", "=", "{{user_id}}"]],
+                "perm_update": True,
+                "perm_delete": True,
+            },
+        ]
 
-        # Правило 2: Пользователь может редактировать только себя
-        rule_name_2 = "User can only edit own profile"
-        existing_2 = await env.models.rule.search(
-            filter=[("name", "=", rule_name_2)],
-            limit=1,
-        )
-        if not existing_2:
+        for rule_data in rules:
+            existing = await env.models.rule.search(
+                filter=[("name", "=", rule_data["name"])],
+                limit=1,
+            )
+            if existing:
+                continue
             await env.models.rule.create(
                 payload=Rule(
-                    name=rule_name_2,
+                    name=rule_data["name"],
                     active=True,
                     model_id=user_model_id,
-                    role_id=None,  # Для всех ролей
-                    domain=[["id", "=", "{{user_id}}"]],
-                    perm_create=False,
-                    perm_read=False,
-                    perm_update=True,  # Применяется к update
-                    perm_delete=True,  # И к delete (себя можно удалить)
+                    role_id=None,
+                    domain=rule_data["domain"],
+                    perm_create=rule_data["perm_create"],
+                    perm_read=rule_data["perm_read"],
+                    perm_update=rule_data["perm_update"],
+                    perm_delete=rule_data["perm_delete"],
                 ),
             )

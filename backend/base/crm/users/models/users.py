@@ -29,6 +29,18 @@ from backend.base.crm.security.models.sessions import Session
 # Зарезервированные ID пользователей
 ADMIN_USER_ID = 1
 SYSTEM_USER_ID = 2
+TEMPLATE_USER_ID = 3  # Шаблон внутреннего пользователя (default_internal)
+
+
+async def default_roles():
+    """Метод для получения ролей по умолчанию"""
+    base_user = await env.models.role.search(
+        filter=[("code", "=", "base_user")],
+        fields=["id", "name", "user_ids"],
+        fields_nested={"user_ids": ["id", "name"]},
+        limit=1,
+    )
+    return [role.json_list() for role in base_user] if base_user else []
 
 
 class User(DotModel):
@@ -37,7 +49,6 @@ class User(DotModel):
     id: int = Integer(primary_key=True)
     name: str = Char(max_length=256)
     login: str = Char(max_length=50)
-    # email: str = Char(max_length=100)
     password_hash: str = Char(max_length=256, schema_required=False)
     password_salt: str = Char(max_length=256, schema_required=False)
 
@@ -47,6 +58,7 @@ class User(DotModel):
     image: Attachment | None = PolymorphicMany2one(relation_table=Attachment)
 
     role_ids: list["Role"] = Many2many(
+        default=default_roles,
         store=False,
         relation_table=lambda: env.models.role,
         many2many_table="user_role_many2many",
@@ -114,6 +126,18 @@ class User(DotModel):
         )
         if default_langs:
             payload.lang_id = default_langs[0]
+            # if not payload.role_ids:
+            #     # при создании пользователя если не выбрана ни одна роль
+            #     # то ставим роль внутреннего пользователя по умолчанию
+            #     base_user = await env.models.role.search(
+            #         filter=[("code", "=", "base_user")],
+            #         fields=["id"],
+            #         limit=1,
+            #     )
+
+            #     if base_user:
+            #         payload.role_ids = {"selected": base_user}
+
             user_id = await super().create(payload=payload)
             # добавить все активные языки как языки к выбору
             values = [[user_id, lang.id] for lang in default_langs]
@@ -124,12 +148,78 @@ class User(DotModel):
         else:
             raise ValueError("Language not found for create user")
 
+    # @hybridmethod
+    # async def create_from_template(
+    #     self,
+    #     name: str,
+    #     login: str,
+    #     password: str,
+    #     template_id: int = TEMPLATE_USER_ID,
+    # ) -> int:
+    #     """
+    #     Создаёт нового внутреннего пользователя на основе шаблона.
+
+    #     копирует настройки (home_page, layout_theme, уведомления)
+    #     и роли из шаблона, затем создаёт нового пользователя.
+
+    #     Args:
+    #         name:        Отображаемое имя пользователя
+    #         login:       Логин (уникальный)
+    #         password:    Пароль в открытом виде (будет захэширован)
+    #         template_id: ID шаблона (по умолчанию TEMPLATE_USER_ID=3)
+
+    #     Returns:
+    #         ID созданного пользователя
+
+    #     Пример использования:
+    #         user_id = await User.create_from_template(
+    #             name="Иван Иванов",
+    #             login="ivan.ivanov",
+    #             password="secret123",
+    #         )
+    #     """
+    #     # 1. Загружаем шаблон
+    #     template = await env.models.user.get(
+    #         template_id,
+    #         fields=[
+    #             "id",
+    #             "role_ids",
+    #             "home_page",
+    #             "layout_theme",
+    #             "notification_popup",
+    #             "notification_sound",
+    #         ],
+    #         fields_nested={"role_ids": ["id"]},
+    #     )
+
+    #     # 2. Генерируем хэш пароля
+    #     salt = secrets.token_hex(64)
+    #     password_hash = self.generate_password_hash(password, salt)
+
+    #     # 3. Берём настройки из шаблона (или дефолтные если шаблон не найден)
+    #     home_page = template.home_page
+    #     layout_theme = template.layout_theme
+    #     notification_popup = template.notification_popup
+    #     notification_sound = template.notification_sound
+    #     role_ids = [r.id for r in template.role_ids]
+    #     # 4. Создаём пользователя
+    #     user_id = await env.models.user.create(
+    #         payload=User(
+    #             name=name,
+    #             login=login,
+    #             is_admin=False,
+    #             password_hash=password_hash,
+    #             password_salt=salt,
+    #             home_page=home_page,
+    #             layout_theme=layout_theme,
+    #             notification_popup=notification_popup,
+    #             notification_sound=notification_sound,
+    #             role_ids={"selected": role_ids},
+    #         )
+    #     )
+    #     return user_id
+
     def generate_password_hash_salt_old(self, password: str):
-        """
-        Используется для сравнения введенного пароля пользователя
-        в процессе аутентификации. Для успешного сравнения соль
-        необходимо использовать такую же что и при создании хеша пароля
-        """
         return self.generate_password_hash(password, self.password_salt)
 
     def generate_password_hash(self, password: str, salt: str):

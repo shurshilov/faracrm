@@ -99,6 +99,39 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
   // Получаем все текущие записи для исключения из выбора
   const allRecords = [...records, ...recordsCreated];
 
+  // Если его нет — поле удаляется из запроса (else { delete values[field.name] }).
+  // Дефолтные значения x2m приходят в 'fieldName' как {data, fields, total},
+  // но '_fieldName' никогда не создаётся — данные теряются при сохранении.
+  //
+  // Решение: при монтировании на форме создания (нет id) инициализируем
+  // '_fieldName.selected' из id записей дефолтных данных,
+  // имитируя ручной выбор пользователем.
+  useEffect(() => {
+    if (id) return; // только форма создания
+    if (!defaulValues?.data?.length) return; // нет дефолтных записей
+
+    const parentFormName = '_' + name;
+    if (form.getValues()[parentFormName]) return; // уже инициализировано
+
+    const defaultIds = (defaulValues.data as FaraRecord[])
+      .map(r => r.id)
+      .filter(Boolean);
+
+    if (!defaultIds.length) return;
+
+    form.setValues({
+      [parentFormName]: {
+        created: [],
+        selected: defaultIds, // имитируем ручной выбор
+        unselected: [],
+        fieldsServer: fieldsServer,
+      },
+    });
+    // Помечаем форму dirty — кнопка Create становится активной
+    form.setDirty({ [parentFormName]: true });
+  }, [defaulValues, id]);
+  // ────────────────────────────────────────────────────────────────────────
+
   // Обработчик выбора существующих записей
   const handleSelectRecords = (selectedItems: FaraRecord[]) => {
     // Добавляем в форму как selected
@@ -158,7 +191,9 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
     if (actualData?.data) {
       const records: RecordType[] = actualData.data.map((row: FaraRecord) => ({
         ...row,
-        _color: false,
+        // На форме создания (нет id) дефолтные записи подсвечиваем зелёным —
+        // как если бы пользователь добавил их вручную
+        _color: !id ? 'new' : false,
       }));
       setRecords(records);
       setRecordsCreated([]);
