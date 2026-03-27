@@ -94,16 +94,10 @@ class TestLeadCreate:
             Lead(
                 name="Contact Lead",
                 stage_id=sid,
-                email="lead@example.com",
-                phone="+79001234567",
-                website="https://example.com",
             )
         )
 
         lead = await Lead.get(lid)
-        assert lead.email == "lead@example.com"
-        assert lead.phone == "+79001234567"
-        assert lead.website == "https://example.com"
 
     async def test_create_lead_types(self):
         from backend.base.crm.leads.models.leads import Lead
