@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useMediaQuery } from '@mantine/hooks';
 import { useSearchParams } from 'react-router-dom';
 import {
   Box,
@@ -46,6 +47,9 @@ export function ChatPage({
   const { t } = useTranslation('chat');
   const dispatch = useDispatch();
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const isMobile = useMediaQuery('(max-width: 768px)');
+  // На мобильном: true = показываем сайдбар, false = показываем чат
+  const [showSidebar, setShowSidebar] = useState(true);
   const [selectedConnectorId, setSelectedConnectorId] = useState<number | null>(
     null,
   );
@@ -322,6 +326,11 @@ export function ChatPage({
   const handleSelectChat = async (chat: Chat) => {
     setSelectedChat(chat);
 
+    // На мобильном — скрываем сайдбар и показываем чат
+    if (isMobile) {
+      setShowSidebar(false);
+    }
+
     // Clear new messages for this chat when selected
     // (они уже в кэше getChatMessages благодаря контексту)
     setNewMessages(prev => ({
@@ -380,6 +389,11 @@ export function ChatPage({
     setNewChatModalOpen(true);
   };
 
+  // На мобильном — кнопка "назад" из чата возвращает к списку
+  const handleBackToList = () => {
+    setShowSidebar(true);
+  };
+
   const handleChatCreated = (chat: Chat) => {
     setSelectedChat(chat);
     // Подписываемся на новый чат
@@ -427,7 +441,7 @@ export function ChatPage({
       className={styles.container}
       style={{ height: 'calc(100vh - 50px - 2 * var(--mantine-spacing-md))' }}>
       {/* Chat list sidebar */}
-      <Box className={styles.sidebar}>
+      <Box className={`${styles.sidebar} ${isMobile && !showSidebar ? styles.hidden : ''}`}>
         <ChatList
           selectedChatId={selectedChat?.id}
           onSelectChat={handleSelectChat}
@@ -440,7 +454,7 @@ export function ChatPage({
       </Box>
 
       {/* Chat area */}
-      <Box className={styles.chatArea}>
+      <Box className={`${styles.chatArea} ${isMobile && showSidebar ? styles.hidden : ''}`}>
         {selectedChat ? (
           <>
             <ChatHeader
@@ -449,6 +463,7 @@ export function ChatPage({
               typingUsers={getTypingUserNames()}
               onSettings={() => setSettingsModalOpen(true)}
               onPinnedMessages={handleOpenPinnedModal}
+              onBack={isMobile ? handleBackToList : undefined}
             />
             <Box
               onClick={handleChatAreaClick}

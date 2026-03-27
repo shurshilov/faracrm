@@ -19,6 +19,7 @@ import {
   IconBellOff,
   IconMessage,
   IconPinFilled,
+  IconArrowLeft,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Chat } from '@/services/api/chat';
@@ -32,6 +33,7 @@ interface ChatHeaderProps {
   onSettings?: () => void;
   onSearch?: () => void;
   onPinnedMessages?: () => void;
+  onBack?: () => void; // Кнопка "назад" на мобильном
 }
 
 export function ChatHeader({
@@ -42,6 +44,7 @@ export function ChatHeader({
   onSettings,
   onSearch,
   onPinnedMessages,
+  onBack,
 }: ChatHeaderProps) {
   const { t } = useTranslation('chat');
 
@@ -91,6 +94,12 @@ export function ChatHeader({
     <Box className={styles.container}>
       <Group justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap" style={{ overflow: 'hidden' }}>
+          {/* Кнопка "назад" — только на мобильном (передаётся из ChatPage) */}
+          {onBack && (
+            <ActionIcon variant="subtle" size="lg" onClick={onBack}>
+              <IconArrowLeft size={20} />
+            </ActionIcon>
+          )}
           <Box style={{ position: 'relative' }}>
             {getChatIcon()}
             {chat.chat_type === 'direct' && isOnline && (

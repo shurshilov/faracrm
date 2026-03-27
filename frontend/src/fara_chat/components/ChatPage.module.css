@@ -56,4 +56,9 @@
   .chatArea {
     width: 100%;
   }
+
+  /* На мобильном скрываем chatArea когда показан сайдбар */
+  .chatArea.hidden {
+    display: none;
+  }
 }
