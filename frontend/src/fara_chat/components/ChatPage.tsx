@@ -441,7 +441,8 @@ export function ChatPage({
       className={styles.container}
       style={{ height: 'calc(100vh - 50px - 2 * var(--mantine-spacing-md))' }}>
       {/* Chat list sidebar */}
-      <Box className={`${styles.sidebar} ${isMobile && !showSidebar ? styles.hidden : ''}`}>
+      <Box
+        className={`${styles.sidebar} ${isMobile && !showSidebar ? styles.hidden : ''}`}>
         <ChatList
           selectedChatId={selectedChat?.id}
           onSelectChat={handleSelectChat}
@@ -454,7 +455,8 @@ export function ChatPage({
       </Box>
 
       {/* Chat area */}
-      <Box className={`${styles.chatArea} ${isMobile && showSidebar ? styles.hidden : ''}`}>
+      <Box
+        className={`${styles.chatArea} ${isMobile && showSidebar ? styles.hidden : ''}`}>
         {selectedChat ? (
           <>
             <ChatHeader

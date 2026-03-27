@@ -8,6 +8,7 @@ import {
   ActionIcon,
 } from '@mantine/core';
 import { useLocation } from 'react-router-dom';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 
 import ThemeToggle from '@/components/ThemeToggle';
@@ -28,6 +29,7 @@ export function ModernLayout() {
   const [activeGroup, setActiveGroup] = useState<MenuGroup | null>(null);
   const [chatSidebarCollapsed, setChatSidebarCollapsed] = useState(false);
   const location = useLocation();
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Определяем активную группу по текущему URL
   useEffect(() => {
@@ -66,6 +68,11 @@ export function ModernLayout() {
 
   const chatNavbarWidth = chatSidebarCollapsed ? 0 : 280;
 
+  // На мобильном AppShell.Navbar (ChatSidebar с фильтрами) всегда скрыт —
+  // навигация по фильтрам на мобильном происходит через боковую панель
+  // внутри самого ChatPage (styles.sidebar / styles.hidden)
+  const mobileNavbarCollapsed = !!isMobile || chatSidebarCollapsed;
+
   return (
     <ChatWebSocketProvider>
       <NotificationListener />
@@ -76,7 +83,7 @@ export function ModernLayout() {
             ? {
                 width: chatNavbarWidth,
                 breakpoint: 'sm',
-                collapsed: { mobile: chatSidebarCollapsed, desktop: chatSidebarCollapsed },
+                collapsed: { mobile: mobileNavbarCollapsed, desktop: chatSidebarCollapsed },
               }
             : undefined
         }
