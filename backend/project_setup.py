@@ -78,6 +78,9 @@ from backend.base.crm.chat_phone.chat_message_mixins import (
 from backend.base.crm.chat_phone_sipuni.mixins import (
     ChatConnectorSipuniMixin,
 )
+from backend.base.crm.chat_phone_megafon.mixins import (
+    ChatConnectorMegafonMixin,
+)
 
 # Project and task
 from backend.base.crm.tasks.models.project import Project
@@ -102,6 +105,7 @@ if TYPE_CHECKING:
     )
 
     class ChatConnector(
+        ChatConnectorMegafonMixin,
         ChatConnectorSipuniMixin,
         ChatMessagePhoneMixin,
         ChatConnectorWebPushMixin,
@@ -174,6 +178,7 @@ from backend.base.crm.chat_email.app import ChatEmailApp
 from backend.base.crm.chat_web_push.app import ChatWebPushApp
 from backend.base.crm.chat_phone.app import ChatPhoneApp
 from backend.base.crm.chat_phone_sipuni.app import ChatPhoneSipuniApp
+from backend.base.crm.chat_phone_megafon.app import ChatPhoneMegafonApp
 from backend.base.crm.tasks.app import TasksApp
 from backend.base.crm.activity.app import ActivityApp
 from backend.base.crm.report_docx.app import ReportDocxApp
@@ -288,6 +293,7 @@ class Apps(AppsCore):
     chat_email = ChatEmailApp()
     chat_phone = ChatPhoneApp()
     chat_phone_sipune = ChatPhoneSipuniApp()
+    chat_phone_megafon = ChatPhoneMegafonApp()
     chat_web_push = ChatWebPushApp()
     task = TasksApp()
     activity = ActivityApp()
