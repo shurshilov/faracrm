@@ -9,6 +9,7 @@ from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
     Char,
+    Selection,
     Text,
     Boolean,
     Datetime,
@@ -91,6 +92,37 @@ class ChatExternalAccount(DotModel):
         default=lambda: datetime.now(timezone.utc)
     )
     write_date: datetime = Datetime(default=lambda: datetime.now(timezone.utc))
+
+    # Лидогенерация
+    # при отвеченном звонке
+    lead_generation: str | None = Selection(
+        options=[
+            ("self", "Create lead (assigned to operator)"),
+            ("common", "Create common lead (unassigned)"),
+            ("no", "Do not create lead"),
+        ],
+        default="no",
+        description=(
+            "Правило создания лида при отвеченном звонке на этот номер. "
+            "self = лид с ответственным оператором, "
+            "common = лид без ответственного, "
+            "no = не создавать"
+        ),
+    )
+
+    # при пропущенном звонке
+    lead_generation_missed: str | None = Selection(
+        options=[
+            ("self", "Create lead (assigned to operator)"),
+            ("common", "Create common lead (unassigned)"),
+            ("no", "Do not create lead"),
+        ],
+        default="no",
+        description=(
+            "Правило создания лида при пропущенном звонке. "
+            "Аналогично lead_generation, но для пропущенных"
+        ),
+    )
 
     # ==================== Properties ====================
 

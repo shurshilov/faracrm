@@ -1,0 +1,40 @@
+.callContent {
+  width: 100%;
+  padding: 4px 0;
+}
+
+/* Анимация пульсации для активного звонка */
+@keyframes ringing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 139, 230, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(34, 139, 230, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 139, 230, 0);
+  }
+}
+
+.ringingIcon {
+  animation: ringing 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.ringingBadge {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Dark mode */
+[data-mantine-color-scheme='dark'] .callContent {
+  color: var(--mantine-color-dark-0);
+}

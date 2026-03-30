@@ -1,4 +1,13 @@
 {
+  "incomingCall": "Входящий звонок",
+  "outgoingCall": "Исходящий звонок",
+  "callAnswered": "Отвечен",
+  "callMissed": "Пропущен",
+  "callBusy": "Занято",
+  "callFailed": "Ошибка",
+  "callCancelled": "Отменён",
+  "callRinging": "Дозвон...",
+  "callDuration": "Длительность",
   "save": "Сохранить",
   "cancel": "Отмена",
   "create": "Создать",

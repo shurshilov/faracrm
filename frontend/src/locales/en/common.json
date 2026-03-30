@@ -1,4 +1,13 @@
 {
+  "incomingCall": "Incoming call",
+  "outgoingCall": "Outgoing call",
+  "callAnswered": "Call answered",
+  "callMissed": "Call missed",
+  "callBusy": "Call busy",
+  "callFailed": "Call failed",
+  "callCancelled": "Call cancelled",
+  "callRinging": "Call ringing...",
+  "callDuration": "Call duration",
   "save": "Save",
   "cancel": "Cancel",
   "create": "Create",

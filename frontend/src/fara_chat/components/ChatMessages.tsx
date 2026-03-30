@@ -53,6 +53,7 @@ import type { GalleryItem } from '@/components/Attachment';
 import { useDispatch } from 'react-redux';
 import styles from './ChatMessages.module.css';
 import { EmailMessageContent } from './EmailMessageContent';
+import { CallMessageContent } from './CallMessageContent';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '👏'];
 
@@ -521,8 +522,18 @@ export function ChatMessages({
                             />
                           </Box>
                         )}
-                        {/* Email сообщения отображаем через EmailMessageContent */}
-                        {message.message_type === 'email' ? (
+                        {message.message_type === 'call' ? (
+                          <CallMessageContent
+                            body={message.body}
+                            callDirection={message.call_direction}
+                            callDisposition={message.call_disposition}
+                            callDuration={message.call_duration}
+                            callTalkDuration={message.call_talk_duration}
+                            callAnswerTime={message.call_answer_time}
+                            callEndTime={message.call_end_time}
+                            connectorType={message.connector_type}
+                          />
+                        ) : message.message_type === 'email' ? (
                           <EmailMessageContent body={message.body} />
                         ) : (
                           <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>

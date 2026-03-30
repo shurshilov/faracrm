@@ -642,6 +642,19 @@ export interface ChatMessage {
   is_edited?: boolean;
   is_read?: boolean;
   reactions?: MessageReaction[];
+  // Call fields (заполняются при message_type='call')
+  call_direction?: 'incoming' | 'outgoing';
+  call_disposition?:
+    | 'ringing'
+    | 'answered'
+    | 'no_answer'
+    | 'busy'
+    | 'failed'
+    | 'cancelled';
+  call_duration?: number;
+  call_talk_duration?: number;
+  call_answer_time?: string;
+  call_end_time?: string;
 }
 
 export interface MessageReaction {
