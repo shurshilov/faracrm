@@ -669,7 +669,12 @@ class DotModel(
                 if not exclude_unset:
                     # иначе взять значение по умолчанию или None
                     if field.default is not None:
+                        # TODO: надо проверять было ли поле в списке считанных
+                        # потому что мы могли не считать поле явно и оно придет Field
+                        # и назначим ему default хотя в базе оно есть мы просто не считали
                         # если default - callable (лямбда или функция), вызываем её
+                        if asyncio.iscoroutinefunction(field.default):
+                            continue
                         if callable(field.default):
                             fields_json[field_name] = field.default()
                         else:
