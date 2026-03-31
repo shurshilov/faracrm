@@ -1,5 +1,6 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
+import RelationCell from '@/components/ListCells/RelationCell';
 import type {
   TaskRecord,
   ProjectRecord,
@@ -16,9 +17,21 @@ export function ViewListTasks() {
     <List<TaskRecord> model="tasks" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
-      <Field name="project_id" label={t('fields.project_id')} />
-      <Field name="stage_id" label={t('fields.stage_id')} />
-      <Field name="user_id" label={t('fields.user_id')} />
+      <Field
+        name="project_id"
+        label={t('fields.project_id')}
+        render={value => <RelationCell value={value} model="project" />}
+      />
+      <Field
+        name="stage_id"
+        label={t('fields.stage_id')}
+        render={value => <RelationCell value={value} model="stages" />}
+      />
+      <Field
+        name="user_id"
+        label={t('fields.user_id')}
+        render={value => <RelationCell value={value} model="users" />}
+      />
       <Field name="priority" label={t('fields.priority')} />
       <Field name="date_start" label={t('fields.date_start')} />
       <Field name="date_end" label={t('fields.date_end')} />
@@ -38,7 +51,11 @@ export function ViewListProjects() {
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
       <Field name="status" label={t('fields.status')} />
-      <Field name="manager_id" label={t('fields.manager_id')} />
+      <Field
+        name="manager_id"
+        label={t('fields.manager_id')}
+        render={value => <RelationCell value={value} model="users" />}
+      />
       <Field name="date_start" label={t('fields.date_start')} />
       <Field name="date_end" label={t('fields.date_end')} />
       <Field name="active" label={t('fields.active')} />

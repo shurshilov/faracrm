@@ -1,5 +1,6 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
+import RelationCell from '@/components/ListCells/RelationCell';
 import type {
   SaleRecord,
   SaleLineRecord,
@@ -13,10 +14,22 @@ export function ViewListSales() {
       <Field name="id" />
       <Field name="name" />
       <Field name="date_order" />
-      <Field name="partner_id" />
-      <Field name="user_id" />
-      <Field name="company_id" />
-      <Field name="stage_id" />
+      <Field
+        name="partner_id"
+        render={value => <RelationCell value={value} model="partners" />}
+      />
+      <Field
+        name="user_id"
+        render={value => <RelationCell value={value} model="users" />}
+      />
+      <Field
+        name="company_id"
+        render={value => <RelationCell value={value} model="company" />}
+      />
+      <Field
+        name="stage_id"
+        render={value => <RelationCell value={value} model="stages" />}
+      />
       <Field name="active" />
     </List>
   );
@@ -26,7 +39,10 @@ export function ViewListSaleLines() {
   return (
     <List<SaleLineRecord> model="sale_line" order="desc" sort="id">
       <Field name="id" />
-      <Field name="sale_id" />
+      <Field
+        name="sale_id"
+        render={value => <RelationCell value={value} model="sales" />}
+      />
       <Field name="product_id" />
       <Field name="product_uom_qty" />
       <Field name="product_uom_id" />

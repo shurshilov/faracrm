@@ -1,5 +1,6 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
+import RelationCell from '@/components/ListCells/RelationCell';
 
 import type {
   LeadRecord,
@@ -15,10 +16,26 @@ export function ViewListLeads() {
       <Field name="id" label={t('leads.id')} />
       <Field name="name" label={t('leads.name')} />
       <Field name="type" label={t('leads.type')} />
-      <Field name="user_id" label={t('leads.user_id')} />
-      <Field name="parent_id" label={t('leads.parent_id')} />
-      <Field name="company_id" label={t('leads.company_id')} />
-      <Field name="stage_id" label={t('leads.stage_id')} />
+      <Field
+        name="user_id"
+        label={t('leads.user_id')}
+        render={value => <RelationCell value={value} model="users" />}
+      />
+      <Field
+        name="parent_id"
+        label={t('leads.parent_id')}
+        render={value => <RelationCell value={value} model="partners" />}
+      />
+      <Field
+        name="company_id"
+        label={t('leads.company_id')}
+        render={value => <RelationCell value={value} model="company" />}
+      />
+      <Field
+        name="stage_id"
+        label={t('leads.stage_id')}
+        render={value => <RelationCell value={value} model="stages" />}
+      />
       <Field name="active" label={t('leads.active')} />
     </List>
   );

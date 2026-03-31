@@ -1,5 +1,6 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
+import RelationCell from '@/components/ListCells/RelationCell';
 import type { ProductRecord, CategoryRecord, UomRecord } from '@/types/records';
 
 export function ViewList() {
@@ -10,7 +11,10 @@ export function ViewList() {
       <Field name="description" />
       <Field name="type" />
       <Field name="uom_id" />
-      <Field name="company_id" />
+      <Field
+        name="company_id"
+        render={value => <RelationCell value={value} model="company" />}
+      />
       <Field name="category_id" />
       <Field name="default_code" />
       <Field name="code" />
