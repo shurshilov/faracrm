@@ -89,8 +89,14 @@ class UserApp(App):
             limit=1,
         )
 
+        default_user = await env.models.user.search(
+            filter=[("login", "=", "default_internal")],
+            limit=1,
+        )
+        if default_user:
+            return
         # Создаём неактивного шаблонного пользователя
-        template_id = await env.models.user.create(
+        await env.models.user.create(
             payload=User(
                 name="Шаблон: Внутренний пользователь",
                 login="default_internal",
