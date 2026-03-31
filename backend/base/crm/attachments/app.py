@@ -28,6 +28,7 @@ class AttachmentsApp(App):
         "attachment": ACL.FULL,
         "attachment_storage": ACL.FULL,
         "attachment_route": ACL.FULL,
+        "attachment_cache": ACL.FULL,
     }
 
     async def post_init(self, app: "FastAPI"):
