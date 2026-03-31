@@ -642,11 +642,23 @@ class DotModel(
         return fields_info
 
     def get_json(
-        self, exclude_unset=False, only_store=None, mode=JsonMode.LIST
+        self,
+        exclude_unset=False,
+        only_store=None,
+        mode=JsonMode.LIST,
+        include=None,
+        exclude=None,
     ):
         """Возвращает все поля модели.
         Для экземпляра класса. В экземпляре поля (класс Field)
-        преобразуются в реальные данные например Integer -> int"""
+        преобразуются в реальные данные например Integer -> int
+
+        Args:
+            include: если задан — обрабатывать ТОЛЬКО эти поля.
+                     Остальные пропускаются ДО вычисления дефолтов,
+                     что предотвращает побочные эффекты для несчитанных полей.
+            exclude: если задан — пропускать эти поля.
+        """
         fields_json = {}
         # fields - это поля описанные в модели (классе)
         if only_store:
@@ -655,32 +667,26 @@ class DotModel(
             fields = self.get_fields().items()
 
         for field_name, field_class in fields:
+            # Раннее отсечение: если задан include/exclude,
+            # пропускаем поле ДО любых вычислений (дефолты, рекурсия)
+            if include and field_name not in include:
+                continue
+            if exclude and field_name in exclude:
+                continue
+
             # field - это поле из экземпляра.
             # 1. оно может содержать данные, если задано.
             # 2. оно может содержать класс Field, если не задано.
             field = getattr(self, field_name)
 
             # НЕ ЗАДАНО
-            # если поле экземпляра класса, осталось классом Field
-            # это значит что оно не было считано из БД
+            # Поле осталось дескриптором Field — не было считано из БД.
+            # Сериализация не вычисляет default (это задача create).
+            # exclude_unset=True → пропускаем (как Pydantic).
+            # exclude_unset=False → ставим None чтобы ключ был в dict.
             if isinstance(field, Field):
-                # если установлен флаг исключить не заданные,
-                # то ничего не делать
                 if not exclude_unset:
-                    # иначе взять значение по умолчанию или None
-                    if field.default is not None:
-                        # TODO: надо проверять было ли поле в списке считанных
-                        # потому что мы могли не считать поле явно и оно придет Field
-                        # и назначим ему default хотя в базе оно есть мы просто не считали
-                        # если default - callable (лямбда или функция), вызываем её
-                        if asyncio.iscoroutinefunction(field.default):
-                            continue
-                        if callable(field.default):
-                            fields_json[field_name] = field.default()
-                        else:
-                            fields_json[field_name] = field.default
-                    else:
-                        fields_json[field_name] = None
+                    fields_json[field_name] = None
 
             # ЗАДАНО как many2one
             # если поле является моделью то это many2one
@@ -689,7 +695,7 @@ class DotModel(
                     # обрубаем, исключаем все релейшен поля
                     fields_json[field_name] = field.json_list()
                 elif mode == JsonMode.FORM:
-                    fields_json[field_name] = field.json()
+                    fields_json[field_name] = field.json(exclude_unset=True)
                 elif mode in (JsonMode.CREATE, JsonMode.UPDATE):
                     fields_json[field_name] = field.id
 
@@ -728,7 +734,10 @@ class DotModel(
                     if isinstance(field, dict):
                         fields_json[field_name] = {
                             "data": [
-                                rec.json(mode=JsonMode.NESTED_LIST)
+                                rec.json(
+                                    mode=JsonMode.NESTED_LIST,
+                                    exclude_unset=True,
+                                )
                                 for rec in field["data"]
                             ],
                             "fields": field["fields"],
@@ -736,7 +745,10 @@ class DotModel(
                         }
                     elif isinstance(field, list):
                         fields_json[field_name] = [
-                            rec.json(mode=JsonMode.NESTED_LIST)
+                            rec.json(
+                                mode=JsonMode.NESTED_LIST,
+                                exclude_unset=True,
+                            )
                             for rec in field
                         ]
                     else:
@@ -786,11 +798,9 @@ class DotModel(
         Returns:
             python dict
         """
-        record = self.get_json(exclude_unset, only_store, mode)
-        if include:
-            record = {k: v for k, v in record.items() if k in include}
-        if exclude:
-            record = {k: v for k, v in record.items() if k not in exclude}
+        record = self.get_json(
+            exclude_unset, only_store, mode, include=include, exclude=exclude
+        )
         if exclude_none:
             record = {k: v for k, v in record.items() if v is not None}
         return record

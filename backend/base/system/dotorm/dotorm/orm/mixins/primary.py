@@ -1,11 +1,10 @@
 """Primary ORM operations mixin."""
 
+import asyncio
 from typing import TYPE_CHECKING, Self, TypeVar
 
 from ...exceptions import RecordNotFound
-
 from ...fields import Field
-
 from ...access import Operation
 from ...components.dialect import POSTGRES
 from ...model import JsonMode
@@ -190,6 +189,10 @@ class OrmPrimaryMixin(_Base):
 
         session = cls._get_db_session(session)
 
+        # Применяем default-ы к незаданным store-полям ДО сериализации.
+        # json() только сериализует — он не вычисляет дефолты.
+        await cls._apply_defaults(payload)
+
         payload_dict = payload.json(
             exclude=payload.get_none_update_fields_set(),
             exclude_none=True,
@@ -229,6 +232,9 @@ class OrmPrimaryMixin(_Base):
             if field.primary_key
         }
 
+        for p in payload:
+            await cls._apply_defaults(p)
+
         payloads_dicts = [
             p.json(
                 exclude=exclude_fields, only_store=True, mode=JsonMode.CREATE
@@ -249,6 +255,35 @@ class OrmPrimaryMixin(_Base):
             await cls._check_access(Operation.CREATE, record_ids=created_ids)
 
         return records
+
+    @staticmethod
+    async def _apply_defaults(payload: "DotModel") -> None:
+        """
+        Применить default-значения к незаданным store-полям payload.
+
+        Вызывается из create()/create_bulk() ПЕРЕД сериализацией.
+        Разделение ответственности (как в SQLAlchemy/Django):
+        - default вычисляется при INSERT, не при сериализации
+        - json() только отдаёт то, что есть в объекте
+        - async callable defaults поддерживаются (await)
+
+        Args:
+            payload: Экземпляр модели с данными для создания записи.
+                     Незаданные поля остаются как Field дескрипторы.
+        """
+
+        for field_name, field_class in payload.get_store_fields_dict().items():
+            value = getattr(payload, field_name)
+            if isinstance(value, Field) and field_class.default is not None:
+                if callable(field_class.default):
+                    if asyncio.iscoroutinefunction(field_class.default):
+                        setattr(
+                            payload, field_name, await field_class.default()
+                        )
+                    else:
+                        setattr(payload, field_name, field_class.default())
+                else:
+                    setattr(payload, field_name, field_class.default)
 
     @hybridmethod
     async def get(
