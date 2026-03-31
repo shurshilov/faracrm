@@ -206,8 +206,8 @@ class SalesApp(App):
                 "role_id": role_salesman[0],
                 # OR: назначен я, или ответственный не указан
                 "domain": [
-                    "|",
                     ["user_id", "=", "{{user_id}}"],
+                    "or",
                     ["user_id", "=", None],
                 ],
                 "perm_read": True,
@@ -231,8 +231,8 @@ class SalesApp(App):
                 "role_id": role_salesman[0],
                 # Фильтрация через связанное поле sale_id.user_id
                 "domain": [
-                    "|",
                     ["sale_id.user_id", "=", "{{user_id}}"],
+                    "or",
                     ["sale_id.user_id", "=", None],
                 ],
                 "perm_read": True,

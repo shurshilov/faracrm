@@ -9,9 +9,6 @@ class ChatPhoneApp(App):
     Базовый модуль телефонии для чатов.
 
     Добавляет:
-    - Тип сообщения 'call' в ChatMessage с полями звонка
-    - Категорию 'phone' в ChatConnector
-    - Поля lead_generation в ChatExternalAccount
     - Базовую стратегию для телефонных коннекторов
 
     Конкретные провайдеры (Sipuni, Mango, etc.) реализуются
