@@ -137,12 +137,17 @@ class UserApp(App):
                         [ADMIN_USER_ID, SYSTEM_USER_ID, TEMPLATE_USER_ID],
                     ]
                 ],
+                "perm_create": False,
+                "perm_read": False,
+                "perm_update": False,
                 "perm_delete": True,
             },
             # Правило 2: Пользователь может редактировать только себя
             {
                 "name": "User can only edit own profile",
                 "domain": [["id", "=", "{{user_id}}"]],
+                "perm_create": False,
+                "perm_read": False,
                 "perm_update": True,
                 "perm_delete": True,
             },

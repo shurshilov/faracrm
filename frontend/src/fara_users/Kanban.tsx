@@ -123,21 +123,6 @@ function UserCard({ user, onClick }: UserCardProps) {
             </Text>
           </Group>
         )}
-
-        {/* {user.email && (
-          <Tooltip label={user.email}>
-            <Group gap={4} wrap="nowrap" style={{ maxWidth: '100%' }}>
-              <IconMail
-                size={14}
-                color="var(--mantine-color-dimmed)"
-                style={{ flexShrink: 0 }}
-              />
-              <Text size="sm" c="dimmed" lineClamp={1}>
-                {user.email}
-              </Text>
-            </Group>
-          </Tooltip>
-        )} */}
       </Stack>
 
       {user.role_ids && user.role_ids.length > 0 && (
