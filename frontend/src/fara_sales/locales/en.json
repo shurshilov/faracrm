@@ -1,6 +1,7 @@
 {
   "menu": {
     "title": "Sales",
+    "sales": "Sales",
     "sale": "Orders",
     "sale_line": "Order Lines",
     "sale_stage": "Stages",
@@ -8,9 +9,11 @@
     "contract": "Contracts"
   },
   "sales": {
+    "id": "Id",
     "title": "Sales Orders",
     "name": "Order Number",
     "date_order": "Order Date",
+    "stage_id": "Stage",
     "partner_id": "Customer",
     "user_id": "Salesperson",
     "company_id": "Company",
@@ -38,5 +41,12 @@
   "tax": {
     "title": "Taxes",
     "name": "Tax Name"
+  },
+  "lead_stage":{
+    "id": "Id",
+    "name": "Lead stage",
+    "sequence": "Sequence",
+    "color": "Color",
+    "fold": "Folded"
   }
 }
