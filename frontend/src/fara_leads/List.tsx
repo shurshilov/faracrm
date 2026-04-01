@@ -45,8 +45,8 @@ export function ViewListTeamCrm() {
   const { t } = useTranslation('leads');
   return (
     <List<TeamCrmRecord> model="team_crm" order="desc" sort="id">
-      <Field name="id" label={t('fields.id')} />
-      <Field name="name" label={t('fields.name')} />
+      <Field name="id" label={t('team_crm.id')} />
+      <Field name="name" label={t('team_crm.name')} />
     </List>
   );
 }
@@ -55,11 +55,11 @@ export function ViewListLeadStage() {
   const { t } = useTranslation('leads');
   return (
     <List<LeadStageRecord> model="lead_stage" order="asc" sort="sequence">
-      <Field name="id" label={t('fields.id')} />
-      <Field name="name" label={t('fields.name')} />
-      <Field name="sequence" label={t('fields.sequence')} />
-      <Field name="color" label={t('fields.color')} />
-      <Field name="fold" label={t('fields.fold')} />
+      <Field name="id" label={t('lead_stage.id')} />
+      <Field name="name" label={t('lead_stage.name')} />
+      <Field name="sequence" label={t('lead_stage.sequence')} />
+      <Field name="color" label={t('lead_stage.color')} />
+      <Field name="fold" label={t('lead_stage.fold')} />
     </List>
   );
 }

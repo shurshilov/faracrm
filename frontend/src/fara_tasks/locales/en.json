@@ -1,5 +1,6 @@
 {
   "menu": {
+    "tasks": "Tasks",
     "task": "Tasks",
     "project": "Projects",
     "task_stage": "Task Stages",

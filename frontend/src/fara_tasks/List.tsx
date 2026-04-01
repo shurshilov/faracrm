@@ -1,5 +1,6 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
+import DateTimeCell from '@/components/ListCells/DateTimeCell';
 import RelationCell from '@/components/ListCells/RelationCell';
 import type {
   TaskRecord,
@@ -33,9 +34,21 @@ export function ViewListTasks() {
         render={value => <RelationCell value={value} model="users" />}
       />
       <Field name="priority" label={t('fields.priority')} />
-      <Field name="date_start" label={t('fields.date_start')} />
-      <Field name="date_end" label={t('fields.date_end')} />
-      <Field name="date_deadline" label={t('fields.date_deadline')} />
+      <Field
+        name="date_start"
+        label={t('fields.date_start')}
+        render={value => <DateTimeCell value={value} format="compact" />}
+      />
+      <Field
+        name="date_end"
+        label={t('fields.date_end')}
+        render={value => <DateTimeCell value={value} format="compact" />}
+      />
+      <Field
+        name="date_deadline"
+        label={t('fields.date_deadline')}
+        render={value => <DateTimeCell value={value} format="compact" />}
+      />
       <Field name="progress" label={t('fields.progress')} />
       <Field name="active" label={t('fields.active')} />
     </List>

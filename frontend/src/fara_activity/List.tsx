@@ -4,6 +4,7 @@ import { ViewListProps } from '@/route/type';
 import type { ActivityRecord, ActivityTypeRecord } from '@/types/records';
 import { useTranslation } from 'react-i18next';
 import RelationCell from '@/components/ListCells/RelationCell';
+import DateTimeCell from '@/components/ListCells/DateTimeCell';
 
 // Re-export for backward compat (used by Form.tsx)
 export type { ActivityRecord, ActivityTypeRecord } from '@/types/records';
@@ -14,17 +15,24 @@ export function ViewListActivity(props: ViewListProps) {
   const { t } = useTranslation('activity');
   return (
     <List<ActivityRecord> model="activity" {...props}>
-      <Field name="id" label="ID" />
+      <Field name="id" label={t('fields.id')} />
       <Field name="summary" label={t('fields.summary')} />
-      <Field name="activity_type_id" label={t('fields.activity_type_id')} />
+      <Field
+        name="activity_type_id"
+        label={t('fields.activity_type_id')}
+        render={value => <RelationCell value={value} model="activity_type" />}
+      />
       <Field name="res_model" label={t('fields.res_model')} />
       <Field name="res_id" label={t('fields.res_id')} />
       <Field
         name="user_id"
-        label={t('fields.user_id')}
         render={value => <RelationCell value={value} model="users" />}
       />
-      <Field name="date_deadline" label={t('fields.date_deadline')} />
+      <Field
+        name="date_deadline"
+        label={t('fields.date_deadline')}
+        render={value => <DateTimeCell value={value} format="compact" />}
+      />
       <Field name="state" label={t('fields.state')} />
       <Field name="done" label={t('fields.done')} />
       <Field name="active" label={t('fields.active')} />

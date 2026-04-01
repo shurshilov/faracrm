@@ -1,5 +1,6 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
+import DateTimeCell from '@/components/ListCells/DateTimeCell';
 import RelationCell from '@/components/ListCells/RelationCell';
 import type {
   SaleRecord,
@@ -13,7 +14,10 @@ export function ViewListSales() {
     <List<SaleRecord> model="sales" order="desc" sort="id">
       <Field name="id" />
       <Field name="name" />
-      <Field name="date_order" />
+      <Field
+        name="date_order"
+        render={value => <DateTimeCell value={value} format="compact" />}
+      />
       <Field
         name="partner_id"
         render={value => <RelationCell value={value} model="partners" />}

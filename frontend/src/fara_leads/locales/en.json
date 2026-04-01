@@ -21,7 +21,15 @@
     "phone": "Phone",
     "mobile": "Mobile"
   },
+  "lead_stage":{
+    "id": "Id",
+    "name": "Lead stage",
+    "sequence": "Sequence",
+    "color": "Color",
+    "fold": "Folded"
+  },
   "team_crm": {
+    "id": "Id",
     "title": "CRM Teams",
     "name": "Team Name"
   }
