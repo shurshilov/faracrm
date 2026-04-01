@@ -47,33 +47,17 @@ export function ViewFormSales(props: ViewFormProps) {
         </FormRow>
         <FormRow cols={2}>
           <Field name="partner_id" label="Клиент" />
-          <Field name="company_id" label="Компания" />
+          <FieldContacts
+            name="contact_ids"
+            label="Контакты"
+            parentField="partner_id"
+            parentModel="partners"
+          />
         </FormRow>
-        <Field name="active" label="Активен" />
-      </FormSection>
-
-      {/* Ответственный и даты */}
-      <FormSection title="Ответственный" icon={<IconUser size={18} />}>
         <FormRow cols={2}>
-          <Field name="user_id" label="Менеджер" />
           <Field name="date_order" label="Дата заказа" />
+          <Field name="user_id" label="Менеджер" />
         </FormRow>
-        <FormRow cols={2}>
-          <Field name="origin" label="Источник" />
-          <Field name="id" label="ID" />
-        </FormRow>
-      </FormSection>
-
-      {/* Контакты клиента */}
-      <FormSection
-        title="Контакты клиента"
-        icon={<IconAddressBook size={18} />}>
-        <FieldContacts
-          name="contact_ids"
-          label="Контакты"
-          parentField="partner_id"
-          parentModel="partners"
-        />
       </FormSection>
 
       {/* Вкладки */}
@@ -82,7 +66,7 @@ export function ViewFormSales(props: ViewFormProps) {
           name="lines"
           label="Позиции заказа"
           icon={<IconList size={16} />}>
-          <Field name="order_line_ids">
+          <Field name="order_line_ids" label="">
             <Field name="id" />
             <Field name="product_id" />
             <Field name="product_uom_qty" />
@@ -95,6 +79,21 @@ export function ViewFormSales(props: ViewFormProps) {
           </Field>
         </FormTab>
 
+        <FormTab
+          name="info"
+          label="Доп. Информация"
+          icon={<IconReceipt size={16} />}>
+          <FormSection>
+            <FormRow cols={2}>
+              <Field name="company_id" label="Компания" />
+              <Field name="active" label="Активен" />
+            </FormRow>
+            <FormRow cols={2}>
+              <Field name="origin" label="Источник" />
+              <Field name="id" label="ID" />
+            </FormRow>
+          </FormSection>
+        </FormTab>
         <FormTab name="notes" label="Заметки" icon={<IconReceipt size={16} />}>
           <Field name="notes" label="Заметки" />
         </FormTab>

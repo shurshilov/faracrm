@@ -35,7 +35,7 @@ class Sale(DotModel):
         index=True,
         ondelete="restrict",
     )
-    user_id: "User" = Many2one(
+    user_id: "User | None" = Many2one(
         lambda: env.models.user,
         string="Salesperson",
         # index=True,
@@ -47,7 +47,7 @@ class Sale(DotModel):
         index=True,
         ondelete="restrict",
     )
-    company_id: "Company" = Many2one(
+    company_id: "Company | None" = Many2one(
         lambda: env.models.company, string="Company"
     )
     order_line_ids: list["SaleLine"] = One2many(
@@ -57,4 +57,4 @@ class Sale(DotModel):
     date_order: datetime.datetime = Datetime(
         string="Order Date", default=datetime.datetime.now
     )
-    origin: str = Char(string="Source Document")
+    origin: str | None = Char(string="Source Document")
