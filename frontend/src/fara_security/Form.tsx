@@ -182,6 +182,7 @@ export function ViewFormSessions(props: ViewFormProps) {
         <FormRow cols={2}>
           <Field name="id" />
           <Field name="token" />
+          <Field name="cookie_token" />
         </FormRow>
       </FormSection>
 

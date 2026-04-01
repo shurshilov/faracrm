@@ -227,7 +227,7 @@ export function ChatMessages({
   };
 
   const handleDownloadAttachment = (attachmentId: number) => {
-    window.open(`/api/attachments/${attachmentId}`, '_blank');
+    window.open(`/api/attachments/${attachmentId}/content`, '_blank');
   };
 
   const handleContextMenu = (e: React.MouseEvent, message: ChatMessage) => {
