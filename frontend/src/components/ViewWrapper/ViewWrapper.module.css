@@ -17,3 +17,8 @@
   flex: 1;
   overflow: auto;
 }
+
+.content:has(:global(.mantine-datatable)) {
+  flex: 1;
+  overflow: hidden;
+}
