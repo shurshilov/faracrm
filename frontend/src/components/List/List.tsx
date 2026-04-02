@@ -59,11 +59,11 @@ export const List = <RecordType extends FaraRecord>({
   ];
 
   // Debug
-  console.log('List filters:', {
-    contextFilters,
-    combinedFilters,
-    propsFilter: props.filter,
-  });
+  // console.log('List filters:', {
+  //   contextFilters,
+  //   combinedFilters,
+  //   propsFilter: props.filter,
+  // });
 
   // pagination
   const [pageSize, setPageSize] = useState(PAGE_SIZES[1]);
