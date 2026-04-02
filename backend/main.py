@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
+    HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
     HTTP_422_UNPROCESSABLE_ENTITY,
@@ -43,7 +44,8 @@ app = FastAPI(
         HTTP_200_OK: {"description": "успешно"},
         HTTP_400_BAD_REQUEST: {"description": "ошибка клиента"},
         HTTP_404_NOT_FOUND: {"description": "запись не найдена"},
-        HTTP_403_FORBIDDEN: {"description": "ошибка аутентификации"},
+        HTTP_401_UNAUTHORIZED: {"description": "ошибка аутентификации"},
+        HTTP_403_FORBIDDEN: {"description": "ошибка доступа"},
         HTTP_422_UNPROCESSABLE_ENTITY: {"description": "ошибка валидации"},
         HTTP_500_INTERNAL_SERVER_ERROR: {"description": "ошибка сервера"},
     },

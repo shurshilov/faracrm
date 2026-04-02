@@ -26,27 +26,28 @@ export const baseQuery = fetchBaseQuery({
   paramsSerializer: params => queryString.stringify(params, { encode: false }),
 });
 
+let isRedirecting = false;
 // Коды ошибок авторизации - при них делаем logout
-const AUTH_ERROR_CODES = [
-  'TOKEN_EXPIRED',
-  'TOKEN_INVALID',
-  'SESSION_EXPIRED',
-  'SESSION_NOT_EXIST',
-  'UNAUTHORIZED',
-];
+// const AUTH_ERROR_CODES = [
+//   'TOKEN_EXPIRED',
+//   'TOKEN_INVALID',
+//   'SESSION_EXPIRED',
+//   'SESSION_NOT_EXIST',
+//   'UNAUTHORIZED',
+// ];
 
-function isAuthError(data: unknown): boolean {
-  if (typeof data === 'string') {
-    return AUTH_ERROR_CODES.includes(data);
-  }
-  if (typeof data === 'object' && data !== null) {
-    const content = (data as { content?: string }).content;
-    if (content && AUTH_ERROR_CODES.includes(content)) {
-      return true;
-    }
-  }
-  return false;
-}
+// function isAuthError(data: unknown): boolean {
+//   if (typeof data === 'string') {
+//     return AUTH_ERROR_CODES.includes(data);
+//   }
+//   if (typeof data === 'object' && data !== null) {
+//     const content = (data as { content?: string }).content;
+//     if (content && AUTH_ERROR_CODES.includes(content)) {
+//       return true;
+//     }
+//   }
+//   return false;
+// }
 
 function parseApiError(data: unknown, status: number): ApiError | null {
   // Если data - строка (старый формат)
@@ -83,19 +84,22 @@ export const baseQueryWithReauth: BaseQueryFn<
     const status = result.error.status;
     const data = result.error.data;
 
-    // 401 - всегда logout
-    if (status === 401) {
+    // 401 - ошибка аутентификации всегда logout
+    if (status === 401 && !isRedirecting) {
+      isRedirecting = true; // Блокируем повторные входы
+      // api.dispatch({ type: 'authApi/cancelQueries' });
+      api.dispatch({ type: `crudApi/queries/cancelAll` });
       api.dispatch(logOut());
       return result;
     }
 
     // 403 - проверяем тип ошибки
     if (status === 403) {
-      // Ошибка авторизации - logout
-      if (isAuthError(data)) {
-        api.dispatch(logOut());
-        return result;
-      }
+      // Ошибка доступа - logout
+      // if (isAuthError(data)) {
+      //   api.dispatch(logOut());
+      //   return result;
+      // }
 
       // Ошибка прав - показываем модальное окно
       const apiError = parseApiError(data, status as number);

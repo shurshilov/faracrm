@@ -102,7 +102,9 @@ class AuthTokenApp(App, AuthStrategyAbstract):
             env: "Environment" = request.app.state.env
             # если ошибка связанная с аутентификацией
             response = JSONResponse(
-                content={"error": "#FORBIDDEN"}, status_code=401
+                # content={"error": "#FORBIDDEN"}, status_code=401
+                content={"error": "#UNAUTHORIZED"},
+                status_code=401,
             )
 
             # удаляем куку
