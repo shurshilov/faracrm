@@ -75,7 +75,8 @@ const slice = createSlice({
     logOut: state => {
       // Деактивируем сессию на сервере (fire-and-forget)
       serverLogout(state.session?.token);
-      localStorage.setItem('session', '');
+      // localStorage.setItem('session', '');
+      localStorage.clear();
       return { session: undefined };
     },
   },

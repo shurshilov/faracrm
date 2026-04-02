@@ -1,3 +1,8 @@
+import {
+  configureStore,
+  combineReducers,
+  UnknownAction,
+} from '@reduxjs/toolkit';
 // import {
 //   persistReducer,
 //   FLUSH,
@@ -7,22 +12,33 @@
 //   PURGE,
 //   REGISTER,
 // } from 'redux-persist';
-import { configureStore } from '@reduxjs/toolkit';
-import { combineReducers } from 'redux';
-
 import { setupListeners } from '@reduxjs/toolkit/query';
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { crudApi } from '@services/api/crudApi';
 import { authApi } from '@services/auth/auth';
-import authSlice from '@slices/authSlice';
+import authSlice, { logOut } from '@slices/authSlice'; // Импортируем экшен логаута
 
-const reducers = combineReducers({
+// 1. Собираем базовые редьюсеры
+const appReducer = combineReducers({
   [crudApi.reducerPath]: crudApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   auth: authSlice,
   // remaining reducers
 });
+
+// 2. Добавляем Root Reducer для сброса всего стейта при логауте
+const rootReducer = (
+  state: ReturnType<typeof appReducer> | undefined,
+  action: UnknownAction,
+) => {
+  if (action.type === logOut.type) {
+    // При получении экшена логаута передаем undefined во все дочерние редьюсеры,
+    // что заставляет их вернуться к initialState (включая кэш API)
+    state = undefined;
+  }
+  return appReducer(state, action);
+};
 
 // const persistConfig = {
 //   key: 'persistedReducer',
@@ -34,6 +50,7 @@ const reducers = combineReducers({
 // interface CustomStore extends Store<RootState, AnyAction> {
 //   asyncReducers?: AsyncReducers
 // }
+
 export const store = configureStore({
   devTools: process.env.NODE_ENV === 'development',
   middleware: getDefaultMiddleware =>
@@ -46,7 +63,7 @@ export const store = configureStore({
       .concat(authApi.middleware),
   // .concat(apiErrorMiddleware),
   // NOTE this addition
-  reducer: reducers,
+  reducer: rootReducer, // Используем rootReducer вместо объекта reducers
 });
 
 setupListeners(store.dispatch); // NOTE this addition

@@ -36,6 +36,7 @@ async def logout(req: Request, response: Response):
 
     response.delete_cookie(
         key=env.settings.auth.cookie_name,
+        httponly=True,
         path="/",
         secure=env.settings.auth.cookie_secure,
         samesite=env.settings.auth.cookie_samesite,

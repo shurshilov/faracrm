@@ -15,8 +15,10 @@ function LogoutButton() {
       variant="outline"
       color={dark ? 'gray' : 'blue'}
       onClick={() => {
+        // dispatch(authApi.internalActions?.resetApiState());
+        // отменяем активные запросы
+        dispatch(authApi.util.resetApiState());
         dispatch(logOut());
-        dispatch(authApi.internalActions?.resetApiState());
       }}
       title="Toggle color scheme">
       <IconLogout style={{ width: 18, height: 18 }} />

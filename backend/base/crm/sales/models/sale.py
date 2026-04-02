@@ -55,6 +55,7 @@ class Sale(DotModel):
     )
     notes: str | None = Text(string="Notes")
     date_order: datetime.datetime = Datetime(
-        string="Order Date", default=datetime.datetime.now
+        string="Order Date",
+        default=lambda: datetime.datetime.now(datetime.timezone.utc),
     )
     origin: str | None = Char(string="Source Document")

@@ -128,8 +128,10 @@ function UserMenu() {
   }, [imageId]);
 
   const handleLogout = () => {
+    // отменяем активные запросы
+    dispatch(authApi.util.resetApiState());
     dispatch(logOut());
-    dispatch(authApi.internalActions?.resetApiState());
+    // dispatch(authApi.internalActions?.resetApiState());
   };
 
   const handleProfile = () => {

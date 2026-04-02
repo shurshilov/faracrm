@@ -58,9 +58,13 @@ class Session(DotModel):
     ttl: int = Integer()
     expired_datetime: datetime | None = Datetime()
 
-    create_datetime: datetime = Datetime(default=datetime.now(timezone.utc))
+    create_datetime: datetime = Datetime(
+        default=lambda: datetime.now(timezone.utc)
+    )
     create_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
-    update_datetime: datetime = Datetime(default=datetime.now(timezone.utc))
+    update_datetime: datetime = Datetime(
+        default=lambda: datetime.now(timezone.utc)
+    )
     update_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
 
     # Последняя активность пользователя (обновляется через WS ping).
