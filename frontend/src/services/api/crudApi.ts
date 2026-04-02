@@ -247,77 +247,77 @@ export const crudApi = createApi({
         [{ type: arg.model, id: 'LIST' }],
     }),
 
-    getAttachment: build.query<string, GetAttachmentParams>({
-      // hour
-      keepUnusedDataFor: 0,
-      query: queryArg => {
-        return {
-          url: `/attachments/${queryArg.id}`,
-          method: 'GET',
-          credentials: 'omit',
-          responseHandler: async response => {
-            console.log(response.headers);
-            // if get svg just return it as text
-            // if (
-            //   response.headers.map['content-type'] ===
-            //   'image/svg+xml; charset=utf-8'
-            // ) {
-            //   return response.text();
-            // }
-            // if get binary like image/png? convert it to base64
-            const fileReaderInstance = new FileReader();
-            if (!response.ok) {
-              throw new Error(response.statusText);
-            }
-            // const blob = await response.blob();
-            return response.blob();
-            // return fileReaderInstance.readAsDataURL(blob);
-            // return response;
+    // getAttachment: build.query<string, GetAttachmentParams>({
+    //   // hour
+    //   keepUnusedDataFor: 0,
+    //   query: queryArg => {
+    //     return {
+    //       url: `/attachments/${queryArg.id}`,
+    //       method: 'GET',
+    //       credentials: 'include',
+    //       responseHandler: async response => {
+    //         console.log(response.headers);
+    //         // if get svg just return it as text
+    //         // if (
+    //         //   response.headers.map['content-type'] ===
+    //         //   'image/svg+xml; charset=utf-8'
+    //         // ) {
+    //         //   return response.text();
+    //         // }
+    //         // if get binary like image/png? convert it to base64
+    //         const fileReaderInstance = new FileReader();
+    //         if (!response.ok) {
+    //           throw new Error(response.statusText);
+    //         }
+    //         // const blob = await response.blob();
+    //         return response.blob();
+    //         // return fileReaderInstance.readAsDataURL(blob);
+    //         // return response;
 
-            // return new Promise((resolve, _) => {
-            //   fileReaderInstance.onload = () => {
-            //     console.log(
-            //       fileReaderInstance.result,
-            //       'ileReaderInstance.result',
-            //     );
-            //     resolve(fileReaderInstance.result);
-            //     return fileReaderInstance.result;
-            //   };
-            // });
-          },
-        };
-      },
-      transformResponse: async (response: Blob | void, meta: any) => {
-        if (response instanceof Blob) {
-          const { response: metaResponse } = meta;
-          const filename = metaResponse.headers
-            .get('Content-Disposition')
-            .split('filename=')[1];
-          // const contentType = metaResponse.headers.get('Content-Type');
-          // const file = new File([response], filename, {
-          //   type: contentType,
-          // });
-          // const url = window.URL.createObjectURL(file);
-          // window.open(url);
+    //         // return new Promise((resolve, _) => {
+    //         //   fileReaderInstance.onload = () => {
+    //         //     console.log(
+    //         //       fileReaderInstance.result,
+    //         //       'ileReaderInstance.result',
+    //         //     );
+    //         //     resolve(fileReaderInstance.result);
+    //         //     return fileReaderInstance.result;
+    //         //   };
+    //         // });
+    //       },
+    //     };
+    //   },
+    //   transformResponse: async (response: Blob | void, meta: any) => {
+    //     if (response instanceof Blob) {
+    //       const { response: metaResponse } = meta;
+    //       const filename = metaResponse.headers
+    //         .get('Content-Disposition')
+    //         .split('filename=')[1];
+    //       // const contentType = metaResponse.headers.get('Content-Type');
+    //       // const file = new File([response], filename, {
+    //       //   type: contentType,
+    //       // });
+    //       // const url = window.URL.createObjectURL(file);
+    //       // window.open(url);
 
-          const url = window.URL.createObjectURL(response);
+    //       const url = window.URL.createObjectURL(response);
 
-          const link = document.createElement('a');
-          console.log(url);
-          link.href = url;
-          link.setAttribute('download', filename);
+    //       const link = document.createElement('a');
+    //       console.log(url);
+    //       link.href = url;
+    //       link.setAttribute('download', filename);
 
-          // Append to html link element page
-          document.body.appendChild(link);
+    //       // Append to html link element page
+    //       document.body.appendChild(link);
 
-          // Start download
-          link.click();
+    //       // Start download
+    //       link.click();
 
-          // Clean up and remove the link
-          link.parentNode.removeChild(link);
-        }
-      },
-    }),
+    //       // Clean up and remove the link
+    //       link.parentNode.removeChild(link);
+    //     }
+    //   },
+    // }),
 
     // Onchange endpoints
     getOnchangeFields: build.query<{ fields: string[] }, { model: string }>({
@@ -360,7 +360,7 @@ export interface FieldInfoResponse {
 export const {
   useLazySearchQuery,
   useSearchQuery,
-  useGetAttachmentQuery,
+  // useGetAttachmentQuery,
   useSearchMany2manyQuery,
   useDeleteBulkMutation,
   useReadQuery,

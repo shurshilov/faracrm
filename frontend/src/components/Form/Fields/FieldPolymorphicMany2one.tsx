@@ -3,7 +3,6 @@ import { Box, Text, Group, Stack, useMantineTheme } from '@mantine/core';
 import { IconUpload, IconFile } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { useFormContext } from '../FormContext';
-import { useGetAttachmentQuery } from '@/services/api/crudApi';
 import { FaraRecord } from '@/services/api/crudTypes';
 import {
   AttachmentPreview,
@@ -11,6 +10,7 @@ import {
   formatFileSize,
 } from '@/components/Attachment';
 import classes from './FieldPolymorphicMany2one.module.css';
+import { attachmentDownloadUrl } from '@/utils/attachmentUrls';
 
 interface FieldPolymorphicMany2oneProps {
   name: string;
@@ -48,13 +48,10 @@ export const FieldPolymorphicMany2one = <RecordType extends FaraRecord>({
 
   // Запрос на скачивание файла
   const [shouldFetch, setShouldFetch] = useState(false);
-  useGetAttachmentQuery(
-    { id: hasExistingFile ? Number(currentValue.id) : 0 },
-    { skip: !shouldFetch },
-  );
 
   useEffect(() => {
     if (shouldFetch) {
+      handleDownload();
       setShouldFetch(false);
     }
   }, [shouldFetch]);
@@ -170,7 +167,7 @@ export const FieldPolymorphicMany2one = <RecordType extends FaraRecord>({
   // Скачивание файла
   const handleDownload = () => {
     if (hasExistingFile) {
-      setShouldFetch(true);
+      window.open(attachmentDownloadUrl(currentValue.id), '_blank');
     } else if (hasNewFile && currentValue.content) {
       // Скачивание нового файла из base64
       const link = document.createElement('a');

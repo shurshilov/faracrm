@@ -322,11 +322,10 @@ class User(DotModel):
             if auth_session is None:
                 await self.terminate_sessions()
             else:
-                await self.terminate_sessions(auth_session.token)
+                await self.terminate_sessions(auth_session.id)
 
     async def terminate_sessions(
-        self,
-        exclude_token: str | None = None,
+        self, exclude_session_id: int | None = None
     ) -> int:
         """
         Завершить все активные сессии пользователя.
@@ -348,7 +347,7 @@ class User(DotModel):
         ids_to_terminate = [
             s.id
             for s in active_sessions
-            if exclude_token is None or s.token != exclude_token
+            if exclude_session_id is None or s.id != exclude_session_id
         ]
 
         if not ids_to_terminate:

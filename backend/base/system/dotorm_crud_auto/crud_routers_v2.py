@@ -274,10 +274,10 @@ class CRUDRouterGenerator(APIRouter):
             model_instance = Model(**payload_dict)
 
             id = await Model.create(model_instance)
-            record = await Model.get(id)
+            # record = await Model.get(id)
 
-            if record:
-                await record.update(model_instance, fields_names)
+            # if record:
+            #     await record.update(model_instance, fields_names)
 
             return {"id": id}
 

@@ -580,6 +580,7 @@ class TestUserSession:
             secrets.token_urlsafe(64),
         ]
 
+        session_ids = []
         for token in tokens:
             session = Session(
                 user_id=user.id,
@@ -591,10 +592,11 @@ class TestUserSession:
                 update_user_id=user.id,
                 active=True,
             )
-            await Session.create(session)
+            session_id = await Session.create(session)
+            session_ids.append(session_id)
 
         # Terminate all except current
-        terminated = await user.terminate_sessions(exclude_token=current_token)
+        terminated = await user.terminate_sessions(session_ids[0])
         assert terminated == 2
 
         # Verify current session is still active

@@ -17,7 +17,6 @@ import {
 import { IconUpload, IconFile, IconPlus } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { FormFieldsContext, useFormContext } from '../FormContext';
-import { useGetAttachmentQuery } from '@/services/api/crudApi';
 import { FaraRecord } from '@/services/api/crudTypes';
 import {
   AttachmentPreview,
@@ -27,6 +26,7 @@ import {
 } from '@/components/Attachment';
 import type { GalleryItem, AttachmentData } from '@/components/Attachment';
 import classes from './FieldPolymorphicOne2many.module.css';
+import { attachmentDownloadUrl } from '@/utils/attachmentUrls';
 
 interface AttachmentFile {
   id?: number;
@@ -63,6 +63,7 @@ export const FieldPolymorphicOne2many = <RecordType extends FaraRecord>({
   previewSize = 100,
   columns = 4,
 }: FieldPolymorphicOne2manyProps) => {
+  debugger;
   const form = useFormContext();
   const { id } = useParams<{ id: string }>();
   const theme = useMantineTheme();
@@ -82,9 +83,8 @@ export const FieldPolymorphicOne2many = <RecordType extends FaraRecord>({
   const [downloadFileId, setDownloadFileId] = useState(0);
   const [shouldFetch, setShouldFetch] = useState(false);
 
-  useGetAttachmentQuery({ id: downloadFileId }, { skip: !shouldFetch });
-
   useEffect(() => {
+    handleDownload({ id: downloadFileId } as AttachmentFile);
     setShouldFetch(false);
   }, [shouldFetch]);
 
@@ -260,6 +260,7 @@ export const FieldPolymorphicOne2many = <RecordType extends FaraRecord>({
   const handleDownload = (file: AttachmentFile) => {
     if (file.id && !file._isNew) {
       setDownloadFileId(file.id);
+      window.open(attachmentDownloadUrl(file.id), '_blank');
       setShouldFetch(true);
     } else if (file.content) {
       const link = document.createElement('a');
