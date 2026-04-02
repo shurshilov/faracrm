@@ -15,8 +15,6 @@ import {
 } from '@/components/Form/Layout';
 import {
   IconShoppingCart,
-  IconUser,
-  IconAddressBook,
   IconList,
   IconReceipt,
   IconProgress,

@@ -9,7 +9,11 @@ import { LabelPosition } from '@/components/Form/FormSettingsContext';
 import { ContactsWidget } from './ContactsWidget';
 import { Contact, ContactType } from './types';
 import { useParams } from 'react-router-dom';
-import { useSearchQuery } from '@/services/api/crudApi';
+import {
+  useCreateMutation,
+  useDeleteBulkMutation,
+  useSearchQuery,
+} from '@/services/api/crudApi';
 
 interface FieldContactsProps {
   /** Имя поля в форме */
@@ -75,6 +79,8 @@ export function FieldContacts({
   const form = useFormContext();
   const { fields: fieldsServer } = useContext(FormFieldsContext);
   const { id } = useParams<{ id: string }>();
+  const [deleteBulk] = useDeleteBulkMutation();
+  const [create, { isLoading }] = useCreateMutation();
 
   const displayLabel = label ?? name;
 
@@ -83,19 +89,21 @@ export function FieldContacts({
   // Иначе — используем id текущей записи из URL
   const parentValue = parentField ? form.getValues()?.[parentField] : null;
   const ownerId: number | null = parentField
-    ? (typeof parentValue === 'object' && parentValue !== null
-        ? parentValue.id
-        : typeof parentValue === 'number'
-          ? parentValue
-          : null)
-    : (id ? Number(id) : null);
+    ? typeof parentValue === 'object' && parentValue !== null
+      ? parentValue.id
+      : typeof parentValue === 'number'
+        ? parentValue
+        : null
+    : id
+      ? Number(id)
+      : null;
 
   // Определяем relatedField для фильтра запроса:
   // Если parentField указан — используем его как фильтр (partner_id)
   // Иначе — берём из метаданных сервера
   const relatedField = parentField
     ? parentField
-    : (fieldsServer[name]?.relatedField || 'partner_id');
+    : fieldsServer[name]?.relatedField || 'partner_id';
 
   // Определяем модель для запроса контактов:
   // Если parentModel указан — берём relatedModel из fieldsServer родительской модели
@@ -111,9 +119,7 @@ export function FieldContacts({
     {
       model: queryModel,
       fields: ['id', 'contact_type_id', 'name', 'is_primary'],
-      filter: [
-        [relatedField, '=', ownerId!],
-      ],
+      filter: [[relatedField, '=', ownerId!]],
       limit: 100,
     },
     {
@@ -143,7 +149,7 @@ export function FieldContacts({
     setContacts([]);
   }, [id, ownerId]);
 
-  const handleChange = (newContacts: Contact[]) => {
+  const handleChange = async (newContacts: Contact[]) => {
     setContacts(newContacts);
 
     // Собираем изменения для сохранения
@@ -163,15 +169,32 @@ export function FieldContacts({
       }
     }
 
+    try {
+      await deleteBulk({
+        model: 'contact',
+        ids: deleted,
+      }).unwrap();
+
+      // TODO: вообще в идеале можно ускорить создание bulk
+      // но на самом деле больше одного не создается
+      for (const item of created) {
+        await create({
+          model: 'contact',
+          values: item,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete or create contact:', error);
+    }
     // Сохраняем изменения в служебное поле (как FieldOne2many)
-    const changesFieldName = `_${name}`;
-    form.setValues({
-      [changesFieldName]: {
-        created,
-        deleted,
-        fieldsServer: fieldsServer,
-      },
-    });
+    // const changesFieldName = `_${name}`;
+    // form.setValues({
+    //   [changesFieldName]: {
+    //     created,
+    //     deleted,
+    //     fieldsServer: fieldsServer,
+    //   },
+    // });
   };
 
   return (
