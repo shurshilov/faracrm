@@ -28,7 +28,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMediaQuery } from '@mantine/hooks';
 import { logOut, storeSession, selectCurrentSession } from '@/slices/authSlice';
-import { authApi } from '@/services/auth/auth';
+import { authApi, useLogoutMutation } from '@/services/auth/auth';
 import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
 import {
   useReadQuery,
@@ -62,6 +62,7 @@ function UserMenu() {
   const { i18n, t } = useTranslation();
   const dark = colorScheme === 'dark';
   const dispatch = useDispatch();
+  const [triggerLogout] = useLogoutMutation();
   const navigate = useNavigate();
   const session = useSelector(selectCurrentSession);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
@@ -127,10 +128,17 @@ function UserMenu() {
     setAvatarSrc(attachmentPreviewUrl(imageId, 50, 50));
   }, [imageId]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await triggerLogout().unwrap(); // Запрос на сервер
+    } finally {
+      // В любом случае чистим локальные данные
+      dispatch(authApi.util.resetApiState());
+      dispatch(logOut());
+    }
     // отменяем активные запросы
-    dispatch(authApi.util.resetApiState());
-    dispatch(logOut());
+    // dispatch(authApi.util.resetApiState());
+    // dispatch(logOut());
     // dispatch(authApi.internalActions?.resetApiState());
   };
 

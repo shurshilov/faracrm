@@ -99,10 +99,22 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         async def catch_exception_handler_auth(
             request: Request, exc: Exception
         ):
+            env: "Environment" = request.app.state.env
             # если ошибка связанная с аутентификацией
-            return JSONResponse(
+            response = JSONResponse(
                 content={"error": "#FORBIDDEN"}, status_code=401
             )
+
+            # удаляем куку
+            response.delete_cookie(
+                key=env.settings.auth.cookie_name,
+                httponly=True,
+                path="/",
+                secure=env.settings.auth.cookie_secure,
+                samesite=env.settings.auth.cookie_samesite,
+            )
+
+            return response
 
         app_server.add_exception_handler(
             SessionNotExist, catch_exception_handler_auth

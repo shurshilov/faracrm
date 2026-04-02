@@ -29,15 +29,15 @@ export const authApi = createApi({
           password: props.password,
         },
       }),
+    }),
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // transformResponse: (response: any) =>
-      // create session
-      // const session: Session = {};
-      // response.data = session;
-      // response.data,
+    logout: builder.mutation<void, void>({
+      query: () => ({
+        url: '/sessions/logout',
+        method: 'POST',
+      }),
     }),
   }),
 });
 
-export const { useLoginMutation } = authApi;
+export const { useLoginMutation, useLogoutMutation } = authApi;

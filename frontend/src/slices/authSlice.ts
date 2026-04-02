@@ -23,21 +23,21 @@ function loadSession(): Session | undefined {
  * Серверный logout — деактивирует сессию в БД и удаляет guard cookie.
  * Fire-and-forget: не ждём ответа, не блокируем UI.
  */
-function serverLogout(token?: string) {
-  if (!token) return;
-  try {
-    fetch(`${API_BASE_URL}/sessions/logout`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      credentials: 'include',
-    }).catch(() => {});
-  } catch {
-    // ignore
-  }
-}
+// function serverLogout(token?: string) {
+//   if (!token) return;
+//   try {
+//     fetch(`${API_BASE_URL}/sessions/logout`, {
+//       method: 'POST',
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//         'Content-Type': 'application/json',
+//       },
+//       credentials: 'include',
+//     }).catch(() => {});
+//   } catch {
+//     // ignore
+//   }
+// }
 
 const initialState: AuthState = {
   session: loadSession(),
@@ -74,7 +74,7 @@ const slice = createSlice({
 
     logOut: state => {
       // Деактивируем сессию на сервере (fire-and-forget)
-      serverLogout(state.session?.token);
+      // serverLogout(state.session?.token);
       // localStorage.setItem('session', '');
       localStorage.clear();
       return { session: undefined };

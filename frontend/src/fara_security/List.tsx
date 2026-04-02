@@ -212,7 +212,7 @@ export function ViewListSessions() {
           name="expired_datetime"
           label={t('fields.expired_datetime')}
           render={value => (
-            <DateTimeCell showIcon value={value} format="compact" />
+            <DateTimeCell showIcon value={value} format="full" />
           )}
         />
         <Field
@@ -223,7 +223,7 @@ export function ViewListSessions() {
         <Field
           name="create_datetime"
           label={t('fields.create_datetime')}
-          render={value => <DateTimeCell value={value} format="relative" />}
+          render={value => <DateTimeCell value={value} format="full" />}
         />
         {/* <Field
           name="update_user_id"
