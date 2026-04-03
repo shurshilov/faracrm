@@ -53,6 +53,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   children,
   showCreate = false,
   showSelect = true,
+  displayField = 'name',
   ...props
 }: {
   name: string;
@@ -60,6 +61,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   children: React.ReactNode;
   showCreate?: boolean;
   showSelect?: boolean;
+  displayField?: string;
 } & Omit<GetListParams, 'fields' | 'model'>) => {
   const [records, setRecords] = useState<RecordType[]>([]);
   const [recordsCreated, setRecordsCreated] = useState<RecordType[]>([]);
@@ -334,6 +336,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
               model={fieldsServer[name]?.relatedModel || name}
               excludeIds={allRecords.map(r => r.id as number).filter(Boolean)}
               onSelect={handleSelectRecords}
+              displayField={displayField}
               buttonProps={{
                 size: 'xs',
                 variant: 'light',

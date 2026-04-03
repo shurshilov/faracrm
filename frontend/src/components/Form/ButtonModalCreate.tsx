@@ -49,7 +49,7 @@ export function ButtonModalCreate({
         onClose={close}
         title={`Создание: ${model}`}
         centered
-        size="lg">
+        size="xl">
         <Suspense
           fallback={
             <div className="flex flex-auto flex-col h-[100vh]">

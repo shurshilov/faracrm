@@ -25,6 +25,8 @@ interface ButtonModalSelectProps {
   model: string;
   onSelect: (records: FaraRecord[]) => void;
   excludeIds?: number[];
+  /** Поле для отображения и поиска. По умолчанию 'name'. */
+  displayField?: string;
   buttonProps?: ButtonProps & { children?: React.ReactNode };
 }
 
@@ -34,6 +36,7 @@ export function ButtonModalSelect({
   model,
   onSelect,
   excludeIds = [],
+  displayField = 'name',
   buttonProps,
 }: ButtonModalSelectProps) {
   const [opened, { open, close }] = useDisclosure(false);
@@ -54,7 +57,7 @@ export function ButtonModalSelect({
   // Формируем фильтр
   const filter: [string, string, any][] = [];
   if (search) {
-    filter.push(['name', 'ilike', `%${search}%`]);
+    filter.push([displayField, 'ilike', `%${search}%`]);
   }
   if (excludeIds.length > 0) {
     filter.push(['id', 'not in', excludeIds]);
@@ -63,11 +66,11 @@ export function ButtonModalSelect({
   const { data, isFetching } = useSearchQuery(
     {
       model,
-      fields: ['id', 'name'],
+      fields: displayField === 'id' ? ['id'] : ['id', displayField],
       start: (page - 1) * pageSize,
       limit: pageSize,
-      sort: 'name',
-      order: 'ASC',
+      sort: displayField === 'id' ? 'id' : displayField,
+      order: 'asc',
       filter: filter.length > 0 ? filter : undefined,
     },
     { skip: !opened },
@@ -90,10 +93,14 @@ export function ButtonModalSelect({
       title: 'ID',
       width: 80,
     },
-    {
-      accessor: 'name',
-      title: 'Название',
-    },
+    ...(displayField !== 'id'
+      ? [
+          {
+            accessor: displayField,
+            title: 'Название',
+          },
+        ]
+      : []),
   ];
 
   const { children: buttonChildren = 'Выбрать', ...restButtonProps } =
@@ -106,7 +113,7 @@ export function ButtonModalSelect({
         onClose={close}
         title={`Выбор: ${model}`}
         centered
-        size="lg">
+        size="xl">
         <Box mb="md">
           <TextInput
             placeholder="Поиск по названию..."

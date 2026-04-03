@@ -777,6 +777,10 @@ class DotModel(
             "id": self.id,
             "name": getattr(self, "name", str(self.id)),
         }
+        # fields = {"id": self.id}
+        # if getattr(self, "name"):
+        #     fields.update({"name": self.name})
+        # return fields
 
     def json(
         self,

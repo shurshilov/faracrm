@@ -23,6 +23,8 @@ interface FieldMany2oneProps {
   sortDirection?: 'asc' | 'desc';
   limit?: number;
   required?: boolean;
+  /** Поле связанной модели для отображения и поиска. По умолчанию 'name'. */
+  displayField?: string;
   filter?: Triplet[] | ((values: Record<string, any>) => Triplet[]); // Статичный домен или функция
   [key: string]: any;
 }
@@ -35,6 +37,7 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
   sortDirection = 'asc',
   limit = 80,
   required,
+  displayField = 'name',
   filter,
   ...props
 }: FieldMany2oneProps) => {
@@ -57,7 +60,7 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
   const combinedFilter = useMemo(() => {
     const filters: Triplet[] = [];
     if (search) {
-      filters.push(['name', 'ilike', search]);
+      filters.push([displayField, 'ilike', search]);
     }
     if (filterDomain.length > 0) {
       filters.push(...filterDomain);
@@ -71,7 +74,7 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
       limit,
       sort: sortKey,
       order: sortDirection,
-      fields: ['id', 'name'],
+      fields: displayField === 'id' ? ['id'] : ['id', displayField],
       filter: combinedFilter,
     },
     {
@@ -88,7 +91,7 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
     if (data) {
       const optionsData = data.data.map(item => (
         <Combobox.Option value={item.id.toString()} key={item.id}>
-          {item.name}
+          {item[displayField] ?? item.id}
         </Combobox.Option>
       ));
       setOptions(optionsData);
@@ -146,7 +149,10 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
                 }}
                 onFocus={() => combobox.openDropdown()}
                 onBlur={() => combobox.closeDropdown()}>
-                {form.getValues()[name] ? form.getValues()[name].name : ''}
+                {form.getValues()[name]
+                  ? (form.getValues()[name][displayField] ??
+                    form.getValues()[name].id)
+                  : ''}
               </InputBase>
             </Combobox.Target>
 

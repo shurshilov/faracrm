@@ -64,7 +64,12 @@ export function ViewFormSales(props: ViewFormProps) {
           name="lines"
           label="Позиции заказа"
           icon={<IconList size={16} />}>
-          <Field name="order_line_ids" label="">
+          <Field
+            name="order_line_ids"
+            label=""
+            displayField="product_id"
+            showCreate={true}
+            showSelect={false}>
             <Field name="id" />
             <Field name="product_id" />
             <Field name="product_uom_qty" />
