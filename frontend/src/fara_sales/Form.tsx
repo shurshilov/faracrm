@@ -23,11 +23,13 @@ import {
 import { useParams } from 'react-router-dom';
 import { PrintButton } from '@/fara_report_docx/PrintButton';
 import { FieldContacts } from '@/components/ContactsWidget';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Форма заказа на продажу
  */
 export function ViewFormSales(props: ViewFormProps) {
+  const { t } = useTranslation('sales');
   const { id } = useParams<{ id: string }>();
 
   return (
@@ -71,7 +73,7 @@ export function ViewFormSales(props: ViewFormProps) {
             showCreate={true}
             showSelect={false}>
             <Field name="id" />
-            <Field name="product_id" />
+            <Field name="product_id" label={t('sales.product_id')} />
             <Field name="product_uom_qty" />
             <Field name="product_uom_id" />
             <Field name="price_unit" />

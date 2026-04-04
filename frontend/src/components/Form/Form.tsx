@@ -227,7 +227,19 @@ export const Form = <RecordType extends FaraRecord>({
       form.reset();
       form.initialize(formData.data);
       form.setValues(formData.data);
+
+      // O2M: при создании дочерней записи из формы родителя
+      // устанавливаем FK на родителя сразу при инициализации,
+      // чтобы пользователь видел заполненное поле (напр. sale_id).
+      // parentId — ID существующего родителя, VirtualId — если родитель ещё не сохранён.
+      // if (relatedFieldO2M && isCreateForm) {
+      //   form.setValues({
+      //     [relatedFieldO2M]: parentId ? { id: parentId } : { id: 'VirtualId' },
+      //   });
+      // }
+
       form.resetDirty(formData.data);
+      // form.resetDirty(form.getValues());
 
       // Устанавливаем валидацию для обязательных полей
       const validation = buildValidation(formData.fields);
@@ -294,8 +306,9 @@ export const Form = <RecordType extends FaraRecord>({
               </Box>
 
               {/* Side panel — mobile: bottom Drawer, desktop: inline resizable */}
-              {showPanels && activePanel && (
-                isMobile ? (
+              {showPanels &&
+                activePanel &&
+                (isMobile ? (
                   <Drawer
                     opened={!!activePanel}
                     onClose={handleClosePanel}
@@ -305,9 +318,13 @@ export const Form = <RecordType extends FaraRecord>({
                     overlayProps={{ backgroundOpacity: 0.35 }}
                     styles={{
                       content: { borderRadius: '16px 16px 0 0' },
-                      body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' },
-                    }}
-                  >
+                      body: {
+                        padding: 0,
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      },
+                    }}>
                     <FormPanelSide
                       resModel={model}
                       resId={Number(id)}
@@ -322,8 +339,7 @@ export const Form = <RecordType extends FaraRecord>({
                     activePanel={activePanel}
                     onClose={handleClosePanel}
                   />
-                )
-              )}
+                ))}
             </Box>
           </ExtensionsContext.Provider>
         </FormProvider>

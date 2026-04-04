@@ -23,7 +23,7 @@ class SaleLine(DotModel):
     id: Id = Integer(primary_key=True)
     sale_id: "Sale" = Many2one(lambda: env.models.sale, string="Sale order id")
     sequence: PositiveInt0 = Integer(string="Sequence", default=10)
-    notes: str = Text(string="Notes")
+    notes: str | None = Text(string="Notes")
 
     product_id: "Product" = Many2one(
         lambda: env.models.product, string="Product id"
@@ -39,28 +39,33 @@ class SaleLine(DotModel):
         # compute="_compute_product_uom",
         string="Unit of Measure",
     )
-    tax_id: "Tax" = Many2one(
+    tax_id: "Tax | None" = Many2one(
         lambda: env.models.tax,
         # compute="_compute_tax_id",
         string="Taxes",
     )
     price_unit: float = Float(
         string="Unit Price",
+        default=0.0,
         # compute="_compute_price_unit",
     )
     discount: float = Float(
         string="Discount (%)",
+        default=0.0,
         # compute="_compute_discount",
     )
     price_subtotal: float = Float(
         string="Subtotal",
+        default=0.0,
         # compute="_compute_amount",
     )
     price_tax: float = Float(
         string="Total Tax",
+        default=0.0,
         # compute="_compute_amount",
     )
     price_total: float = Float(
         string="Total",
+        default=0.0,
         # compute="_compute_amount"
     )

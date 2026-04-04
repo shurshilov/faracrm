@@ -355,7 +355,9 @@ class Attachment(DotModel):
         fields: list | None = None,
         session=None,
     ) -> None:
-        if not isinstance(payload.content, Binary) and self.storage_id:
+        if not isinstance(payload.content, Binary) and not isinstance(
+            self.storage_id, int
+        ):
             async with env.apps.db.get_transaction():
                 try:
                     content_bytes = base64.b64decode(payload.content)

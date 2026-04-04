@@ -270,14 +270,22 @@ class CRUDRouterGenerator(APIRouter):
 
         async def route(payload: schema_input):  # type: ignore
             payload_dict = payload.model_dump(exclude_unset=True)
-            fields_names = list(payload_dict)
             model_instance = Model(**payload_dict)
 
+            # создаем сначала запись в бд с теми значениями
+            # которые храняться напрямую
             id = await Model.create(model_instance)
-            # record = await Model.get(id)
+            record = await Model.get(id)
 
-            # if record:
-            #     await record.update(model_instance, fields_names)
+            fields_names = list(payload_dict)
+            fields_names = [
+                field
+                for field in fields_names
+                if field in model_instance.get_none_update_fields_set()
+            ]
+            # замтем обновляем стор поля
+            if record and fields_names:
+                await record.update(model_instance, fields_names)
 
             return {"id": id}
 
