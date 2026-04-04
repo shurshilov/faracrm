@@ -50,14 +50,14 @@ const validateRequiredFields = (
 export function ButtonUpdate({
   model,
   id,
-  fields,
+  // fields,
   parentId,
   relatedFieldO2M,
   onSaveSuccess,
 }: {
   model: string;
   id: Identifier;
-  fields: Field[];
+  // fields: Field[];
   parentId?: number;
   relatedFieldO2M?: string;
   onSaveSuccess?: () => void;
@@ -84,7 +84,11 @@ export function ButtonUpdate({
       for (const key of Object.keys(values)) {
         if (key.startsWith('_')) {
           const v = values[key];
-          if (v?.unselected?.length || v?.created?.length || v?.selected?.length) {
+          if (
+            v?.unselected?.length ||
+            v?.created?.length ||
+            v?.selected?.length
+          ) {
             invalidateTags.push(key.slice(1)); // '_role_ids' -> 'role_ids'
           }
         }
@@ -111,10 +115,7 @@ export function ButtonUpdate({
   };
 
   return (
-    <Button
-      loading={saving}
-      variant="filled"
-      onClick={handleSave}>
+    <Button loading={saving} variant="filled" onClick={handleSave}>
       {saving ? t('saving') : t('save')}
     </Button>
   );

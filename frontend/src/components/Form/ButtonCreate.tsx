@@ -83,7 +83,8 @@ export function ButtonCreate({
           // при создании записи, еще нет ид из бд
           // но при этом необходимо сделать связи в связанных таблицах
           // поэтому используется статическое значение виртуальный ид
-          else form.setValues({ [relatedFieldO2M]: { id: VirtualId } });
+          // else form.setValues({ [relatedFieldO2M]: { id: VirtualId } });
+          else form.setValues({ [relatedFieldO2M]: VirtualId });
 
         const values = form.getValues();
         // добавить текущую форму в родительское поле O2M

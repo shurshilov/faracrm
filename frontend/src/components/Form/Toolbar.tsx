@@ -16,7 +16,7 @@ export const Toolbar = <RecordType extends FaraRecord>({
   model,
   id,
   isCreateForm,
-  fieldsClient,
+  // fieldsClient,
   parentFieldName,
   parentForm,
   parentId,
@@ -29,7 +29,7 @@ export const Toolbar = <RecordType extends FaraRecord>({
   model: string;
   id?: string;
   isCreateForm: boolean;
-  fieldsClient: Field[];
+  // fieldsClient: Field[];
   parentFieldName?: string;
   parentForm?: UseFormReturnType<FaraRecord>;
   parentId?: number;
@@ -106,7 +106,7 @@ export const Toolbar = <RecordType extends FaraRecord>({
               <ButtonUpdate
                 model={model}
                 id={id}
-                fields={fieldsClient}
+                // fields={fieldsClient}
                 parentId={parentId}
                 relatedFieldO2M={relatedFieldO2M}
                 onSaveSuccess={handleSaveSuccess}

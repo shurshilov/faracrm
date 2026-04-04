@@ -100,17 +100,18 @@ export const Form = <RecordType extends FaraRecord>({
   // здесь проверить условие one2many и many2many
   // для добавления вложенных полей
   // форма отправляет список полей в запросе
-  const fieldsClient = useMemo(() => {
-    return (
-      Children.map(children, field => {
-        if (!isValidElement(field)) {
-          // Игнорируем не элементы или элементы не Модели
-          return {} as Field;
-        }
-        return { name: field.props.name, type: field.type.name } as Field;
-      }) || []
-    );
-  }, [children]);
+  // console.log(isCreateForm, 'isCreateForm');
+  // const fieldsClient = useMemo(() => {
+  //   return (
+  //     Children.map(children, field => {
+  //       if (!isValidElement(field)) {
+  //         // Игнорируем не элементы или элементы не Модели
+  //         return {} as Field;
+  //       }
+  //       return { name: field.props.name, type: field.type.name } as Field;
+  //     }) || []
+  //   );
+  // }, [children]);
 
   // Загружаем модули-расширения из config (один раз)
   const [extensionsLoaded, setExtensionsLoaded] = useState(false);
@@ -133,7 +134,13 @@ export const Form = <RecordType extends FaraRecord>({
 
   // Собираем список полей из children + из расширений
   const fieldsList = useMemo(() => {
-    const childrenFields = getChildrenRecursive(children);
+    let childrenFields = getChildrenRecursive(children);
+    // в режиме создания из другой формы
+    // удаляем relatedFieldO2M поле
+    // так как оно привяжется автоматически, заполнять не надо
+    if (isCreateForm)
+      childrenFields = childrenFields.filter(item => item !== relatedFieldO2M);
+
     // После загрузки расширений добавляем их поля
     if (extensionsLoaded) {
       const extensionFields = getExtensionFields(model);
@@ -290,7 +297,7 @@ export const Form = <RecordType extends FaraRecord>({
                   model={model}
                   id={id}
                   isCreateForm={isCreateForm}
-                  fieldsClient={fieldsClient}
+                  // fieldsClient={fieldsClient}
                   relatedFieldO2M={relatedFieldO2M}
                   parentFieldName={parentFieldName}
                   parentForm={parentForm}
