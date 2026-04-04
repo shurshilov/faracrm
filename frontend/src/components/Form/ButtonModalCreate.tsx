@@ -1,11 +1,11 @@
 import { Button, ButtonProps, Modal } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { getModelViews } from '@/route/Routers';
-import { Suspense, useMemo, useCallback } from 'react';
+import { Suspense, useMemo } from 'react';
 import LoadingScreen from '../LoadingScreen/LoadingScreen';
 import { useFormContext } from './FormContext';
-import { crudApi } from '@/services/api/crudApi';
-import { useDispatch } from 'react-redux';
+// import { crudApi } from '@/services/api/crudApi';
+// import { useDispatch } from 'react-redux';
 
 interface ButtonModalCreateProps {
   model: string;
@@ -23,19 +23,19 @@ export function ButtonModalCreate({
   buttonProps,
 }: ButtonModalCreateProps) {
   const form = useFormContext();
-  const dispatch = useDispatch();
+  // const dispatch = useDispatch();
   const [opened, { open, close }] = useDisclosure(false);
   const views = useMemo(() => getModelViews(model), [model]);
   const Form = views?.form;
 
   // После создания записи - инвалидируем кэш чтобы обновить список O2M
-  const handleCreated = useCallback(
-    (newId: number) => {
-      // Инвалидируем search запросы для этой модели
-      dispatch(crudApi.util.invalidateTags([{ type: 'Record', id: 'LIST' }]));
-    },
-    [dispatch],
-  );
+  // const handleCreated = useCallback(
+  //   (newId: number) => {
+  //     // Инвалидируем search запросы для этой модели
+  //     dispatch(crudApi.util.invalidateTags([{ type: 'Record', id: 'LIST' }]));
+  //   },
+  //   [dispatch],
+  // );
 
   if (!Form) return null;
 
@@ -63,7 +63,7 @@ export function ButtonModalCreate({
             parentFieldName={parentFieldName}
             parentForm={form}
             parentId={parentId}
-            onCreated={handleCreated}
+            // modalClose={handleCreated}
           />
         </Suspense>
       </Modal>

@@ -6,6 +6,7 @@ import { UseFormReturnType } from '@mantine/form';
 import { FaraRecord, VirtualId } from '@/services/api/crudTypes';
 import { useContext } from 'react';
 import { prepareValuesToSave } from './utils';
+// import { useDispatch } from 'react-redux';
 
 /**
  * Валидирует обязательные поля формы
@@ -64,6 +65,7 @@ export function ButtonCreate({
   const { fields: fieldsServer } = useContext(FormFieldsContext);
   const form = useFormContext();
   const navigate = useNavigate();
+  // const dispatch = useDispatch();
   const [create, { isLoading }] = useCreateMutation();
   return (
     <Button
@@ -79,7 +81,7 @@ export function ButtonCreate({
         // если создание происходит из O2M и поле не задано, то
         // необходимо добавить ид родителя для свзяи
         if (relatedFieldO2M)
-          if (parentId) form.setValues({ [relatedFieldO2M]: { id: parentId } });
+          if (parentId) form.setValues({ [relatedFieldO2M]: parentId });
           // при создании записи, еще нет ид из бд
           // но при этом необходимо сделать связи в связанных таблицах
           // поэтому используется статическое значение виртуальный ид
@@ -134,8 +136,15 @@ export function ButtonCreate({
             model,
             values: valuesToCreate,
           });
-          if (data?.id) navigate(`/${model}/${data?.id}`);
-          else navigate(`/${model}`);
+
+          if (data?.id) {
+            form.reset();
+            // инвалидируем кеш и переходим на новую запись
+            // dispatch(
+            //   crudApi.util.invalidateTags([{ type: model, id: data.id }]),
+            // );
+            navigate(`/${model}/${data?.id}`);
+          } else navigate(`/${model}`);
         }
       }}>
       {parentFieldName && parentForm ? 'Create local' : 'Create'}
