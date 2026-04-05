@@ -6,7 +6,9 @@
     "sale_line": "Позиции заказа",
     "sale_stage": "Стадии",
     "tax": "Налоги",
-    "contract": "Договоры"
+    "contract": "Договоры",
+    "price": "Цена",
+    "service": "Служебная"
   },
   "sales": {
     "id": "Ид",

@@ -17,6 +17,7 @@ import {
   useEffect,
   useState,
   useMemo,
+  ComponentType,
 } from 'react';
 import {
   FaraRecord,
@@ -54,6 +55,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   showCreate = false,
   showSelect = true,
   displayField = 'name',
+  customForm = undefined,
   ...props
 }: {
   name: string;
@@ -62,6 +64,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   showCreate?: boolean;
   showSelect?: boolean;
   displayField?: string;
+  customForm?: ComponentType;
 } & Omit<GetListParams, 'fields' | 'model'>) => {
   const [records, setRecords] = useState<RecordType[]>([]);
   const [recordsCreated, setRecordsCreated] = useState<RecordType[]>([]);
@@ -361,6 +364,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
               relatedFieldO2M={fieldsServer[name]?.relatedField}
               parentFieldName={name}
               parentId={Number(id)}
+              customForm={customForm}
               buttonProps={{
                 size: 'xs',
                 variant: 'light',

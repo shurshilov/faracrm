@@ -1,7 +1,7 @@
 import { Button, ButtonProps, Modal } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { getModelViews } from '@/route/Routers';
-import { Suspense, useMemo } from 'react';
+import { ComponentType, Suspense, useMemo } from 'react';
 import LoadingScreen from '../LoadingScreen/LoadingScreen';
 import { useFormContext } from './FormContext';
 // import { crudApi } from '@/services/api/crudApi';
@@ -13,6 +13,7 @@ interface ButtonModalCreateProps {
   parentFieldName?: string;
   parentId?: number;
   buttonProps?: ButtonProps & { children?: React.ReactNode };
+  customForm?: ComponentType;
 }
 
 export function ButtonModalCreate({
@@ -21,12 +22,13 @@ export function ButtonModalCreate({
   parentFieldName,
   parentId,
   buttonProps,
+  customForm,
 }: ButtonModalCreateProps) {
   const form = useFormContext();
   // const dispatch = useDispatch();
   const [opened, { open, close }] = useDisclosure(false);
   const views = useMemo(() => getModelViews(model), [model]);
-  const Form = views?.form;
+  const Form = customForm || views?.form;
 
   // После создания записи - инвалидируем кэш чтобы обновить список O2M
   // const handleCreated = useCallback(

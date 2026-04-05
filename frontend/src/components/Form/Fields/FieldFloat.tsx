@@ -8,6 +8,8 @@ interface FieldFloatProps {
   label?: string;
   labelPosition?: LabelPosition;
   required?: boolean;
+  /** Показать стрелки вверх/вниз. По умолчанию false. */
+  showControls?: boolean;
   [key: string]: any;
 }
 
@@ -16,6 +18,7 @@ export const FieldFloat = ({
   label,
   labelPosition,
   required,
+  showControls = false,
   ...props
 }: FieldFloatProps) => {
   const form = useFormContext();
@@ -31,6 +34,7 @@ export const FieldFloat = ({
         {...form.getInputProps(name)}
         key={form.key(name)}
         decimalScale={2}
+        hideControls={!showControls}
         required={required}
       />
     </FieldWrapper>

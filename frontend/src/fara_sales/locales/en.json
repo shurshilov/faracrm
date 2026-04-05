@@ -6,7 +6,9 @@
     "sale_line": "Order Lines",
     "sale_stage": "Stages",
     "tax": "Taxes",
-    "contract": "Contracts"
+    "contract": "Contracts",
+    "price": "Price",
+    "service": "Service info"
   },
   "sales": {
     "id": "Id",

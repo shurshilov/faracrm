@@ -1,5 +1,6 @@
 import { Combobox, InputBase, useCombobox } from '@mantine/core';
 import { ReactElement, useContext, useEffect, useState, useMemo } from 'react';
+import { IconChevronDown } from '@tabler/icons-react';
 import {
   BaseQueryFn,
   TypedUseQueryHookResult,
@@ -137,7 +138,9 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
             withArrow
             onOptionSubmit={val => {
               if (data) {
-                const record = data.data.find(obj => obj.id.toString() === val);
+                const record = data.data.find(obj => {
+                  return obj.id.toString() === val;
+                });
                 if (record) {
                   if (onchangeFields?.includes(name) && handleFieldChange) {
                     // setValue + onchange в одном вызове
@@ -153,15 +156,31 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
               <InputBase
                 component="button"
                 type="button"
+                pointer
+                rightSection={
+                  <IconChevronDown
+                    size={16}
+                    style={{
+                      opacity: 0.4,
+                      transition: 'transform 150ms ease',
+                      transform: combobox.dropdownOpened
+                        ? 'rotate(180deg)'
+                        : 'rotate(0deg)',
+                    }}
+                  />
+                }
+                rightSectionPointerEvents="none"
                 onClick={() => {
                   combobox.openDropdown();
                 }}
                 onFocus={() => combobox.openDropdown()}
                 onBlur={() => combobox.closeDropdown()}>
-                {form.getValues()[name]
-                  ? (form.getValues()[name][displayField] ??
-                    form.getValues()[name].id)
-                  : ''}
+                {form.getValues()[name] ? (
+                  (form.getValues()[name][displayField] ??
+                  form.getValues()[name].id)
+                ) : (
+                  <span style={{ opacity: 0.4 }}>Выбрать...</span>
+                )}
               </InputBase>
             </Combobox.Target>
 

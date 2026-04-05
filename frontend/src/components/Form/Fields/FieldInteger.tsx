@@ -8,6 +8,8 @@ interface FieldIntegerProps {
   label?: string;
   labelPosition?: LabelPosition;
   required?: boolean;
+  /** Показать стрелки вверх/вниз. По умолчанию false. */
+  showControls?: boolean;
   [key: string]: any;
 }
 
@@ -16,6 +18,7 @@ export const FieldInteger = ({
   label,
   labelPosition,
   required,
+  showControls = false,
   ...props
 }: FieldIntegerProps) => {
   const form = useFormContext();
@@ -31,6 +34,7 @@ export const FieldInteger = ({
         {...form.getInputProps(name)}
         key={form.key(name)}
         allowDecimal={false}
+        hideControls={!showControls}
         required={required}
       />
     </FieldWrapper>
