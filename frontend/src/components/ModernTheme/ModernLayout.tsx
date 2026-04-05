@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   AppShell,
   Box,
@@ -14,7 +14,11 @@ import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import FaraRouters from '@/route/Routers';
 import Logo from '@/components/Logo';
-import { items, MenuGroup } from '@/components/NavbarMenu/menuData';
+import {
+  getVisibleMenuItems,
+  items,
+  MenuGroup,
+} from '@/components/NavbarMenu/menuData';
 import UserMenu from '@/components/UserMenu';
 import { ChatNotification } from '@/components/ChatNotification';
 import { ActivityNotification } from '@/fara_activity/ActivityNotification';
@@ -24,6 +28,7 @@ import { AppLauncher } from './AppLauncher';
 import { HorizontalMenu } from './HorizontalMenu';
 import { ChatSidebar } from './ChatSidebar';
 import classes from './ModernLayout.module.css';
+import { useSelector } from 'react-redux';
 
 export function ModernLayout() {
   const [activeGroup, setActiveGroup] = useState<MenuGroup | null>(null);
@@ -31,12 +36,22 @@ export function ModernLayout() {
   const location = useLocation();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
+  const session = useSelector((state: any) => state.auth.session);
+  const menuItems = useMemo(
+    () =>
+      getVisibleMenuItems(
+        session?.user_id?.role_ids || [],
+        session?.user_id?.is_admin || false,
+      ),
+    [session?.user_id?.role_ids, session?.user_id?.is_admin],
+  );
+
   // Определяем активную группу по текущему URL
   useEffect(() => {
     const currentPath = location.pathname;
 
     // Находим группу, которая содержит текущий путь
-    for (const group of items) {
+    for (const group of menuItems) {
       if (group.to && currentPath.startsWith(group.to)) {
         setActiveGroup(group);
         return;
@@ -83,7 +98,10 @@ export function ModernLayout() {
             ? {
                 width: chatNavbarWidth,
                 breakpoint: 'sm',
-                collapsed: { mobile: mobileNavbarCollapsed, desktop: chatSidebarCollapsed },
+                collapsed: {
+                  mobile: mobileNavbarCollapsed,
+                  desktop: chatSidebarCollapsed,
+                },
               }
             : undefined
         }
@@ -94,16 +112,25 @@ export function ModernLayout() {
           <Flex align="center" h="100%" gap={{ base: 'xs', sm: 'md' }}>
             {/* Кнопка App Launcher */}
             <Group px={{ base: 'xs', sm: 'md' }}>
-              <AppLauncher items={items} onSelectGroup={setActiveGroup} />
+              <AppLauncher items={menuItems} onSelectGroup={setActiveGroup} />
             </Group>
 
             {/* Логотип — скрываем на маленьких mobile чтобы дать место меню */}
-            <Box visibleFrom="xs" style={{ display: 'flex', alignItems: 'center', flexShrink: 1, minWidth: 0 }}>
+            <Box
+              visibleFrom="xs"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexShrink: 1,
+                minWidth: 0,
+              }}>
               <Logo />
             </Box>
 
             {/* Горизонтальное меню — только tablet+ */}
-            <Box visibleFrom="md" style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+            <Box
+              visibleFrom="md"
+              style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
               {isInChat ? (
                 <HorizontalMenu
                   activeGroup={activeGroup}
@@ -118,7 +145,11 @@ export function ModernLayout() {
             <Box hiddenFrom="md" style={{ flex: 1 }} />
 
             {/* Правая часть */}
-            <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }} style={{ flexShrink: 0 }}>
+            <Group
+              h="100%"
+              px={{ base: 'xs', sm: 'md' }}
+              gap={{ base: 4, sm: 'sm' }}
+              style={{ flexShrink: 0 }}>
               <Box visibleFrom="sm">
                 <ThemeToggle />
               </Box>

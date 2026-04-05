@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
+from backend.base.crm.security.utils import init_module_roles
 from .models.lead_stage import LeadStage, INITIAL_LEAD_STAGES
 
 
@@ -26,14 +27,42 @@ class LeadsApp(App):
     }
 
     BASE_USER_ACL = {
-        "lead": ACL.FULL,
-        "lead_stage": ACL.FULL,
-        "team_crm": ACL.FULL,
+        "lead_stage": ACL.READ_ONLY,
+        "team_crm": ACL.READ_ONLY,
+    }
+
+    ROLE_ACL = {
+        "crm_user": {
+            "lead": ACL.FULL,
+            "lead_stage": ACL.READ_ONLY,
+            "team_crm": ACL.READ_ONLY,
+        },
+        "crm_manager": {
+            "lead": ACL.FULL,
+            "lead_stage": ACL.READ_ONLY,
+            "team_crm": ACL.READ_ONLY,
+        },
+        "crm_admin": {
+            "lead": ACL.FULL,
+            "lead_stage": ACL.FULL,
+            "team_crm": ACL.FULL,
+        },
     }
 
     async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
         env: "Environment" = app.state.env
+
+        # Роли модуля
+        await init_module_roles(
+            env,
+            "leads",
+            [
+                ("crm_user", "CRM: пользователь"),
+                ("crm_manager", "CRM: менеджер"),
+                ("crm_admin", "CRM: администратор"),
+            ],
+        )
 
         # Создание начальных стадий лидов
         for stage_data in INITIAL_LEAD_STAGES:

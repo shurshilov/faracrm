@@ -213,7 +213,7 @@ class SecurityApp(Service):
                 )
 
     async def _init_base_role(self, env: Environment):
-        """Создаёт базовую роль base_user."""
+        """Создаёт базовую роль base_user и системную роль system_admin."""
         security_app = await env.models.app.search(
             filter=[("code", "=", "security")],
             fields=["id"],
@@ -223,6 +223,7 @@ class SecurityApp(Service):
             raise ValueError("Not found security app")
         app_id = security_app[0].id
 
+        # base_user — базовая роль для всех пользователей
         existing_role = await env.models.role.search(
             filter=[("code", "=", "base_user")],
             fields=["id"],
@@ -235,6 +236,33 @@ class SecurityApp(Service):
                     code="base_user",
                     name="Internal User",
                     app_id=AppModel(id=app_id),
+                )
+            )
+
+        # system_admin — системная роль для доступа к настройкам.
+        # Отличие от is_admin: is_admin обходит ВСЕ проверки (суперпользователь),
+        # system_admin — обычная роль с доступом к модулю настроек через меню.
+        existing_system = await env.models.role.search(
+            filter=[("code", "=", "system_admin")],
+            fields=["id"],
+            limit=1,
+        )
+
+        if not existing_system:
+            # system_admin наследует base_user
+            base_user = await env.models.role.search(
+                filter=[("code", "=", "base_user")],
+                fields=["id"],
+                limit=1,
+            )
+            based_roles = [Role(id=base_user[0].id)] if base_user else []
+
+            await env.models.role.create(
+                payload=Role(
+                    code="system_admin",
+                    name="Администратор настроек",
+                    app_id=AppModel(id=app_id),
+                    based_role_ids=based_roles,
                 )
             )
 

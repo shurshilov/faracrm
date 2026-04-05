@@ -17,9 +17,9 @@ class SalesApp(App):
     ┌──────────────────────────┬───────────────────────────────────────────┐
     │ Код роли                 │ Описание                                  │
     ├──────────────────────────┼───────────────────────────────────────────┤
-    │ sale_salesman            │ Продавец — видит только свои заказы       │
-    │ sale_salesman_all        │ Руководитель — видит все заказы           │
-    │ sale_manager             │ Администратор — полный доступ + настройки │
+    │ sale_user                │ Пользователь — видит только свои заказы   │
+    │ sale_manager             │ Менеджер — видит все заказы               │
+    │ sale_admin               │ Администратор — полный доступ + настройки │
     └──────────────────────────┴───────────────────────────────────────────┘
 
     """
@@ -38,29 +38,33 @@ class SalesApp(App):
     BASE_USER_ACL = {
         "sale_stage": ACL.READ_ONLY,
         "tax": ACL.READ_ONLY,
+        "contract": ACL.READ_ONLY,
     }
 
     ROLE_ACL = {
-        # Продавец: полный CRUD включая удаление своих заказов
-        "sale_salesman": {
+        # Пользователь: полный CRUD своих заказов
+        "sale_user": {
             "sale": ACL.FULL,
             "sale_line": ACL.FULL,
             "sale_stage": ACL.READ_ONLY,
             "tax": ACL.READ_ONLY,
+            "contract": ACL.READ_ONLY,
         },
-        # Руководитель: полный CRUD включая удаление
-        "sale_salesman_all": {
+        # Менеджер: полный CRUD всех заказов
+        "sale_manager": {
             "sale": ACL.FULL,
             "sale_line": ACL.FULL,
             "sale_stage": ACL.READ_ONLY,
             "tax": ACL.READ_ONLY,
+            "contract": ACL.FULL,
         },
         # Администратор: полный доступ + управление стадиями и налогами
-        "sale_manager": {
+        "sale_admin": {
             "sale": ACL.FULL,
             "sale_line": ACL.FULL,
             "sale_stage": ACL.FULL,
             "tax": ACL.FULL,
+            "contract": ACL.FULL,
         },
     }
 
@@ -93,81 +97,18 @@ class SalesApp(App):
                 )
 
     async def _init_sale_roles(self, env: "Environment"):
-        """
-        Создаёт три роли модуля продаж с иерархией через based_role_ids.
-        """
+        """Создаёт роли модуля продаж: user → manager → admin."""
+        from backend.base.crm.security.utils import init_module_roles
 
-        from backend.base.crm.security.models.roles import Role
-        from backend.base.crm.security.models.apps import App as AppModel
-
-        # Получаем app_id для sales
-        sales_app = await env.models.app.search(
-            filter=[("code", "=", "sales")],
-            fields=["id"],
-            limit=1,
+        await init_module_roles(
+            env,
+            "sales",
+            [
+                ("sale_user", "Продажи: пользователь"),
+                ("sale_manager", "Продажи: менеджер"),
+                ("sale_admin", "Продажи: администратор"),
+            ],
         )
-        if not sales_app:
-            return
-        app_id = sales_app[0].id
-
-        # Получаем base_user
-        base_user = await env.models.role.search(
-            filter=[("code", "=", "base_user")],
-            fields=["id"],
-            limit=1,
-        )
-
-        if not base_user:
-            return
-
-        base_user_id = base_user[0].id
-
-        # Описания ролей: (code, name, based_on_codes)
-        roles_def = [
-            (
-                "sale_salesman",
-                "Продавец",
-                ["base_user"] if base_user_id else [],
-            ),
-            (
-                "sale_salesman_all",
-                "Руководитель продаж",
-                ["sale_salesman"],
-            ),
-            (
-                "sale_manager",
-                "Администратор продаж",
-                ["sale_salesman_all"],
-            ),
-        ]
-
-        for code, name, based_codes in roles_def:
-            existing = await env.models.role.search(
-                filter=[("code", "=", code)],
-                fields=["id"],
-                limit=1,
-            )
-            if existing:
-                continue
-
-            # Собираем based_role_ids
-            based_roles = []
-            for based_code in based_codes:
-                found = await env.models.role.search(
-                    filter=[("code", "=", based_code)],
-                    fields=["id"],
-                    limit=1,
-                )
-                if found:
-                    based_roles.append(Role(id=found[0].id))
-
-            role_payload = Role(
-                code=code,
-                name=name,
-                app_id=AppModel(id=app_id),
-                based_role_ids=based_roles,
-            )
-            await env.models.role.create(payload=role_payload)
 
     async def _init_sale_rules(self, env: "Environment"):
         """
@@ -190,20 +131,20 @@ class SalesApp(App):
         sale_line_model_rec = sale_line_model[0]
 
         # Получаем роли
-        role_salesman = await env.models.role.search(
-            filter=[("code", "=", "sale_salesman")], limit=1
+        role_user = await env.models.role.search(
+            filter=[("code", "=", "sale_user")], limit=1
         )
-        role_all = await env.models.role.search(
-            filter=[("code", "=", "sale_salesman_all")], limit=1
+        role_manager = await env.models.role.search(
+            filter=[("code", "=", "sale_manager")], limit=1
         )
-        if not role_salesman or not role_all:
+        if not role_user or not role_manager:
             return
 
         rules_to_create = [
             {
                 "name": "Заказы на продажу: только свои",
                 "model_id": sale_model_rec,
-                "role_id": role_salesman[0],
+                "role_id": role_user[0],
                 # OR: назначен я, или ответственный не указан
                 "domain": [
                     ["user_id", "=", "{{user_id}}"],
@@ -218,7 +159,7 @@ class SalesApp(App):
             {
                 "name": "Заказы на продажу: все",
                 "model_id": sale_model_rec,
-                "role_id": role_all[0],
+                "role_id": role_manager[0],
                 "domain": [["id", "!=", None]],  # 1=1
                 "perm_read": True,
                 "perm_create": True,
@@ -228,7 +169,7 @@ class SalesApp(App):
             {
                 "name": "Строки заказов: только свои",
                 "model_id": sale_line_model_rec,
-                "role_id": role_salesman[0],
+                "role_id": role_user[0],
                 # Фильтрация через связанное поле sale_id.user_id
                 "domain": [
                     ["sale_id.user_id", "=", "{{user_id}}"],
@@ -243,7 +184,7 @@ class SalesApp(App):
             {
                 "name": "Строки заказов: все",
                 "model_id": sale_line_model_rec,
-                "role_id": role_all[0],
+                "role_id": role_manager[0],
                 "domain": [["id", "!=", None]],  # 1=1
                 "perm_read": True,
                 "perm_create": True,

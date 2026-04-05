@@ -31,9 +31,38 @@ class PartnersApp(App):
         "contact_type": ACL.FULL,
     }
 
+    # ROLE_ACL = {
+    #     "partner_user": {
+    #         "partner": ACL.FULL,
+    #         "contact": ACL.FULL,
+    #         "contact_type": ACL.READ_ONLY,
+    #     },
+    #     "partner_manager": {
+    #         "partner": ACL.FULL,
+    #         "contact": ACL.FULL,
+    #         "contact_type": ACL.READ_ONLY,
+    #     },
+    #     "partner_admin": {
+    #         "partner": ACL.FULL,
+    #         "contact": ACL.FULL,
+    #         "contact_type": ACL.FULL,
+    #     },
+    # }
+
     async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
         env: "Environment" = app.state.env
+
+        # Роли модуля
+        # await init_module_roles(
+        #     env,
+        #     "partners",
+        #     [
+        #         ("partner_user", "Партнёры: пользователь"),
+        #         ("partner_manager", "Партнёры: менеджер"),
+        #         ("partner_admin", "Партнёры: администратор"),
+        #     ],
+        # )
 
         # Начальные типы контактов
         for type_data in INITIAL_CONTACT_TYPES:

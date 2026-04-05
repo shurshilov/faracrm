@@ -80,6 +80,7 @@ export function ViewListRoles() {
     <List<SchemaRole> model="roles" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
+      <Field name="code" label={t('fields.code')} />
       <Field
         name="model_id"
         label={t('fields.model_id')}

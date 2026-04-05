@@ -63,7 +63,6 @@ export const FieldPolymorphicOne2many = <RecordType extends FaraRecord>({
   previewSize = 100,
   columns = 4,
 }: FieldPolymorphicOne2manyProps) => {
-  debugger;
   const form = useFormContext();
   const { id } = useParams<{ id: string }>();
   const theme = useMantineTheme();

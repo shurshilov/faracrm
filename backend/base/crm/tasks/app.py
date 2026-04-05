@@ -6,6 +6,7 @@ if TYPE_CHECKING:
 
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
+from backend.base.crm.security.utils import init_module_roles
 from .models.task_stage import TaskStage, INITIAL_TASK_STAGES
 from .models.task_tag import TaskTag, INITIAL_TASK_TAGS
 
@@ -27,15 +28,45 @@ class TasksApp(App):
     }
 
     BASE_USER_ACL = {
-        "task": ACL.FULL,
-        "task_stage": ACL.FULL,
-        "task_tag": ACL.FULL,
-        "project": ACL.FULL,
+        "task_stage": ACL.READ_ONLY,
+        "task_tag": ACL.READ_ONLY,
+    }
+
+    ROLE_ACL = {
+        "project_user": {
+            "task": ACL.FULL,
+            "project": ACL.FULL,
+            "task_stage": ACL.READ_ONLY,
+            "task_tag": ACL.READ_ONLY,
+        },
+        "project_manager": {
+            "task": ACL.FULL,
+            "project": ACL.FULL,
+            "task_stage": ACL.READ_ONLY,
+            "task_tag": ACL.READ_ONLY,
+        },
+        "project_admin": {
+            "task": ACL.FULL,
+            "project": ACL.FULL,
+            "task_stage": ACL.FULL,
+            "task_tag": ACL.FULL,
+        },
     }
 
     async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
         env: "Environment" = app.state.env
+
+        # Роли модуля
+        await init_module_roles(
+            env,
+            "tasks",
+            [
+                ("project_user", "Проекты: пользователь"),
+                ("project_manager", "Проекты: менеджер"),
+                ("project_admin", "Проекты: администратор"),
+            ],
+        )
 
         # --- Начальные стадии задач ---
         for stage_data in INITIAL_TASK_STAGES:

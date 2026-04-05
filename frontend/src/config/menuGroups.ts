@@ -25,6 +25,7 @@ export const MenuGroups = {
     labelKey: 'common:menu.stock',
     Icon: IconGridScan,
     order: 20,
+    visibleForRoles: ['stock_user', 'stock_manager', 'stock_admin'] as string[],
   },
   contacts: {
     id: 'category_contacts',
@@ -32,6 +33,11 @@ export const MenuGroups = {
     labelKey: 'common:menu.contacts',
     Icon: IconUsers,
     order: 30,
+    // visibleForRoles: [
+    // 'partner_user',
+    // 'partner_manager',
+    // 'partner_admin',
+    // ] as string[],
   },
   crm: {
     id: 'category_crm',
@@ -39,6 +45,7 @@ export const MenuGroups = {
     labelKey: 'common:menu.crm',
     Icon: IconHeartHandshake,
     order: 40,
+    visibleForRoles: ['crm_user', 'crm_manager', 'crm_admin'] as string[],
   },
   projects: {
     id: 'category_projects',
@@ -46,6 +53,11 @@ export const MenuGroups = {
     labelKey: 'common:menu.projects',
     Icon: IconCheckupList,
     order: 45,
+    visibleForRoles: [
+      'project_user',
+      'project_manager',
+      'project_admin',
+    ] as string[],
   },
   activity: {
     id: 'category_activity',
@@ -60,6 +72,7 @@ export const MenuGroups = {
     labelKey: 'common:menu.sales',
     Icon: IconChartBar,
     order: 50,
+    visibleForRoles: ['sale_user', 'sale_manager', 'sale_admin'] as string[],
   },
   telephony: {
     id: 'category_telephony',
@@ -67,6 +80,11 @@ export const MenuGroups = {
     labelKey: 'common:menu.telephony',
     Icon: IconPhoneCall,
     order: 60,
+    visibleForRoles: [
+      'telephony_user',
+      'telephony_manager',
+      'telephony_admin',
+    ] as string[],
   },
   files: {
     id: 'category_files',
@@ -81,6 +99,7 @@ export const MenuGroups = {
     labelKey: 'common:menu.settings',
     Icon: IconSettings,
     order: 90,
+    visibleForRoles: ['system_admin'] as string[],
   },
 } as const;
 

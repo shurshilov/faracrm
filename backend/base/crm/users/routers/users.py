@@ -14,6 +14,7 @@ from backend.base.crm.users.schemas.users import (
     CopyUserOutput,
 )
 from backend.base.crm.security.models.sessions import Session
+from backend.base.system.dotorm.dotorm.model import JsonMode
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -186,7 +187,10 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
                 "password_salt",
                 "home_page",
                 "layout_theme",
+                "is_admin",
+                "role_ids",
             ],
+            fields_nested={"role_ids": ["id", "code"]},
         )
         if not user_id:
             raise AuthException.UserNotExist()
@@ -211,7 +215,15 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
         # оставить только поля id, name, home_page
         # чтобы не хранить хеш и соль в сессии на фронте для безопасности
         clear_user_id = User(
-            **user_id.json(include={"id", "name", "home_page", "layout_theme"})
+            **user_id.json(
+                include={
+                    "id",
+                    "name",
+                    "home_page",
+                    "layout_theme",
+                    "is_admin",
+                },
+            )
         )
         session = Session(
             user_id=clear_user_id,
@@ -219,10 +231,13 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
             cookie_token=cookie_token,
             ttl=ttl,
             expired_datetime=now + timedelta(seconds=ttl),
-            create_user_id=clear_user_id,
-            update_user_id=clear_user_id,
+            # create_user_id=clear_user_id,
+            # update_user_id=clear_user_id,
         )
-        await env.models.session.create(payload=session)
+        # TODO: сделать гидратацию, потому что при инициализации вставляются как есть
+        session.user_id.role_ids = user_id.role_ids
+        id = await env.models.session.create(payload=session)
+        session.id = id
 
         response.set_cookie(
             key=env.settings.auth.cookie_name,
@@ -233,4 +248,4 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
             max_age=ttl,
             path="/",
         )
-        return session.json(exclude={"cookie_token"})
+        return session.json(exclude={"cookie_token"}, mode=JsonMode.FORM)

@@ -1,3 +1,5 @@
+import { RoleRecord } from '@/types/records';
+
 export interface User {
   id: number;
   name: string;
@@ -5,6 +7,8 @@ export interface User {
   layout_theme?: 'classic' | 'modern';
   notification_popup?: boolean;
   notification_sound?: boolean;
+  is_admin: boolean;
+  role_ids: RoleRecord[];
 }
 export interface Session {
   id: number;

@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import { AppShell, Box, Flex, Group, ScrollArea } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
+import { useSelector } from 'react-redux';
 
 import ThemeToggle from '@/components/ThemeToggle';
 import FaraRouters from '@/route/Routers';
 import Logo from '@/components/Logo';
 import { NavbarMenu } from '@/components/NavbarMenu/NavbarMenu';
-import { items } from '@/components/NavbarMenu/menuData';
+import { getVisibleMenuItems } from '@/components/NavbarMenu/menuData';
 import {
   SidebarContext,
   SidebarState,
@@ -32,6 +33,17 @@ const STATE_CYCLE: SidebarState[] = ['expanded', 'collapsed', 'hidden'];
 export default function CollapseSideBar() {
   const [mobileOpened, { toggle: toggleMobile }] = useDisclosure();
   const [sidebarState, setSidebarState] = useState<SidebarState>('expanded');
+
+  // Роли пользователя из сессии → фильтрация меню
+  const session = useSelector((state: any) => state.auth.session);
+  const menuItems = useMemo(
+    () =>
+      getVisibleMenuItems(
+        session?.user_id?.role_ids || [],
+        session?.user_id?.is_admin || false,
+      ),
+    [session?.user_id?.role_ids, session?.user_id?.is_admin],
+  );
 
   // Циклическое переключение состояний
   const toggleSidebar = () => {
@@ -69,7 +81,11 @@ export default function CollapseSideBar() {
           transitionTimingFunction="ease">
           <AppShell.Header className={classes.navbar}>
             <Flex justify="space-between" align="center" h="100%" wrap="nowrap">
-              <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }} style={{ flexShrink: 0 }}>
+              <Group
+                h="100%"
+                px={{ base: 'xs', sm: 'md' }}
+                gap={{ base: 4, sm: 'sm' }}
+                style={{ flexShrink: 0 }}>
                 {/* Мобильная кнопка бургер */}
                 <Group hiddenFrom="sm">
                   <SidebarToggle
@@ -85,10 +101,21 @@ export default function CollapseSideBar() {
                   />
                 </Group>
               </Group>
-              <Box style={{ flexShrink: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+              <Box
+                style={{
+                  flexShrink: 1,
+                  minWidth: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                }}>
                 <Logo />
               </Box>
-              <Group h="100%" px={{ base: 'xs', sm: 'md' }} gap={{ base: 4, sm: 'sm' }} wrap="nowrap" style={{ flexShrink: 0 }}>
+              <Group
+                h="100%"
+                px={{ base: 'xs', sm: 'md' }}
+                gap={{ base: 4, sm: 'sm' }}
+                wrap="nowrap"
+                style={{ flexShrink: 0 }}>
                 {/* ThemeToggle — только tablet+ */}
                 <Box visibleFrom="sm">
                   <ThemeToggle />
@@ -116,7 +143,7 @@ export default function CollapseSideBar() {
               <div
                 className={classes.body}
                 data-collapsed={sidebarState === 'collapsed' || undefined}>
-                <NavbarMenu items={items} />
+                <NavbarMenu items={menuItems} />
               </div>
             </ScrollArea>
           </AppShell.Navbar>

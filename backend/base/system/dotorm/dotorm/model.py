@@ -695,7 +695,9 @@ class DotModel(
                     # обрубаем, исключаем все релейшен поля
                     fields_json[field_name] = field.json_list()
                 elif mode == JsonMode.FORM:
-                    fields_json[field_name] = field.json(exclude_unset=True)
+                    fields_json[field_name] = field.json(
+                        exclude_unset=True, mode=JsonMode.FORM
+                    )
                 elif mode in (JsonMode.CREATE, JsonMode.UPDATE):
                     fields_json[field_name] = field.id
 

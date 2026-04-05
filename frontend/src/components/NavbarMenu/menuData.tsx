@@ -9,6 +9,7 @@ import {
 } from '@tabler/icons-react';
 import { modelsConfig } from '@/config/models';
 import { MenuGroups } from '@/config/menuGroups';
+import { RoleRecord } from '@/types/records';
 
 export interface MenuGroup {
   type: 'group';
@@ -140,7 +141,13 @@ function getModelLabel(modelName: string): string {
 // Модели которые идут в категории Settings (вложенные подменю)
 const settingsCategories: Record<
   string,
-  { label: string; labelKey: string; Icon: IconType; models: string[] }
+  {
+    label: string;
+    labelKey: string;
+    Icon: IconType;
+    models: string[];
+    roles?: string[];
+  }
 > = {
   users: {
     label: 'Пользователи',
@@ -543,4 +550,34 @@ function generateMenuItems(): MenuGroup[] {
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
+// Все пункты меню (без фильтрации по ролям)
 export const items: MenuGroup[] = generateMenuItems();
+
+export function getVisibleMenuItems(
+  userRoles: RoleRecord[] = [],
+  isAdmin: boolean = false,
+): MenuGroup[] {
+  debugger;
+  if (isAdmin) return items; // Админ видит всё
+
+  const userRolesSet = new Set(userRoles.map(item => item.code));
+
+  return items.filter(group => {
+    // Ищем конфиг группы в MenuGroups по id
+    const groupConfig = Object.values(MenuGroups).find(
+      mg => mg.id === group.id,
+    );
+
+    // Если visibleForRoles не задан — видна всем
+    const visibleFor = (groupConfig as any)?.visibleForRoles as
+      | string[]
+      | undefined;
+    if (!visibleFor) return true;
+
+    // __admin__ = только админам (уже отфильтровали выше)
+    // if (visibleFor.includes('__admin__')) return false;
+
+    // Проверяем пересечение ролей
+    return visibleFor.some(role => userRolesSet.has(role));
+  });
+}
