@@ -17,6 +17,11 @@ from backend.base.system.dotorm_crud_auto.crud_pydantic_schemas import (
     SchemaGetOutput,
     SchemaSearchOutput,
 )
+from backend.base.system.dotorm.dotorm.fields import (
+    Many2many,
+    One2many,
+    PolymorphicOne2many,
+)
 from backend.base.system.dotorm.dotorm.model import DotModel, JsonMode
 from backend.base.system.dotorm.dotorm.integrations.pydantic import (
     dotorm_to_pydantic_nested_one,
@@ -449,11 +454,6 @@ async def _wrap_relations_for_ui(
     ответа, совместимого с фронтендом (пагинация таблиц).
     search_count запросы выполняются параллельно.
     """
-    from backend.base.system.dotorm.dotorm.fields import (
-        Many2many,
-        One2many,
-        PolymorphicOne2many,
-    )
 
     # Собираем информацию и корутины для параллельного выполнения
     wrap_items = []  # (name, nested, rel_fields_info, count_coro | int)

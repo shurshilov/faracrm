@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from backend.base.crm.products.models.uom import Uom
     from backend.base.crm.products.models.product import Product
 
+from backend.base.system.dotorm.dotorm.decorators import onchange
 from backend.base.system.dotorm.dotorm.fields import (
     Float,
     Integer,
@@ -69,3 +70,10 @@ class SaleLine(DotModel):
         default=0.0,
         # compute="_compute_amount"
     )
+
+    @onchange("product_id")
+    async def onchange_product_id(self) -> dict:
+        """Значения по умолчанию при выборе product_id."""
+        if self.product_id.uom_id:
+            return {"product_uom_id": self.product_id.uom_id.id}
+        return {}
