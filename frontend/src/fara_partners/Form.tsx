@@ -55,8 +55,11 @@ export function ViewFormPartners(props: ViewFormProps) {
           </Field>
         </FormTab>
 
-        <FormTab name="notes" label="Заметки" icon={<IconBuilding size={16} />}>
-          <Field name="notes" label="Заметки" />
+        <FormTab
+          name="notes"
+          label={t('fields.notes')}
+          icon={<IconBuilding size={16} />}>
+          <Field name="notes" label={t('fields.notes')} />
         </FormTab>
 
         {/* Настройки */}
@@ -65,8 +68,8 @@ export function ViewFormPartners(props: ViewFormProps) {
           label="Настройки"
           icon={<IconWorld size={18} />}>
           <FormRow cols={2}>
-            <Field name="tz" label="Часовой пояс" />
-            <Field name="lang" label="Язык" />
+            <Field name="tz" label={t('fields.tz')} />
+            <Field name="lang" label={t('fields.lang')} />
           </FormRow>
         </FormTab>
       </FormTabs>
