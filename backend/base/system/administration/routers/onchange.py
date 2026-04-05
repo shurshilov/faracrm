@@ -9,15 +9,51 @@ from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.core.exceptions.environment import FaraException
+from backend.base.system.dotorm.dotorm.fields import (
+    Many2one,
+    PolymorphicMany2one,
+)
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
+    from backend.base.system.dotorm.dotorm.fields import Field
 
 
 router_private = APIRouter(
     tags=["Onchange"],
     dependencies=[Depends(AuthTokenApp.verify_access)],
 )
+
+
+def _hydrate_m2o_values(
+    values: dict[str, Any],
+    fields: dict[str, "Field"],
+) -> None:
+    """
+    Рекурсивно конвертирует M2O значения из dict в экземпляры моделей.
+
+    Фронт присылает M2O как dict: {id: 5, name: "Widget", uom_id: {id: 3, name: "кг"}}.
+    Конструктор DotModel просто делает setattr — не конвертирует.
+    Эта функция превращает dict в Product(id=5, name="Widget", uom_id=Uom(id=3, ...)).
+
+    Работает in-place, без запросов к БД — все данные из фронтенда.
+    """
+    for field_name, field_class in fields.items():
+        if field_name not in values:
+            continue
+        if not isinstance(field_class, (Many2one, PolymorphicMany2one)):
+            continue
+
+        val = values[field_name]
+        related_model = field_class.relation_table
+        if related_model:
+            # Рекурсия: вложенные M2O внутри dict
+            related_fields = related_model.get_fields()
+            # _hydrate_m2o_values(val, related_fields)
+            # Создаём экземпляр связанной модели из dict
+            known_fields = set(related_fields.keys())
+            safe_vals = {k: v for k, v in val.items() if k in known_fields}
+            values[field_name] = related_model(**safe_vals)
 
 
 class OnchangeRequest(BaseModel):
@@ -96,12 +132,17 @@ async def execute_onchange(req: Request, body: OnchangeRequest):
     if not handlers:
         return {"values": {}, "fields": {}}
 
-    # Создаём экземпляр модели с текущими значениями формы
     # Фильтруем только известные поля модели
-    model_fields = set(model_class.get_fields().keys())
+    model_fields = model_class.get_fields()
     filtered_values = {
         k: v for k, v in body.values.items() if k in model_fields
     }
+
+    # Конвертация M2O: dict → экземпляр связанной модели (рекурсивно).
+    # Фронт присылает M2O как dict {id, name, ...} или как число (id).
+    # Конструктор DotModel просто делает setattr — не конвертирует.
+    # Без конвертации обработчик не сможет сделать self.product_id.uom_id.
+    _hydrate_m2o_values(filtered_values, model_fields)
 
     try:
         instance = model_class(**filtered_values)
@@ -143,4 +184,4 @@ async def execute_onchange(req: Request, body: OnchangeRequest):
             "required": field.required or False,
         }
 
-    return {"values": result_values, "fields": fields_info}
+    return {"values": result_values}

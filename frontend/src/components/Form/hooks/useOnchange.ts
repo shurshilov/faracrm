@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { UseFormReturnType } from '@mantine/form';
 import {
   useGetOnchangeFieldsQuery,
@@ -76,9 +76,10 @@ export const useOnchange = (
         const currentValues = form.getValues();
 
         // Если передано новое значение - используем его
-        const values = newValue !== undefined
-          ? { ...currentValues, [fieldName]: newValue }
-          : currentValues;
+        const values =
+          newValue !== undefined
+            ? { ...currentValues, [fieldName]: newValue }
+            : { ...currentValues };
 
         const result = await executeOnchange({
           model,

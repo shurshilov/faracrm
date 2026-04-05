@@ -74,6 +74,15 @@ class SaleLine(DotModel):
     @onchange("product_id")
     async def onchange_product_id(self) -> dict:
         """Значения по умолчанию при выборе product_id."""
-        if self.product_id.uom_id:
-            return {"product_uom_id": self.product_id.uom_id.id}
+        if self.product_id:
+            product_id = await env.models.product.search(
+                filter=[("id", "=", self.product_id.id)],
+                fields=[
+                    "id",
+                    "uom_id",
+                ],
+                limit=1,
+            )
+            if product_id and product_id[0].uom_id:
+                return {"product_uom_id": product_id[0].uom_id}
         return {}

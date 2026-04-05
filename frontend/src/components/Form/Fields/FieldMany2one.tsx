@@ -42,7 +42,11 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
   ...props
 }: FieldMany2oneProps) => {
   const form = useFormContext();
-  const { fields: fieldsServer } = useContext(FormFieldsContext);
+  const {
+    fields: fieldsServer,
+    handleFieldChange,
+    onchangeFields,
+  } = useContext(FormFieldsContext);
   const [search, setSearch] = useState('');
   const [options, setOptions] = useState<ReactElement[]>();
   const [startFetch, setStartFetch] = useState(false);
@@ -137,6 +141,15 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
                   return obj.id.toString() === val;
                 });
                 form.setValues({ [name]: record });
+
+                // Trigger onchange если поле в списке onchange
+                if (
+                  record &&
+                  onchangeFields?.includes(name) &&
+                  handleFieldChange
+                ) {
+                  handleFieldChange(name, record);
+                }
               }
               combobox.closeDropdown();
             }}>
