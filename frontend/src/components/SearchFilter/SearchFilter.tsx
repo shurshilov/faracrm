@@ -237,11 +237,17 @@ export function SearchFilter({
         <Popover
           opened={filterPopoverOpen}
           onChange={setFilterPopoverOpen}
-          position="bottom-start"
+          position="bottom-end"
           shadow="md"
-          width="target"
           trapFocus
-          closeOnClickOutside={false}>
+          closeOnClickOutside={false}
+          withinPortal
+          middlewares={{ flip: true, shift: true }}
+          styles={{
+            dropdown: {
+              width: 'min(480px, calc(100vw - 32px))',
+            },
+          }}>
           <Popover.Target>
             <Tooltip label="Добавить фильтр">
               <ActionIcon
