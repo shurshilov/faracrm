@@ -72,15 +72,24 @@ export function ViewFormSales(props: ViewFormProps) {
             displayField="product_id"
             showCreate={true}
             showSelect={false}>
-            <Field name="id" />
-            <Field name="product_id" label={t('sales.product_id')} />
-            <Field name="product_uom_qty" />
-            <Field name="product_uom_id" />
-            <Field name="price_unit" />
-            <Field name="discount" />
-            <Field name="tax_id" />
-            <Field name="price_subtotal" />
-            <Field name="price_total" />
+            <Field name="id" label={t('sales.id')} />
+            <Field name="product_id" label={t('sale_line.product_id')} />
+            <Field
+              name="product_uom_qty"
+              label={t('sale_line.product_uom_qty')}
+            />
+            <Field
+              name="product_uom_id"
+              label={t('sale_line.product_uom_id')}
+            />
+            <Field name="price_unit" label={t('sale_line.price_unit')} />
+            <Field name="discount" label={t('sale_line.discount')} />
+            <Field name="tax_id" label={t('sale_line.tax_id')} />
+            <Field
+              name="price_subtotal"
+              label={t('sale_line.price_subtotal')}
+            />
+            <Field name="price_total" label={t('sale_line.price_total')} />
           </Field>
         </FormTab>
 

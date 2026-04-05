@@ -14,6 +14,14 @@
     "home_page": "Home Page",
     "layout_theme": "Layout Theme"
   },
+  "role_ids":{
+    "user_ids": "Users"
+  },
+  "lang_ids":{
+    "code": "Code",
+    "flag": "Flag",
+    "active": "Active"
+  },
   "tabs": {
     "roles": "Roles & Permissions",
     "languages": "Available Languages",

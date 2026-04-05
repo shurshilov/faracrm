@@ -1,6 +1,6 @@
 {
   "fields": {
-    "id": "ID",
+    "id": "Ид",
     "name": "Имя",
     "email": "Email",
     "login": "Логин",
@@ -13,6 +13,14 @@
     "contact_ids": "Контакты",
     "home_page": "Домашняя страница",
     "layout_theme": "Тема интерфейса"
+  },
+  "role_ids":{
+    "user_ids": "Пользователи"
+  },
+  "lang_ids":{
+    "code": "Код",
+    "flag": "Флаг",
+    "active": "Активен"
   },
   "tabs": {
     "roles": "Роли и права",

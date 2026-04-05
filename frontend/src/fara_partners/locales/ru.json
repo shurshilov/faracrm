@@ -5,7 +5,7 @@
     "contacts": "Контакты"
   },
   "fields": {
-    "id": "ID",
+    "id": "Ид",
     "name": "Название",
     "email": "Email",
     "phone": "Телефон",

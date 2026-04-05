@@ -96,6 +96,15 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
       return field.props.name;
     }) || [];
 
+  // Собираем label-ы из children <Field label="..." />
+  // для заголовков колонок (как в List)
+  const customLabels: Record<string, string> = {};
+  Children.forEach(children, field => {
+    if (isValidElement(field) && field.type === Field && field.props.label) {
+      customLabels[field.props.name] = field.props.label;
+    }
+  });
+
   // Получаем все текущие записи для исключения из выбора
   const allRecords = [...records, ...recordsCreated];
 
@@ -222,7 +231,7 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
   for (const field of actualData.fields || []) {
     const obj: DataTableColumn = {
       accessor: field.name.toLowerCase(),
-      title: field.name,
+      title: customLabels[field.name] || field.name,
       sortable: true,
       resizable: true,
       render: row => {

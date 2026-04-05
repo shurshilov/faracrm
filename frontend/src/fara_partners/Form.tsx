@@ -3,31 +3,30 @@ import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
 import type { PartnerRecord as Partner } from '@/types/records';
 import {
-  FormSection,
   FormRow,
   FormCol,
   FormTabs,
   FormTab,
   FormSheet,
 } from '@/components/Form/Layout';
-import {
-  IconUser,
-  IconBuilding,
-  IconWorld,
-  IconUsers,
-} from '@tabler/icons-react';
+import { IconBuilding, IconWorld, IconUsers } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 
 export function ViewFormPartners(props: ViewFormProps) {
+  const { t } = useTranslation('partners');
   return (
     <Form<Partner> model="partners" {...props}>
       {/* Основная информация */}
       <FormSheet avatar={<Field name="image" />}>
         <FormRow cols={2}>
           <FormCol gap="sm">
-            <Field name="name" label="Название" />
-            <Field name="active" label="Активен" />
+            <Field name="name" label={t('fields.name')} />
+            <Field name="active" label={t('fields.active')} />
           </FormCol>
-          <Field name="contact_ids" widget="contacts" label="Контакты">
+          <Field
+            name="contact_ids"
+            widget="contacts"
+            label={t('fields.contact_ids')}>
             <Field name="id" />
             <Field name="contact_type_id" />
             <Field name="name" />
@@ -40,10 +39,10 @@ export function ViewFormPartners(props: ViewFormProps) {
       <FormTabs defaultTab="children">
         <FormTab name="common" label="Общие" icon={<IconUsers size={16} />}>
           <FormRow cols={2}>
-            <Field name="parent_id" label="Родительский партнёр" />
-            <Field name="vat" label="ИНН" />
-            <Field name="user_id" label="Ответственный" />
-            <Field name="company_id" label="Компания" />
+            <Field name="parent_id" label={t('fields.parent_id')} />
+            <Field name="vat" label={t('fields.vat')} />
+            <Field name="user_id" label={t('fields.user_id')} />
+            <Field name="company_id" label={t('fields.company_id')} />
           </FormRow>
         </FormTab>
         <FormTab
@@ -51,8 +50,8 @@ export function ViewFormPartners(props: ViewFormProps) {
           label="Дочерние партнёры"
           icon={<IconUsers size={16} />}>
           <Field name="child_ids">
-            <Field name="id" />
-            <Field name="name" />
+            <Field name="id" label={t('fields.id')} />
+            <Field name="name" label={t('fields.name')} />
           </Field>
         </FormTab>
 
