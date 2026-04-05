@@ -137,18 +137,14 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
             withArrow
             onOptionSubmit={val => {
               if (data) {
-                const record = data.data.find(obj => {
-                  return obj.id.toString() === val;
-                });
-                form.setValues({ [name]: record });
-
-                // Trigger onchange если поле в списке onchange
-                if (
-                  record &&
-                  onchangeFields?.includes(name) &&
-                  handleFieldChange
-                ) {
-                  handleFieldChange(name, record);
+                const record = data.data.find(obj => obj.id.toString() === val);
+                if (record) {
+                  if (onchangeFields?.includes(name) && handleFieldChange) {
+                    // setValue + onchange в одном вызове
+                    handleFieldChange(name, record);
+                  } else {
+                    form.setValues({ [name]: record });
+                  }
                 }
               }
               combobox.closeDropdown();
