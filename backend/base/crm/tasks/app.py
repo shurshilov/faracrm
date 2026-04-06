@@ -68,7 +68,7 @@ class TasksApp(App):
             ],
         )
 
-        # --- Начальные стадии задач ---
+        # Начальные стадии задач
         for stage_data in INITIAL_TASK_STAGES:
             existing = await env.models.task_stage.search(
                 filter=[("name", "=", stage_data["name"])],
@@ -78,7 +78,7 @@ class TasksApp(App):
                     payload=TaskStage(**stage_data),
                 )
 
-        # --- Начальные теги ---
+        # Начальные теги
         for tag_data in INITIAL_TASK_TAGS:
             existing = await env.models.task_tag.search(
                 filter=[("name", "=", tag_data["name"])],

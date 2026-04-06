@@ -1,4 +1,6 @@
 {
+  "name": "Name",
+  "id": "Id",
   "save": "Save",
   "saving": "Saving...",
   "saved": "Saved",
@@ -29,6 +31,7 @@
   "submit": "Submit",
   "reset": "Reset",
   "clear": "Clear",
+  "select": "Select",
   "selectAll": "Select All",
   "deselectAll": "Deselect All",
   "noData": "No data available",

@@ -1,11 +1,4 @@
-import {
-  Button,
-  ButtonProps,
-  Modal,
-  Box,
-  Text,
-  TextInput,
-} from '@mantine/core';
+import { Button, ButtonProps, Modal, Box, TextInput } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useState, useEffect } from 'react';
 import { DataTable, DataTableColumn } from 'mantine-datatable';
@@ -20,6 +13,7 @@ import {
   BaseQueryFn,
   TypedUseQueryHookResult,
 } from '@reduxjs/toolkit/query/react';
+import { useTranslation } from 'react-i18next';
 
 interface ButtonModalSelectProps {
   model: string;
@@ -39,6 +33,7 @@ export function ButtonModalSelect({
   displayField = 'name',
   buttonProps,
 }: ButtonModalSelectProps) {
+  const { t } = useTranslation('common');
   const [opened, { open, close }] = useDisclosure(false);
   const [selectedRecords, setSelectedRecords] = useState<FaraRecord[]>([]);
   const [search, setSearch] = useState('');
@@ -97,13 +92,13 @@ export function ButtonModalSelect({
       ? [
           {
             accessor: displayField,
-            title: 'Название',
+            title: t('name'),
           },
         ]
       : []),
   ];
 
-  const { children: buttonChildren = 'Выбрать', ...restButtonProps } =
+  const { children: buttonChildren = t('select'), ...restButtonProps } =
     buttonProps || {};
 
   return (
@@ -111,12 +106,12 @@ export function ButtonModalSelect({
       <Modal
         opened={opened}
         onClose={close}
-        title={`Выбор: ${model}`}
+        title={`${t('select')}: ${model}`}
         centered
         size="xl">
         <Box mb="md">
           <TextInput
-            placeholder="Поиск по названию..."
+            placeholder={t('search')}
             leftSection={<IconSearch size={16} />}
             value={search}
             onChange={e => {
@@ -145,7 +140,7 @@ export function ButtonModalSelect({
           paginationText={({ from, to, totalRecords }) =>
             `${from}–${to} из ${totalRecords}`
           }
-          noRecordsText="Записи не найдены"
+          noRecordsText={t('noRecords')}
         />
 
         <Box

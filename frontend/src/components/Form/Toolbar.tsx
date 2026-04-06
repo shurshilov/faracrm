@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FaraRecord } from '@/services/api/crudTypes';
 import { ButtonUpdate } from './ButtonUpdate';
 import { ButtonCreate } from './ButtonCreate';
-import { Field } from '@/types/fields';
 import { useFormContext } from './FormContext';
 import { UseFormReturnType } from '@mantine/form';
 import { ViewSwitcher, ViewType } from '@/components/ViewSwitcher';

@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
 from backend.base.crm.security.utils import init_module_roles
+from .models.uom import Uom
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -45,3 +46,20 @@ class ProductsApp(App):
                 ("stock_admin", "Склад: администратор"),
             ],
         )
+
+        initial_product_uom = [
+            {"name": "штуки"},
+            {"name": "килограммы"},
+            {"name": "метры"},
+            {"name": "литры"},
+            {"name": "часы"},
+        ]
+        # начальные единицы измерения
+        for uom_data in initial_product_uom:
+            existing = await env.models.uom.search(
+                filter=[("name", "=", uom_data["name"])],
+            )
+            if not existing:
+                await env.models.uom.create(
+                    payload=Uom(name=uom_data["name"]),
+                )

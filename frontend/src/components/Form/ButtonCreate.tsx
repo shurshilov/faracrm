@@ -6,6 +6,7 @@ import { UseFormReturnType } from '@mantine/form';
 import { FaraRecord, VirtualId } from '@/services/api/crudTypes';
 import { useContext } from 'react';
 import { prepareValuesToSave } from './utils';
+import { useTranslation } from 'react-i18next';
 // import { useDispatch } from 'react-redux';
 
 /**
@@ -63,6 +64,7 @@ export function ButtonCreate({
   modalClose?: () => void;
 }) {
   const { fields: fieldsServer } = useContext(FormFieldsContext);
+  const { t } = useTranslation('common');
   const form = useFormContext();
   const navigate = useNavigate();
   // const dispatch = useDispatch();
@@ -147,7 +149,7 @@ export function ButtonCreate({
           } else navigate(`/${model}`);
         }
       }}>
-      {parentFieldName && parentForm ? 'Create local' : 'Create'}
+      {parentFieldName && parentForm ? t('add') : t('create')}
     </Button>
   );
 }
