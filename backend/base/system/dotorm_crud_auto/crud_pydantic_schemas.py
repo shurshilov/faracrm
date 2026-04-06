@@ -86,4 +86,9 @@ class SchemaRelationOne2ManyUpdateCreate[Model](BaseModel):
 
     created: list[Model] = []
     deleted: list[Id] = []
+    unselected: list[Id] = []
+    # используется в inline mode на фронтенде
+    # понятно что можно провалиться в запись и отредактировать
+    # но иногда удобно отредактировать сразу набор и сохранить
+    # например в позициях товара в заказе
     updated: dict[Id, Model] = {}

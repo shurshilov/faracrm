@@ -434,6 +434,14 @@ class OrmRelationsMixin(_Base):
                                 field_obj["deleted"]
                             )
                         )
+                    if field_obj.get("unselected", []):
+                        relation_obj = field.relation_table()
+                        setattr(relation_obj, field.relation_table_field, None)
+                        request_list.append(
+                            field.relation_table.update_bulk(
+                                field_obj["unselected"], relation_obj
+                            )
+                        )
 
                     # Inline editing: обновление существующих записей
                     # updated = {record_id: {field: value, ...}, ...}

@@ -57,6 +57,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   showSelect = true,
   displayField = 'name',
   customForm = undefined,
+  deleteSoft = true,
   inline_create = false,
   inline_update = false,
   ...props
@@ -68,6 +69,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   showSelect?: boolean;
   displayField?: string;
   customForm?: ComponentType;
+  deleteSoft?: boolean;
   /** Режим инлайн-редактирования. Ячейки становятся input-ами. */
   inline_create?: boolean;
   inline_update?: boolean;
@@ -254,6 +256,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
       created: [],
       deleted: [],
       updated: {},
+      unselected: [],
     };
 
     if (isVirtual) {
@@ -382,7 +385,9 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
 
                 form.setValues({
                   [parentFormName]: {
-                    deleted: newDeleted,
+                    ...(deleteSoft
+                      ? { unselected: newDeleted }
+                      : { deleted: newDeleted }),
                     created: old.created,
                     fieldsServer: fieldsServer,
                   },
