@@ -1,12 +1,12 @@
 {
   "title": "Файлы",
   "fields": {
-    "id": "ID",
+    "id": "Ид",
     "name": "Название",
     "filename": "Имя файла",
     "mimetype": "Тип MIME",
     "filesize": "Размер",
-    "res_id": "ID ресурса",
+    "res_id": "Ид ресурса",
     "res_model": "Модель ресурса",
     "res_field": "Поле",
     "storage_id": "Хранилище",
@@ -18,7 +18,7 @@
     "pattern_record": "Шаблон папки записи",
     "flat": "Плоская структура",
     "filter": "Фильтр",
-    "folder_id": "ID папки в облаке",
+    "folder_id": "Ид папки в облаке",
     "active": "Активен",
     "model": "Модель",
     "model_hint": "Модель (пусто = все модели)",
@@ -35,8 +35,8 @@
     "folder": "Папка",
     "is_voice": "Голосовое сообщение",
     "access_token": "Токен доступа",
-    "storage_file_id": "ID файла в хранилище",
-    "storage_parent_id": "ID родительской папки",
+    "storage_file_id": "Ид файла в хранилище",
+    "storage_parent_id": "Ид родительской папки",
     "storage_parent_name": "Имя родительской папки"
   },
   "menu": {

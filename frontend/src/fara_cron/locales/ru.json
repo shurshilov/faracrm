@@ -3,7 +3,7 @@
     "cron_job": "Крон задачи"
   },
   "fields": {
-    "id": "ID",
+    "id": "Ид",
     "name": "Название",
     "active": "Активна",
     "code": "Код (Python)",

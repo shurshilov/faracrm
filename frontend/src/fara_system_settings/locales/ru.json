@@ -1,6 +1,6 @@
 {
   "fields": {
-    "id": "ID",
+    "id": "Ид",
     "key": "Ключ",
     "value": "Значение",
     "description": "Описание",
