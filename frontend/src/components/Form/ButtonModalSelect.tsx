@@ -18,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 interface ButtonModalSelectProps {
   model: string;
   onSelect: (records: FaraRecord[]) => void;
+  relatedFieldO2M?: string;
+  parentId?: number;
   excludeIds?: number[];
   /** Поле для отображения и поиска. По умолчанию 'name'. */
   displayField?: string;
@@ -29,6 +31,8 @@ const PAGE_SIZES = [10, 20, 40];
 export function ButtonModalSelect({
   model,
   onSelect,
+  relatedFieldO2M,
+  parentId,
   excludeIds = [],
   displayField = 'name',
   buttonProps,
@@ -51,6 +55,18 @@ export function ButtonModalSelect({
 
   // Формируем фильтр
   const filter: [string, string, any][] = [];
+
+  // нельзя выбирать себя, если запись уже создана
+  // когда связь ссылается на эту же таблицу
+  // например у партнеров есть дочерние партнеры
+  if (parentId) {
+    filter.push(['id', '!=', parentId]);
+  }
+  // нельзя выбирать записи которые уже привязаны
+  // потому что это ОДИН ко многим, привязка только одна
+  if (relatedFieldO2M) {
+    filter.push([relatedFieldO2M, 'is null', null]);
+  }
   if (search) {
     filter.push([displayField, 'ilike', `%${search}%`]);
   }

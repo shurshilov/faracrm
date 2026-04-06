@@ -557,7 +557,6 @@ export function getVisibleMenuItems(
   userRoles: RoleRecord[] = [],
   isAdmin: boolean = false,
 ): MenuGroup[] {
-  debugger;
   if (isAdmin) return items; // Админ видит всё
 
   const userRolesSet = new Set(userRoles.map(item => item.code));

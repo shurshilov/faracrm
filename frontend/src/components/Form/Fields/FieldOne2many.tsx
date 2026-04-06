@@ -423,6 +423,8 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
               model={fieldsServer[name]?.relatedModel || name}
               excludeIds={allRecords.map(r => r.id as number).filter(Boolean)}
               onSelect={handleSelectRecords}
+              relatedFieldO2M={fieldsServer[name]?.relatedField}
+              parentId={Number(id)}
               displayField={displayField}
               buttonProps={{
                 size: 'xs',
