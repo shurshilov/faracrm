@@ -86,3 +86,4 @@ class SchemaRelationOne2ManyUpdateCreate[Model](BaseModel):
 
     created: list[Model] = []
     deleted: list[Id] = []
+    updated: dict[Id, Model] = {}

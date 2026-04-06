@@ -222,6 +222,19 @@ export const prepareValuesToSave = (
             valuesToCreated.created[i],
           );
         }
+
+        // Inline updated: конвертировать M2O {id,name} → число
+        if (valuesToCreated.updated) {
+          for (const recId of Object.keys(valuesToCreated.updated)) {
+            const changes = valuesToCreated.updated[recId];
+            for (const [k, v] of Object.entries(changes)) {
+              if (v && typeof v === 'object' && 'id' in (v as any)) {
+                changes[k] = (v as any).id;
+              }
+            }
+          }
+        }
+
         delete valuesToCreated.fieldsServer;
         values[field.name] = valuesToCreated;
         // оптимистичное обновление

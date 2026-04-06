@@ -42,6 +42,7 @@ import {
 } from '@tabler/icons-react';
 import { ButtonModalCreate } from '../ButtonModalCreate';
 import { ButtonModalSelect } from '../ButtonModalSelect';
+import { InlineCell } from './InlineCell';
 import classes from './FieldRelation.module.css';
 
 const PAGE_SIZES = [10, 20, 40, 100];
@@ -52,6 +53,8 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
   children,
   showCreate = false,
   showSelect = true,
+  inline_create = false,
+  inline_update = false,
   ...props
 }: {
   name: string;
@@ -59,6 +62,9 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
   children: React.ReactNode;
   showCreate?: boolean;
   showSelect?: boolean;
+  /** Режим инлайн-редактирования. Ячейки становятся input-ами. */
+  inline_create?: boolean;
+  inline_update?: boolean;
 } & Omit<GetListParams, 'fields' | 'model'>) => {
   const [records, setRecords] = useState<RecordType[]>([]);
   const [recordsCreated, setRecordsCreated] = useState<RecordType[]>([]);
@@ -232,11 +238,35 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
     const obj: DataTableColumn = {
       accessor: field.name.toLowerCase(),
       title: customLabels[field.name] || field.name,
-      sortable: true,
+      sortable: !inline_update,
       resizable: true,
       render: row => {
-        const record = row[field.name] as RecordType;
-        if (record === null || record === undefined) {
+        const cellValue = row[field.name];
+
+        // Inline mode
+        if (inline_update) {
+          return (
+            <InlineCell
+              value={cellValue}
+              fieldName={field.name}
+              fieldType={field.type}
+              options={field.options}
+              relation={field.relation || field.relatedModel}
+              onChange={newValue => {
+                // M2M inline editing — update in local state
+                const rowId = row.id;
+                setRecords(prev =>
+                  prev.map(r =>
+                    r.id === rowId ? { ...r, [field.name]: newValue } : r,
+                  ),
+                );
+              }}
+            />
+          );
+        }
+
+        // Readonly mode
+        if (cellValue === null || cellValue === undefined) {
           return (
             <Text c="dimmed" size="sm">
               —
@@ -246,7 +276,7 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
         if (field.type === 'Many2many' || field.type === 'One2many') {
           return (
             <span className={classes.recordsBadge}>
-              {record.length} записей
+              {cellValue.length} записей
             </span>
           );
         }
@@ -255,14 +285,14 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
           return (
             <Anchor
               component={Link}
-              to={`/${relationModel}/${record?.id}`}
+              to={`/${relationModel}/${cellValue?.id}`}
               size="sm"
               onClick={event => event.stopPropagation()}>
-              {record?.name || `#${record?.id}`}
+              {cellValue?.name || `#${cellValue?.id}`}
             </Anchor>
           );
         }
-        return <Text size="sm">{`${record}`}</Text>;
+        return <Text size="sm">{`${cellValue}`}</Text>;
       },
     };
     columns.push(obj);

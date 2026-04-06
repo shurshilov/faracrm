@@ -75,7 +75,9 @@ export function ViewFormSales(props: ViewFormProps) {
             displayField="product_id"
             showCreate={true}
             showSelect={false}
-            customForm={ViewFormSaleLinesPopup}>
+            customForm={ViewFormSaleLinesPopup}
+            inline_create={false}
+            inline_update={false}>
             <Field name="id" label={t('sales.id')} />
             <Field name="product_id" label={t('sale_line.product_id')} />
             <Field

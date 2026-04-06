@@ -428,12 +428,26 @@ class OrmRelationsMixin(_Base):
                         request_list.append(
                             field.relation_table.create_bulk(data_created)
                         )
-                    if field_obj["deleted"]:
+                    if field_obj.get("deleted", []):
                         request_list.append(
                             field.relation_table.delete_bulk(
                                 field_obj["deleted"]
                             )
                         )
+
+                    # Inline editing: обновление существующих записей
+                    # updated = {record_id: {field: value, ...}, ...}
+                    for rec_id, changes in field_obj.get(
+                        "updated", {}
+                    ).items():
+                        rec = await field.relation_table.get(int(rec_id))
+                        if rec:
+                            request_list.append(
+                                rec.update(
+                                    field.relation_table(**changes),
+                                    list(changes.keys()),
+                                )
+                            )
 
                 if isinstance(field, Many2many):
                     # Replace virtual ID

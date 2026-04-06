@@ -44,6 +44,7 @@ import {
   IconPlus,
   IconDatabaseOff,
 } from '@tabler/icons-react';
+import { InlineCell } from './InlineCell';
 import classes from './FieldRelation.module.css';
 
 const PAGE_SIZES = [10, 20, 40, 100];
@@ -56,6 +57,8 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   showSelect = true,
   displayField = 'name',
   customForm = undefined,
+  inline_create = false,
+  inline_update = false,
   ...props
 }: {
   name: string;
@@ -65,6 +68,9 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   showSelect?: boolean;
   displayField?: string;
   customForm?: ComponentType;
+  /** Режим инлайн-редактирования. Ячейки становятся input-ами. */
+  inline_create?: boolean;
+  inline_update?: boolean;
 } & Omit<GetListParams, 'fields' | 'model'>) => {
   const [records, setRecords] = useState<RecordType[]>([]);
   const [recordsCreated, setRecordsCreated] = useState<RecordType[]>([]);
@@ -220,6 +226,57 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
     columns,
   });
 
+  // Inline change handler: обновляет значение в записи и пишет в form
+  const handleInlineCellChange = (
+    row: any,
+    fieldName: string,
+    newValue: any,
+  ) => {
+    // Обновляем запись в allRecords
+    const rowId = row.id;
+    const isVirtual = rowId?.toString().startsWith('virtual');
+
+    if (isVirtual) {
+      // Новая (created) запись — обновляем в recordsCreated
+      setRecordsCreated(prev =>
+        prev.map(r => (r.id === rowId ? { ...r, [fieldName]: newValue } : r)),
+      );
+    } else {
+      // Существующая запись — обновляем локально + пишем в _name
+      setRecords(prev =>
+        prev.map(r => (r.id === rowId ? { ...r, [fieldName]: newValue } : r)),
+      );
+    }
+
+    // Обновляем _fieldName для сохранения
+    const parentFormName = '_' + name;
+    const old = form.getValues()[parentFormName] || {
+      created: [],
+      deleted: [],
+      updated: {},
+    };
+
+    if (isVirtual) {
+      // Обновляем created запись
+      const updatedCreated = (old.created || []).map((c: any) =>
+        c.id === rowId ? { ...c, [fieldName]: newValue } : c,
+      );
+      form.setValues({
+        [parentFormName]: { ...old, created: updatedCreated },
+      });
+    } else {
+      // Для существующих записей — собираем updated dict
+      const updated = { ...(old.updated || {}) };
+      if (!updated[rowId]) updated[rowId] = {};
+      updated[rowId][fieldName] = newValue;
+      form.setValues({
+        [parentFormName]: { ...old, updated },
+      });
+    }
+
+    form.setDirty({ [parentFormName]: true });
+  };
+
   if (!actualData || !defaulValues) return null;
   if (!Object.keys(actualData).length && !Object.keys(defaulValues).length)
     return null;
@@ -229,11 +286,29 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
     const obj: DataTableColumn = {
       accessor: field.name.toLowerCase(),
       title: customLabels[field.name] || field.name,
-      sortable: true,
+      sortable: !inline_update,
       resizable: true,
       render: row => {
-        const record = row[field.name] as RecordType;
-        if (record === null || record === undefined) {
+        const cellValue = row[field.name];
+
+        // Inline mode — рендерим input
+        if (inline_update) {
+          return (
+            <InlineCell
+              value={cellValue}
+              fieldName={field.name}
+              fieldType={field.type}
+              options={field.options}
+              relation={field.relation || field.relatedModel}
+              onChange={newValue =>
+                handleInlineCellChange(row, field.name, newValue)
+              }
+            />
+          );
+        }
+
+        // Readonly mode (default)
+        if (cellValue === null || cellValue === undefined) {
           return (
             <Text c="dimmed" size="sm">
               —
@@ -243,7 +318,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
         if (field.type === 'Many2many' || field.type === 'One2many') {
           return (
             <span className={classes.recordsBadge}>
-              {record.length} записей
+              {cellValue.length} записей
             </span>
           );
         }
@@ -252,14 +327,14 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
           return (
             <Anchor
               component={Link}
-              to={`/${relationModel}/${record?.id}`}
+              to={`/${relationModel}/${cellValue?.id}`}
               size="sm"
               onClick={event => event.stopPropagation()}>
-              {record?.name || `#${record?.id}`}
+              {cellValue?.name || `#${cellValue?.id}`}
             </Anchor>
           );
         }
-        return <Text size="sm">{`${record}`}</Text>;
+        return <Text size="sm">{`${cellValue}`}</Text>;
       },
     };
     columns.push(obj);
@@ -358,7 +433,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
               }}
             />
           )}
-          {showCreate && (
+          {showCreate && !inline_create && (
             <ButtonModalCreate
               model={fieldsServer[name]?.relatedModel || name}
               relatedFieldO2M={fieldsServer[name]?.relatedField}
@@ -373,6 +448,51 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
                 children: 'Создать',
               }}
             />
+          )}
+          {/* Inline add row — добавляет пустую строку прямо в таблицу */}
+          {showCreate && inline_create && (
+            <Button
+              size="xs"
+              variant="light"
+              leftSection={<IconPlus size={14} />}
+              className={classes.addButton}
+              onClick={() => {
+                const oldSource = form.getValues()[name] || { total: 0 };
+                const parentFormName = '_' + name;
+                const old = form.getValues()[parentFormName] || {
+                  created: [],
+                  deleted: [],
+                };
+                const virtualId =
+                  'virtual' + ((oldSource.total || 0) + old.created.length);
+
+                // Новая пустая строка с FK на родителя
+                const newRow: any = {
+                  id: virtualId,
+                  _color: 'new',
+                  [fieldsServer[name]?.relatedField || '']: id
+                    ? Number(id)
+                    : 'VirtualId',
+                };
+                // Заполняем пустые значения для всех полей
+                for (const f of actualData?.fields || []) {
+                  if (!(f.name in newRow)) {
+                    newRow[f.name] = null;
+                  }
+                }
+
+                setRecordsCreated(prev => [...prev, newRow as RecordType]);
+                form.setValues({
+                  [parentFormName]: {
+                    ...old,
+                    created: [...old.created, newRow],
+                    fieldsServer: fieldsServer,
+                  },
+                });
+                form.setDirty({ [parentFormName]: true });
+              }}>
+              Добавить строку
+            </Button>
           )}
         </Group>
       </Box>
@@ -400,11 +520,20 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
             storeColumnsKey={`${id}_${fieldsServer[name].relatedModel || name}`}
             selectedRecords={selectedRecords}
             onSelectedRecordsChange={setSelectedRecords}
-            onRowClick={({ record: { id: recordId } }) => {
-              if (recordId && !recordId.toString().startsWith('virtual')) {
-                navigate(`/${fieldsServer[name].relatedModel}/${recordId}`);
-              }
-            }}
+            onRowClick={
+              inline_update
+                ? undefined
+                : ({ record: { id: recordId } }) => {
+                    if (
+                      recordId &&
+                      !recordId.toString().startsWith('virtual')
+                    ) {
+                      navigate(
+                        `/${fieldsServer[name].relatedModel}/${recordId}`,
+                      );
+                    }
+                  }
+            }
             // Pagination
             totalRecords={totalRecords}
             recordsPerPage={pageSize}
