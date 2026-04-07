@@ -35,7 +35,6 @@ export function ViewForm(props: ViewFormProps) {
           <Field name="barcode" label="Штрихкод" />
         </FormRow>
         <FormRow cols={2}>
-          <Field name="id" label="ID" />
           <Field name="uom_id" label="Ед. измерения" />
         </FormRow>
       </FormSection>
@@ -69,7 +68,6 @@ export function ViewFormCategory(props: ViewFormProps) {
     <Form<Category> model="category" {...props}>
       <FormSection title="Категория" icon={<IconTag size={18} />}>
         <FormRow cols={2}>
-          <Field name="id" label="ID" />
           <Field name="name" label="Название" />
         </FormRow>
       </FormSection>
@@ -85,7 +83,6 @@ export function ViewFormUom(props: ViewFormProps) {
     <Form<Uom> model="uom" {...props}>
       <FormSection title="Единица измерения" icon={<IconRuler size={18} />}>
         <FormRow cols={2}>
-          <Field name="id" label="ID" />
           <Field name="name" label="Название" />
         </FormRow>
       </FormSection>

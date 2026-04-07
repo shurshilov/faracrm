@@ -20,7 +20,6 @@ class TestActivityPerformance:
     async def test_create_single(self, db_pool, seed_activities, perf_report):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.crm.activity.models.activity_type import ActivityType
-        from datetime import date
 
         types = await ActivityType.search(fields=["id"], limit=1)
         type_id = types[0].id
@@ -32,7 +31,7 @@ class TestActivityPerformance:
                     res_id=1,
                     activity_type_id=type_id,
                     user_id=1,
-                    date_deadline=date.today(),
+                    date_deadline=datetime.now(timezone.utc),
                     state="planned",
                     summary="Perf activity",
                 )
@@ -41,7 +40,6 @@ class TestActivityPerformance:
     async def test_create_bulk(self, db_pool, seed_activities, perf_report):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.crm.activity.models.activity_type import ActivityType
-        from datetime import date
 
         types = await ActivityType.search(fields=["id"], limit=1)
         type_id = types[0].id
@@ -53,7 +51,7 @@ class TestActivityPerformance:
                 res_id=(i % 1000) + 1,
                 activity_type_id=type_id,
                 user_id=(i % 100) + 1,
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 state="planned",
                 summary=f"Bulk activity {i}",
             )

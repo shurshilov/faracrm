@@ -49,7 +49,6 @@ export function ViewFormLeads(props: ViewFormProps) {
         widget="contacts"
         label="Контакты"
         parentField="partner_id">
-        <Field name="id" />
         <Field name="contact_type_id" />
         <Field name="name" />
         <Field name="is_primary" />
@@ -71,7 +70,6 @@ export function ViewFormTeamCrm(props: ViewFormProps) {
     <Form<TeamCrmRecord> model="team_crm" {...props}>
       <FormSection title="Команда CRM" icon={<IconBuilding size={18} />}>
         <FormRow cols={2}>
-          <Field name="id" label="ID" />
           <Field name="name" label="Название" />
         </FormRow>
       </FormSection>

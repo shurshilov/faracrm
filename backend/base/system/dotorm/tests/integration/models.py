@@ -4,6 +4,7 @@ Test models for integration tests.
 Contains all field types available in DotORM.
 """
 
+from datetime import datetime, date, time
 from dotorm import (
     DotModel,
     Integer,
@@ -213,13 +214,13 @@ class AllFieldTypes(BaseModel):
     bool_default_false: bool = Boolean(default=False)
 
     # Numeric types
-    decimal_field: "Decimal | None" = Decimal(max_digits=10, decimal_places=2)
+    decimal_field: "float | None" = Decimal(max_digits=10, decimal_places=2)
     float_field: float | None = Float()
 
     # Date/Time types
-    datetime_field: "Datetime | None" = Datetime()
-    date_field: "Date | None" = Date()
-    time_field: "Time | None" = Time()
+    datetime_field: "datetime | None" = Datetime()
+    date_field: "date | None" = Date()
+    time_field: "time | None" = Time()
 
     # Complex types
     json_field: dict | list | None = JSONField()

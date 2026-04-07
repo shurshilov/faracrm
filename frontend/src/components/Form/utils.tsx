@@ -1,11 +1,6 @@
-import { Field } from '@/types/fields';
-import { Children, isValidElement, ReactNode, cloneElement } from 'react';
+import { Children, isValidElement, cloneElement } from 'react';
 import { FieldComponents } from './Fields/Field';
-import {
-  FaraRecord,
-  GetFormField,
-  GetListField,
-} from '@/services/api/crudTypes';
+import { FaraRecord, GetFormField } from '@/services/api/crudTypes';
 
 // Компоненты компоновки, которые нужно "разворачивать"
 const LAYOUT_COMPONENTS = [
@@ -18,6 +13,7 @@ const LAYOUT_COMPONENTS = [
   'FormSheet',
   'FormAvatarField',
   'FieldContacts', // Кастомный виджет контактов
+  'AttachmentPreviewCard', // Превью карточка вложения
 ];
 
 /**

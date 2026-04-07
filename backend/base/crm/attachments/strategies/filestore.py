@@ -63,6 +63,7 @@ class FileStoreStrategy(StorageStrategyBase):
         attachment: "Attachment",
         filename: str,
         checksum: Optional[str] = None,
+        parent_id: str | None = None,
     ) -> str:
         """
         Build file path for storage.
@@ -72,12 +73,16 @@ class FileStoreStrategy(StorageStrategyBase):
         base_path = await self._get_base_path(storage)
         parts = [base_path]
 
+        # Add default folder
+        if not attachment.res_model and not attachment.res_id and parent_id:
+            parts.append(parent_id)
+
         # Add model folder
-        if attachment.res_model:
+        elif attachment.res_model:
             parts.append(attachment.res_model.replace(".", "_"))
 
         # Add record ID folder
-        if attachment.res_id:
+        elif attachment.res_id:
             parts.append(str(attachment.res_id))
 
         # Add filename
@@ -115,7 +120,7 @@ class FileStoreStrategy(StorageStrategyBase):
 
         # Build file path
         file_path = await self._get_file_path(
-            storage, attachment, filename, checksum
+            storage, attachment, filename, checksum, parent_id
         )
 
         # Create directories

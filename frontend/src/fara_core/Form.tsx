@@ -22,7 +22,6 @@ export function ViewFormSystemSettings(props: ViewFormProps) {
           <Field name="value" label="Значение" />
         </FormRow>
         <Field name="description" label="Описание" />
-        <Field name="id" label="ID" />
       </FormSection>
     </Form>
   );

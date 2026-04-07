@@ -88,4 +88,4 @@ class Contract(DotModel):
     # @classmethod
     # def _default_date_end(cls) -> date:
     #     """По умолчанию договор на 11 месяцев."""
-    #     return date.today() + relativedelta(months=11)
+    #     return datetime.now(timezone.utc).date() + relativedelta(months=11)

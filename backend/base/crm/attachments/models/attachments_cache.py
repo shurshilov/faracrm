@@ -59,10 +59,6 @@ class AttachmentCache(DotModel):
         help="Cached folder name",
     )
 
-    # ========================================================================
-    # Cache operations
-    # ========================================================================
-
     @classmethod
     async def get_folder(
         cls,
@@ -75,10 +71,8 @@ class AttachmentCache(DotModel):
         Args:
             route_id: ID маршрута
             res_model: Модель или '_default'
-
-        Returns:
-            Tuple (folder_id, folder_name) или (None, None)
         """
+
         cached = await cls.search(
             filter=[
                 ("route_id", "=", route_id),
@@ -100,15 +94,8 @@ class AttachmentCache(DotModel):
         folder_id: str,
         folder_name: str | None = None,
     ) -> None:
-        """
-        Сохранить folder ID в кеш (UPSERT).
+        """Сохранить folder ID в кеш (UPSERT)."""
 
-        Args:
-            route_id: ID маршрута
-            res_model: Модель или '_default'
-            folder_id: ID папки в облаке
-            folder_name: Имя папки
-        """
         existing = await cls.search(
             filter=[
                 ("route_id", "=", route_id),
@@ -135,35 +122,31 @@ class AttachmentCache(DotModel):
         route_id: int,
         res_model: str | None = None,
     ) -> None:
-        """
-        Удалить записи из кеша.
+        """Удалить записи из кеша."""
 
-        Args:
-            route_id: ID маршрута
-            res_model: Модель (если None - удаляет все для route)
-        """
         filter_cond: FilterExpression = [("route_id", "=", route_id)]
         if res_model:
             filter_cond.append(("res_model", "=", res_model))
 
-        cached = await cls.search(filter=filter_cond)
-        for cache in cached:
-            await cache.delete()
+        cached = await cls.search(filter=filter_cond, fields=["id"])
+        await cls.delete_bulk([cache.id for cache in cached])
 
-    @classmethod
-    async def clear_route_cache(cls, route_id: int) -> None:
-        """Очистить весь кеш для маршрута."""
-        await cls.delete_folder(route_id)
+    # @classmethod
+    # async def clear_route_cache(cls, route_id: int) -> None:
+    #     """Очистить весь кеш для маршрута."""
+    #     await cls.delete_folder(route_id)
 
     @classmethod
     async def clear_storage_cache(cls, storage_id: int) -> None:
         """Очистить кеш для всех маршрутов хранилища."""
-        from .attachments_route import AttachmentRoute
 
-        routes = await AttachmentRoute.search(
+        routes = await env.models.attachment_route.search(
             filter=[("storage_id", "=", storage_id)],
             fields=["id"],
         )
 
-        for route in routes:
-            await cls.clear_route_cache(route.id)
+        cached = await cls.search(
+            filter=[("route_id", "in", [route.id for route in routes])],
+            fields=["id"],
+        )
+        await cls.delete_bulk([cache.id for cache in cached])

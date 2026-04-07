@@ -27,7 +27,6 @@ export function ViewFormCompany(props: ViewFormProps) {
           <Field name="active" label="Активна" />
         </FormRow>
         <FormRow cols={2}>
-          <Field name="id" label="ID" />
           <Field name="sequence" label="Последовательность" />
         </FormRow>
         <Field name="parent_id" label="Родительская компания" />

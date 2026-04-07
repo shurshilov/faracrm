@@ -12,7 +12,7 @@ Run: pytest tests/integration/activity/test_activity.py -v -m integration
 """
 
 import pytest
-from datetime import date, timedelta, datetime, timezone
+from datetime import timedelta, datetime, timezone
 
 pytestmark = pytest.mark.integration
 
@@ -136,7 +136,7 @@ class TestActivityCRUD:
                 res_id=1,
                 activity_type_id=at_id,
                 summary="Позвонить клиенту",
-                date_deadline=date.today() + timedelta(days=3),
+                date_deadline=datetime.now(timezone.utc) + timedelta(days=3),
                 user_id=user_id,
                 state="planned",
             )
@@ -152,7 +152,7 @@ class TestActivityCRUD:
         from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
-        dl = date.today() + timedelta(days=1)
+        dl = datetime.now(timezone.utc) + timedelta(days=1)
 
         await Activity.create(
             Activity(
@@ -222,7 +222,7 @@ class TestActivityCRUD:
                 lang_id=lang_id,
             )
         )
-        dl = date.today() + timedelta(days=1)
+        dl = datetime.now(timezone.utc) + timedelta(days=1)
 
         for i in range(3):
             await Activity.create(
@@ -259,7 +259,7 @@ class TestActivityCRUD:
                 res_model="partner",
                 res_id=5,
                 activity_type_id=at_id,
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=user_id,
                 state="planned",
             )
@@ -283,7 +283,7 @@ class TestActivityCRUD:
                 res_model="lead",
                 res_id=1,
                 activity_type_id=at_id,
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=user_id,
                 state="planned",
             )
@@ -305,7 +305,7 @@ class TestActivityCRUD:
                 res_model="lead",
                 res_id=1,
                 activity_type_id=at_id,
-                date_deadline=date.today() - timedelta(days=5),
+                date_deadline=datetime.now(timezone.utc) - timedelta(days=5),
                 user_id=user_id,
                 state="overdue",
                 done=False,
@@ -317,7 +317,7 @@ class TestActivityCRUD:
                 res_model="lead",
                 res_id=2,
                 activity_type_id=at_id,
-                date_deadline=date.today() + timedelta(days=5),
+                date_deadline=datetime.now(timezone.utc) + timedelta(days=5),
                 user_id=user_id,
                 state="planned",
                 done=False,
@@ -329,7 +329,7 @@ class TestActivityCRUD:
                 res_model="lead",
                 res_id=3,
                 activity_type_id=at_id,
-                date_deadline=date.today() - timedelta(days=1),
+                date_deadline=datetime.now(timezone.utc) - timedelta(days=1),
                 user_id=user_id,
                 state="done",
                 done=True,
@@ -352,7 +352,7 @@ class TestActivityCRUD:
                 res_model="lead",
                 res_id=1,
                 activity_type_id=at_id,
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=user_id,
             )
         )
@@ -370,7 +370,7 @@ class TestActivityCRUD:
                 res_model="lead",
                 res_id=1,
                 activity_type_id=at_id,
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=user_id,
                 notification_sent=False,
             )
@@ -395,7 +395,7 @@ class TestActivityCRUD:
                 res_model="lead",
                 res_id=1,
                 activity_type_id=at_id,
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=user_id,
                 state="today",
                 done=False,
@@ -408,7 +408,7 @@ class TestActivityCRUD:
                 res_model="lead",
                 res_id=2,
                 activity_type_id=at_id,
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=user_id,
                 state="today",
                 done=False,

@@ -34,7 +34,6 @@ export function ViewFormApps(props: ViewFormProps) {
           <Field name="name" />
         </FormRow>
         <FormRow cols={2}>
-          <Field name="id" />
           <Field name="active" />
         </FormRow>
       </FormSection>
@@ -60,7 +59,6 @@ export function ViewFormAccessList(props: ViewFormProps) {
           <Field name="model_id" />
           <Field name="role_id" />
         </FormRow>
-        <Field name="id" />
       </FormSection>
 
       {/* Права доступа */}
@@ -88,7 +86,6 @@ export function ViewFormRoles(props: ViewFormProps) {
           <Field name="name" />
           <Field name="model_id" />
         </FormRow>
-        <Field name="id" />
       </FormSection>
 
       {/* Вкладки с связанными данными */}
@@ -145,7 +142,6 @@ export function ViewFormRules(props: ViewFormProps) {
             <Field name="perm_delete" />
           </FormRow>
         </FormSection>
-        {/* <Field name="id" /> */}
       </FormSection>
     </Form>
   );
@@ -159,7 +155,6 @@ export function ViewFormModels(props: ViewFormProps) {
     <Form<SchemaModel> model="models" {...props}>
       <FormSection title="Модель" icon={<IconInfoCircle size={18} />}>
         <FormRow cols={2}>
-          <Field name="id" />
           <Field name="name" />
         </FormRow>
       </FormSection>
@@ -180,9 +175,7 @@ export function ViewFormSessions(props: ViewFormProps) {
           <Field name="active" />
         </FormRow>
         <FormRow cols={2}>
-          <Field name="id" />
           <Field name="token" />
-          <Field name="cookie_token" />
         </FormRow>
       </FormSection>
 

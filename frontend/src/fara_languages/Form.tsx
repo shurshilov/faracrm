@@ -17,7 +17,6 @@ export function ViewFormLanguage(props: ViewFormProps) {
           <Field name="flag" label="Флаг" />
           <Field name="active" label="Активен" />
         </FormRow>
-        <Field name="id" label="ID" />
       </FormSection>
     </Form>
   );

@@ -29,7 +29,6 @@ export function ViewFormSavedFilters(props: ViewFormProps) {
             label={t('fields.is_default', 'По умолчанию')}
           />
         </FormRow>
-        <Field name="id" label="ID" />
       </FormSheet>
 
       <FormTabs defaultTab="filter">

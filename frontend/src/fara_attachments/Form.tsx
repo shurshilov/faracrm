@@ -1,28 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { Alert, Code } from '@mantine/core';
 import {
-  Paper,
-  Group,
-  Stack,
-  Text,
-  Badge,
-  ActionIcon,
-  Tooltip,
-  Box,
-  Image,
-  Loader,
-  Divider,
-  Alert,
-  Code,
-} from '@mantine/core';
-import {
-  IconDownload,
-  IconEye,
-  IconFolder,
-  IconLock,
-  IconWorld,
-  IconMicrophone,
   IconFile,
   IconDatabase,
   IconLink,
@@ -30,36 +7,21 @@ import {
   IconInfoCircle,
   IconSettings,
   IconArrowUp,
+  IconFolder,
 } from '@tabler/icons-react';
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
-import {
-  Attachment,
-  SchemaAttachmentStorage,
-} from '@/services/api/attachments';
+import { Attachment } from '@/services/api/attachments';
 import {
   FormRow,
   FormTabs,
   FormTab,
   FormSection,
 } from '@/components/Form/Layout';
-import { FileIcon } from '@/components/Attachment/FileIcon';
-import { ImagePreviewModal } from '@/components/Attachment/ImagePreviewModal';
-import {
-  isImageMimetype,
-  isAudioMimetype,
-  isVideoMimetype,
-  formatFileSize,
-} from '@/components/Attachment/fileIcons';
-import {
-  attachmentPreviewUrl,
-  attachmentContentUrl,
-} from '@/utils/attachmentUrls';
-import { selectCurrentSession } from '@/slices/authSlice';
-import classes from './Form.module.css';
+import { AttachmentPreviewCard } from '@/components/Attachment/AttachmentPreviewCard';
 
-// Тип для маршрута (UPDATED: removed is_default, folder_id, folder_model_name; added priority)
+// Тип для маршрута
 interface AttachmentRoute {
   id: number;
   name: string;
@@ -74,202 +36,11 @@ interface AttachmentRoute {
   active: boolean;
 }
 
-// Компонент превью файла для формы
-function AttachmentPreviewCard({ attachmentId }: { attachmentId?: number }) {
-  const session = useSelector(selectCurrentSession);
-  const [attachment, setAttachment] = useState<Attachment | null>(null);
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-
-  // Загружаем данные attachment
-  useEffect(() => {
-    if (!attachmentId || !session?.token) return;
-
-    fetch(`${API_BASE_URL}/attachments/${attachmentId}`, {
-      headers: { Authorization: `Bearer ${session.token}` },
-    })
-      .then(res => res.json())
-      .then(data => setAttachment(data))
-      .catch(() => setAttachment(null));
-  }, [attachmentId, session?.token]);
-
-  // Загружаем превью для изображений
-  useEffect(() => {
-    if (!attachment || !isImageMimetype(attachment.mimetype)) return;
-    if (attachment.show_preview === false) return;
-
-    setIsLoading(true);
-    setImageSrc(
-      attachmentPreviewUrl(
-        attachment.id,
-        undefined,
-        undefined,
-        attachment.checksum,
-      ),
-    );
-    setIsLoading(false);
-  }, [attachment]);
-
-  const handleDownload = () => {
-    if (!attachment?.id) return;
-
-    const a = document.createElement('a');
-    a.href = attachmentContentUrl(attachment.id);
-    a.download = attachment.name || 'file';
-    a.click();
-  };
-
-  if (!attachment) {
-    return (
-      <Paper className={classes.previewCard} withBorder p="xl" radius="md">
-        <Stack align="center" gap="md">
-          <Loader size="sm" />
-          <Text size="sm" c="dimmed">
-            Загрузка...
-          </Text>
-        </Stack>
-      </Paper>
-    );
-  }
-
-  const isImage = isImageMimetype(attachment.mimetype);
-  const isAudio = isAudioMimetype(attachment.mimetype);
-  const isVideo = isVideoMimetype(attachment.mimetype);
-
-  return (
-    <>
-      <Paper className={classes.previewCard} withBorder p="md" radius="md">
-        {/* Превью */}
-        <Box className={classes.previewArea}>
-          {isLoading ? (
-            <Loader size="md" />
-          ) : isImage && imageSrc ? (
-            <Image
-              src={imageSrc}
-              alt={attachment.name || ''}
-              fit="contain"
-              mah={300}
-              radius="md"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setPreviewOpen(true)}
-            />
-          ) : (
-            <Box className={classes.iconArea}>
-              <FileIcon mimetype={attachment.mimetype} size={80} />
-            </Box>
-          )}
-        </Box>
-
-        <Divider my="md" />
-
-        {/* Информация о файле */}
-        <Stack gap="xs">
-          <Group justify="space-between">
-            <Text size="lg" fw={600} lineClamp={1}>
-              {attachment.name || 'Без имени'}
-            </Text>
-            <Group gap="xs">
-              {isImage && imageSrc && (
-                <Tooltip label="Просмотр">
-                  <ActionIcon
-                    variant="light"
-                    color="blue"
-                    onClick={() => setPreviewOpen(true)}>
-                    <IconEye size={18} />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-              <Tooltip label="Скачать">
-                <ActionIcon
-                  variant="light"
-                  color="gray"
-                  onClick={handleDownload}>
-                  <IconDownload size={18} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          </Group>
-
-          <Group gap="xs">
-            <Badge size="sm" variant="light" color="gray">
-              {formatFileSize(attachment.size)}
-            </Badge>
-
-            {attachment.folder && (
-              <Badge
-                size="sm"
-                color="yellow"
-                leftSection={<IconFolder size={10} />}>
-                Папка
-              </Badge>
-            )}
-
-            {attachment.is_voice && (
-              <Badge
-                size="sm"
-                color="pink"
-                leftSection={<IconMicrophone size={10} />}>
-                Голосовое
-              </Badge>
-            )}
-
-            {isImage && (
-              <Badge size="sm" color="teal">
-                Изображение
-              </Badge>
-            )}
-
-            {isVideo && (
-              <Badge size="sm" color="violet">
-                Видео
-              </Badge>
-            )}
-
-            {isAudio && !attachment.is_voice && (
-              <Badge size="sm" color="pink">
-                Аудио
-              </Badge>
-            )}
-
-            <Badge
-              size="sm"
-              variant="light"
-              color={attachment.public ? 'green' : 'gray'}
-              leftSection={
-                attachment.public ? (
-                  <IconWorld size={10} />
-                ) : (
-                  <IconLock size={10} />
-                )
-              }>
-              {attachment.public ? 'Публичный' : 'Приватный'}
-            </Badge>
-          </Group>
-        </Stack>
-      </Paper>
-
-      {/* Модальное окно для просмотра изображений */}
-      {imageSrc && (
-        <ImagePreviewModal
-          opened={previewOpen}
-          onClose={() => setPreviewOpen(false)}
-          src={imageSrc}
-          alt={attachment.name || ''}
-        />
-      )}
-    </>
-  );
-}
-
 export function ViewFormAttachments(props: ViewFormProps) {
-  const { id } = useParams<{ id: string }>();
-  const attachmentId = id ? parseInt(id, 10) : undefined;
-
   return (
     <Form<Attachment> model="attachments" {...props}>
-      {/* Превью карточка */}
-      {attachmentId && <AttachmentPreviewCard attachmentId={attachmentId} />}
+      {/* Превью карточка — данные берёт из контекста формы */}
+      <AttachmentPreviewCard />
 
       {/* Вкладки с информацией */}
       <FormTabs defaultTab="info">
@@ -279,7 +50,6 @@ export function ViewFormAttachments(props: ViewFormProps) {
           icon={<IconFile size={16} />}>
           <FormSection title="Файл">
             <FormRow cols={2}>
-              <Field name="id" label="ID" />
               <Field name="name" label="Название" />
             </FormRow>
             <FormRow cols={3}>
@@ -350,7 +120,6 @@ export function ViewFormAttachmentsStorage(props: ViewFormProps) {
         </FormRow>
         <FormRow cols={2}>
           <Field name="active" label="Активное" />
-          <Field name="id" />
         </FormRow>
       </FormSection>
 

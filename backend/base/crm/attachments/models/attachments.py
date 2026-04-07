@@ -222,8 +222,8 @@ class Attachment(DotModel):
         Returns:
             Tuple (route, storage, parent_folder_id, parent_folder_name)
         """
-        if not res_model or not res_id:
-            return None, None, None, None
+        # if not res_model or not res_id:
+        #     return None, None, None, None
 
         # 1. Находим маршрут (priority-based)
         route = await AttachmentRoute.get_route_for_attachment(
@@ -247,13 +247,18 @@ class Attachment(DotModel):
             return route, storage, folder_id, folder_name
 
         # 4. Создаём папку через API (root folders кешируются в attachments_cache)
-        record = await self._get_record(res_model, res_id)
-        folder_id, folder_name = await route.get_or_create_record_folder(
-            storage=storage,
-            record=record,
-            res_id=res_id,
-            res_model=res_model,
-        )
+        if res_model and res_id:
+            record = await self._get_record(res_model, res_id)
+            folder_id, folder_name = await route.get_or_create_record_folder(
+                storage=storage,
+                record=record,
+                res_id=res_id,
+                res_model=res_model,
+            )
+        else:
+            folder_id, folder_name = await route.get_or_create_root_folder(
+                storage, "default"
+            )
 
         # Сохраняем в локальный кеш batch'а
         if folder_cache is not None:
@@ -300,6 +305,12 @@ class Attachment(DotModel):
                 payload.size = len(content_bytes)
 
             payload.checksum = hashlib.sha1(content_bytes).hexdigest()
+
+            # TODO: убрать когда при инициализации будем заполнять None
+            if isinstance(payload.res_model, Field):
+                payload.res_model = None
+            if isinstance(payload.res_id, Field):
+                payload.res_id = None
 
             route, storage, parent_folder_id, parent_folder_name = (
                 await self._resolve_route_and_folder(

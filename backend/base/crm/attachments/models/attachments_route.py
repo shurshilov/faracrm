@@ -224,8 +224,8 @@ class AttachmentRoute(DotModel):
     @classmethod
     async def get_route_for_attachment(
         cls,
-        res_model: str,
-        res_id: int,
+        res_model: str | None,
+        res_id: int | None,
     ) -> Optional["AttachmentRoute"]:
         """
         Find matching route using priority-based matching.
@@ -237,19 +237,20 @@ class AttachmentRoute(DotModel):
         This ensures specific routes always take precedence over fallback,
         regardless of priority values.
         """
-        # 1. Try specific routes first (model matches)
-        specific_routes = await cls.search(
-            filter=[
-                ("active", "=", True),
-                ("model", "=", res_model),
-            ],
-            # fields_nested={"storage_id": ["id", "type", "active"]},
-            sort="priority DESC",
-        )
+        if res_model and res_id:
+            # 1. Try specific routes first (model matches)
+            specific_routes = await cls.search(
+                filter=[
+                    ("active", "=", True),
+                    ("model", "=", res_model),
+                ],
+                # fields_nested={"storage_id": ["id", "type", "active"]},
+                sort="priority DESC",
+            )
 
-        for route in specific_routes:
-            if await route._check_record_in_filter(res_id):
-                return route
+            for route in specific_routes:
+                if await route._check_record_in_filter(res_id):
+                    return route
 
         # 2. Then try fallback routes (model=None)
         fallback_routes = await cls.search(
@@ -522,4 +523,4 @@ class AttachmentRoute(DotModel):
     # ========================================================================
 
     async def after_delete(self) -> None:
-        await AttachmentCache.clear_route_cache(self.id)
+        await AttachmentCache.delete_folder(self.id)

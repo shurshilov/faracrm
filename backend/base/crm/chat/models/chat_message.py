@@ -184,6 +184,8 @@ class ChatMessage(DotModel):
         connector_id: int | None = None,
         parent_id: int | None = None,
         attachment_ids: list[int] | None = None,
+        res_model: str | None = None,
+        res_id: int | None = None,
     ):
         """
         Создать и отправить сообщение в чат.
@@ -231,6 +233,8 @@ class ChatMessage(DotModel):
             parent_id=parent,
             create_date=now,
             write_date=now,
+            res_model=res_model,
+            res_id=res_id,
         )
 
         message.id = await self.create(payload=message)

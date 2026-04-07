@@ -1,4 +1,4 @@
-from datetime import datetime, date, timezone
+from datetime import datetime, timezone, timedelta
 from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.fields import (
@@ -13,6 +13,8 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.core.enviroment import env
+from backend.base.crm.chat.models.chat import Chat
+from backend.base.crm.chat.models.chat_member import ChatMember
 
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
@@ -156,23 +158,29 @@ class Activity(DotModel):
         user_id: int,
         summary: str | None = None,
         note: str | None = None,
-        date_deadline: date | None = None,
+        date_deadline: datetime | None = None,
         create_user_id: int | None = None,
     ):
         """
         Запланировать новую активность.
         """
-        # Если дедлайн не указан — берём default_days из типа
+        now_utc = datetime.now(timezone.utc)
+
         if date_deadline is None:
-            types = await env.models.activity_type.search(
+            # Ищем тип активности, чтобы узнать дефолтный срок
+            activity_types = await env.models.activity_type.search(
                 filter=[("id", "=", activity_type_id)],
-                fields=["id", "default_days"],
+                fields=["default_days"],
                 limit=1,
             )
-            default_days = types[0].default_days if types else 1
-            from datetime import timedelta
+            # Безопасно берем default_days или 1
+            days = activity_types[0].default_days if activity_types else 1
+            date_deadline = now_utc + timedelta(days=days)
 
-            date_deadline = date.today() + timedelta(days=default_days)
+        # Определяем статус (сравниваем даты в одном часовом поясе)
+        state = (
+            "today" if date_deadline.date() == now_utc.date() else "planned"
+        )
 
         activity = Activity(
             res_model=res_model,
@@ -185,10 +193,10 @@ class Activity(DotModel):
             summary=summary,
             note=note,
             date_deadline=date_deadline,
-            state="today" if date_deadline == date.today() else "planned",
+            state=state,
         )
 
-        activity.id = await self.create(payload=activity)
+        activity.id = await self.create(activity)
         return activity
 
     @hybridmethod
@@ -212,13 +220,9 @@ class Activity(DotModel):
             chat_id=system_chat_id,
             body=body,
             message_type="notification",
+            res_model=res_model,
+            res_id=res_id,
         )
-
-        # Привязываем к записи (через extend поля)
-        if res_model and res_id:
-            await message.update(
-                env.models.chat_message(res_model=res_model, res_id=res_id)
-            )
 
         # Отправляем через WebSocket
         try:
@@ -242,7 +246,7 @@ class Activity(DotModel):
                 },
             )
         except Exception:
-            pass  # WS не обязателен
+            ...  # WS не обязателен
 
         return message
 
@@ -252,7 +256,6 @@ class Activity(DotModel):
         Получить или создать системный чат для пользователя.
         Системный чат — direct чат с name='FARA System' для конкретного user.
         """
-        from backend.base.crm.chat.models.chat import Chat
 
         # Ищем существующий системный чат по имени и участнику
         chats = await env.models.chat.search(
@@ -268,8 +271,6 @@ class Activity(DotModel):
             return chats[0].id
 
         # Создаём новый системный чат
-        from datetime import datetime, timezone
-
         now = datetime.now(timezone.utc)
 
         chat = Chat(
@@ -283,8 +284,6 @@ class Activity(DotModel):
         chat.id = await env.models.chat.create(payload=chat)
 
         # Добавляем пользователя как участника
-        from backend.base.crm.chat.models.chat_member import ChatMember
-
         member = ChatMember(
             chat_id=env.models.chat(id=chat.id),
             user_id=env.models.user(id=user_id),
@@ -305,7 +304,7 @@ class Activity(DotModel):
     async def check_deadlines(self):
         """
         Крон-задача: проверяет дедлайны и отправляет уведомления.
-        Вызывается периодически (например каждые 5 минут).
+        Вызывается периодически (например каждую минуту).
         """
         now = datetime.now(timezone.utc)
 
@@ -317,10 +316,11 @@ class Activity(DotModel):
                 ("state", "!=", "overdue"),
                 ("state", "!=", "cancelled"),
             ],
-            fields=["id", "state"],
+            fields=["id"],
         )
-        for activity in overdue:
-            await activity.update(Activity(state="overdue"))
+        await env.models.activity.update_bulk(
+            [activity.id for activity in overdue], Activity(state="overdue")
+        )
 
         # 2. Отправляем уведомления (дедлайн наступил и ещё не отправляли)
         pending = await self.search(
@@ -337,7 +337,6 @@ class Activity(DotModel):
                 "res_id",
                 "user_id",
                 "activity_type_id",
-                "date_deadline",
                 "state",
             ],
         )

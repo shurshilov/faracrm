@@ -79,7 +79,6 @@ export function ViewFormCronJob(props: ViewFormProps) {
           <Field name="name" />
           <Field name="active" />
         </FormRow>
-        <Field name="id" />
       </FormSection>
 
       {/* Вкладки */}

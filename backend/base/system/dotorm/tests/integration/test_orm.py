@@ -8,7 +8,7 @@ DO NOT RUN AUTOMATICALLY - requires database setup.
 """
 
 import pytest
-from datetime import datetime, date, time
+from datetime import datetime, time, timezone
 from decimal import Decimal
 
 # ====================
@@ -637,8 +637,8 @@ class TestAllFieldTypes:
         """Test date/time field types."""
         from .models import AllFieldTypes
 
-        now = datetime.now()
-        today = date.today()
+        now = datetime.now(timezone.utc)
+        today = datetime.now(timezone.utc).date()
         current_time = time(12, 30, 45)
 
         record = AllFieldTypes(

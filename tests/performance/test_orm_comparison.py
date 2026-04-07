@@ -174,7 +174,7 @@ class TestRawAsyncpg:
                     "lead",
                     1,
                     "Bench single",
-                    date.today(),
+                    datetime.now(timezone.utc),
                     1,
                     "planned",
                 )
@@ -193,7 +193,7 @@ class TestRawAsyncpg:
                             "lead",
                             (i % 1000) + 1,
                             f"Bulk {i}",
-                            date.today(),
+                            datetime.now(timezone.utc),
                             (i % 10000) + 1,
                             "planned",
                         )
@@ -450,7 +450,7 @@ class TestSQLAlchemy:
                         res_model="lead",
                         res_id=1,
                         summary="Bench single",
-                        date_deadline=date.today(),
+                        date_deadline=datetime.now(timezone.utc),
                         user_id=1,
                         state="planned",
                     )
@@ -463,7 +463,7 @@ class TestSQLAlchemy:
                 res_model="lead",
                 res_id=(i % 1000) + 1,
                 summary=f"Bulk {i}",
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=(i % 10000) + 1,
                 state="planned",
             )
@@ -699,7 +699,7 @@ class TestTortoise:
                 res_model="lead",
                 res_id=1,
                 summary="Bench single",
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=1,
                 state="planned",
             )
@@ -710,7 +710,7 @@ class TestTortoise:
                 res_model="lead",
                 res_id=(i % 1000) + 1,
                 summary=f"Bulk {i}",
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=(i % 10000) + 1,
                 state="planned",
             )
@@ -869,7 +869,7 @@ class TestDotorm:
                         res_model="lead",
                         res_id=1,
                         summary="Bench single",
-                        date_deadline=date.today(),
+                        date_deadline=datetime.now(timezone.utc),
                         user_id=1,
                         activity_type_id=types[0].id,
                         state="planned",
@@ -892,7 +892,7 @@ class TestDotorm:
                 res_model="lead",
                 res_id=(i % 1000) + 1,
                 summary=f"Bulk {i}",
-                date_deadline=date.today(),
+                date_deadline=datetime.now(timezone.utc),
                 user_id=(i % 10000) + 1,
                 activity_type_id=type_id,
                 state="planned",
