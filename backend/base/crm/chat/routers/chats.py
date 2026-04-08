@@ -329,7 +329,12 @@ async def get_chats(
 
         result.append(chat_data)
 
-    return {"data": result, "total": len(result)}
+    sorted_list = sorted(
+        result,
+        key=lambda x: x.get("last_message_date") or x.get("create_date"),
+        reverse=True,
+    )
+    return {"data": sorted_list, "total": len(sorted_list)}
 
 
 @router_private.get("/chats/{chat_id}")

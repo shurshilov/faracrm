@@ -32,6 +32,8 @@ const chatApi = api.injectEndpoints({
     // Get single chat details
     getChat: build.query<GetChatResponse, { chatId: number }>({
       query: ({ chatId }) => `/chats/${chatId}`,
+      // Привязываем результат запроса к конкретному тегу Chat с его ID
+      providesTags: (result, error, arg) => [{ type: 'Chat', id: arg.chatId }],
     }),
 
     // Create new chat
@@ -41,39 +43,40 @@ const chatApi = api.injectEndpoints({
         method: 'POST',
         body,
       }),
+      invalidatesTags: [{ type: 'Chat', id: 'LIST' }],
       // Update cache after creating chat
-      async onQueryStarted(args, { dispatch, queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled;
+      // async onQueryStarted(args, { dispatch, queryFulfilled }) {
+      //   try {
+      //     const { data } = await queryFulfilled;
 
-          // Создаём объект чата для добавления в кэш
-          const newChat: Chat = {
-            id: data.data.id,
-            name: data.data.name || '',
-            chat_type: data.data.chat_type as
-              | 'direct'
-              | 'group'
-              | 'channel'
-              | 'record',
-            is_internal: true,
-            members: [],
-            unread_count: 0,
-            connectors: [],
-            create_date: new Date().toISOString(),
-          };
+      //     // Создаём объект чата для добавления в кэш
+      //     const newChat: Chat = {
+      //       id: data.data.id,
+      //       name: data.data.name || '',
+      //       chat_type: data.data.chat_type as
+      //         | 'direct'
+      //         | 'group'
+      //         | 'channel'
+      //         | 'record',
+      //       is_internal: true,
+      //       members: [],
+      //       unread_count: 0,
+      //       connectors: [],
+      //       create_date: new Date().toISOString(),
+      //     };
 
-          // Добавляем в кэш getChats (без фильтров)
-          dispatch(
-            chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
-              // Добавляем в начало списка
-              draft.data.unshift(newChat);
-              draft.total = (draft.total || 0) + 1;
-            }),
-          );
-        } catch {
-          // Ошибка - ничего не делаем, сервер вернёт ошибку
-        }
-      },
+      //     // Добавляем в кэш getChats (без фильтров)
+      //     dispatch(
+      //       chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
+      //         // Добавляем в начало списка
+      //         draft.data.unshift(newChat);
+      //         draft.total = (draft.total || 0) + 1;
+      //       }),
+      //     );
+      //   } catch {
+      //     // Ошибка - ничего не делаем, сервер вернёт ошибку
+      //   }
+      // },
     }),
 
     // Add member to chat
@@ -86,6 +89,10 @@ const chatApi = api.injectEndpoints({
         method: 'POST',
         body: { user_id: userId, ...permissions },
       }),
+      // Инвалидируем конкретный чат, чтобы обновить список участников в UI
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Chat', id: arg.chatId },
+      ],
     }),
 
     // Remove member from chat
@@ -97,6 +104,10 @@ const chatApi = api.injectEndpoints({
         url: `/chats/${chatId}/members/${memberId}`,
         method: 'DELETE',
       }),
+      // Инвалидируем конкретный чат, чтобы участник исчез из списка в UI
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Chat', id: arg.chatId },
+      ],
     }),
 
     // Update member permissions
@@ -118,6 +129,10 @@ const chatApi = api.injectEndpoints({
         method: 'PATCH',
         body: permissions,
       }),
+      // Достаем chatId из аргументов мутации (третий параметр 'arg')
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Chat', id: arg.chatId },
+      ],
     }),
 
     // Update chat settings (including default permissions)
@@ -143,6 +158,10 @@ const chatApi = api.injectEndpoints({
         method: 'PATCH',
         body,
       }),
+      // Достаем chatId из аргументов мутации (третий параметр 'arg')
+      invalidatesTags: (result, error, arg) => [
+        { type: 'Chat', id: arg.chatId },
+      ],
     }),
 
     // Leave chat
@@ -151,6 +170,7 @@ const chatApi = api.injectEndpoints({
         url: `/chats/${chatId}/leave`,
         method: 'POST',
       }),
+      invalidatesTags: [{ type: 'Chat', id: 'LIST' }],
     }),
 
     // Delete chat
@@ -159,6 +179,7 @@ const chatApi = api.injectEndpoints({
         url: `/chats/${chatId}`,
         method: 'DELETE',
       }),
+      invalidatesTags: [{ type: 'Chat', id: 'LIST' }],
     }),
 
     // Get available connectors for a chat
@@ -848,6 +869,8 @@ export const {
   useForwardMessageMutation,
   useGetPinnedMessagesQuery,
   useAddReactionMutation,
+  useAddChatMemberMutation,
+  useUpdateMemberPermissionsMutation,
   // Connectors
   useGetMyConnectorsQuery,
   useSetConnectorWebhookMutation,

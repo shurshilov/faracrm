@@ -34,13 +34,19 @@ import {
   ChatMember,
   useGetChatQuery,
   useUpdateChatMutation,
+  useAddChatMemberMutation,
   useRemoveChatMemberMutation,
   useLeaveChatMutation,
   useDeleteChatMutation,
   chatApi,
+  useUpdateMemberPermissionsMutation,
 } from '@/services/api/chat';
 import { useDispatch } from 'react-redux';
 import { notifications } from '@mantine/notifications';
+import {
+  ChatParticipantSelect,
+  ParticipantSelection,
+} from './ChatParticipantSelect';
 
 interface MemberPermissions {
   can_read: boolean;
@@ -166,7 +172,10 @@ function MemberPermissionsModal({
   opened: boolean;
   onClose: () => void;
   member: (ChatMember & { permissions?: MemberPermissions }) | null;
-  onSave: (permissions: MemberPermissions) => void;
+  onSave: (
+    permissions: MemberPermissions,
+    member: (ChatMember & { permissions?: MemberPermissions }) | null,
+  ) => void;
   isSaving: boolean;
   t: (key: string) => string;
 }) {
@@ -231,7 +240,9 @@ function MemberPermissionsModal({
           <Button variant="subtle" onClick={onClose} disabled={isSaving}>
             {t('cancel')}
           </Button>
-          <Button onClick={() => onSave(permissions)} loading={isSaving}>
+          <Button
+            onClick={() => onSave(permissions, member)}
+            loading={isSaving}>
             {t('save')}
           </Button>
         </Group>
@@ -416,6 +427,8 @@ export function ChatSettingsModal({
     refetch,
   } = useGetChatQuery({ chatId: chat.id }, { skip: !opened });
   const [updateChat, { isLoading: isUpdating }] = useUpdateChatMutation();
+  const [updatePermissions] = useUpdateMemberPermissionsMutation();
+  const [addMember, { isLoading: isAdding }] = useAddChatMemberMutation();
   const [removeMember, { isLoading: isRemoving }] =
     useRemoveChatMemberMutation();
   const [leaveChat, { isLoading: isLeaving }] = useLeaveChatMutation();
@@ -426,6 +439,10 @@ export function ChatSettingsModal({
   const [activeTab, setActiveTab] = useState<string | null>('settings');
   const [isSavingPermissions, setIsSavingPermissions] = useState(false);
   const [isSavingMemberPerms, setIsSavingMemberPerms] = useState(false);
+  const [newMembers, setNewMembers] = useState<ParticipantSelection>({
+    userIds: [],
+    partnerIds: [],
+  });
 
   // Default permissions state
   const [defaultPermissions, setDefaultPermissions] =
@@ -488,14 +505,14 @@ export function ChatSettingsModal({
         description,
       }).unwrap();
 
-      dispatch(
-        chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
-          const cachedChat = draft.data.find(c => c.id === chat.id);
-          if (cachedChat) {
-            cachedChat.name = name;
-          }
-        }),
-      );
+      // dispatch(
+      //   chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
+      //     const cachedChat = draft.data.find(c => c.id === chat.id);
+      //     if (cachedChat) {
+      //       cachedChat.name = name;
+      //     }
+      //   }),
+      // );
 
       onClose();
     } catch (error) {
@@ -546,18 +563,63 @@ export function ChatSettingsModal({
     }
   };
 
+  const handleAddMembers = async () => {
+    const allIds = [...newMembers.userIds, ...newMembers.partnerIds];
+    if (allIds.length === 0) return;
+
+    try {
+      // addChatMember API currently supports only user_id.
+      // Partners selected via contacts are skipped with a warning.
+      for (const userId of newMembers.userIds) {
+        await addMember({ chatId: chat.id, userId }).unwrap();
+      }
+
+      if (newMembers.partnerIds.length > 0) {
+        notifications.show({
+          title: t('addMember'),
+          message:
+            'Партнёры пока не поддерживаются для добавления в существующий чат',
+          color: 'yellow',
+        });
+      } else {
+        notifications.show({
+          title: t('addMember'),
+          message: t('memberAdded') || 'Участники добавлены',
+          color: 'green',
+        });
+      }
+
+      setNewMembers({ userIds: [], partnerIds: [] });
+      refetch();
+    } catch (error) {
+      console.error('Failed to add member:', error);
+      notifications.show({
+        title: t('addMember'),
+        message: 'Ошибка при добавлении участника',
+        color: 'red',
+      });
+    }
+  };
+
   const handleSaveMemberPermissions = async (
     permissions: MemberPermissions,
+    member: (ChatMember & { permissions?: MemberPermissions }) | null,
   ) => {
     if (!editingMember) return;
 
     setIsSavingMemberPerms(true);
     try {
+      if (member?.id)
+        await updatePermissions({
+          chatId: chat.id,
+          memberId: member?.id,
+          ...permissions,
+        });
       // TODO: Implement updateMemberPermissions API
       notifications.show({
         title: t('save'),
-        message: 'Member permissions saved (API not implemented yet)',
-        color: 'blue',
+        message: 'Member permissions saved',
+        color: 'green',
       });
       setEditingMember(null);
     } catch (error) {
@@ -571,11 +633,11 @@ export function ChatSettingsModal({
     try {
       await leaveChat({ chatId: chat.id }).unwrap();
 
-      dispatch(
-        chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
-          draft.data = draft.data.filter(c => c.id !== chat.id);
-        }),
-      );
+      // dispatch(
+      //   chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
+      //     draft.data = draft.data.filter(c => c.id !== chat.id);
+      //   }),
+      // );
 
       onClose();
       onChatDeleted?.();
@@ -815,6 +877,35 @@ export function ChatSettingsModal({
                   <Text fw={500}>{t('members')}</Text>
                   <Badge variant="light">{members.length}</Badge>
                 </Group>
+
+                {/* Добавление участников */}
+                <Box>
+                  <Text size="sm" fw={500} mb="xs">
+                    {t('addMember')}
+                  </Text>
+                  <ChatParticipantSelect
+                    value={newMembers}
+                    onChange={setNewMembers}
+                    excludeUserIds={members.map(m => m.id)}
+                    disabled={isAdding}
+                    showHint={false}
+                  />
+                  <Group justify="flex-end" mt="xs">
+                    <Button
+                      size="xs"
+                      onClick={handleAddMembers}
+                      loading={isAdding}
+                      disabled={
+                        newMembers.userIds.length +
+                          newMembers.partnerIds.length ===
+                        0
+                      }>
+                      {t('addMember')}
+                    </Button>
+                  </Group>
+                </Box>
+
+                <Divider />
 
                 <MembersList
                   members={members}

@@ -147,13 +147,7 @@ export function ChatHeader({
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              {chat.chat_type !== 'direct' && (
-                <Menu.Item
-                  leftSection={<IconUserPlus size={16} />}
-                  onClick={onAddMember}>
-                  {t('addMember')}
-                </Menu.Item>
-              )}
+              {/* Добавление участников теперь через настройки чата */}
 
               <Menu.Item leftSection={<IconBell size={16} />}>
                 {t('notifications')}
