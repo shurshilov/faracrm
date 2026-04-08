@@ -1,5 +1,6 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
+import ColorCell from '@/components/ListCells/ColorCell';
 import RelationCell from '@/components/ListCells/RelationCell';
 
 import type {
@@ -58,7 +59,11 @@ export function ViewListLeadStage() {
       <Field name="id" label={t('lead_stage.id')} />
       <Field name="name" label={t('lead_stage.name')} />
       <Field name="sequence" label={t('lead_stage.sequence')} />
-      <Field name="color" label={t('lead_stage.color')} />
+      <Field
+        name="color"
+        label={t('lead_stage.color')}
+        render={value => <ColorCell value={value} />}
+      />
       <Field name="fold" label={t('lead_stage.fold')} />
     </List>
   );

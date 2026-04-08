@@ -5,6 +5,7 @@ import type { ActivityRecord, ActivityTypeRecord } from '@/types/records';
 import { useTranslation } from 'react-i18next';
 import RelationCell from '@/components/ListCells/RelationCell';
 import DateTimeCell from '@/components/ListCells/DateTimeCell';
+import ColorCell from '@/components/ListCells/ColorCell';
 
 // Re-export for backward compat (used by Form.tsx)
 export type { ActivityRecord, ActivityTypeRecord } from '@/types/records';
@@ -49,7 +50,11 @@ export function ViewListActivityType(props: ViewListProps) {
       <Field name="id" label="ID" />
       <Field name="name" label={t('fields.name')} />
       <Field name="icon" label={t('fields.icon')} />
-      <Field name="color" label={t('fields.color')} />
+      <Field
+        name="color"
+        label={t('fields.color')}
+        render={value => <ColorCell value={value} />}
+      />
       <Field name="default_days" label={t('fields.default_days')} />
       <Field name="sequence" label={t('fields.sequence')} />
       <Field name="active" label={t('fields.active')} />

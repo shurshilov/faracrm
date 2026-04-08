@@ -23,6 +23,7 @@ import type {
   TaskTagRecord,
 } from '@/types/records';
 import { FieldColor } from '@/components/Form/Fields/FieldColor';
+import ColorCell from '@/components/ListCells/ColorCell';
 
 // ==================== Task Form ====================
 

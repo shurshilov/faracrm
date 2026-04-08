@@ -1,5 +1,6 @@
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
+import ColorCell from '@/components/ListCells/ColorCell';
 import DateTimeCell from '@/components/ListCells/DateTimeCell';
 import RelationCell from '@/components/ListCells/RelationCell';
 import type {
@@ -85,7 +86,11 @@ export function ViewListTaskStages() {
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
       <Field name="sequence" label={t('fields.sequence')} />
-      <Field name="color" label={t('fields.color')} />
+      <Field
+        name="color"
+        label={t('fields.color')}
+        render={value => <ColorCell value={value} />}
+      />
       <Field name="is_closed" label={t('fields.is_closed')} />
       <Field name="fold" label={t('fields.fold')} />
     </List>
@@ -100,7 +105,11 @@ export function ViewListTaskTags() {
     <List<TaskTagRecord> model="task_tag" order="asc" sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="name" label={t('fields.name')} />
-      <Field name="color" label={t('fields.color')} />
+      <Field
+        name="color"
+        label={t('fields.color')}
+        render={value => <ColorCell value={value} />}
+      />
       <Field name="active" label={t('fields.active')} />
     </List>
   );
