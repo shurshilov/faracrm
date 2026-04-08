@@ -63,7 +63,7 @@ export function ViewFormActivityType(props: ViewFormProps) {
           <Field name="icon" label={t('fields.icon')} />
         </FormRow>
         <FormRow cols={3}>
-          <Field name="color" label={t('fields.color')} />
+          <Field name="color" label={t('fields.color')} widget="color" />
           <Field name="default_days" label={t('fields.default_days')} />
           <Field name="sequence" label={t('fields.sequence')} />
         </FormRow>

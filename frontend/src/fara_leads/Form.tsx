@@ -9,7 +9,6 @@ import type {
 import { FormSection, FormRow } from '@/components/Form/Layout';
 import {
   IconUser,
-  IconPhone,
   IconBuilding,
   IconTag,
   IconProgress,
@@ -92,7 +91,7 @@ export function ViewFormLeadStage(props: ViewFormProps) {
 
       <FormSection title="Настройки" icon={<IconPalette size={18} />}>
         <FormRow cols={2}>
-          <Field name="color" label="Цвет" />
+          <Field name="color" label="Цвет" widget="color" />
           <Field name="fold" label="Свёрнута в канбане" />
         </FormRow>
         <Field name="active" label="Активна" />

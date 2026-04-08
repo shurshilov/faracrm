@@ -22,6 +22,7 @@ import type {
   TaskStageRecord,
   TaskTagRecord,
 } from '@/types/records';
+import { FieldColor } from '@/components/Form/Fields/FieldColor';
 
 // ==================== Task Form ====================
 
@@ -46,7 +47,7 @@ export function ViewFormTask(props: ViewFormProps) {
           <Field name="date_deadline" label={t('fields.date_deadline')} />
         </FormRow>
         <FormRow cols={4}>
-          <Field name="color" label={t('fields.color')} />
+          <Field name="color" label={t('fields.color')} widget="color" />
           <Field name="sequence" label={t('fields.sequence')} />
           <Field name="parent_id" label={t('fields.parent_id')} />
           <Field name="active" label={t('fields.active')} />
@@ -125,7 +126,7 @@ export function ViewFormProject(props: ViewFormProps) {
         <FormRow cols={3}>
           <Field name="date_start" label={t('fields.date_start')} />
           <Field name="date_end" label={t('fields.date_end')} />
-          <Field name="color" label={t('fields.color')} />
+          <Field name="color" label={t('fields.color')} widget="color" />
         </FormRow>
       </FormSheet>
 
@@ -171,7 +172,7 @@ export function ViewFormTaskStage(props: ViewFormProps) {
           <Field name="sequence" label={t('fields.sequence')} />
         </FormRow>
         <FormRow cols={3}>
-          <Field name="color" label={t('fields.color')} />
+          <Field name="color" label={t('fields.color')} widget="color" />
           <Field name="is_closed" label={t('fields.is_closed')} />
           <Field name="fold" label={t('fields.fold')} />
         </FormRow>
@@ -190,7 +191,7 @@ export function ViewFormTaskTag(props: ViewFormProps) {
       <FormSheet>
         <FormRow cols={2}>
           <Field name="name" label={t('fields.name')} />
-          <Field name="color" label={t('fields.color')} />
+          <Field name="color" label={t('fields.color')} widget="color" />
         </FormRow>
         <Field name="active" label={t('fields.active')} />
       </FormSheet>
