@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 import io
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 from backend.base.crm.attachments.strategies.strategy import (
     StorageStrategyBase,
@@ -137,7 +137,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
         )
         logger.debug("Refreshed credentials saved to storage %s", storage.id)
 
-    def _get_parent_id(self, storage: "AttachmentStorage") -> Optional[str]:
+    def _get_parent_id(self, storage: "AttachmentStorage") -> str | None:
         """
         Получить ID родительской папки для файлов.
 
@@ -158,9 +158,9 @@ class GoogleDriveStrategy(StorageStrategyBase):
         attachment: "Attachment",
         content: bytes,
         filename: str,
-        mimetype: Optional[str] = None,
-        parent_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        mimetype: str | None = None,
+        parent_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Создать файл в Google Drive.
 
@@ -237,7 +237,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
-    ) -> Optional[bytes]:
+    ) -> bytes | None:
         """
         Прочитать файл из Google Drive.
 
@@ -297,10 +297,10 @@ class GoogleDriveStrategy(StorageStrategyBase):
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
-        content: Optional[bytes] = None,
-        filename: Optional[str] = None,
-        mimetype: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        content: bytes | None = None,
+        filename: str | None = None,
+        mimetype: str | None = None,
+    ) -> dict[str, Any]:
         """
         Обновить файл в Google Drive.
 
@@ -431,9 +431,9 @@ class GoogleDriveStrategy(StorageStrategyBase):
         self,
         storage: "AttachmentStorage",
         folder_name: str,
-        parent_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        parent_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str | None:
         """
         Создать папку в Google Drive.
 
@@ -560,7 +560,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Получить URL файла в Google Drive.
 
@@ -584,7 +584,7 @@ class GoogleDriveStrategy(StorageStrategyBase):
         storage: "AttachmentStorage",
         attachment: "Attachment",
         new_parent_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Переместить файл в другую папку.
 

@@ -1,5 +1,6 @@
 {
   "terminateAllSessions": "Terminate all sessions",
+  "terminateAllMySessions": "Terminate all my sessions",
   "confirmTerminate": "Confirmation",
   "terminateAllConfirmText": "Are you sure you want to terminate all active sessions except the current one?",
   "terminate": "Terminate",

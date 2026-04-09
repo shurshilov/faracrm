@@ -30,12 +30,9 @@
 
 from typing import (
     Type,
-    Dict,
-    List,
     Set,
     Any,
     Callable,
-    Optional,
     Union,
     TypeVar,
 )
@@ -88,7 +85,7 @@ class ExtensionRegistry:
     Хранит расширения (@extend) и применяет их к моделям при первом доступе.
     """
 
-    _instance: Optional["ExtensionRegistry"] = None
+    _instance: "ExtensionRegistry | None" = None
 
     def __new__(cls) -> "ExtensionRegistry":
         if cls._instance is None:
@@ -98,12 +95,12 @@ class ExtensionRegistry:
 
     def _init_registry(self):
         """Инициализация внутренних структур."""
-        self._extensions: Dict[str, List[Dict[str, Any]]] = {}
+        self._extensions: dict[str, list[dict[str, Any]]] = {}
         self._applied: Set[str] = set()
-        self._original_methods: Dict[str, Dict[str, Callable]] = {}
+        self._original_methods: dict[str, dict[str, Callable]] = {}
 
     def add_extension(
-        self, target: Union[Type, str], namespace: Dict[str, Any]
+        self, target: Union[Type, str], namespace: dict[str, Any]
     ) -> None:
         """
         Добавить расширение для модели.
@@ -160,7 +157,7 @@ class ExtensionRegistry:
 
         return model_class
 
-    def _apply_extension(self, model: Type, namespace: Dict[str, Any]) -> None:
+    def _apply_extension(self, model: Type, namespace: dict[str, Any]) -> None:
         """Применить namespace расширения к модели."""
         from backend.base.system.dotorm.dotorm.fields import Field, Selection
 
@@ -219,7 +216,7 @@ class ExtensionRegistry:
 
     def get_original_method(
         self, model: Union[Type, str], method_name: str
-    ) -> Optional[Callable]:
+    ) -> Callable | None:
         """
         Получить оригинальный метод модели (до применения расширений).
 
@@ -238,7 +235,7 @@ class ExtensionRegistry:
         self._init_registry()
         log.info("Extension registry cleared")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Получить статистику расширений."""
         return {
             "extensions_count": sum(len(v) for v in self._extensions.values()),
@@ -343,7 +340,7 @@ class ExtensibleMixin:
     """
 
     # Пакеты по умолчанию для поиска расширений
-    _autodiscover: List[str] = [
+    _autodiscover = [
         "backend.business",
         "backend.base.crm",
         "backend.base.system",
@@ -502,7 +499,7 @@ def call_original(instance, method_name: str, *args, **kwargs):
     )
 
 
-def get_extended_fields(model_class: Type) -> Dict[str, Any]:
+def get_extended_fields(model_class: Type) -> dict[str, Any]:
     """
     Получить все поля модели, включая добавленные через @extend и унаследованные из миксинов.
 

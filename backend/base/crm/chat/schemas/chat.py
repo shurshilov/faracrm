@@ -2,7 +2,7 @@
 # Chat module - Pydantic schemas for API validation
 
 from datetime import datetime
-from typing import Optional, List, Literal
+from typing import Literal
 from pydantic import BaseModel, Field
 
 # ====================== CHAT SCHEMAS ======================
@@ -11,14 +11,14 @@ from pydantic import BaseModel, Field
 class ChatCreate(BaseModel):
     """Schema for creating a new chat."""
 
-    name: Optional[str] = Field(None, max_length=255, description="Chat name")
+    name: str | None = Field(None, max_length=255, description="Chat name")
     chat_type: Literal["direct", "group", "channel"] = Field(
         "direct", description="Chat type: direct, group, channel"
     )
-    user_ids: List[int] = Field(
+    user_ids: list[int] = Field(
         default_factory=list, description="User IDs for internal chat"
     )
-    partner_ids: List[int] = Field(
+    partner_ids: list[int] = Field(
         default_factory=list, description="Partner IDs for external chat"
     )
 
@@ -26,26 +26,24 @@ class ChatCreate(BaseModel):
 class ChatUpdate(BaseModel):
     """Schema for updating chat settings."""
 
-    name: Optional[str] = Field(
-        None, max_length=255, description="New chat name"
-    )
-    description: Optional[str] = Field(
+    name: str | None = Field(None, max_length=255, description="New chat name")
+    description: str | None = Field(
         None, max_length=1000, description="Chat description"
     )
     # Default permissions for new members
-    default_can_read: Optional[bool] = Field(
+    default_can_read: bool | None = Field(
         None, description="Default read permission for new members"
     )
-    default_can_write: Optional[bool] = Field(
+    default_can_write: bool | None = Field(
         None, description="Default write permission for new members"
     )
-    default_can_invite: Optional[bool] = Field(
+    default_can_invite: bool | None = Field(
         None, description="Default invite permission for new members"
     )
-    default_can_pin: Optional[bool] = Field(
+    default_can_pin: bool | None = Field(
         None, description="Default pin permission for new members"
     )
-    default_can_delete_others: Optional[bool] = Field(
+    default_can_delete_others: bool | None = Field(
         None, description="Default delete others permission for new members"
     )
 
@@ -83,19 +81,19 @@ class ChatMember(BaseModel):
 
     id: int
     name: str
-    email: Optional[str] = None
-    member_type: Optional[str] = None
-    permissions: Optional[MemberPermissions] = None
+    email: str | None = None
+    member_type: str | None = None
+    permissions: MemberPermissions | None = None
 
 
 class ChatLastMessage(BaseModel):
     """Schema for last message preview."""
 
     id: int
-    body: Optional[str] = None
+    body: str | None = None
     message_type: str = "comment"
     author_id: int
-    create_date: Optional[datetime] = None
+    create_date: datetime | None = None
 
 
 class ChatResponse(BaseModel):
@@ -104,13 +102,13 @@ class ChatResponse(BaseModel):
     id: int
     name: str
     chat_type: str
-    description: Optional[str] = None
+    description: str | None = None
     is_internal: bool = True
     is_public: bool = False
-    create_date: Optional[datetime] = None
-    last_message_date: Optional[datetime] = None
-    members: List[ChatMember] = Field(default_factory=list)
-    last_message: Optional[ChatLastMessage] = None
+    create_date: datetime | None = None
+    last_message_date: datetime | None = None
+    members: list[ChatMember] = Field(default_factory=list)
+    last_message: ChatLastMessage | None = None
     unread_count: int = 0
     # Default permissions
     default_can_read: bool = True
@@ -123,7 +121,7 @@ class ChatResponse(BaseModel):
 class ChatListResponse(BaseModel):
     """Schema for list of chats."""
 
-    data: List[ChatResponse]
+    data: list[ChatResponse]
     total: int
 
 
@@ -144,13 +142,13 @@ class MessageCreate(BaseModel):
     """Schema for creating a new message."""
 
     body: str = Field("", description="Message text")
-    connector_id: Optional[int] = Field(
+    connector_id: int | None = Field(
         None, description="Connector ID for external sending"
     )
-    parent_id: Optional[int] = Field(
+    parent_id: int | None = Field(
         None, description="Parent message ID for replies"
     )
-    attachments: List[AttachmentInput] = Field(
+    attachments: list[AttachmentInput] = Field(
         default_factory=list, description="Attachments to upload"
     )
 
@@ -183,25 +181,25 @@ class MessageAuthor(BaseModel):
     """Schema for message author."""
 
     id: int
-    name: Optional[str] = None
+    name: str | None = None
 
 
 class MessageResponse(BaseModel):
     """Schema for message response."""
 
     id: int
-    body: Optional[str] = None
+    body: str | None = None
     message_type: str = "comment"
-    create_date: Optional[datetime] = None
-    author: Optional[MessageAuthor] = None
+    create_date: datetime | None = None
+    author: MessageAuthor | None = None
     starred: bool = False
-    connector_type: Optional[str] = None
+    connector_type: str | None = None
 
 
 class MessageListResponse(BaseModel):
     """Schema for list of messages."""
 
-    data: List[MessageResponse]
+    data: list[MessageResponse]
 
 
 # ====================== CONNECTOR SCHEMAS ======================
@@ -213,10 +211,10 @@ class ConnectorCreate(BaseModel):
     name: str = Field(..., max_length=255)
     type: str = Field("internal", description="Connector type")
     category: str = Field("messenger", description="Connector category")
-    connector_url: Optional[str] = None
-    webhook_url: Optional[str] = None
-    access_token: Optional[str] = None
-    client_app_id: Optional[str] = None
+    connector_url: str | None = None
+    webhook_url: str | None = None
+    access_token: str | None = None
+    client_app_id: str | None = None
 
 
 class ConnectorResponse(BaseModel):
@@ -228,13 +226,13 @@ class ConnectorResponse(BaseModel):
     category: str
     active: bool = True
     webhook_state: str = "none"
-    connector_url: Optional[str] = None
+    connector_url: str | None = None
 
 
 class ConnectorListResponse(BaseModel):
     """Schema for list of connectors."""
 
-    data: List[ConnectorResponse]
+    data: list[ConnectorResponse]
     total: int
 
 
@@ -245,10 +243,10 @@ class WebSocketMessage(BaseModel):
     """Schema for WebSocket message."""
 
     type: str
-    chat_id: Optional[int] = None
-    message_id: Optional[int] = None
-    user_id: Optional[int] = None
-    data: Optional[dict] = None
+    chat_id: int | None = None
+    message_id: int | None = None
+    user_id: int | None = None
+    data: dict | None = None
 
 
 class WebSocketNewMessage(BaseModel):

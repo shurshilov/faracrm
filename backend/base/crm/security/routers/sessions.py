@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
@@ -44,8 +45,18 @@ async def logout(req: Request, response: Response):
     return {"success": True}
 
 
+class TerminationMode(str, Enum):
+    # Все, кроме текущей (по умолчанию)
+    MY = "MY"
+    # Вообще все
+    ALL = "ALL"
+
+
 @router_private.post("/terminate_all", response_model=TerminateAllResponse)
-async def terminate_all_sessions(req: Request, exclude_current: bool = True):
+async def terminate_all_sessions(
+    req: Request,
+    mode: TerminationMode = TerminationMode.MY,
+):
     """
     Завершить все активные сессии текущего пользователя.
 
@@ -53,31 +64,17 @@ async def terminate_all_sessions(req: Request, exclude_current: bool = True):
         exclude_current: Если True, текущая сессия не будет завершена
     """
     env: "Environment" = req.app.state.env
-
-    # Получаем текущий токен из заголовка
-    current_token = None
-    if exclude_current:
-        current_token = req.headers.get("Authorization", "").replace(
-            "Bearer ", ""
-        )
-
-        # user_id уже есть в сессии (добавлен в session_check)
     auth_session: "Session" = req.state.session
-    user_id = auth_session.user_id.id
 
     async with env.apps.db.get_transaction():
-        user = await env.models.user.get_or_none(id=user_id)
-
+        user = await env.models.user.get_or_none(id=auth_session.user_id.id)
         if not user:
             return TerminateAllResponse(
                 terminated_count=0, message="User not found"
             )
-
-        terminated_count = await user.terminate_sessions(
-            exclude_token=current_token,
-        )
+        terminated_count = await user.terminate_sessions(auth_session.id, mode)
 
         return TerminateAllResponse(
             terminated_count=terminated_count,
-            message=f"Successfully terminated {terminated_count} session(s)",
+            message=f"Sessions terminated in mode: {mode.value}",
         )

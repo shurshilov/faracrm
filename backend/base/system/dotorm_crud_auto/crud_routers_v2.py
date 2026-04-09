@@ -333,12 +333,13 @@ class CRUDRouterGenerator(APIRouter):
         schema_input = self._schema_update
 
         async def route(id: Id, payload: schema_input):  # type: ignore
-            record = await Model.get(id)
+            record = await Model.search(filter=[("id", "=", id)], limit=1)
             if not record:
                 return JSONResponse(
                     content={"error": "#NOT_FOUND"},
                     status_code=HTTP_404_NOT_FOUND,
                 )
+            record = record[0]
 
             payload_dict = payload.model_dump(exclude_unset=True)
             fields_names = list(payload_dict)

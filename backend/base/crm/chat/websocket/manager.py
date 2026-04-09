@@ -4,7 +4,7 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Dict, Set
+from typing import TYPE_CHECKING, Set
 
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
@@ -31,16 +31,16 @@ class ConnectionManager:
 
     def __init__(self):
         # user_id -> set of WebSocket connections
-        self._connections: Dict[int, Set[WebSocket]] = {}
+        self._connections: dict[int, Set[WebSocket]] = {}
 
         # chat_id -> set of user_ids subscribed to this chat
-        self._chat_subscriptions: Dict[int, Set[int]] = {}
+        self._chat_subscriptions: dict[int, Set[int]] = {}
 
         # user_id -> set of chat_ids user is subscribed to
-        self._user_subscriptions: Dict[int, Set[int]] = {}
+        self._user_subscriptions: dict[int, Set[int]] = {}
 
         # user_id -> last activity timestamp
-        self._user_activity: Dict[int, datetime] = {}
+        self._user_activity: dict[int, datetime] = {}
 
         # Lock for thread-safe operations
         self._lock = asyncio.Lock()

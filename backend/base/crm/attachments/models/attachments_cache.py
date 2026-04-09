@@ -2,7 +2,7 @@
 # Attachments module - Folder cache model
 
 import logging
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Tuple
 
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
     FilterExpression,
@@ -64,7 +64,7 @@ class AttachmentCache(DotModel):
         cls,
         route_id: int,
         res_model: str,
-    ) -> Tuple[Optional[str], Optional[str]]:
+    ) -> Tuple[str | None, str | None]:
         """
         Получить folder ID из кеша.
 

@@ -43,7 +43,8 @@
     "title": "Files",
     "attachments": "All Files",
     "attachments_storage": "Storages",
-    "attachments_route": "Routes"
+    "attachments_route": "Routes",
+    "attachments_cache": "Cache"
   },
   "tabs": {
     "info": "General Information",

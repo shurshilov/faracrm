@@ -296,6 +296,17 @@ export const modelsConfig: Record<string, ModelConfig> = {
         default: m.ViewFormAttachmentsRoute,
       })),
   },
+  attachments_cache: {
+    menu: MenuGroups.files,
+    list: () =>
+      import('@/fara_attachments/List').then(m => ({
+        default: m.ViewListAttachmentsCache,
+      })),
+    form: () =>
+      import('@/fara_attachments/Form').then(m => ({
+        default: m.ViewFormAttachmentsCache,
+      })),
+  },
 
   // === Settings ===
   company: {

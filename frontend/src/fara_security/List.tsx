@@ -15,6 +15,7 @@ import { SchemaRole } from '@/services/api/roles';
 import { SchemaRule } from '@/services/api/rules';
 import {
   SchemaSession,
+  TerminationMode,
   useRouteSessionsTerminateAllMutation,
 } from '@/services/api/sessions';
 import { SchemaApp } from '@/services/api/apps';
@@ -147,16 +148,21 @@ export function ViewListModels() {
 
 export function ViewListSessions() {
   const { t } = useTranslation('security');
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [refetchFn, setRefetchFn] = useState<(() => void) | null>(null);
+  const [terminateMode, setTerminateMode] = useState<TerminationMode | null>(
+    null,
+  );
+  const isModalOpen = terminateMode !== null;
+  const closeModal = () => setTerminateMode(null);
 
   const [terminateAll, { isLoading: isTerminating }] =
     useRouteSessionsTerminateAllMutation();
 
-  const handleTerminateAll = async () => {
+  const handleTerminateAll = async (
+    mode: TerminationMode = TerminationMode.My,
+  ) => {
     try {
-      await terminateAll({ excludeCurrent: true }).unwrap();
-      setConfirmOpen(false);
+      await terminateAll({ excludeCurrent: true, mode: mode }).unwrap();
       refetchFn?.();
     } catch (error) {
       console.error('Failed to terminate sessions:', error);
@@ -177,14 +183,24 @@ export function ViewListSessions() {
 
   // Кнопка для тулбара
   const TerminateButton = (
-    <Button
-      color="red"
-      variant="light"
-      leftSection={<IconLogout size={16} />}
-      onClick={() => setConfirmOpen(true)}
-      loading={isTerminating}>
-      {t('security:terminateAllSessions', 'Завершить все сессии')}
-    </Button>
+    <>
+      <Button
+        color="red"
+        variant="light"
+        leftSection={<IconLogout size={16} />}
+        onClick={() => setTerminateMode(TerminationMode.My)}
+        loading={isTerminating}>
+        {t('security:terminateAllMySessions')}
+      </Button>
+      <Button
+        color="red"
+        variant="light"
+        leftSection={<IconLogout size={16} />}
+        onClick={() => setTerminateMode(TerminationMode.All)}
+        loading={isTerminating}>
+        {t('security:terminateAllSessions')}
+      </Button>
+    </>
   );
 
   return (
@@ -237,24 +253,35 @@ export function ViewListSessions() {
       </List>
 
       <Modal
-        opened={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
+        opened={isModalOpen} // Открыто, если режим выбран
+        onClose={closeModal}
         title={t('security:confirmTerminate', 'Подтверждение')}
         centered>
         <Text mb="lg">
-          {t(
-            'security:terminateAllConfirmText',
-            'Вы уверены, что хотите завершить все активные сессии кроме текущей?',
-          )}
+          {terminateMode === TerminationMode.My
+            ? t(
+                'security:terminateAllMySessions',
+                'Завершить все сессии, кроме текущей?',
+              )
+            : t(
+                'security:terminateAllSessions',
+                'Завершить вообще все сессии всех пользователей?',
+              )}
         </Text>
+
         <Group justify="flex-end">
-          <Button variant="default" onClick={() => setConfirmOpen(false)}>
+          <Button variant="default" onClick={closeModal}>
             {t('common:cancel', 'Отмена')}
           </Button>
           <Button
             color="red"
-            onClick={handleTerminateAll}
-            loading={isTerminating}>
+            loading={isTerminating}
+            onClick={async () => {
+              if (terminateMode) {
+                await handleTerminateAll(terminateMode); // Передаем режим в функцию
+                closeModal();
+              }
+            }}>
             {t('security:terminate', 'Завершить')}
           </Button>
         </Group>

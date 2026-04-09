@@ -2,7 +2,7 @@
 # Chat module - messages router
 
 import base64
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Query
 from starlette.status import HTTP_403_FORBIDDEN
 
@@ -56,7 +56,7 @@ async def get_messages(
     req: Request,
     chat_id: int,
     limit: int = Query(50, ge=1, le=100),
-    before_id: Optional[int] = Query(None),
+    before_id: int | None = Query(None),
 ):
     """
     Получить сообщения чата.
@@ -604,7 +604,7 @@ async def get_reactions(req: Request, chat_id: int, message_id: int):
 
 async def get_message_reactions(
     env: "Environment", message_id: int
-) -> List[dict]:
+) -> list[dict]:
     """Вспомогательная функция для получения реакций сообщения."""
     reactions_raw = await env.models.chat_message_reaction.search(
         filter=[("message_id", "=", message_id)],

@@ -1,7 +1,7 @@
 # Copyright 2025 FARA CRM
 # Chat module - strategies registry
 
-from typing import Dict, Type
+from typing import Type
 import logging
 
 from .strategy import ChatStrategyBase
@@ -11,7 +11,7 @@ from .internal import InternalStrategy, InternalMessageAdapter
 logger = logging.getLogger(__name__)
 
 # Реестр стратегий
-_strategies: Dict[str, ChatStrategyBase] = {}
+_strategies: dict[str, ChatStrategyBase] = {}
 
 
 def register_strategy(strategy_class: Type[ChatStrategyBase]) -> None:

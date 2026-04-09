@@ -2,7 +2,7 @@
 # Attachments module - base storage strategy
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 import logging
 
 if TYPE_CHECKING:
@@ -42,9 +42,9 @@ class StorageStrategyBase(ABC):
         attachment: "Attachment",
         content: bytes,
         filename: str,
-        mimetype: Optional[str] = None,
-        parent_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        mimetype: str | None = None,
+        parent_id: str | None = None,
+    ) -> dict[str, Any]:
         """
         Создать файл в хранилище.
 
@@ -69,7 +69,7 @@ class StorageStrategyBase(ABC):
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
-    ) -> Optional[bytes]:
+    ) -> bytes | None:
         """
         Прочитать содержимое файла из хранилища.
 
@@ -86,10 +86,10 @@ class StorageStrategyBase(ABC):
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
-        content: Optional[bytes] = None,
-        filename: Optional[str] = None,
-        mimetype: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        content: bytes | None = None,
+        filename: str | None = None,
+        mimetype: str | None = None,
+    ) -> dict[str, Any]:
         """
         Обновить файл в хранилище.
 
@@ -129,9 +129,9 @@ class StorageStrategyBase(ABC):
         self,
         storage: "AttachmentStorage",
         folder_name: str,
-        parent_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        parent_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> str:
         """
         Создать папку в хранилище (для облачных хранилищ).
 
@@ -148,15 +148,15 @@ class StorageStrategyBase(ABC):
             "[%s] create_folder not implemented, returning None",
             self.strategy_type,
         )
-        return None
+        return ""
 
     async def get_folder_path(
         self,
         storage: "AttachmentStorage",
-        res_model: Optional[str],
-        res_id: Optional[int],
-        route_id: Optional[int] = None,
-    ) -> Optional[str]:
+        res_model: str | None,
+        res_id: int | None,
+        route_id: int | None = None,
+    ) -> str | None:
         """
         Получить или создать путь к папке для файла.
 
@@ -175,7 +175,7 @@ class StorageStrategyBase(ABC):
 
     async def get_credentials(
         self, storage: "AttachmentStorage"
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """
         Получить или обновить credentials для API.
 
@@ -205,7 +205,7 @@ class StorageStrategyBase(ABC):
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Получить публичный URL файла для просмотра/скачивания.
 
@@ -223,7 +223,7 @@ class StorageStrategyBase(ABC):
         storage: "AttachmentStorage",
         attachment: "Attachment",
         new_parent_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Переместить файл в другую папку (для облачных хранилищ).
 
@@ -260,8 +260,8 @@ class StorageStrategyBase(ABC):
     def _build_file_path(
         self,
         base_path: str,
-        res_model: Optional[str],
-        res_id: Optional[int],
+        res_model: str | None,
+        res_id: int | None,
         filename: str,
     ) -> str:
         """

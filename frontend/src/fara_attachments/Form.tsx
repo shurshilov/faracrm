@@ -20,6 +20,7 @@ import {
   FormSection,
 } from '@/components/Form/Layout';
 import { AttachmentPreviewCard } from '@/components/Attachment/AttachmentPreviewCard';
+import { useTranslation } from 'react-i18next';
 
 // Тип для маршрута
 interface AttachmentRoute {
@@ -281,6 +282,22 @@ export function ViewFormAttachmentsRoute(props: ViewFormProps) {
           </FormSection>
         </FormTab>
       </FormTabs>
+    </Form>
+  );
+}
+export function ViewFormAttachmentsCache(props: ViewFormProps) {
+  const { t } = useTranslation('attachments');
+  return (
+    <Form model="attachments_cache" {...props}>
+      <FormSection title="Кеш">
+        <FormRow cols={2}>
+          <Field name="id" label={t('fields.id')} />
+          <Field name="route_id" label={t('fields.route_id')} />
+          <Field name="res_model" label={t('fields.res_model')} />
+          <Field name="folder_id" label={t('fields.folder_id')} />
+          <Field name="folder_name" label={t('fields.folder_name')} />
+        </FormRow>
+      </FormSection>
     </Form>
   );
 }

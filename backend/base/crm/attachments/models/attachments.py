@@ -5,7 +5,7 @@
 import base64
 import hashlib
 import logging
-from typing import Self, TYPE_CHECKING, Optional, Tuple
+from typing import Self, TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
@@ -124,9 +124,10 @@ class Attachment(DotModel):
         help="File ID in cloud storage (Google Drive ID, etc.)",
     )
 
-    storage_parent_id: str | None = Char(
+    storage_parent_id: str = Char(
         string="Storage parent ID",
         help="Parent folder ID in cloud storage",
+        required=False,
     )
 
     storage_parent_name: str | None = Char(
@@ -202,15 +203,10 @@ class Attachment(DotModel):
 
     async def _resolve_route_and_folder(
         self,
-        res_model: Optional[str],
-        res_id: Optional[int],
-        folder_cache: Optional[dict] = None,
-    ) -> Tuple[
-        Optional[AttachmentRoute],
-        Optional[AttachmentStorage],
-        Optional[str],
-        Optional[str],
-    ]:
+        res_model: str | None,
+        res_id: int | None,
+        folder_cache: dict[tuple, dict[str, str]] | None = None,
+    ):
         """
         Единая логика определения маршрута, хранилища и parent folder.
 
@@ -232,13 +228,13 @@ class Attachment(DotModel):
         )
 
         if not route:
-            return None, None, None, None
+            raise ValueError("Cant setup empty route")
 
         # 2. Получаем storage из route
         storage = route.storage_id
         if not storage or not storage.active:
             logger.warning("Route %s has no active storage", route.id)
-            return route, None, None, None
+            raise ValueError("Cant setup empty storage")
 
         # 3. Проверяем локальный кеш batch'а (только для create_bulk)
         cache_key = (res_model, res_id, route.id)

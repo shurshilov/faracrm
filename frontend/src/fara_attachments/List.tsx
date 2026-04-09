@@ -158,3 +158,17 @@ export function ViewListAttachmentsRoute() {
     </List>
   );
 }
+
+export function ViewListAttachmentsCache() {
+  const { t } = useTranslation('attachments');
+
+  return (
+    <List model="attachments_cache" order="desc" sort="id">
+      <Field name="id" label={t('fields.id')} />
+      <Field name="route_id" label={t('fields.route_id')} />
+      <Field name="res_model" label={t('fields.res_model')} />
+      <Field name="folder_id" label={t('fields.folder_id')} />
+      <Field name="folder_name" label={t('fields.folder_name')} />
+    </List>
+  );
+}

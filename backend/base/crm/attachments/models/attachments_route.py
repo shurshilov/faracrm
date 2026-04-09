@@ -4,16 +4,17 @@
 
 import logging
 import re
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any
 
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Char,
+    Field,
     Integer,
     JSONField,
     Many2one,
 )
-from backend.base.system.dotorm.dotorm.model import DotModel
+from backend.base.system.dotorm.dotorm.model import DotModel, Model
 from backend.base.system.core.enviroment import env
 from backend.base.crm.attachments.strategies import get_strategy
 from .attachments_cache import AttachmentCache
@@ -130,8 +131,8 @@ class AttachmentRoute(DotModel):
     def _render_template(
         self,
         template: str,
-        record: Optional[Any] = None,
-        extra_context: Optional[Dict[str, Any]] = None,
+        record: Model | None = None,
+        extra_context: dict[str, Any] | None = None,
     ) -> str:
         """
         Render a template string with variables.
@@ -149,33 +150,23 @@ class AttachmentRoute(DotModel):
 
         # Для дефолтного маршрута model берём из extra_context (res_model)
         model_name = self.model
-        if not model_name and extra_context:
-            model_name = extra_context.get("res_model")
-
         context = {
             "model": model_name or "",
-            "table": model_name.replace(".", "_") if model_name else "",
             "route_id": self.id,
         }
-
-        # Add record fields if provided
-        if record:
-            context["id"] = getattr(record, "id", "")
-            context["zfill"] = lambda x, w=7: self._zfill(x, w)
-
-            # Add all record attributes
-            for attr in dir(record):
-                if not attr.startswith("_"):
-                    try:
-                        value = getattr(record, attr)
-                        if not callable(value):
-                            context[attr] = value
-                    except Exception:
-                        pass
-
         # Add extra context
         if extra_context:
             context.update(extra_context)
+            if not model_name:
+                model_name = extra_context.get("res_model")
+
+        # Add record fields if provided
+        if record:
+            # Add all record attributes
+            for field_name in record.get_all_fields().keys():
+                value = getattr(record, field_name)
+                if not isinstance(value, Field):
+                    context[field_name] = value
 
         # Handle zfill function calls in template
         # Convert {zfill(id)} to actual zfill call
@@ -195,7 +186,7 @@ class AttachmentRoute(DotModel):
 
         return result
 
-    def render_root_folder_name(self, res_model: Optional[str] = None) -> str:
+    def render_root_folder_name(self, res_model: str | None = None) -> str:
         """Render the root folder name for this route."""
         extra_context = {"res_model": res_model} if res_model else None
         return self._render_template(
@@ -205,8 +196,8 @@ class AttachmentRoute(DotModel):
     def render_record_folder_name(
         self,
         record: Any,
-        res_model: Optional[str] = None,
-        res_id: Optional[int] = None,
+        res_model: str | None = None,
+        res_id: int | None = None,
     ) -> str:
         extra_context = {}
         if res_model:
@@ -214,7 +205,7 @@ class AttachmentRoute(DotModel):
         if res_id:
             extra_context["id"] = res_id
         return self._render_template(
-            self.pattern_record, record, extra_context or None
+            self.pattern_record, record, extra_context
         )
 
     # ========================================================================
@@ -226,7 +217,7 @@ class AttachmentRoute(DotModel):
         cls,
         res_model: str | None,
         res_id: int | None,
-    ) -> Optional["AttachmentRoute"]:
+    ):
         """
         Find matching route using priority-based matching.
 
@@ -274,7 +265,7 @@ class AttachmentRoute(DotModel):
             return res_id in ids
         return True
 
-    async def _get_records_ids(self) -> List[int]:
+    async def _get_records_ids(self) -> list[int]:
         if isinstance(self.filter, list) and self.filter and self.model:
             record_ids = await env.models._get_model(self.model).search(
                 filter=self.filter, fields=["id"]
@@ -286,14 +277,12 @@ class AttachmentRoute(DotModel):
     # Folder cache (uses separate table)
     # ========================================================================
 
-    def _get_cache_key(self, res_model: Optional[str] = None) -> str:
+    def _get_cache_key(self, res_model: str | None = None) -> str:
         if self.model is not None:
             return "_default"
         return res_model or "_default"
 
-    async def _get_cached_root_folder(
-        self, res_model: Optional[str] = None
-    ) -> Tuple[Optional[str], Optional[str]]:
+    async def _get_cached_root_folder(self, res_model: str | None = None):
         cache_key = self._get_cache_key(res_model)
         return await AttachmentCache.get_folder(self.id, cache_key)
 
@@ -301,7 +290,7 @@ class AttachmentRoute(DotModel):
         self,
         folder_id: str,
         folder_name: str,
-        res_model: Optional[str] = None,
+        res_model: str | None = None,
     ) -> None:
         cache_key = self._get_cache_key(res_model)
         await AttachmentCache.set_folder(
@@ -319,11 +308,11 @@ class AttachmentRoute(DotModel):
         self,
         storage: "AttachmentStorage",
         res_model: str | None = None,
-    ) -> Tuple[Optional[str], Optional[str]]:
+    ):
         """Get or create root folder for this route."""
         # Check cache first
         folder_id, folder_name = await self._get_cached_root_folder(res_model)
-        if folder_id:
+        if folder_id and folder_name:
             return folder_id, folder_name
 
         # Render folder name
@@ -358,6 +347,8 @@ class AttachmentRoute(DotModel):
             await self._save_root_folder_to_cache(
                 folder_id, folder_name, res_model
             )
+        else:
+            raise ValueError("Cant setup empty folder_id")
 
         return folder_id, folder_name
 
@@ -389,7 +380,7 @@ class AttachmentRoute(DotModel):
             storage, res_model
         )
         if not root_folder_id:
-            return None, None
+            raise ValueError("Cant setup empty root_folder_id")
 
         folder_name = self.render_record_folder_name(record, res_model, res_id)
         if not folder_name:
@@ -445,7 +436,7 @@ class AttachmentRoute(DotModel):
     async def get_attachments_to_sync(
         self,
         storage_id: int,
-    ) -> List[int]:
+    ):
         """
         Get attachment IDs that should be synced via this route.
 

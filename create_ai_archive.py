@@ -8,7 +8,7 @@ and node_modules folders.
 
 import zipfile
 from pathlib import Path
-from typing import List, Set
+from typing import Set
 
 
 def should_exclude_path(path: Path, exclude_dirs: Set[str]) -> bool:
@@ -18,8 +18,8 @@ def should_exclude_path(path: Path, exclude_dirs: Set[str]) -> bool:
 
 
 def find_files(
-    source_dir: Path, extensions: List[str], exclude_dirs: Set[str]
-) -> List[Path]:
+    source_dir: Path, extensions: list[str], exclude_dirs: Set[str]
+) -> list[Path]:
     """Find all files with specified extensions, excluding certain directories"""
     files = []
 
@@ -39,7 +39,7 @@ def find_files(
 def create_archive(
     source_dir: Path,
     output_zip: Path,
-    extensions: List[str],
+    extensions: list[str],
     exclude_dirs: Set[str],
 ):
     """Create ZIP archive with filtered files"""
@@ -96,7 +96,7 @@ def main():
 
     # Configuration
     source_dir = Path(__file__).parent.resolve()
-    output_zip = source_dir / "fara_crm_backup.zip"
+    output_zip = source_dir / "fara_crm_context.zip"
 
     extensions = [
         "*.py",
@@ -106,16 +106,18 @@ def main():
         "*.cjs",
         "*.lock",
         "*.css",
-        "*",
     ]
 
     exclude_dirs = {
-        # "mkdocs",
-        # "swagger_offlain",
+        "mkdocs",
+        "swagger_offlain",
         "filestore",
+        "dist",
         ".venv",
+        ".venv3.14",
         "node_modules",
         "__pycache__",
+        ".git",
     }
 
     # Create archive

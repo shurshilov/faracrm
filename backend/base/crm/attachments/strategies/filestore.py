@@ -4,7 +4,7 @@
 import os
 import hashlib
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any
 
 from .strategy import StorageStrategyBase
 from backend.base.system.core.enviroment import env
@@ -62,8 +62,8 @@ class FileStoreStrategy(StorageStrategyBase):
         storage: "AttachmentStorage",
         attachment: "Attachment",
         filename: str,
-        checksum: Optional[str] = None,
-        parent_id: str | None = None,
+        parent_id: str,
+        checksum: str | None = None,
     ) -> str:
         """
         Build file path for storage.
@@ -74,16 +74,8 @@ class FileStoreStrategy(StorageStrategyBase):
         parts = [base_path]
 
         # Add default folder
-        if not attachment.res_model and not attachment.res_id and parent_id:
+        if parent_id:
             parts.append(parent_id)
-
-        # Add model folder
-        elif attachment.res_model:
-            parts.append(attachment.res_model.replace(".", "_"))
-
-        # Add record ID folder
-        elif attachment.res_id:
-            parts.append(str(attachment.res_id))
 
         # Add filename
         parts.append(filename)
@@ -96,9 +88,9 @@ class FileStoreStrategy(StorageStrategyBase):
         attachment: "Attachment",
         content: bytes,
         filename: str,
-        mimetype: Optional[str] = None,
-        parent_id: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        parent_id: str,
+        mimetype: str | None = None,
+    ):
         """
         Create file in local filesystem.
 
@@ -120,7 +112,11 @@ class FileStoreStrategy(StorageStrategyBase):
 
         # Build file path
         file_path = await self._get_file_path(
-            storage, attachment, filename, checksum, parent_id
+            storage,
+            attachment,
+            filename,
+            parent_id,
+            checksum,
         )
 
         # Create directories
@@ -145,7 +141,7 @@ class FileStoreStrategy(StorageStrategyBase):
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
-    ) -> Optional[bytes]:
+    ):
         """
         Read file from local filesystem.
 
@@ -176,10 +172,10 @@ class FileStoreStrategy(StorageStrategyBase):
         self,
         storage: "AttachmentStorage",
         attachment: "Attachment",
-        content: Optional[bytes] = None,
-        filename: Optional[str] = None,
-        mimetype: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        content: bytes | None = None,
+        filename: str | None = None,
+        mimetype: str | None = None,
+    ) -> dict[str, Any]:
         """
         Update file in local filesystem.
 
@@ -208,7 +204,11 @@ class FileStoreStrategy(StorageStrategyBase):
 
             # Build new path
             new_path = await self._get_file_path(
-                storage, attachment, new_filename, checksum
+                storage,
+                attachment,
+                new_filename,
+                attachment.storage_parent_id,
+                checksum,
             )
 
             # Create directories
@@ -301,9 +301,9 @@ class FileStoreStrategy(StorageStrategyBase):
         self,
         storage: "AttachmentStorage",
         folder_name: str,
-        parent_id: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        parent_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ):
         """
         Create folder in local filesystem.
 

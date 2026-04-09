@@ -91,6 +91,7 @@ const modelToNamespace: Record<string, string> = {
   attachments: 'attachments',
   attachments_storage: 'attachments',
   attachments_route: 'attachments',
+  attachments_cache: 'attachments',
   // Users
   users: 'users',
   // Security

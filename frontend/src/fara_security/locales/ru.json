@@ -1,5 +1,6 @@
 {
   "terminateAllSessions": "Завершить все сессии",
+  "terminateAllMySessions": "Завершить все мои сессии",
   "confirmTerminate": "Подтверждение",
   "terminateAllConfirmText": "Вы уверены, что хотите завершить все активные сессии кроме текущей?",
   "terminate": "Завершить",

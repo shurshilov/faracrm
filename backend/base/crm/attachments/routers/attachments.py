@@ -1,5 +1,5 @@
 import io
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Response, Query
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_404_NOT_FOUND
@@ -109,8 +109,8 @@ async def attachment_content(req: Request, attachment_id: Id):
 async def attachment_preview(
     req: Request,
     attachment_id: Id,
-    w: Optional[int] = Query(None, ge=1, le=2000, description="Width"),
-    h: Optional[int] = Query(None, ge=1, le=2000, description="Height"),
+    w: int | None = Query(None, ge=1, le=2000, description="Width"),
+    h: int | None = Query(None, ge=1, le=2000, description="Height"),
 ):
     """Получить превью файла (для изображений) - inline отображение
 
@@ -200,8 +200,8 @@ async def attachment_content_cookie(req: Request, attachment_id: Id):
 async def attachment_preview_cookie(
     req: Request,
     attachment_id: Id,
-    w: Optional[int] = Query(None, ge=1, le=2000, description="Width"),
-    h: Optional[int] = Query(None, ge=1, le=2000, description="Height"),
+    w: int | None = Query(None, ge=1, le=2000, description="Width"),
+    h: int | None = Query(None, ge=1, le=2000, description="Height"),
 ):
     """Превью файла (авторизация через cookie)"""
     return await attachment_preview(req, attachment_id, w, h)

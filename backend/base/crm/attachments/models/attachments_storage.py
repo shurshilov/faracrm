@@ -3,7 +3,7 @@
 # OPTIMIZED: cascade deactivation of routes, cache clearing
 
 import logging
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
@@ -166,7 +166,7 @@ class AttachmentStorage(DotModel):
     # ========================================================================
 
     @classmethod
-    async def get_active_storage(cls) -> Optional["AttachmentStorage"]:
+    async def get_active_storage(cls):
         result = await cls.search(filter=[("active", "=", True)], limit=1)
         return result[0] if result else None
 
@@ -195,7 +195,7 @@ class AttachmentStorage(DotModel):
     # Route management
     # ========================================================================
 
-    async def get_routes(self) -> List["AttachmentRoute"]:
+    async def get_routes(self):
         """
         Get all routes for this storage.
 

@@ -5,6 +5,8 @@ import secrets
 from typing import TYPE_CHECKING, Self, cast
 
 from backend.base.crm.attachments.models.attachments import Attachment
+from ....system.dotorm.dotorm.components.filter_parser import FilterExpression
+from ...security.routers.sessions import TerminationMode
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
@@ -325,7 +327,9 @@ class User(DotModel):
                 await self.terminate_sessions(auth_session.id)
 
     async def terminate_sessions(
-        self, exclude_session_id: int | None = None
+        self,
+        exclude_session_id: int | None = None,
+        mode: TerminationMode = TerminationMode.MY,
     ) -> int:
         """
         Завершить все активные сессии пользователя.
@@ -337,9 +341,13 @@ class User(DotModel):
         Returns:
             Количество завершённых сессий
         """
+        filter: FilterExpression = [("active", "=", True)]
+        if mode == TerminationMode.MY:
+            filter.append(("user_id", "=", self.id))
+
         # Найти все активные сессии пользователя
         active_sessions = await Session.search(
-            filter=[("user_id", "=", self.id), ("active", "=", True)],
+            filter=filter,
             fields=["id", "token"],
         )
 

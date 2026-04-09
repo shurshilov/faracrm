@@ -2,7 +2,7 @@
 # Chat module - chat member model (many2many link table)
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
@@ -105,7 +105,7 @@ class ChatMember(DotModel):
         cls,
         chat_id: int,
         user_id: int,
-    ) -> Optional["ChatMember"]:
+    ):
         """
         Получить запись о членстве пользователя в чате.
 

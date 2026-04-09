@@ -3,6 +3,11 @@
  */
 import { crudApi as api } from './crudApi';
 
+export enum TerminationMode {
+  My = 'MY',
+  All = 'ALL',
+}
+
 const injectedRtkApi = api.injectEndpoints({
   endpoints: build => ({
     routeSessionsTerminateAll: build.mutation<
@@ -14,6 +19,7 @@ const injectedRtkApi = api.injectEndpoints({
         method: 'POST',
         params: {
           exclude_current: queryArg?.excludeCurrent ?? true,
+          mode: queryArg?.mode ?? TerminationMode.My,
         },
       }),
       invalidatesTags: ['sessions'],
@@ -29,6 +35,7 @@ export { type ModelRecord as SchemaModel } from '@/types/records';
 
 type TerminateAllArgs = {
   excludeCurrent?: boolean;
+  mode?: TerminationMode;
 };
 
 type TerminateAllResponse = {

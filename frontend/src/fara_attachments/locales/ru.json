@@ -43,7 +43,8 @@
     "title": "Файлы",
     "attachments": "Все файлы",
     "attachments_storage": "Хранилища",
-    "attachments_route": "Маршруты"
+    "attachments_route": "Маршруты",
+    "attachments_cache": "Кеш"
   },
   "tabs": {
     "info": "Основная информация",

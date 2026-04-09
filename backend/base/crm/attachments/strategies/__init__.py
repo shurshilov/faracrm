@@ -1,7 +1,7 @@
 # Copyright 2025 FARA CRM
 # Attachments module - storage strategies registry
 
-from typing import Dict, Type, List
+from typing import Type
 import logging
 
 from .strategy import StorageStrategyBase
@@ -9,7 +9,7 @@ from .strategy import StorageStrategyBase
 logger = logging.getLogger(__name__)
 
 # Реестр стратегий хранения
-_strategies: Dict[str, StorageStrategyBase] = {}
+_strategies: dict[str, StorageStrategyBase] = {}
 
 
 def register_strategy(strategy_class: Type[StorageStrategyBase]) -> None:
@@ -62,7 +62,7 @@ def get_strategy(strategy_type: str) -> StorageStrategyBase:
     return _strategies[strategy_type]
 
 
-def list_strategies() -> List[str]:
+def list_strategies():
     """
     Получить список зарегистрированных стратегий.
 
@@ -85,7 +85,7 @@ def has_strategy(strategy_type: str) -> bool:
     return strategy_type in _strategies
 
 
-def get_all_strategies() -> Dict[str, StorageStrategyBase]:
+def get_all_strategies():
     """
     Получить все зарегистрированные стратегии.
 
