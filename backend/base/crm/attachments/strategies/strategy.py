@@ -290,3 +290,15 @@ class StorageStrategyBase(ABC):
         parts.append(filename)
 
         return os.path.join(*parts)
+
+    def _get_parent_id(self, storage: "AttachmentStorage") -> str | None:
+        """
+        Получить ID родительской папки для файлов.
+
+        Args:
+            storage: Хранилище
+
+        Returns:
+            ID папки или None для корня My Drive
+        """
+        return None

@@ -26,6 +26,7 @@ import {
   IconInfoCircle,
   IconExternalLink,
 } from '@tabler/icons-react';
+import { useParams } from 'react-router-dom';
 
 /**
  * Расширение формы хранилища для Google Drive.
@@ -33,6 +34,7 @@ import {
  */
 export function ViewFormStorageGoogle() {
   const form = useFormContext();
+  const { id } = useParams<{ id: string }>();
   const storageType = form.values?.type;
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,13 +50,11 @@ export function ViewFormStorageGoogle() {
 
   // Обработчик авторизации
   const handleAuthorize = async () => {
-    if (!form.values?.id) return;
+    if (!id) return;
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/google/auth/${form.values.id}`,
-      );
+      const response = await fetch(`${API_BASE_URL}/google/auth/${id}`);
       const data = await response.json();
 
       if (data.authorization_url) {
@@ -116,28 +116,24 @@ export function ViewFormStorageGoogle() {
               leftSection={<IconLink size={16} />}
               color="blue"
               variant="outline"
-              disabled={
-                !form.values?.id || !form.values?.google_json_credentials
-              }>
+              disabled={!id || !form.values?.google_json_credentials}>
               Авторизовать в Google
             </Button>
           )}
         </Group>
       </Group>
 
-      {!form.values?.id && (
+      {!id && (
         <Alert icon={<IconAlertCircle size={16} />} color="blue" mb="md">
           Сначала сохраните хранилище, чтобы настроить авторизацию Google Drive.
         </Alert>
       )}
 
-      {form.values?.id &&
-        !form.values?.google_json_credentials &&
-        !isAuthorized && (
-          <Alert icon={<IconAlertCircle size={16} />} color="orange" mb="md">
-            Загрузите файл credentials.json для авторизации в Google Drive.
-          </Alert>
-        )}
+      {id && !form.values?.google_json_credentials && !isAuthorized && (
+        <Alert icon={<IconAlertCircle size={16} />} color="orange" mb="md">
+          Загрузите файл credentials.json для авторизации в Google Drive.
+        </Alert>
+      )}
 
       {/* Инструкции по настройке */}
       {!isAuthorized && (
@@ -183,6 +179,12 @@ export function ViewFormStorageGoogle() {
 
       {/* Credentials JSON */}
       <FormRow cols={1}>
+        <FieldChar
+          name="google_folder_id"
+          label="ID корневой папки"
+          placeholder="1ABC...xyz"
+          description="ID папки в Google Drive для хранения файлов"
+        />
         <FieldJson
           name="google_json_credentials"
           label="Credentials JSON"
@@ -191,15 +193,16 @@ export function ViewFormStorageGoogle() {
           placeholder='{"web": {"client_id": "...", "client_secret": "..."}}'
           minRows={6}
         />
-        <FieldChar
+        {/* <FieldChar
           name="google_credentials"
           label="Credentials JSON"
           placeholder='{"web": {"client_id": "...", "client_secret": "..."}}'
-        />
+          disabled={true}
+        /> */}
       </FormRow>
 
       {/* Настройки папки */}
-      <FormRow cols={2}>
+      {/* <FormRow cols={2}>
         <FieldChar
           name="google_folder_id"
           label="ID корневой папки"
@@ -210,8 +213,9 @@ export function ViewFormStorageGoogle() {
           name="google_auth_state"
           label="Статус авторизации"
           readOnly
+          disabled={true}
         />
-      </FormRow>
+      </FormRow> */}
 
       {/* Shared Drive настройки */}
       <FormRow cols={2}>

@@ -274,60 +274,30 @@ class AttachmentRoute(DotModel):
         return []
 
     # ========================================================================
-    # Folder cache (uses separate table)
-    # ========================================================================
-
-    def _get_cache_key(self, res_model: str | None = None) -> str:
-        if self.model is not None:
-            return "_default"
-        return res_model or "_default"
-
-    async def _get_cached_root_folder(self, res_model: str | None = None):
-        cache_key = self._get_cache_key(res_model)
-        return await AttachmentCache.get_folder(self.id, cache_key)
-
-    async def _save_root_folder_to_cache(
-        self,
-        folder_id: str,
-        folder_name: str,
-        res_model: str | None = None,
-    ) -> None:
-        cache_key = self._get_cache_key(res_model)
-        await AttachmentCache.set_folder(
-            route_id=self.id,
-            res_model=cache_key,
-            folder_id=folder_id,
-            folder_name=folder_name,
-        )
-
-    # ========================================================================
     # Folder management
     # ========================================================================
 
     async def get_or_create_root_folder(
-        self,
-        storage: "AttachmentStorage",
-        res_model: str | None = None,
+        self, storage: "AttachmentStorage", res_model: str
     ):
         """Get or create root folder for this route."""
         # Check cache first
-        folder_id, folder_name = await self._get_cached_root_folder(res_model)
+        folder_id, folder_name = await AttachmentCache.get_folder(
+            self.id, res_model
+        )
         if folder_id and folder_name:
             return folder_id, folder_name
 
         # Render folder name
-        folder_name = self.render_root_folder_name(res_model)
-        if not folder_name:
-            folder_name = self.model or res_model
-            if not folder_name:
-                raise ValueError("Cant setup empty folder_name")
+        folder_name = (
+            self.render_root_folder_name(res_model) or self.model or res_model
+        )
 
         # Get strategy and create folder
         strategy = get_strategy(storage.type)
 
-        parent_id = None
-        if hasattr(strategy, "_get_parent_id"):
-            parent_id = strategy._get_parent_id(storage)
+        # используется в облачных хранилищах
+        parent_id = strategy._get_parent_id(storage)
 
         metadata = {
             "route_id": str(self.id),
@@ -344,8 +314,11 @@ class AttachmentRoute(DotModel):
 
         # Save to cache
         if folder_id:
-            await self._save_root_folder_to_cache(
-                folder_id, folder_name, res_model
+            await AttachmentCache.set_folder(
+                route_id=self.id,
+                res_model=res_model,
+                folder_id=folder_id,
+                folder_name=folder_name,
             )
         else:
             raise ValueError("Cant setup empty folder_id")
@@ -414,7 +387,9 @@ class AttachmentRoute(DotModel):
         if not self.need_sync_root_name:
             return
 
-        folder_id, old_name = await self._get_cached_root_folder()
+        folder_id, old_name = await AttachmentCache.get_folder(
+            self.id, self.model or "default"
+        )
         if not folder_id:
             return
 
@@ -422,14 +397,19 @@ class AttachmentRoute(DotModel):
         if new_name and new_name != old_name:
             strategy = get_strategy(storage.type)
 
-            if hasattr(strategy, "rename_folder"):
-                await strategy.rename_folder(
-                    storage=storage,
-                    folder_id=folder_id,
-                    new_name=new_name,
-                )
+            # TODO: сделать обновления имени папки
+            # await strategy.update_file(
+            #     storage=storage,
+            #     folder_id=folder_id,
+            #     filename=new_name,
+            # )
 
-            await self._save_root_folder_to_cache(folder_id, new_name)
+            await AttachmentCache.set_folder(
+                route_id=self.id,
+                res_model=self.model or "default",
+                folder_id=folder_id,
+                folder_name=new_name,
+            )
 
             await self.update(AttachmentRoute(need_sync_root_name=False))
 
