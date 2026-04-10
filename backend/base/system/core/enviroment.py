@@ -1,7 +1,7 @@
 import importlib
 import os
+import pkgutil
 import platform
-from glob import glob
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -43,41 +43,69 @@ class Environment:
         """Установлен модуль или нет."""
         return module_name in self.apps.get_names()
 
+    def _include_routers_from_package(
+        self, app: FastAPI, package_import_path: str
+    ) -> None:
+        """
+        Импортировать все .py-модули из пакета `<package>` (нерекурсивно)
+        и подключить к FastAPI найденные APIRouter-ы:
+        router_public / router_private / router_content.
+
+        Если пакета нет — тихо пропускаем (у модуля может не быть роутов).
+        """
+        try:
+            package = importlib.import_module(package_import_path)
+        except ModuleNotFoundError:
+            return
+
+        package_path = getattr(package, "__path__", None)
+        if package_path is None:
+            return
+
+        api_routers_names = [
+            "router_public",
+            "router_private",
+            "router_content",
+        ]
+
+        for _, module_name, is_pkg in pkgutil.iter_modules(package_path):
+            if is_pkg:
+                continue
+            module = importlib.import_module(
+                f"{package_import_path}.{module_name}"
+            )
+            for api_router_name in api_routers_names:
+                api_router = getattr(module, api_router_name, None)
+                if isinstance(api_router, APIRouter):
+                    self.__add_router(app, api_router)
+
     async def load_routers(self, app: FastAPI):
-        """Динамический импорт routers из всех приложений
-        (папок) и подпапках routers.
-        Соглашение - router должен быть обьявлен как
-        переменная router_public или router_private.
-        Все роуты должны находиться в папке routers.
+        """Динамический импорт routers из всех приложений.
+
+        Правила:
+          1. Роуты фреймворка (`core.routers`) грузятся всегда —
+             это инфраструктурные endpoints поверх dotorm (onchange и т.п.).
+          2. Роуты прикладных приложений грузятся только для тех,
+             что зарегистрированы в Apps. Имя пакета берётся из класса
+             самого App через __module__, а не из пути файла.
+
+        Соглашение: в файле должна быть переменная router_public,
+        router_private или router_content типа APIRouter.
         """
         if self.cron_mode:
             return
-        routers = glob(f"./**/**/**/**/routers/**") + glob(
-            f"./**/**/**/**/routers/**/*"
-        )
-        routers = [
-            router
-            for router in routers
-            if router.endswith(".py") and not router.endswith("__init__.py")
-        ]
-        for file_path in routers:
-            module_name = file_path.split(self.spliter)[4]
-            if self.is_installed(module_name):
-                import_path = self.get_python_import(file_path)
-                module = importlib.import_module(import_path)
 
-                # добавить публичные маршруты
-                router_public = getattr(module, "router_public", None)
-                if isinstance(router_public, APIRouter):
-                    self.__add_router(app, router_public)
-                # добавить приватные (с аутентификацией) маршруты
-                router_private = getattr(module, "router_private", None)
-                if isinstance(router_private, APIRouter):
-                    self.__add_router(app, router_private)
-                # добавить маршруты для бинарного контента (cookie auth)
-                router_content = getattr(module, "router_content", None)
-                if isinstance(router_content, APIRouter):
-                    self.__add_router(app, router_content)
+        # 1. Фреймворковые роуты — всегда
+        self._include_routers_from_package(
+            app, "backend.base.system.core.routers"
+        )
+
+        # 2. Роуты прикладных приложений — по списку Apps
+        for installed_app in self.apps.get_list():
+            app_module = installed_app.__class__.__module__
+            # app_module например "backend.base.system.administration.app"
+            package_import_path = app_module.rsplit(".", 1)[0] + ".routers"
+            self._include_routers_from_package(app, package_import_path)
 
     async def setup_services(self):
         for app in self.apps.get_list():
