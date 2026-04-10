@@ -312,5 +312,6 @@
   },
   "system_member_added": "{{actor}} добавил(а) {{target}}",
   "system_member_removed": "{{actor}} удалил(а) {{target}}",
-  "system_member_left": "{{actor}} покинул(а) чат"
+  "system_member_left": "{{actor}} покинул(а) чат",
+  "confirmDeleteChat": "Вы уверены, что хотите удалить чат? Это действие необратимо."
 }

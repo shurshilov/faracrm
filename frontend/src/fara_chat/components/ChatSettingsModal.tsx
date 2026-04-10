@@ -495,6 +495,13 @@ export function ChatSettingsModal({
   };
 
   const members = chatData?.data?.members || chat.members || [];
+
+  // Является ли текущий пользователь админом этого чата.
+  // На бэке delete_chat для group/channel требует ChatMember.is_admin,
+  // поэтому кнопку «Удалить чат» показываем только админам.
+  const isCurrentUserAdmin = members.some(
+    m => m.id === currentUserId && m.permissions?.is_admin,
+  );
   const isGroupChat = chat.chat_type !== 'direct';
 
   const handleSave = async () => {
@@ -647,6 +654,12 @@ export function ChatSettingsModal({
   };
 
   const handleDeleteChat = async () => {
+    // Групповой чат удаляется для всех участников — действие необратимое,
+    // поэтому просим подтверждение. Для direct этого подтверждения раньше
+    // не было, но оно тоже не помешает.
+    if (!window.confirm(t('confirmDeleteChat'))) {
+      return;
+    }
     try {
       await deleteChat({ chatId: chat.id }).unwrap();
 
@@ -842,15 +855,28 @@ export function ChatSettingsModal({
                   <Text size="sm" c="red" fw={500} mb="sm">
                     {t('dangerZone')}
                   </Text>
-                  <Button
-                    variant="light"
-                    color="red"
-                    leftSection={<IconUserMinus size={16} />}
-                    onClick={handleLeaveChat}
-                    loading={isLeaving}
-                    disabled={isBusy}>
-                    {t('leaveChat')}
-                  </Button>
+                  <Group gap="sm">
+                    <Button
+                      variant="light"
+                      color="red"
+                      leftSection={<IconUserMinus size={16} />}
+                      onClick={handleLeaveChat}
+                      loading={isLeaving}
+                      disabled={isBusy}>
+                      {t('leaveChat')}
+                    </Button>
+                    {isCurrentUserAdmin && (
+                      <Button
+                        variant="light"
+                        color="red"
+                        leftSection={<IconTrash size={16} />}
+                        onClick={handleDeleteChat}
+                        loading={isDeleting}
+                        disabled={isBusy}>
+                        {t('deleteChat')}
+                      </Button>
+                    )}
+                  </Group>
                 </Box>
 
                 <Divider />

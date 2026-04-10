@@ -312,5 +312,6 @@
   },
   "system_member_added": "{{actor}} added {{target}}",
   "system_member_removed": "{{actor}} removed {{target}}",
-  "system_member_left": "{{actor}} left the chat"
+  "system_member_left": "{{actor}} left the chat",
+  "confirmDeleteChat": "Are you sure you want to delete this chat? This action cannot be undone."
 }
