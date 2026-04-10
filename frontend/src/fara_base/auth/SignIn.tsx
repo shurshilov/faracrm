@@ -17,15 +17,15 @@ import { useDispatch } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import {
   IconBrandTelegram,
-  IconBrandYoutube,
   IconBrandGithub,
   IconLanguage,
   IconCheck,
 } from '@tabler/icons-react';
 import classes from './SignIn.module.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { UserInput } from '@/services/auth/types';
 import { useLoginMutation } from '@/services/auth/auth';
+import { useGetPublicConfigQuery } from '@/services/config/config';
 import { storeSession } from '@/slices/authSlice';
 import Logo from '@/components/Logo';
 import AnimatedBackground from './AnimatedBackground';
@@ -106,11 +106,22 @@ export default function SignIn() {
 
   const form = useForm({
     initialValues: {
-      login: 'admin',
-      password: 'admin',
+      login: '',
+      password: '',
     },
     validate: yupResolver(validationSchema),
   });
+
+  // Публичная конфигурация сервера (доступна без авторизации).
+  // Если demo_mode=true — префилим форму логина admin/admin.
+  const { data: publicConfig } = useGetPublicConfigQuery();
+  const demoMode = !!publicConfig?.demo_mode;
+
+  useEffect(() => {
+    if (demoMode) {
+      form.setValues({ login: 'admin', password: 'admin' });
+    }
+  }, [demoMode]);
 
   const onSubmitHandler = async (values: UserInput) => {
     try {
@@ -246,7 +257,7 @@ export default function SignIn() {
             </Group>
 
             <Text ta="center" size="xs" c="dimmed" className={classes.version}>
-              FARA CRM v1.0
+              FARA CRM v{publicConfig?.version}
             </Text>
           </Stack>
         </form>

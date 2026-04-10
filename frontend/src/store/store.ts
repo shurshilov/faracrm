@@ -17,12 +17,14 @@ import { setupListeners } from '@reduxjs/toolkit/query';
 
 import { crudApi } from '@services/api/crudApi';
 import { authApi } from '@services/auth/auth';
+import { configApi } from '@services/config/config';
 import authSlice, { logOut } from '@slices/authSlice'; // Импортируем экшен логаута
 
 // 1. Собираем базовые редьюсеры
 const appReducer = combineReducers({
   [crudApi.reducerPath]: crudApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
+  [configApi.reducerPath]: configApi.reducer,
   auth: authSlice,
   // remaining reducers
 });
@@ -60,7 +62,8 @@ export const store = configureStore({
       // },
     })
       .concat(crudApi.middleware)
-      .concat(authApi.middleware),
+      .concat(authApi.middleware)
+      .concat(configApi.middleware),
   // .concat(apiErrorMiddleware),
   // NOTE this addition
   reducer: rootReducer, // Используем rootReducer вместо объекта reducers
