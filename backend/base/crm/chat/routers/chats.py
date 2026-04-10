@@ -588,7 +588,7 @@ async def update_chat(req: Request, chat_id: int, body: ChatUpdate):
             body.default_can_delete_others is not None,
         ]
     )
-    if changing_permissions and not member.is_admin:
+    if changing_permissions or not member.is_admin:
         raise FaraException(
             {"content": "ADMIN_REQUIRED", "status_code": HTTP_403_FORBIDDEN}
         )
