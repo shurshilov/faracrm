@@ -103,7 +103,6 @@
   "internal": "Internal",
   "telegram": "Telegram",
   "whatsapp": "WhatsApp",
-
   "permissions": {
     "title": "Permissions",
     "canRead": "Can read messages",
@@ -121,13 +120,11 @@
     "cannotPin": "You cannot pin messages in this chat",
     "cannotDelete": "You cannot delete this message"
   },
-  
   "connector": {
     "title": "Chat Connectors",
     "singular": "Connector",
     "plural": "Connectors",
     "menu": "Connectors",
-    
     "fields": {
       "name": "Name",
       "active": "Active",
@@ -151,7 +148,6 @@
       "createDate": "Created",
       "writeDate": "Modified"
     },
-    
     "tabs": {
       "connection": "Connection",
       "webhooks": "Webhooks",
@@ -159,7 +155,6 @@
       "crm": "CRM",
       "logs": "Logs"
     },
-    
     "groups": {
       "api": "API Settings",
       "webhook": "Webhook",
@@ -171,18 +166,15 @@
       "timestamps": "Timestamps",
       "telegram": "Telegram Bot"
     },
-    
     "actions": {
       "setWebhook": "Set Webhook",
       "unsetWebhook": "Remove Webhook"
     },
-    
     "webhookSet": "Webhook Set",
     "webhookSetSuccess": "Webhook successfully registered",
     "webhookUnset": "Webhook Removed",
     "webhookUnsetSuccess": "Webhook successfully removed",
     "error": "Error",
-    
     "types": {
       "internal": "Internal",
       "telegram": "Telegram",
@@ -191,25 +183,21 @@
       "avito": "Avito",
       "vk": "VKontakte"
     },
-    
     "categories": {
       "messenger": "Messenger",
       "phone": "Phone",
       "email": "Email",
       "social": "Social"
     },
-    
     "webhookStates": {
       "none": "Not Set",
       "successful": "Active",
       "failed": "Failed"
     },
-    
     "leadTypes": {
       "lead": "Lead",
       "opportunity": "Opportunity"
     },
-    
     "telegram": {
       "noAuthRequired": "Telegram uses Bot Token for authorization. Configure it in the \"Connection\" tab."
     },
@@ -217,12 +205,10 @@
       "noAuthRequired": "Email uses login and password for authorization. Configure it in the \"Connection\" tab."
     }
   },
-  
   "member": {
     "title": "Chat Members",
     "singular": "Member",
     "plural": "Members",
-    
     "fields": {
       "chatId": "Chat",
       "userId": "User",
@@ -237,14 +223,12 @@
       "canDeleteOthers": "Can Delete Others",
       "isAdmin": "Administrator"
     },
-    
     "roles": {
       "admin": "Admin",
       "member": "Member",
       "readonly": "Read Only"
     }
   },
-  
   "chat": {
     "fields": {
       "defaultCanRead": "Default: Can Read",
@@ -253,24 +237,20 @@
       "defaultCanPin": "Default: Can Pin",
       "defaultCanDeleteOthers": "Default: Can Delete Others"
     },
-    
     "tabs": {
       "main": "Main",
       "permissions": "Permissions",
       "members": "Members"
     },
-    
     "groups": {
       "defaultPermissions": "Default Permissions for New Members"
     }
   },
-  
   "externalAccount": {
     "title": "External Accounts",
     "singular": "External Account",
     "plural": "External Accounts",
     "menu": "External Accounts",
-    
     "fields": {
       "name": "Name",
       "active": "Active",
@@ -283,13 +263,11 @@
       "createDate": "Created",
       "writeDate": "Modified"
     },
-    
     "tabs": {
       "main": "Main",
       "links": "Links",
       "data": "Data"
     },
-    
     "groups": {
       "info": "Account Info",
       "connection": "Connection",
@@ -297,60 +275,23 @@
       "rawData": "Raw Data",
       "timestamps": "Timestamps"
     },
-    
     "hints": {
       "operator": "Operator (staff member)",
       "client": "Client (external user)"
     }
   },
-  
   "externalChat": {
-    "title": "External Chats",
-    "singular": "External Chat",
-    "plural": "External Chats",
-    "menu": "External Chats",
-    
-    "fields": {
-      "externalId": "External ID",
-      "connectorId": "Connector",
-      "chatId": "Internal Chat",
-      "createDate": "Created"
-    },
-    
-    "tabs": {
-      "main": "Main"
-    },
-    
-    "groups": {
-      "connection": "Connection",
-      "timestamps": "Timestamps"
+    "sections": {
+      "connection": "Chat Connection",
+      "relations": "Relations"
     }
   },
-  
   "externalMessage": {
-    "title": "External Messages",
-    "singular": "External Message",
-    "plural": "External Messages",
-    "menu": "External Messages",
-    
-    "fields": {
-      "externalId": "External ID",
-      "externalChatId": "External Chat ID",
-      "connectorId": "Connector",
-      "messageId": "Internal Message",
-      "createDate": "Created"
-    },
-    
-    "tabs": {
-      "main": "Main"
-    },
-    
-    "groups": {
-      "connection": "Connection",
-      "timestamps": "Timestamps"
+    "sections": {
+      "connection": "Message Connection",
+      "relations": "Relations"
     }
   },
-
   "fields": {
     "id": "ID",
     "name": "Name",
@@ -369,18 +310,7 @@
     "external_message_id": "External Message ID",
     "message_id": "Internal Message"
   },
-
-  "externalChat": {
-    "sections": {
-      "connection": "Chat Connection",
-      "relations": "Relations"
-    }
-  },
-
-  "externalMessage": {
-    "sections": {
-      "connection": "Message Connection",
-      "relations": "Relations"
-    }
-  }
+  "system_member_added": "{{actor}} added {{target}}",
+  "system_member_removed": "{{actor}} removed {{target}}",
+  "system_member_left": "{{actor}} left the chat"
 }

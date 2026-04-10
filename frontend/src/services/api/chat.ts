@@ -600,6 +600,7 @@ export interface ChatLastMessage {
   body?: string;
   author_id: number;
   create_date?: string;
+  message_type: 'comment' | 'notification' | 'system' | 'email' | 'call';
 }
 
 export interface ChatConnector {

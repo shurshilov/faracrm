@@ -32,11 +32,31 @@ function stripHtml(html: string): string {
 /**
  * Возвращает текст превью последнего сообщения.
  * Для email (по message_type) — очищает через DOMPurify.
+ * Для system — парсит JSON {event, params} и форматирует через i18n.
  */
-function getMessagePreview(lastMessage?: ChatLastMessage | null): string | null {
+function getMessagePreview(
+  lastMessage: ChatLastMessage | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string | null {
   if (!lastMessage?.body) return null;
   if (lastMessage.message_type === 'email') {
     return stripHtml(lastMessage.body);
+  }
+  if (lastMessage.message_type === 'system') {
+    try {
+      const payload = JSON.parse(lastMessage.body) as {
+        event: string;
+        params?: Record<string, unknown>;
+      };
+      const params = payload.params || {};
+      return t(`system_${payload.event}`, {
+        actor: (params as { actor_name?: string }).actor_name ?? '',
+        target: (params as { target_name?: string }).target_name ?? '',
+        defaultValue: payload.event,
+      });
+    } catch {
+      return lastMessage.body;
+    }
   }
   return lastMessage.body;
 }
@@ -210,7 +230,7 @@ export function ChatList({
 
                     <Group justify="space-between" wrap="nowrap">
                       <Text size="sm" c="dimmed" truncate style={{ flex: 1 }}>
-                        {getMessagePreview(chat.last_message) || t('noMessages')}
+                        {getMessagePreview(chat.last_message, t) || t('noMessages')}
                       </Text>
                       {chat.unread_count > 0 && (
                         <Badge size="sm" variant="filled" color="blue" circle>

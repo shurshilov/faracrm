@@ -73,6 +73,28 @@ export function ChatMessages({
   onMarkUnread,
 }: ChatMessagesProps) {
   const { t } = useTranslation('chat');
+
+  // Форматирование системных сообщений чата (участник добавлен/удалён и т.п.).
+  // В БД body хранится как JSON: {"event": "...", "params": {...}}.
+  // Человекочитаемую строку собираем здесь через i18n.
+  const formatSystemMessage = (body: string): string => {
+    try {
+      const payload = JSON.parse(body) as {
+        event: string;
+        params?: Record<string, unknown>;
+      };
+      const key = `system_${payload.event}`;
+      const params = payload.params || {};
+      return t(key, {
+        actor: (params as { actor_name?: string }).actor_name ?? '',
+        target: (params as { target_name?: string }).target_name ?? '',
+        defaultValue: payload.event,
+      });
+    } catch {
+      return body;
+    }
+  };
+
   const dispatch = useDispatch();
   const viewportRef = useRef<HTMLDivElement>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -440,6 +462,29 @@ export function ChatMessages({
                     </Text>
                   </Box>
                 )}
+                {message.message_type === 'system' ? (
+                  // Системное сообщение в стиле Telegram: центрированная пилюля
+                  // без аватара, пузыря и автора.
+                  <Box
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      margin: '8px 0',
+                    }}>
+                    <Text
+                      size="xs"
+                      c="dimmed"
+                      style={{
+                        backgroundColor: 'var(--mantine-color-gray-1)',
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        textAlign: 'center',
+                        maxWidth: '80%',
+                      }}>
+                      {formatSystemMessage(message.body ?? '')}
+                    </Text>
+                  </Box>
+                ) : (
                 <Group
                   justify={isOwnMessage(message) ? 'flex-end' : 'flex-start'}
                   align="flex-start"
@@ -704,6 +749,7 @@ export function ChatMessages({
                       )}
                   </Stack>
                 </Group>
+                )}
               </Box>
             ))}
           </Stack>

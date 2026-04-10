@@ -103,7 +103,6 @@
   "internal": "Внутренние",
   "telegram": "Telegram",
   "whatsapp": "WhatsApp",
-
   "permissions": {
     "title": "Права доступа",
     "canRead": "Может читать сообщения",
@@ -121,13 +120,11 @@
     "cannotPin": "Вы не можете закреплять сообщения в этом чате",
     "cannotDelete": "Вы не можете удалить это сообщение"
   },
-  
   "connector": {
     "title": "Коннекторы чата",
     "singular": "Коннектор",
     "plural": "Коннекторы",
     "menu": "Коннекторы",
-    
     "fields": {
       "name": "Название",
       "active": "Активен",
@@ -151,7 +148,6 @@
       "createDate": "Дата создания",
       "writeDate": "Дата изменения"
     },
-    
     "tabs": {
       "connection": "Подключение",
       "webhooks": "Webhooks",
@@ -159,7 +155,6 @@
       "crm": "CRM",
       "logs": "Логи"
     },
-    
     "groups": {
       "api": "Настройки API",
       "webhook": "Webhook",
@@ -171,18 +166,15 @@
       "timestamps": "Временные метки",
       "telegram": "Telegram Bot"
     },
-    
     "actions": {
       "setWebhook": "Установить Webhook",
       "unsetWebhook": "Удалить Webhook"
     },
-    
     "webhookSet": "Webhook установлен",
     "webhookSetSuccess": "Webhook успешно зарегистрирован",
     "webhookUnset": "Webhook удалён",
     "webhookUnsetSuccess": "Webhook успешно удалён",
     "error": "Ошибка",
-    
     "types": {
       "internal": "Внутренний",
       "telegram": "Telegram",
@@ -191,25 +183,21 @@
       "avito": "Avito",
       "vk": "ВКонтакте"
     },
-    
     "categories": {
       "messenger": "Мессенджер",
       "phone": "Телефония",
       "email": "Email",
       "social": "Соц. сети"
     },
-    
     "webhookStates": {
       "none": "Не установлен",
       "successful": "Активен",
       "failed": "Ошибка"
     },
-    
     "leadTypes": {
       "lead": "Лид",
       "opportunity": "Сделка"
     },
-    
     "telegram": {
       "noAuthRequired": "Telegram использует Bot Token для авторизации. Настройте его во вкладке \"Подключение\"."
     },
@@ -217,12 +205,10 @@
       "noAuthRequired": "Email использует логин и пароль для авторизации. Настройте его во вкладке \"Подключение\"."
     }
   },
-  
   "member": {
     "title": "Участники чата",
     "singular": "Участник",
     "plural": "Участники",
-    
     "fields": {
       "chatId": "Чат",
       "userId": "Пользователь",
@@ -237,14 +223,12 @@
       "canDeleteOthers": "Может удалять чужие",
       "isAdmin": "Администратор"
     },
-    
     "roles": {
       "admin": "Админ",
       "member": "Участник",
       "readonly": "Только чтение"
     }
   },
-  
   "chat": {
     "fields": {
       "defaultCanRead": "По умолчанию: Чтение",
@@ -253,24 +237,20 @@
       "defaultCanPin": "По умолчанию: Закрепление",
       "defaultCanDeleteOthers": "По умолчанию: Удаление чужих"
     },
-    
     "tabs": {
       "main": "Основное",
       "permissions": "Права",
       "members": "Участники"
     },
-    
     "groups": {
       "defaultPermissions": "Права по умолчанию для новых участников"
     }
   },
-  
   "externalAccount": {
     "title": "Внешние аккаунты",
     "singular": "Внешний аккаунт",
     "plural": "Внешние аккаунты",
     "menu": "Внешние аккаунты",
-    
     "fields": {
       "name": "Название",
       "active": "Активен",
@@ -283,13 +263,11 @@
       "createDate": "Дата создания",
       "writeDate": "Дата изменения"
     },
-    
     "tabs": {
       "main": "Основное",
       "links": "Связи",
       "data": "Данные"
     },
-    
     "groups": {
       "info": "Информация об аккаунте",
       "connection": "Подключение",
@@ -297,60 +275,23 @@
       "rawData": "Сырые данные",
       "timestamps": "Временные метки"
     },
-    
     "hints": {
       "operator": "Оператор (сотрудник)",
       "client": "Клиент (внешний пользователь)"
     }
   },
-  
   "externalChat": {
-    "title": "Внешние чаты",
-    "singular": "Внешний чат",
-    "plural": "Внешние чаты",
-    "menu": "Внешние чаты",
-    
-    "fields": {
-      "externalId": "Внешний ID",
-      "connectorId": "Коннектор",
-      "chatId": "Внутренний чат",
-      "createDate": "Дата создания"
-    },
-    
-    "tabs": {
-      "main": "Основное"
-    },
-    
-    "groups": {
-      "connection": "Подключение",
-      "timestamps": "Временные метки"
+    "sections": {
+      "connection": "Связь чатов",
+      "relations": "Связи"
     }
   },
-  
   "externalMessage": {
-    "title": "Внешние сообщения",
-    "singular": "Внешнее сообщение",
-    "plural": "Внешние сообщения",
-    "menu": "Внешние сообщения",
-    
-    "fields": {
-      "externalId": "Внешний ID",
-      "externalChatId": "Внешний ID чата",
-      "connectorId": "Коннектор",
-      "messageId": "Внутреннее сообщение",
-      "createDate": "Дата создания"
-    },
-    
-    "tabs": {
-      "main": "Основное"
-    },
-    
-    "groups": {
-      "connection": "Подключение",
-      "timestamps": "Временные метки"
+    "sections": {
+      "connection": "Связь сообщений",
+      "relations": "Связи"
     }
   },
-
   "fields": {
     "id": "Ид",
     "name": "Название",
@@ -369,18 +310,7 @@
     "external_message_id": "Внешний ID сообщения",
     "message_id": "Внутреннее сообщение"
   },
-
-  "externalChat": {
-    "sections": {
-      "connection": "Связь чатов",
-      "relations": "Связи"
-    }
-  },
-
-  "externalMessage": {
-    "sections": {
-      "connection": "Связь сообщений",
-      "relations": "Связи"
-    }
-  }
+  "system_member_added": "{{actor}} добавил(а) {{target}}",
+  "system_member_removed": "{{actor}} удалил(а) {{target}}",
+  "system_member_left": "{{actor}} покинул(а) чат"
 }

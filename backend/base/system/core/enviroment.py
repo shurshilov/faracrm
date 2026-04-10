@@ -200,8 +200,7 @@ class Environment:
         for app in self.apps.get_list():
             app.handler_errors(app_server)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
         self.settings: Settings
         self.models: Models
         self.apps: Apps
@@ -210,10 +209,10 @@ class Environment:
         self.post_init = []
         self.cron_mode: bool = False
 
-    def __new__(cls):
-        if not hasattr(cls, "instance"):
-            cls.instance = super().__new__(cls)
-        return cls.instance
+    # def __new__(cls):
+    #     if not hasattr(cls, "instance"):
+    #         cls.instance = super().__new__(cls)
+    #     return cls.instance
 
 
 env = Environment()

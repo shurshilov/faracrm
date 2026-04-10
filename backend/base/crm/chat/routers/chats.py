@@ -2,6 +2,7 @@
 # Chat module - chats router
 
 import asyncio
+import logging
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Query
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
@@ -15,6 +16,9 @@ from ..schemas.chat import (
     UpdateMemberPermissions,
 )
 from ..models.chat_member import ChatMember
+from ._system_messages import post_system_message
+
+log = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -540,6 +544,24 @@ async def add_member(req: Request, chat_id: int, body: AddMemberInput):
 
     await chat.add_member(body.user_id)
 
+    # Системное сообщение «actor добавил(а) target»
+    try:
+        actor = await env.models.user.get(user_id, fields=["id", "name"])
+        target = await env.models.user.get(body.user_id, fields=["id", "name"])
+        await post_system_message(
+            env,
+            chat_id=chat_id,
+            event="member_added",
+            params={
+                "actor_id": actor.id,
+                "actor_name": actor.name,
+                "target_id": target.id,
+                "target_name": target.name,
+            },
+        )
+    except Exception as exc:
+        log.warning("add_member system message skipped: %s", exc)
+
     return {"success": True}
 
 
@@ -656,8 +678,26 @@ async def remove_member(req: Request, chat_id: int, member_id: int):
     if chat.chat_type == "direct":
         raise FaraException({"content": "CANNOT_REMOVE_FROM_DIRECT_CHAT"})
 
-    # Удаляем участника
+    # Удаляем участника (мягко: is_active=False, запись user не трогается)
     await chat.remove_member(member_id)
+
+    # Системное сообщение «actor удалил(а) target»
+    try:
+        actor = await env.models.user.get(user_id, fields=["id", "name"])
+        target = await env.models.user.get(member_id, fields=["id", "name"])
+        await post_system_message(
+            env,
+            chat_id=chat_id,
+            event="member_removed",
+            params={
+                "actor_id": actor.id,
+                "actor_name": actor.name,
+                "target_id": target.id,
+                "target_name": target.name,
+            },
+        )
+    except Exception as exc:
+        log.warning("remove_member system message skipped: %s", exc)
 
     return {"success": True}
 
@@ -680,8 +720,23 @@ async def leave_chat(req: Request, chat_id: int):
     if chat.chat_type == "direct":
         raise FaraException({"content": "CANNOT_LEAVE_DIRECT_CHAT"})
 
-    # Удаляем себя из участников
+    # Удаляем себя из участников (мягко: is_active=False)
     await chat.remove_member(user_id)
+
+    # Системное сообщение «actor покинул(а) чат»
+    try:
+        actor = await env.models.user.get(user_id, fields=["id", "name"])
+        await post_system_message(
+            env,
+            chat_id=chat_id,
+            event="member_left",
+            params={
+                "actor_id": actor.id,
+                "actor_name": actor.name,
+            },
+        )
+    except Exception as exc:
+        log.warning("leave_chat system message skipped: %s", exc)
 
     return {"success": True}
 
