@@ -108,7 +108,6 @@ class ChatMessage(DotModel):
     )
 
     # Статус
-    is_read: bool = Boolean(default=False, description="Прочитано")
     is_deleted: bool = Boolean(
         default=False, description="Удалено (мягкое удаление)"
     )
@@ -292,7 +291,6 @@ class ChatMessage(DotModel):
                 "starred",
                 "pinned",
                 "is_edited",
-                "is_read",
                 "parent_id",
                 "connector_id",
                 "call_direction",
@@ -342,38 +340,6 @@ class ChatMessage(DotModel):
 
         return messages
 
-    async def mark_as_read(self, message_ids: list[int]) -> int:
-        """Отметить сообщения как прочитанные."""
-        return await self.update_bulk(
-            ids=message_ids,
-            payload=ChatMessage(is_read=True),
-        )
-
-    @hybridmethod
-    async def mark_chat_as_read(self, chat_id: int, user_id: int) -> int:
-        """Отметить все сообщения в чате как прочитанные для пользователя."""
-        # Находим все непрочитанные сообщения в чате от других авторов
-        # (включая сообщения от партнёров)
-        unread = await self.search(
-            filter=[
-                ("chat_id", "=", chat_id),
-                ("is_read", "=", False),
-                # ("author_user_id", "!=", user_id),
-                [
-                    ("author_user_id", "!=", user_id),
-                    "or",
-                    ("author_user_id", "=", None),
-                ],
-            ],
-            fields=["id"],
-        )
-
-        if unread:
-            ids = [m.id for m in unread]
-            return await self.mark_as_read(ids)
-
-        return 0
-
     async def soft_delete(self) -> bool:
         """Мягкое удаление сообщения."""
         await self.update(
@@ -383,45 +349,3 @@ class ChatMessage(DotModel):
             )
         )
         return True
-
-    @hybridmethod
-    async def mark_as_unread(
-        self, chat_id: int, message_id: int, user_id: int
-    ) -> int:
-        """
-        Отметить сообщения как непрочитанные начиная с указанного.
-
-        Помечает все сообщения в чате с ID >= message_id как непрочитанные,
-        кроме сообщений текущего пользователя.
-
-        Args:
-            chat_id: ID чата
-            message_id: ID сообщения, начиная с которого помечать
-            user_id: ID текущего пользователя (его сообщения не помечаем)
-
-        Returns:
-            Количество помеченных сообщений
-        """
-        messages = await self.search(
-            filter=[
-                ("chat_id", "=", chat_id),
-                ("id", ">=", message_id),
-                [
-                    ("author_user_id", "!=", user_id),
-                    "or",
-                    ("author_user_id", "=", None),
-                ],
-                ("is_deleted", "=", False),
-            ],
-            fields=["id"],
-        )
-
-        if messages:
-            ids = [m.id for m in messages]
-            await self.update_bulk(
-                ids=ids,
-                payload=ChatMessage(is_read=False),
-            )
-            return len(ids)
-
-        return 0

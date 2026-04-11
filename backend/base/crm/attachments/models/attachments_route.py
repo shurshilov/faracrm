@@ -236,7 +236,8 @@ class AttachmentRoute(DotModel):
                     ("model", "=", res_model),
                 ],
                 # fields_nested={"storage_id": ["id", "type", "active"]},
-                sort="priority DESC",
+                sort="priority",
+                order="DESC",
             )
 
             for route in specific_routes:
@@ -249,7 +250,8 @@ class AttachmentRoute(DotModel):
                 ("active", "=", True),
                 ("model", "=", None),
             ],
-            sort="priority DESC",
+            sort="priority",
+            order="DESC",
         )
 
         if fallback_routes:

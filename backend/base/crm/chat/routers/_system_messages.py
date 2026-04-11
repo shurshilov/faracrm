@@ -5,6 +5,8 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
+from backend.base.crm.users.models.users import SYSTEM_USER_ID
+
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
@@ -44,7 +46,7 @@ async def post_system_message(
 
         message = await env.models.chat_message.post_message(
             chat_id=chat_id,
-            author_user_id=None,
+            author_user_id=SYSTEM_USER_ID,
             body=body,
             message_type="system",
         )
@@ -58,7 +60,11 @@ async def post_system_message(
                     "id": message.id,
                     "body": body,
                     "message_type": "system",
-                    "author": None,
+                    "author": {
+                        "id": SYSTEM_USER_ID,
+                        "name": None,
+                        "type": "user",
+                    },
                     "create_date": message.create_date.isoformat(),
                     "starred": False,
                     "pinned": False,

@@ -161,16 +161,23 @@ async def get_chats(
     """
     last_messages_task = session.execute(last_messages_query, (chat_ids,))
 
+    # Непрочитанные = сообщения в чате с id > watermark пользователя в этом чате.
+    # Своих сообщений (author = текущий user) не считаем.
+    # Watermark лежит в chat_member.last_read_message_id (NULL → 0).
     unread_query = """
-        SELECT chat_id, COUNT(*) as unread_count
-        FROM chat_message
-        WHERE chat_id = ANY(%s)
-          AND (author_user_id IS NULL OR author_user_id != %s)
-          AND is_read = false
-          AND is_deleted = false
-        GROUP BY chat_id
+        SELECT m.chat_id, COUNT(*) as unread_count
+        FROM chat_message m
+        JOIN chat_member cm
+          ON cm.chat_id = m.chat_id
+         AND cm.user_id = %s
+         AND cm.is_active = true
+        WHERE m.chat_id = ANY(%s)
+          AND m.is_deleted = false
+          AND (m.author_user_id IS NULL OR m.author_user_id != %s)
+          AND m.id > COALESCE(cm.last_read_message_id, 0)
+        GROUP BY m.chat_id
     """
-    unread_task = session.execute(unread_query, (chat_ids, user_id))
+    unread_task = session.execute(unread_query, (user_id, chat_ids, user_id))
 
     # Запрос информации о коннекторах
     # Новая логика: получаем коннекторы на основе контактов партнёров-участников чата

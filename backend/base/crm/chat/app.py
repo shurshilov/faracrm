@@ -182,7 +182,7 @@ class ChatApp(Service):
             limit=1,
         )
         if message_model:
-            rule_name = "User can only delete own messages"
+            rule_name = "User can only delete and edit own messages"
             existing = await env.models.rule.search(
                 filter=[("name", "=", rule_name)],
                 limit=1,

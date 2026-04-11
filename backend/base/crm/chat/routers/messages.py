@@ -66,12 +66,14 @@ async def get_messages(
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство (can_read по умолчанию true)
-    await ChatMember.check_membership(chat_id, user_id)
+    # Проверяем членство (can_read по умолчанию true) и получаем member
+    current_member = await ChatMember.check_membership(chat_id, user_id)
 
     messages = await env.models.chat_message.get_chat_messages(
         chat_id=chat_id, limit=limit, before_id=before_id
     )
+
+    last_read_watermark: int = current_member.last_read_message_id or 0
 
     # Получаем ID всех сообщений для загрузки аттачментов и реакций
     message_ids = [msg.id for msg in messages]
@@ -145,6 +147,12 @@ async def get_messages(
 
     result = []
     for msg in messages:
+        # is_read вычисляется из watermark: сообщение прочитано, если его
+        # id <= last_read_watermark. Своё сообщение всегда считаем
+        # прочитанным (автор его видел, ведь он его написал).
+        is_own = msg.author_user_id and msg.author_user_id.id == user_id
+        computed_is_read = is_own or (msg.id <= last_read_watermark)
+
         msg_data = {
             "id": msg.id,
             "body": msg.body,
@@ -153,7 +161,7 @@ async def get_messages(
             "starred": msg.starred,
             "pinned": msg.pinned,
             "is_edited": msg.is_edited,
-            "is_read": msg.is_read,
+            "is_read": computed_is_read,
             "parent_id": msg.parent_id,
             "connector_id": msg.connector_id,
             "author": format_message_author(msg),
@@ -453,49 +461,74 @@ async def pin_message(
 @router_private.post("/chats/{chat_id}/read")
 async def mark_as_read(req: Request, chat_id: int):
     """
-    Отметить все сообщения чата как прочитанные.
+    Отметить все сообщения чата как прочитанные для текущего пользователя.
+
+    Двигает watermark (chat_member.last_read_message_id) до id самого
+    последнего сообщения в чате. Одна операция обновления одной строки —
+    не трогает chat_message вообще.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство
-    await ChatMember.check_membership(chat_id, user_id)
+    member = await ChatMember.check_membership(chat_id, user_id)
 
-    count = await env.models.chat_message.mark_chat_as_read(
-        chat_id=chat_id, user_id=user_id
+    # Берём id самого последнего сообщения в чате
+    latest = await env.models.chat_message.search(
+        filter=[
+            ("chat_id", "=", chat_id),
+            ("is_deleted", "=", False),
+        ],
+        fields=["id"],
+        sort="id",
+        order="DESC",
+        limit=1,
     )
+    if not latest:
+        return {"success": True, "count": 0}
 
-    # Уведомляем через WebSocket
+    latest_id = latest[0].id
+    current_watermark = member.last_read_message_id or 0
+    if latest_id <= current_watermark:
+        return {"success": True, "count": 0}
+
+    await member.update(env.models.chat_member(last_read_message_id=latest_id))
+
+    # Уведомляем через WebSocket — остальные участники увидят, что
+    # этот user прочитал чат (для будущих UX-индикаторов).
     await chat_manager.send_to_chat(
         chat_id=chat_id,
         message={
             "type": "messages_read",
             "chat_id": chat_id,
             "user_id": user_id,
+            "last_read_message_id": latest_id,
         },
     )
 
-    return {"success": True, "count": count}
+    return {"success": True, "count": latest_id - current_watermark}
 
 
 @router_private.post("/chats/{chat_id}/messages/{message_id}/unread")
 async def mark_as_unread(req: Request, chat_id: int, message_id: int):
     """
-    Отметить сообщения как непрочитанные начиная с указанного.
+    Отметить сообщения начиная с указанного как непрочитанные.
+
+    Откатывает watermark к (message_id - 1): всё начиная с message_id
+    включительно снова считается непрочитанным.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство
-    await ChatMember.check_membership(chat_id, user_id)
+    member = await ChatMember.check_membership(chat_id, user_id)
 
-    unread_count = await env.models.chat_message.mark_as_unread(
-        chat_id=chat_id, message_id=message_id, user_id=user_id
+    new_watermark = max(0, message_id - 1)
+    await member.update(
+        env.models.chat_member(last_read_message_id=new_watermark)
     )
 
-    return {"success": True, "unread_count": unread_count}
+    return {"success": True}
 
 
 @router_private.get("/chats/{chat_id}/pinned")

@@ -149,49 +149,27 @@ export function ChatWebSocketProvider({
       }
 
       // Обработка messages_read:
-      // - Если user_id === currentUserId - мы прочитали чат, сбрасываем unread_count в 0
-      // - Если user_id !== currentUserId - кто-то прочитал наши сообщения, обновляем is_read
+      // В watermark-модели чтение = движение курсора пользователя в chat_member.
+      // Мы не отслеживаем "кто именно прочитал каждое сообщение", поэтому
+      // единственная реакция здесь — сбросить СВОЙ unread_count, когда
+      // мы сами прочитали чат (с другого устройства/вкладки).
       if (message.type === 'messages_read') {
         const chatId = (message as any).chat_id;
         const userId = (message as any).user_id;
 
-        if (chatId !== undefined) {
-          // Если это мы прочитали - сбрасываем свой unread_count
-          if (userId === currentUserId) {
-            dispatch(
-              chatApi.util.updateQueryData(
-                'getChats',
-                { limit: 100 },
-                draft => {
-                  const chat = draft.data.find(c => c.id === chatId);
-                  if (chat) {
-                    chat.unread_count = 0;
-                  }
-                },
-              ),
-            );
-          }
-
-          // Обновляем is_read для сообщений в кэше (кто-то прочитал наши сообщения)
-          if (userId !== currentUserId) {
-            dispatch(
-              chatApi.util.updateQueryData(
-                'getChatMessages',
-                { chatId, limit: 50 },
-                draft => {
-                  draft.data.forEach(msg => {
-                    // Помечаем наши сообщения как прочитанные
-                    if (
-                      msg.author?.type === 'user' &&
-                      msg.author?.id === currentUserId
-                    ) {
-                      msg.is_read = true;
-                    }
-                  });
-                },
-              ),
-            );
-          }
+        if (chatId !== undefined && userId === currentUserId) {
+          dispatch(
+            chatApi.util.updateQueryData(
+              'getChats',
+              { limit: 100 },
+              draft => {
+                const chat = draft.data.find(c => c.id === chatId);
+                if (chat) {
+                  chat.unread_count = 0;
+                }
+              },
+            ),
+          );
         }
       }
 

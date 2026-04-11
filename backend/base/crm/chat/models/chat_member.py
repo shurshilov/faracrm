@@ -56,7 +56,7 @@ class ChatMember(DotModel):
     )
     left_at: datetime | None = Datetime(description="Дата выхода")
 
-    # === Права участника ===
+    # права участника
     can_read: bool = Boolean(
         default=True, description="Может читать сообщения"
     )
@@ -74,6 +74,11 @@ class ChatMember(DotModel):
     )
     is_admin: bool = Boolean(
         default=False, description="Администратор чата (все права)"
+    )
+
+    # храним только ид последнего прочитанного watermark-модель
+    last_read_message_id: int | None = Integer(
+        description="ID последнего прочитанного сообщения (watermark)",
     )
 
     # ==================== Instance Methods ====================
@@ -129,6 +134,7 @@ class ChatMember(DotModel):
                 "can_write",
                 "joined_at",
                 "left_at",
+                "last_read_message_id",
             ],
             limit=1,
         )

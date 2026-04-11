@@ -273,25 +273,8 @@ export function ChatPage({
         case 'messages_read': {
           const readByUserId = (message as any).user_id;
 
-          // Обновляем is_read ТОЛЬКО если это другой пользователь прочитал наши сообщения
-          if (readByUserId !== currentUserId) {
-            dispatch(
-              chatApi.util.updateQueryData(
-                'getChatMessages',
-                { chatId: message.chat_id, limit: 50 },
-                draft => {
-                  draft.data.forEach(msg => {
-                    // Помечаем наши сообщения как прочитанные
-                    if (msg.author?.id === currentUserId) {
-                      msg.is_read = true;
-                    }
-                  });
-                },
-              ),
-            );
-          }
-
-          // Обновляем unread_count в кэше когда МЫ прочитали сообщения
+          // Watermark-модель: не отслеживаем "кто именно прочитал каждое
+          // сообщение". Если это мы прочитали — сбрасываем свой unread_count.
           if (readByUserId === currentUserId) {
             dispatch(
               chatApi.util.updateQueryData('getChats', getChatsArgs, draft => {
