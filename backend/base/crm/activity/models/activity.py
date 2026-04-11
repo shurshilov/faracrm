@@ -9,6 +9,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Datetime,
     Selection,
     Many2one,
+    Field,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
@@ -81,6 +82,7 @@ class Activity(DotModel):
     )
     create_user_id: "User | None" = Many2one(
         relation_table=lambda: env.models.user,
+        default=_default_current_user,
         description="Кто создал",
     )
 
@@ -158,6 +160,61 @@ class Activity(DotModel):
     #     )
 
     #     return activity
+
+    async def update(
+        self,
+        payload: "Activity",
+        fields: list[str] | None = None,
+        session=None,
+    ):
+        """
+        При переходе в state="done" автоматически:
+        - active → False  (активность уходит из активных списков)
+        - done → True
+        - done_datetime → now (UTC)
+
+        Делается ДО super().update(), чтобы все поля улетели одним
+        SQL UPDATE — без второго round-trip к БД и без промежуточного
+        состояния "done + active=true".
+        """
+        new_state = payload.state or None
+        # Игнорируем дескриптор Field (поле не задано в payload)
+        if not isinstance(new_state, Field) and new_state == "done":
+            payload.active = False
+            payload.done = True
+            payload.done_datetime = datetime.now(timezone.utc)
+
+            # Если вызывающий код передал явный список fields — добавляем
+            # туда новые поля, чтобы они попали в SQL UPDATE.
+            if fields is not None:
+                extras = {"active", "done", "done_datetime"}
+                fields = list({*fields, *extras})
+
+        await super().update(payload, fields=fields, session=session)
+
+    @hybridmethod
+    async def update_bulk(
+        self,
+        ids: list[int],
+        payload: "Activity",
+        session=None,
+    ):
+        """
+        То же поведение, что и в `update`: если массово переводим записи
+        в state="done", то заодно деактивируем их и проставляем done /
+        done_datetime — одним SQL UPDATE на все ids.
+
+        Семантика идентична: payload — общий для всех ids, поэтому если
+        в нём `state="done"` — всем переведённым записям проставится
+        полный набор полей done.
+        """
+        new_state = getattr(payload, "state", None)
+        if not isinstance(new_state, Field) and new_state == "done":
+            payload.active = False
+            payload.done = True
+            payload.done_datetime = datetime.now(timezone.utc)
+
+        return await super().update_bulk(ids, payload, session=session)
 
     @hybridmethod
     async def schedule_activity(

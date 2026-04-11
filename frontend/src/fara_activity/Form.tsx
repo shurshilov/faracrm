@@ -20,22 +20,27 @@ export function ViewFormActivity(props: ViewFormProps) {
     <Form<ActivityRecord> model="activity" {...props}>
       <FormSheet>
         <FormRow cols={2}>
-          <Field name="summary" label={t('fields.summary')} />
+          <Field name="user_id" label={t('fields.user_id')} />
           <Field name="activity_type_id" label={t('fields.activity_type_id')} />
         </FormRow>
         <FormRow cols={2}>
           <Field name="res_model" label={t('fields.res_model')} />
           <Field name="res_id" label={t('fields.res_id')} />
         </FormRow>
-        <FormRow cols={3}>
-          <Field name="user_id" label={t('fields.user_id')} />
+        <FormRow cols={2}>
           <Field name="date_deadline" label={t('fields.date_deadline')} />
           <Field name="state" label={t('fields.state')} />
         </FormRow>
-        <FormRow cols={3}>
+        <FormRow cols={2}>
+          <Field name="done_datetime" label={t('fields.done_datetime')} />
           <Field name="done" label={t('fields.done')} />
+        </FormRow>
+        <FormRow cols={2}>
           <Field name="create_user_id" label={t('fields.create_user_id')} />
           <Field name="active" label={t('fields.active')} />
+        </FormRow>
+        <FormRow cols={2}>
+          <Field name="summary" label={t('fields.summary')} />
         </FormRow>
       </FormSheet>
 
