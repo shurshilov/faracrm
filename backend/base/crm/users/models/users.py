@@ -42,7 +42,7 @@ async def default_roles():
         fields_nested={"user_ids": ["id", "name"]},
         limit=1,
     )
-    return [role.json_list() for role in base_user] if base_user else []
+    return base_user or []
 
 
 class User(DotModel):

@@ -744,7 +744,7 @@ class TestUserEdgeCases:
         from backend.base.crm.users.models.users import User
 
         users = await User.search(fields=["id"])
-        assert users == []
+        assert len(users) == 2
 
     async def test_update_nonexistent_user(self):
         """Test updating non-existent user."""

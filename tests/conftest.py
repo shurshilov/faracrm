@@ -207,13 +207,59 @@ async def clean_all_tables(db_pool):
                     # await conn.execute(
                     #     "SET session_replication_role = 'replica'"
                     # )
-                    await conn.execute(f"TRUNCATE TABLE {tables_str} CASCADE")
+                    await conn.execute(
+                        f"TRUNCATE TABLE {tables_str} RESTART IDENTITY CASCADE"
+                    )
                     # await conn.execute(
                     #     "SET session_replication_role = 'origin'"
                     # )
             except asyncpg.exceptions.UndefinedTableError:
                 print(f"\nX Error clean table: {tables_str}")
                 pass  # Table doesn't exist yet
+
+        # Создаём базовый seed через ORM:
+        # 1. Английский язык — нужен для User.lang_id (NOT NULL).
+        # 2. Admin user (id=1) — занимает первый id в users.
+        # 3. System user (id=2) — на него ссылаются default-функции
+        #    вида `_default_current_user`.
+        # Порядок важен: id системного user'а должен быть равен
+        # SYSTEM_USER_ID=2, поэтому admin создаём первым.
+        from backend.base.crm.languages.models.language import Language
+        from backend.base.crm.users.models.users import User
+
+        existing_lang = await Language.search(
+            filter=[("code", "=", "en")], limit=1
+        )
+        if not existing_lang:
+            await Language.create(
+                payload=Language(
+                    code="en", name="English", flag="us", active=True
+                )
+            )
+
+        existing_admin = await User.search(filter=[("id", "=", 1)], limit=1)
+        if not existing_admin:
+            await User.create(
+                payload=User(
+                    name="Administrator",
+                    login="admin",
+                    is_admin=True,
+                    password_hash="",
+                    password_salt="",
+                )
+            )
+
+        existing_system = await User.search(filter=[("id", "=", 2)], limit=1)
+        if not existing_system:
+            await User.create(
+                payload=User(
+                    name="System",
+                    login="system",
+                    is_admin=True,
+                    password_hash="",
+                    password_salt="",
+                )
+            )
 
 
 async def _create_all_tables(pool):

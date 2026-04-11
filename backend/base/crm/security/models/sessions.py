@@ -41,7 +41,14 @@ class SystemSession:
     def __init__(self, user_id: int):
         from backend.base.crm.users.models.users import User
 
-        self.user_id = User(id=user_id, is_admin=True)
+        self.user_id = User(
+            id=user_id,
+            is_admin=True,
+            name="System",
+            login="system",
+            password_hash="",
+            password_salt="",
+        )
 
 
 class Session(DotModel):

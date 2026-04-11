@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 def _default_current_user():
     session = get_access_session()
-    return session.user_id.json() if session else None
+    return session.user_id if session else None
 
 
 class Activity(DotModel):
@@ -41,12 +41,12 @@ class Activity(DotModel):
     id: int = Integer(primary_key=True)
 
     # Полиморфная привязка к записи
-    res_model: str = Char(
+    res_model: str | None = Char(
         max_length=255,
         required=True,
         description="Модель записи (lead, task, partner...)",
     )
-    res_id: int = Integer(
+    res_id: int | None = Integer(
         required=True,
         description="ID записи",
     )

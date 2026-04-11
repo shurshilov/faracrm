@@ -477,7 +477,10 @@ class DotModel(
                 nested_names = fields_client_nested.get(name)
                 # Если есть вложенные поля, создаем спец. структуру, иначе пропускаем
                 if nested_names:
-                    data = value or []
+                    if value:
+                        data = [value_item.json_list() for value_item in value]
+                    else:
+                        data = []
                     default_values[name] = {
                         "data": data,
                         "fields": field.relation_table.get_fields_info_list(
@@ -485,7 +488,8 @@ class DotModel(
                         ),
                         "total": len(data),
                     }
-
+            elif isinstance(field, Many2one) and isinstance(value, DotModel):
+                default_values[name] = value.json(mode=JsonMode.FORM)
             # 3. Обработка обычных полей
             elif value is not None:
                 default_values[name] = value
