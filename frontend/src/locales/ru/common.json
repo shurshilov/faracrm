@@ -97,5 +97,6 @@
     "passwordRequired": "Введите пароль",
     "signIn": "Войти",
     "community": "Сообщество"
-  }
+  },
+  "selectDateTime": "Выберите дату и время"
 }

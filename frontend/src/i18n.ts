@@ -1,6 +1,9 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
+import dayjs from 'dayjs';
+import 'dayjs/locale/ru';
+import 'dayjs/locale/en';
 
 // ============ Глобальные переводы ============
 import enCommon from './locales/en/common.json';
@@ -191,5 +194,16 @@ i18n
       caches: ['localStorage'],
     },
   });
+
+// Синхронизация dayjs-локали с i18next.
+// Mantine DateTimePicker использует dayjs под капотом — без этого месяцы
+// и дни недели остаются английскими независимо от пропса `locale`.
+const syncDayjsLocale = (lng: string) => {
+  // i18next может отдать 'en-US', dayjs знает 'en' — берём первую часть
+  const short = (lng || 'en').split('-')[0];
+  dayjs.locale(short);
+};
+syncDayjsLocale(i18n.language);
+i18n.on('languageChanged', syncDayjsLocale);
 
 export default i18n;

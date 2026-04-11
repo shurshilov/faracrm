@@ -97,5 +97,6 @@
     "passwordRequired": "Password is required",
     "signIn": "Sign In",
     "community": "Community"
-  }
+  },
+  "selectDateTime": "Select date and time"
 }
