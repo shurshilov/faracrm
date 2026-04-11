@@ -15,10 +15,16 @@ from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.core.enviroment import env
 from backend.base.crm.chat.models.chat import Chat
 from backend.base.crm.chat.models.chat_member import ChatMember
+from backend.base.system.dotorm.dotorm.access import get_access_session
 
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
     from backend.base.crm.activity.models.activity_type import ActivityType
+
+
+def _default_current_user():
+    session = get_access_session()
+    return session.user_id.json() if session else None
 
 
 class Activity(DotModel):
@@ -68,6 +74,10 @@ class Activity(DotModel):
         required=True,
         index=True,
         description="Кому назначено",
+        default=_default_current_user,
+        # default=lambda: (
+        #     s.user_id.json() if (s := get_access_session()) else None
+        # ),
     )
     create_user_id: "User | None" = Many2one(
         relation_table=lambda: env.models.user,

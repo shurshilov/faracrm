@@ -16,13 +16,15 @@ if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
 from backend.base.system.core.enviroment import env
 
+# class _SystemUser:
+#     """Системный пользователь для post_init операций."""
 
-class _SystemUser:
-    """Системный пользователь для post_init операций."""
+#     def __init__(self, user_id: int):
+#         self.id = user_id
+#         self.is_admin = True
 
-    def __init__(self, user_id: int):
-        self.id = user_id
-        self.is_admin = True
+#     def json(self) -> dict:
+#         return {"id": self.id, "is_admin": True}
 
 
 class SystemSession:
@@ -37,7 +39,9 @@ class SystemSession:
     """
 
     def __init__(self, user_id: int):
-        self.user_id = _SystemUser(user_id)
+        from backend.base.crm.users.models.users import User
+
+        self.user_id = User(id=user_id, is_admin=True)
 
 
 class Session(DotModel):
