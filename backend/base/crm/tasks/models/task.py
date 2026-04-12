@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from .task_stage import TaskStage
     from .task_tag import TaskTag
 
+from backend.base.system.dotorm.dotorm.access import get_access_session
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
@@ -22,6 +23,33 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.schemas.base_schema import Id
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+
+
+def _default_current_user():
+    session = get_access_session()
+    return session.user_id if session else None
+
+
+async def _default_stage_id():
+    """Метод для получения стадии по умолчанию"""
+    first_stage = await env.models.task_stage.search(
+        fields=["id", "name"],
+        limit=1,
+    )
+    return first_stage[0] if first_stage else None
+
+
+async def _default_name():
+    """Генерирует имя заказа вида 'Заказ 0000042' на основе следующего id
+    из sequence таблицы sales."""
+    session = env.apps.db.get_session()
+    # Postgres: nextval гарантирует уникальное значение,
+    # которое будет использовано при следующем INSERT
+    result = await session.execute(
+        "SELECT nextval(pg_get_serial_sequence('tasks', 'id')) AS next_id"
+    )
+    next_id = result[0]["next_id"] if result else 0
+    return f"Задача {str(next_id).zfill(7)}"
 
 
 class Task(DotModel):
@@ -41,7 +69,9 @@ class Task(DotModel):
     __table__ = "tasks"
 
     id: Id = Integer(primary_key=True)
-    name: str = Char(string="Task Title", required=True, size=500)
+    name: str = Char(
+        string="Task Title", required=True, size=500, default=_default_name
+    )
     active: bool = Boolean(default=True)
     sequence: int = Integer(default=10, string="Sequence")
 
@@ -62,6 +92,7 @@ class Task(DotModel):
         string="Stage",
         index=True,
         ondelete="restrict",
+        default=_default_stage_id,
     )
 
     #  Подзадачи: self-referencing
@@ -84,6 +115,7 @@ class Task(DotModel):
         string="Assignee",
         index=True,
         ondelete="restrict",
+        default=_default_current_user,
     )
 
     #  Приоритет
@@ -111,8 +143,11 @@ class Task(DotModel):
     )
 
     #  Даты (для Ганта)
-    date_start: datetime = Datetime(string="Start Date")
-    date_end: datetime = Datetime(string="End Date")
+    date_start: datetime = Datetime(
+        string="Start Date",
+        default=lambda: datetime.now(timezone.utc),
+    )
+    date_end: datetime | None = Datetime(string="End Date")
     date_deadline: datetime | None = Datetime(string="Deadline")
 
     #  Трекинг времени

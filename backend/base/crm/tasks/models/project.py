@@ -5,6 +5,7 @@ if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
     from .task import Task
 
+from backend.base.system.dotorm.dotorm.access import get_access_session
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
@@ -18,6 +19,11 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.schemas.base_schema import Id
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+
+
+def _default_current_user():
+    session = get_access_session()
+    return session.user_id if session else None
 
 
 class Project(DotModel):
@@ -51,6 +57,7 @@ class Project(DotModel):
         lambda: env.models.user,
         string="Project Manager",
         ondelete="restrict",
+        default=_default_current_user,
     )
 
     date_start: datetime | None = Datetime(string="Start Date")
