@@ -2,12 +2,11 @@ import binascii
 import hashlib
 import re
 import secrets
-from typing import TYPE_CHECKING, Self, cast
+from typing import TYPE_CHECKING
 
 from backend.base.crm.attachments.models.attachments import Attachment
 from ....system.dotorm.dotorm.components.filter_parser import FilterExpression
 from ...security.routers.sessions import TerminationMode
-from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Char,
@@ -31,11 +30,13 @@ from backend.base.crm.security.models.sessions import Session
 # Зарезервированные ID пользователей
 ADMIN_USER_ID = 1
 SYSTEM_USER_ID = 2
-TEMPLATE_USER_ID = 3  # Шаблон внутреннего пользователя (default_internal)
+# Шаблон внутреннего пользователя (default_internal)
+TEMPLATE_USER_ID = 3
 
 
-async def default_roles():
+async def _default_roles():
     """Метод для получения ролей по умолчанию"""
+
     base_user = await env.models.role.search(
         filter=[("code", "=", "base_user")],
         fields=["id", "name", "user_ids"],
@@ -43,6 +44,15 @@ async def default_roles():
         limit=1,
     )
     return base_user or []
+
+
+async def _default_langs():
+    """Метод для получения языков по умолчанию"""
+
+    default_langs = await env.models.language.search(
+        filter=[("code", "in", ["en", "ru"]), ("active", "=", True)],
+    )
+    return default_langs or []
 
 
 class User(DotModel):
@@ -60,7 +70,7 @@ class User(DotModel):
     image: Attachment | None = PolymorphicMany2one(relation_table=Attachment)
 
     role_ids: list["Role"] = Many2many(
-        default=default_roles,
+        default=_default_roles,
         store=False,
         relation_table=lambda: env.models.role,
         many2many_table="user_role_many2many",
@@ -82,6 +92,7 @@ class User(DotModel):
         column1="language_id",
         column2="user_id",
         ondelete="cascade",
+        default=_default_langs,
     )
 
     # Контакты (телефоны, email, telegram и т.д.)
@@ -120,35 +131,35 @@ class User(DotModel):
         description="Воспроизводить звук уведомлений",
     )
 
-    @hybridmethod
-    async def create(self, payload: Self) -> int:
-        """Создание пользователя с автоматическим добавлением языков по умолчанию."""
-        default_langs = await env.models.language.search(
-            filter=[("code", "in", ["en", "ru"]), ("active", "=", True)],
-        )
-        if default_langs:
-            payload.lang_id = default_langs[0]
-            # if not payload.role_ids:
-            #     # при создании пользователя если не выбрана ни одна роль
-            #     # то ставим роль внутреннего пользователя по умолчанию
-            #     base_user = await env.models.role.search(
-            #         filter=[("code", "=", "base_user")],
-            #         fields=["id"],
-            #         limit=1,
-            #     )
+    # @hybridmethod
+    # async def create(self, payload: Self) -> int:
+    #     """Создание пользователя с автоматическим добавлением языков по умолчанию."""
+    #     default_langs = await env.models.language.search(
+    #         filter=[("code", "in", ["en", "ru"]), ("active", "=", True)],
+    #     )
+    #     if default_langs:
+    #         payload.lang_id = default_langs[0]
+    #         # if not payload.role_ids:
+    #         #     # при создании пользователя если не выбрана ни одна роль
+    #         #     # то ставим роль внутреннего пользователя по умолчанию
+    #         #     base_user = await env.models.role.search(
+    #         #         filter=[("code", "=", "base_user")],
+    #         #         fields=["id"],
+    #         #         limit=1,
+    #         #     )
 
-            #     if base_user:
-            #         payload.role_ids = {"selected": base_user}
+    #         #     if base_user:
+    #         #         payload.role_ids = {"selected": base_user}
 
-            user_id = await super().create(payload=payload)
-            # добавить все активные языки как языки к выбору
-            values = [[user_id, lang.id] for lang in default_langs]
-            await self.link_many2many(
-                field=cast(Many2many, User.lang_ids), values=values
-            )
-            return user_id
-        else:
-            raise ValueError("Language not found for create user")
+    #         user_id = await super().create(payload=payload)
+    #         # добавить все активные языки как языки к выбору
+    #         values = [[user_id, lang.id] for lang in default_langs]
+    #         await self.link_many2many(
+    #             field=cast(Many2many, User.lang_ids), values=values
+    #         )
+    #         return user_id
+    #     else:
+    #         raise ValueError("Language not found for create user")
 
     # @hybridmethod
     # async def create_from_template(
