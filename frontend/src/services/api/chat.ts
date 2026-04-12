@@ -15,6 +15,7 @@ const chatApi = api.injectEndpoints({
           }),
           ...(args?.chat_type && { chat_type: args.chat_type }),
           ...(args?.connector_type && { connector_type: args.connector_type }),
+          ...(args?.include_deleted && { include_deleted: 1 }),
         },
       }),
       providesTags: result =>
@@ -192,11 +193,12 @@ const chatApi = api.injectEndpoints({
 
     // Get messages for a chat
     getChatMessages: build.query<GetMessagesResponse, GetMessagesArgs>({
-      query: ({ chatId, limit, beforeId }) => ({
+      query: ({ chatId, limit, beforeId, includeDeleted }) => ({
         url: `/chats/${chatId}/messages`,
         params: {
           limit: limit || 50,
           before_id: beforeId,
+          ...(includeDeleted && { include_deleted: 1 }),
         },
       }),
     }),
@@ -620,6 +622,7 @@ export interface Chat {
   name: string;
   chat_type: 'direct' | 'group' | 'channel' | 'record';
   is_internal: boolean;
+  active?: boolean;
   description?: string;
   create_date?: string;
   last_message_date?: string;
@@ -652,6 +655,7 @@ export interface MessageAttachment {
 }
 
 export interface ChatMessage {
+  is_deleted?: boolean;
   id: number;
   body?: string;
   message_type: string;
@@ -691,6 +695,7 @@ export interface GetChatsArgs {
   is_internal?: boolean;
   chat_type?: 'direct' | 'group';
   connector_type?: string;
+  include_deleted?: boolean;
 }
 
 export interface GetChatsResponse {
@@ -722,6 +727,7 @@ export interface GetMessagesArgs {
   chatId: number;
   limit?: number;
   beforeId?: number;
+  includeDeleted?: boolean;
 }
 
 export interface GetMessagesResponse {

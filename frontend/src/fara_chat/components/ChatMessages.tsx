@@ -63,6 +63,7 @@ interface ChatMessagesProps {
   newMessages?: ChatMessage[];
   onChatUpdate?: (updatedChat: Partial<Chat>) => void;
   onMarkUnread?: () => void;
+  showDeletedMessages?: boolean;
 }
 
 export function ChatMessages({
@@ -71,6 +72,7 @@ export function ChatMessages({
   newMessages = [],
   onChatUpdate,
   onMarkUnread,
+  showDeletedMessages = false,
 }: ChatMessagesProps) {
   const { t } = useTranslation('chat');
 
@@ -121,10 +123,11 @@ export function ChatMessages({
     opened: boolean;
   } | null>(null);
 
-  const { data, isLoading, error, refetch } = useGetChatMessagesQuery({
-    chatId: chat.id,
-    limit: 50,
-  });
+  const { data, isLoading, error, refetch } = useGetChatMessagesQuery(
+    showDeletedMessages
+      ? { chatId: chat.id, limit: 50, includeDeleted: true }
+      : { chatId: chat.id, limit: 50 }
+  );
   const { data: chatsData } = useGetChatsQuery({ limit: 100 });
 
   const [deleteMessage] = useDeleteMessageMutation();
@@ -454,7 +457,13 @@ export function ChatMessages({
         ) : (
           <Stack gap="xs" p="md">
             {allMessages.map((message, index) => (
-              <Box key={message.id}>
+              <Box
+                key={message.id}
+                style={
+                  (message as any).is_deleted
+                    ? { opacity: 0.55, textDecoration: 'line-through' }
+                    : undefined
+                }>
                 {shouldShowDate(message, index) && (
                   <Box className={styles.dateSeparator}>
                     <Text size="xs" c="dimmed">

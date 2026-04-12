@@ -44,6 +44,9 @@ async def get_chats(
     connector_type: str | None = Query(
         None, description="Фильтр по коннектору: telegram, whatsapp, etc"
     ),
+    include_deleted: int = Query(
+        0, description="Admin: показать удалённые чаты"
+    ),
 ):
     """
     Получить список чатов текущего пользователя.
@@ -66,8 +69,13 @@ async def get_chats(
         JOIN chat_member cm ON c.id = cm.chat_id AND cm.is_active = true
     """
 
-    conditions = ["cm.user_id = %s", "c.active = true"]
+    conditions = ["cm.user_id = %s"]
     params: list = [user_id]
+
+    # Soft-delete: только админ может видеть удалённые чаты
+    _show_deleted = bool(include_deleted) and auth_session.user_id.is_admin
+    if not _show_deleted:
+        conditions.append("c.active = true")
 
     # Фильтр is_internal
     if is_internal is True:
@@ -129,6 +137,7 @@ async def get_chats(
             "chat_type",
             "last_message_date",
             "create_date",
+            "active",
         ],
         limit=limit,
     )
@@ -298,6 +307,7 @@ async def get_chats(
             "name": chat.name,
             "chat_type": chat.chat_type,
             "is_internal": chat.is_internal,
+            "active": chat.active,
             "connectors": connectors_by_chat.get(chat.id, []),
             "last_message_date": (
                 chat.last_message_date.isoformat()

@@ -29,6 +29,9 @@ if TYPE_CHECKING:
         ChatExternalMessage,
     )
     from backend.base.crm.attachments.models.attachments import Attachment
+    from backend.base.system.dotorm.dotorm.components.filter_parser import (
+        FilterExpression,
+    )
 
 
 class ChatMessage(DotModel):
@@ -259,6 +262,7 @@ class ChatMessage(DotModel):
         chat_id: int,
         limit: int = 50,
         before_id: int | None = None,
+        include_deleted: bool = False,
     ):
         """
         Получить сообщения чата с пагинацией.
@@ -271,10 +275,11 @@ class ChatMessage(DotModel):
         Returns:
             Список сообщений
         """
-        filter_conditions = [
+        filter_conditions: "FilterExpression" = [
             ("chat_id", "=", chat_id),
-            ("is_deleted", "=", False),
         ]
+        if not include_deleted:
+            filter_conditions.append(("is_deleted", "=", False))
 
         if before_id:
             filter_conditions.append(("id", "<", before_id))
@@ -291,6 +296,7 @@ class ChatMessage(DotModel):
                 "starred",
                 "pinned",
                 "is_edited",
+                "is_deleted",
                 "parent_id",
                 "connector_id",
                 "call_direction",

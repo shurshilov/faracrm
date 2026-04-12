@@ -12,7 +12,9 @@ import {
   Skeleton,
   Paper,
 } from '@mantine/core';
-import { IconSearch, IconPlus, IconMessage } from '@tabler/icons-react';
+import { IconSearch, IconPlus, IconMessage, IconAdjustments } from '@tabler/icons-react';
+import { Switch, Popover } from '@mantine/core';
+import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import DOMPurify from 'dompurify';
 import { useGetChatsQuery, Chat, ChatLastMessage } from '@/services/api/chat';
@@ -85,6 +87,13 @@ export function ChatList({
   const { t } = useTranslation('chat');
   const [search, setSearch] = useState('');
 
+  // Soft-delete: видимость удалённых чатов (только для админов)
+  // Не персистится между сессиями — намеренно.
+  const session = useSelector((s: any) => s.auth?.session);
+  const isAdmin = !!session?.user_id?.is_admin;
+  const [showDeletedChats, setShowDeletedChats] = useState(false);
+  const [listSettingsOpened, setListSettingsOpened] = useState(false);
+
   // Формируем аргументы запроса, исключая undefined значения
   const queryArgs = useMemo(() => {
     const args: {
@@ -92,13 +101,15 @@ export function ChatList({
       is_internal?: boolean;
       chat_type?: string;
       connector_type?: string;
+      include_deleted?: boolean;
     } = { limit: 100 };
     if (filter.is_internal !== undefined) args.is_internal = filter.is_internal;
     if (filter.chat_type !== undefined) args.chat_type = filter.chat_type;
     if (filter.connector_type !== undefined)
       args.connector_type = filter.connector_type;
+    if (isAdmin && showDeletedChats) args.include_deleted = true;
     return args;
-  }, [filter.is_internal, filter.chat_type, filter.connector_type]);
+  }, [filter.is_internal, filter.chat_type, filter.connector_type, isAdmin, showDeletedChats]);
 
   const { data, isLoading, error, refetch } = useGetChatsQuery(queryArgs);
 
@@ -180,9 +191,36 @@ export function ChatList({
           <Text fw={600} size="lg">
             {t('chats')}
           </Text>
-          <ActionIcon variant="light" onClick={onNewChat} title={t('newChat')}>
-            <IconPlus size={18} />
-          </ActionIcon>
+          <Group gap="xs" wrap="nowrap">
+            <ActionIcon variant="light" onClick={onNewChat} title={t('newChat')}>
+              <IconPlus size={18} />
+            </ActionIcon>
+            {isAdmin && (
+              <Popover
+                opened={listSettingsOpened}
+                onChange={setListSettingsOpened}
+                position="bottom-end"
+                withArrow
+                shadow="md">
+                <Popover.Target>
+                  <ActionIcon
+                    variant="light"
+                    onClick={() => setListSettingsOpened(o => !o)}
+                    title={t('listSettings', 'Настройки списка')}>
+                    <IconAdjustments size={18} />
+                  </ActionIcon>
+                </Popover.Target>
+                <Popover.Dropdown>
+                  <Switch
+                    checked={showDeletedChats}
+                    onChange={e => setShowDeletedChats(e.currentTarget.checked)}
+                    label={t('showDeletedChats', 'Показывать удалённые чаты')}
+                    size="sm"
+                  />
+                </Popover.Dropdown>
+              </Popover>
+            )}
+          </Group>
         </Group>
 
         <TextInput
@@ -214,6 +252,11 @@ export function ChatList({
                 className={`${styles.chatItem} ${
                   selectedChatId === chat.id ? styles.selected : ''
                 }`}
+                style={
+                  chat.active === false
+                    ? { opacity: 0.55, textDecoration: 'line-through' }
+                    : undefined
+                }
                 onClick={() => onSelectChat(chat)}>
                 <Group wrap="nowrap" gap="sm">
                   {getChatIcon(chat)}

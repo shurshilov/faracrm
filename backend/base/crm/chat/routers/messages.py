@@ -57,6 +57,7 @@ async def get_messages(
     chat_id: int,
     limit: int = Query(50, ge=1, le=100),
     before_id: int | None = Query(None),
+    include_deleted: int = Query(0, description="Admin: показать удалённые"),
 ):
     """
     Получить сообщения чата.
@@ -69,8 +70,15 @@ async def get_messages(
     # Проверяем членство (can_read по умолчанию true) и получаем member
     current_member = await ChatMember.check_membership(chat_id, user_id)
 
+    # Soft-delete: показывать удалённые только админам
+    _is_admin = auth_session.user_id.is_admin or current_member.is_admin
+    _show_deleted = bool(include_deleted) and _is_admin
+
     messages = await env.models.chat_message.get_chat_messages(
-        chat_id=chat_id, limit=limit, before_id=before_id
+        chat_id=chat_id,
+        limit=limit,
+        before_id=before_id,
+        include_deleted=_show_deleted,
     )
 
     last_read_watermark: int = current_member.last_read_message_id or 0
@@ -167,6 +175,7 @@ async def get_messages(
             "author": format_message_author(msg),
             "attachments": attachments_by_message.get(msg.id, []),
             "reactions": format_reactions(msg.id),
+            "is_deleted": msg.is_deleted is True,
         }
 
         result.append(msg_data)

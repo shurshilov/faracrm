@@ -47,6 +47,9 @@ export function ChatPage({
   const { t } = useTranslation('chat');
   const dispatch = useDispatch();
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  // Soft-delete: видимость удалённых сообщений в открытом чате.
+  // Сбрасывается при переключении чата (см. useEffect ниже).
+  const [showDeletedMessages, setShowDeletedMessages] = useState(false);
   const isMobile = useMediaQuery('(max-width: 768px)');
   // На мобильном: true = показываем сайдбар, false = показываем чат
   const [showSidebar, setShowSidebar] = useState(true);
@@ -69,6 +72,11 @@ export function ChatPage({
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
+
+  // Сбрасываем просмотр удалённых при смене чата (защита от "забыл выключить")
+  useEffect(() => {
+    setShowDeletedMessages(false);
+  }, [selectedChat?.id]);
 
   // Читаем фильтр из URL query params
   const [searchParams, setSearchParams] = useSearchParams();
@@ -449,6 +457,8 @@ export function ChatPage({
               onSettings={() => setSettingsModalOpen(true)}
               onPinnedMessages={handleOpenPinnedModal}
               onBack={isMobile ? handleBackToList : undefined}
+              showDeletedMessages={showDeletedMessages}
+              onToggleShowDeletedMessages={setShowDeletedMessages}
             />
             <Box
               onClick={handleChatAreaClick}
@@ -470,6 +480,7 @@ export function ChatPage({
                 onMarkUnread={() => {
                   skipMarkAsReadRef.current = true;
                 }}
+                showDeletedMessages={showDeletedMessages}
               />
             </Box>
             <Box onClick={handleChatAreaClick}>
