@@ -55,6 +55,12 @@ class Field[FieldType]:
     index: bool = False
     primary_key: bool = False
     null: bool = True
+    # default_orm — применять default при INSERT в Python (callable выполняется здесь).
+    # default_db — применять default как DDL DEFAULT (только литералы, опт-ин).
+    # default по умолчанию работает как раньше: ORM-применение включено,
+    # DDL-default — нет (чтобы не менять существующие миграции).
+    default_orm: bool = True
+    default_db: bool = False
     unique: bool = False
     description: str | None = None
     ondelete: str = "set null"
@@ -77,6 +83,12 @@ class Field[FieldType]:
     def __init__(self, **kwargs: Any) -> None:
         # schema_required - переопределяет обязательность в API схеме
         self.schema_required = kwargs.pop("schema_required", None)
+
+        # Тонкий контроль того, где применяется default. По умолчанию
+        # default_orm=True (как раньше — ORM подставит при INSERT),
+        # default_db=False (DDL DEFAULT — осознанный опт-ин).
+        self.default_orm = kwargs.pop("default_orm", self.default_orm)
+        self.default_db = kwargs.pop("default_db", self.default_db)
 
         # добавляем поле required для удобства работы
         # которое переопределяет null
@@ -115,6 +127,32 @@ class Field[FieldType]:
     # обман тайп чекера.
     def __new__(cls, *args: Any, **kwargs: Any) -> FieldType:
         return super().__new__(cls)
+
+    @staticmethod
+    def _can_apply_to_db(default: Any) -> bool:
+        """Можно ли default сериализовать как DDL DEFAULT литерал.
+
+        Только литералы (bool/int/float/str/bytes). Callables не идут в SQL.
+        """
+        if default is None or callable(default):
+            return False
+        return isinstance(default, (bool, int, float, str, bytes))
+
+    @property
+    def has_backend_default(self) -> bool:
+        """Гарантирует ли бэк (ORM или БД) заполнение поля.
+
+        True если default задан и хотя бы один путь применения активен:
+        - default_orm=True → ORM подставит при INSERT
+        - default_db=True И литерал → БД сама подставит через DDL DEFAULT
+        """
+        if self.default is None:
+            return False
+        if self.default_orm:
+            return True
+        if self.default_db and self._can_apply_to_db(self.default):
+            return True
+        return False
 
     def validation(self):
         if not self.indexable and (self.unique or self.index):

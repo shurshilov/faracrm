@@ -144,11 +144,17 @@ class DDLMixin(_Base):
                         field_declaration.append("NOT NULL")
                     if field.primary_key:
                         field_declaration.append("PRIMARY KEY")
-                    if field.default is not None:
-                        if isinstance(field.default, (bool, int, str)):
-                            field_declaration.append(
-                                f"DEFAULT {cls.format_default_value(field.default)}"
-                            )
+                    # DDL DEFAULT добавляем только если default_db=True И значение
+                    # сериализуемо как литерал. Иначе default применяется ORM
+                    # на стороне Python при INSERT (поведение по умолчанию).
+                    if (
+                        field.default is not None
+                        and field.default_db
+                        and field._can_apply_to_db(field.default)
+                    ):
+                        field_declaration.append(
+                            f"DEFAULT {cls.format_default_value(field.default)}"
+                        )
 
                     if isinstance(field, Many2one):
                         # FK с именованным CONSTRAINT

@@ -544,9 +544,10 @@ class DotModel(
         if field.required is not None:
             return field.required
 
-        # 3.5. Поле с default значением не обязательно в API —
-        #      клиент не должен передавать то, что ORM заполнит сам.
-        if field.default is not None:
+        # 3.5. Поле с гарантированным backend-default'ом не обязательно
+        #      в API — клиент не должен передавать то, что бэк подставит сам.
+        #      Учитываются default_orm и default_db (см. fields.Field).
+        if field.has_backend_default:
             return False
 
         # 4. Проверяем аннотацию типа

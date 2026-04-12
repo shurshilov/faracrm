@@ -55,6 +55,15 @@ async def _default_langs():
     return default_langs or []
 
 
+async def _default_lang():
+    """Язык по умолчанию для одиночного поля lang_id."""
+    langs = await env.models.language.search(
+        filter=[("code", "=", "en"), ("active", "=", True)],
+        limit=1,
+    )
+    return langs[0] if langs else None
+
+
 class User(DotModel):
     __table__ = "users"
 
@@ -83,6 +92,7 @@ class User(DotModel):
         relation_table=lambda: env.models.language,
         required=True,
         description="Язык интерфейса пользователя",
+        default=_default_lang,
     )
     # Доступные языки для выбора пользователю
     lang_ids: list["Language"] = Many2many(
