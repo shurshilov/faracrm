@@ -94,8 +94,10 @@ export function useChatWebSocket({
         }, 30000);
       };
 
-      ws.onclose = () => {
-        console.log('Chat WebSocket disconnected');
+      ws.onclose = event => {
+        console.log(
+          `Chat WebSocket disconnected (code=${event.code}, reason="${event.reason}")`
+        );
         isConnectingRef.current = false;
         setIsConnected(false);
         onDisconnectRef.current?.();
@@ -104,6 +106,19 @@ export function useChatWebSocket({
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current);
           pingIntervalRef.current = null;
+        }
+
+        // Не переподключаемся на auth-ошибках — иначе бесконечный цикл
+        // запросов с мёртвым токеном. Сервер закрывает с кодом 4001
+        // ('Token required' / 'Invalid token' / 'Auth error').
+        // Коды 4003/4401/4403 тоже трактуем как auth-ошибку на будущее.
+        const AUTH_CLOSE_CODES = [4001, 4003, 4401, 4403];
+        if (AUTH_CLOSE_CODES.includes(event.code)) {
+          console.warn(
+            'Chat WebSocket: auth error, giving up reconnect. ' +
+              'Session should be cleared by REST 401 handler.'
+          );
+          return;
         }
 
         // Reconnect after delay only if still mounted
