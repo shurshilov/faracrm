@@ -132,8 +132,11 @@ export class ChatPage {
   async createGroupChat(name: string, memberNames: string[] = []) {
     await this.newChatButton.click();
 
-    // Ждём появления модалки
-    await expect(this.page.getByText('Новый чат').first()).toBeVisible({ timeout: 5_000 });
+    // Ждём появления модалки. Используем role="dialog" вместо поиска по
+    // заголовку — устойчивее к изменениям перевода и UI.
+    await expect(this.page.getByRole('dialog').first()).toBeVisible({
+      timeout: 5_000,
+    });
 
     // Переключаемся на таб "Группа"
     await this.page.getByText(/^Группа$/i).first().click();

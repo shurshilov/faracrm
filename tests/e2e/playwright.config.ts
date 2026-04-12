@@ -4,10 +4,13 @@ import { defineConfig, devices } from '@playwright/test';
  * Playwright конфигурация для FARA CRM E2E тестов.
  *
  * Запуск:
- *   npx playwright test                      — все тесты
- *   npx playwright test specs/chat/           — только чат
- *   npx playwright test --headed              — с браузером
- *   npx playwright test --ui                  — интерактивный режим
+ *   npx playwright test                        — все тесты КРОМЕ smoke
+ *                                                (по умолчанию, включая
+ *                                                 complex-create, theme и т.д.)
+ *   npx playwright test --project=smoke        — только smoke-тесты
+ *   npx playwright test specs/chat/            — конкретная папка
+ *   npx playwright test --headed               — с браузером
+ *   npx playwright test --ui                   — интерактивный режим
  */
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
@@ -47,11 +50,24 @@ export default defineConfig({
     storageState: '.auth/admin.json',
   },
 
-  /* Проекты = браузеры */
+  /* Проекты:
+   * - chromium (default) — все тесты кроме smoke. Запускается без флагов.
+   * - smoke — только smoke-тесты. Запуск: --project=smoke.
+   *
+   * Логика: smoke прогоняет открытие ~60 страниц и занимает много времени,
+   * его нужно запускать осознанно (перед релизом, в ночных job'ах CI),
+   * а обычная разработка использует быстрый complex-create + views + auth.
+   */
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: /specs\/smoke\//,
+    },
+    {
+      name: 'smoke',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /specs\/smoke\//,
     },
     // {
     //   name: 'firefox',

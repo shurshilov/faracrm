@@ -2,7 +2,7 @@
   "name": "fara-crm-e2e",
   "private": true,
   "scripts": {
-    "test": "playwright test",
+    "test": "playwright test --project=chromium",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:chat": "playwright test specs/chat/",
