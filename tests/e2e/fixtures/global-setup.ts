@@ -28,6 +28,36 @@ async function globalSetup(config: FullConfig) {
   try {
     const adminSession = await api.login(ADMIN_LOGIN, ADMIN_PASSWORD);
 
+    // Сбрасываем тему admin в 'modern' перед каждым прогоном тестов.
+    // Это защита на случай если какой-то тест (например theme-switch)
+    // упал в середине и не успел восстановить тему через try/finally.
+    // Один PUT-запрос на весь прогон — дешёвая страховка.
+    //
+    // ВАЖНО: бэк требует ОБА header'а — Bearer token И Cookie session_cookie.
+    // Без cookie возвращает 401.
+    try {
+      const resetRes = await fetch(`${API_URL}/auto/users/${adminSession.user_id.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminSession.token}`,
+          'Cookie': `session_cookie=${adminSession.cookieToken}`,
+        },
+        body: JSON.stringify({ layout_theme: 'modern' }),
+      });
+      if (!resetRes.ok) {
+        console.warn(`⚠️ Could not reset admin layout_theme (status ${resetRes.status})`);
+      } else {
+        // Обновляем локальный объект чтобы storageState записал modern в localStorage.
+        if (adminSession.user_id) {
+          (adminSession.user_id as any).layout_theme = 'modern';
+        }
+        console.log('✅ Admin layout_theme reset to modern');
+      }
+    } catch (e) {
+      console.warn('⚠️ Could not reset admin layout_theme:', e);
+    }
+
     const adminContext = await browser.newContext();
     const adminPage = await adminContext.newPage();
 

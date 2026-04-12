@@ -152,10 +152,10 @@ export default function ViewFormUsers(props: ViewFormProps) {
             name="roles"
             label={t('tabs.roles')}
             icon={<IconShield size={16} />}>
-            <Field name="role_ids" showSelect>
-              <Field name="id" />
-              <Field name="name" />
-              <Field name="user_ids" />
+            <Field name="role_ids" showSelect label="">
+              <Field name="id" label={t('fields.id')} />
+              <Field name="name" label={t('fields.name')} />
+              <Field name="user_ids" label={t('role_ids.user_ids')} />
             </Field>
           </FormTab>
 
@@ -164,11 +164,11 @@ export default function ViewFormUsers(props: ViewFormProps) {
             label={t('tabs.languages', 'Доступные языки')}
             icon={<IconLanguage size={16} />}>
             <Field name="lang_ids">
-              <Field name="id" />
-              <Field name="code" />
-              <Field name="name" />
-              <Field name="flag" />
-              <Field name="active" />
+              <Field name="id" label={t('fields.id')} />
+              <Field name="code" label={t('lang_ids.code')} />
+              <Field name="name" label={t('fields.name')} />
+              <Field name="flag" label={t('lang_ids.flag')} />
+              <Field name="active" label={t('lang_ids.active')} />
             </Field>
           </FormTab>
 
