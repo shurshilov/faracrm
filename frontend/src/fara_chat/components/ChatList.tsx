@@ -12,9 +12,8 @@ import {
   Skeleton,
   Paper,
 } from '@mantine/core';
-import { IconSearch, IconPlus, IconMessage, IconAdjustments } from '@tabler/icons-react';
-import { Switch, Popover } from '@mantine/core';
-import { useSelector } from 'react-redux';
+import { IconSearch, IconPlus, IconMessage } from '@tabler/icons-react';
+import { AdminSettingsPopover } from './AdminSettingsPopover';
 import { useTranslation } from 'react-i18next';
 import DOMPurify from 'dompurify';
 import { useGetChatsQuery, Chat, ChatLastMessage } from '@/services/api/chat';
@@ -87,12 +86,9 @@ export function ChatList({
   const { t } = useTranslation('chat');
   const [search, setSearch] = useState('');
 
-  // Soft-delete: видимость удалённых чатов (только для админов)
-  // Не персистится между сессиями — намеренно.
-  const session = useSelector((s: any) => s.auth?.session);
-  const isAdmin = !!session?.user_id?.is_admin;
+  // Soft-delete: видимость удалённых чатов (только для админов).
+  // Не персистится между сессиями — намеренно (защита от "забыл выключить").
   const [showDeletedChats, setShowDeletedChats] = useState(false);
-  const [listSettingsOpened, setListSettingsOpened] = useState(false);
 
   // Формируем аргументы запроса, исключая undefined значения
   const queryArgs = useMemo(() => {
@@ -107,9 +103,9 @@ export function ChatList({
     if (filter.chat_type !== undefined) args.chat_type = filter.chat_type;
     if (filter.connector_type !== undefined)
       args.connector_type = filter.connector_type;
-    if (isAdmin && showDeletedChats) args.include_deleted = true;
+    if (showDeletedChats) args.include_deleted = true;
     return args;
-  }, [filter.is_internal, filter.chat_type, filter.connector_type, isAdmin, showDeletedChats]);
+  }, [filter.is_internal, filter.chat_type, filter.connector_type, showDeletedChats]);
 
   const { data, isLoading, error, refetch } = useGetChatsQuery(queryArgs);
 
@@ -195,31 +191,19 @@ export function ChatList({
             <ActionIcon variant="light" onClick={onNewChat} title={t('newChat')}>
               <IconPlus size={18} />
             </ActionIcon>
-            {isAdmin && (
-              <Popover
-                opened={listSettingsOpened}
-                onChange={setListSettingsOpened}
-                position="bottom-end"
-                withArrow
-                shadow="md">
-                <Popover.Target>
-                  <ActionIcon
-                    variant="light"
-                    onClick={() => setListSettingsOpened(o => !o)}
-                    title={t('listSettings', 'Настройки списка')}>
-                    <IconAdjustments size={18} />
-                  </ActionIcon>
-                </Popover.Target>
-                <Popover.Dropdown>
-                  <Switch
-                    checked={showDeletedChats}
-                    onChange={e => setShowDeletedChats(e.currentTarget.checked)}
-                    label={t('showDeletedChats', 'Показывать удалённые чаты')}
-                    size="sm"
-                  />
-                </Popover.Dropdown>
-              </Popover>
-            )}
+            <AdminSettingsPopover
+              size="md"
+              variant="light"
+              title={t('listSettings', 'Настройки списка')}
+              options={[
+                {
+                  key: 'showDeletedChats',
+                  label: t('showDeletedChats', 'Показывать удалённые чаты'),
+                  checked: showDeletedChats,
+                  onChange: setShowDeletedChats,
+                },
+              ]}
+            />
           </Group>
         </Group>
 

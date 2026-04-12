@@ -1,27 +1,10 @@
-import { useState } from 'react';
-import { useSelector } from 'react-redux';
-import {
-  Box,
-  Text,
-  Group,
-  Avatar,
-  ActionIcon,
-  Menu,
-  Popover,
-  Switch,
-  Badge,
-} from '@mantine/core';
+import { AdminSettingsPopover } from './AdminSettingsPopover';
+import { Box, Text, Group, Avatar, ActionIcon, Menu } from '@mantine/core';
 import {
   IconDots,
-  IconAdjustments,
   IconSearch,
-  IconPhone,
-  IconVideo,
-  IconUserPlus,
   IconSettings,
-  IconTrash,
   IconBell,
-  IconBellOff,
   IconMessage,
   IconPinFilled,
   IconArrowLeft,
@@ -56,11 +39,6 @@ export function ChatHeader({
   onToggleShowDeletedMessages,
 }: ChatHeaderProps) {
   const { t } = useTranslation('chat');
-
-  // Soft-delete toggle (admin only). State поднят в ChatPage, приходит пропсами.
-  const _chSession = useSelector((s: any) => s.auth?.session);
-  const _chIsAdmin = !!_chSession?.user_id?.is_admin;
-  const [_chPopoverOpen, _chSetPopoverOpen] = useState(false);
 
   const members = chat.members || [];
 
@@ -154,35 +132,22 @@ export function ChatHeader({
           </ActionIcon>
 
           {/* Soft-delete: show deleted messages (admin only) */}
-          {_chIsAdmin && (
-            <Popover
-              opened={_chPopoverOpen}
-              onChange={_chSetPopoverOpen}
-              position="bottom-end"
-              withArrow
-              shadow="md">
-              <Popover.Target>
-                <ActionIcon
-                  variant="subtle"
-                  size="lg"
-                  onClick={() => _chSetPopoverOpen(o => !o)}
-                  title={t('chatSettings')}
-                  color={showDeletedMessages ? 'orange' : undefined}>
-                  <IconAdjustments size={20} />
-                </ActionIcon>
-              </Popover.Target>
-              <Popover.Dropdown>
-                <Switch
-                  checked={showDeletedMessages}
-                  onChange={e =>
-                    onToggleShowDeletedMessages?.(e.currentTarget.checked)
-                  }
-                  label={t('showDeletedMessages', 'Показывать удалённые сообщения')}
-                  size="sm"
-                />
-              </Popover.Dropdown>
-            </Popover>
-          )}
+          <AdminSettingsPopover
+            size="lg"
+            variant="subtle"
+            title={t('chatSettings')}
+            options={[
+              {
+                key: 'showDeletedMessages',
+                label: t(
+                  'showDeletedMessages',
+                  'Показывать удалённые сообщения',
+                ),
+                checked: showDeletedMessages,
+                onChange: v => onToggleShowDeletedMessages?.(v),
+              },
+            ]}
+          />
 
           {/* More options menu */}
           <Menu position="bottom-end" withArrow>
