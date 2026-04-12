@@ -23,17 +23,40 @@ from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 
 
+async def _default_stage_id():
+    """Метод для получения стадии по умолчанию"""
+    first_stage = await env.models.sale_stage.search(
+        fields=["id", "name"],
+        limit=1,
+    )
+    return first_stage[0] if first_stage else None
+
+
+async def _default_name():
+    """Генерирует имя заказа вида 'Заказ 0000042' на основе следующего id
+    из sequence таблицы sales."""
+    session = env.apps.db.get_session()
+    # Postgres: nextval гарантирует уникальное значение,
+    # которое будет использовано при следующем INSERT
+    result = await session.execute(
+        "SELECT nextval(pg_get_serial_sequence('sales', 'id')) AS next_id"
+    )
+    next_id = result[0]["next_id"] if result else 0
+    return f"Заказ {str(next_id).zfill(7)}"
+
+
 class Sale(DotModel):
     __table__ = "sales"
 
     id: Id = Integer(primary_key=True)
-    name: str = Char(string="Order Name")
+    name: str = Char(string="Order Name", default=_default_name)
     active: bool = Boolean(default=True)
     stage_id: "SaleStage" = Many2one(
         lambda: env.models.sale_stage,
         string="Stage",
         index=True,
         ondelete="restrict",
+        default=_default_stage_id,
     )
     user_id: "User | None" = Many2one(
         lambda: env.models.user,
