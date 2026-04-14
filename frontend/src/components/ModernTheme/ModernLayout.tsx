@@ -14,11 +14,6 @@ import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import FaraRouters from '@/route/Routers';
 import Logo from '@/components/Logo';
-import {
-  getVisibleMenuItems,
-  items,
-  MenuGroup,
-} from '@/components/NavbarMenu/menuData';
 import UserMenu from '@/components/UserMenu';
 import { ChatNotification } from '@/components/ChatNotification';
 import { ActivityNotification } from '@/fara_activity/ActivityNotification';
@@ -29,6 +24,8 @@ import { HorizontalMenu } from './HorizontalMenu';
 import { ChatSidebar } from './ChatSidebar';
 import classes from './ModernLayout.module.css';
 import { useSelector } from 'react-redux';
+import { MenuGroup } from '@config/menuGroups';
+import { getVisibleMenuItems } from '@config/menuData';
 
 export function ModernLayout() {
   const [activeGroup, setActiveGroup] = useState<MenuGroup | null>(null);

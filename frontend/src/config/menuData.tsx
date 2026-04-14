@@ -117,6 +117,7 @@ const menuTree: GroupConfig[] = [
         label: 'Настройки',
         labelKey: 'chat:menu.settings',
         defaultCollapsed: true,
+        visibleForRoles: ['system_admin'] as string[],
         submenus: [
           { model: 'chat_connector' },
           { model: 'chat_external_account' },
