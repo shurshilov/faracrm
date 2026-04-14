@@ -770,13 +770,19 @@ class DotModel(
                     else:
                         fields_json[field_name] = field
 
-            # Сериализуем JSONField в строку при записи в БД
-            elif (
-                only_store
-                and isinstance(field_class, (JSONField, TranslatedChar))
-                # and isinstance(field, (dict, list))
+            # JSONField / TranslatedChar при записи в БД.
+            # При UPDATE оставляем сырое значение — билдер через
+            # field.to_sql_update сам построит SET-клаузу:
+            # для TranslatedChar+str → jsonb_set (atomic merge в язык),
+            # для dict/list → обычный %s с json.dumps.
+            # При CREATE сериализуем сразу в JSON-строку (через %s в INSERT).
+            elif only_store and isinstance(
+                field_class, (JSONField, TranslatedChar)
             ):
-                fields_json[field_name] = field_class.serialization(field)
+                if mode == JsonMode.UPDATE:
+                    fields_json[field_name] = field
+                else:
+                    fields_json[field_name] = field_class.serialization(field)
             # ЗАДАНО как значение (число строка время...)
             # иначе поле считается прочитанным из БД и просто пробрасывается
             else:

@@ -167,10 +167,14 @@ class CRUDMixin:
         payload_dict: dict[str, Any],
         id: int,
     ) -> tuple[str, tuple]:
-        """Build UPDATE query from dict."""
+        """Build UPDATE query from dict.
+
+        Передаёт self.fields в helper — поля сами генерируют свои
+        SQL-фрагменты через to_sql_update (см. Field API).
+        """
         stmt = f"UPDATE {self.table} SET %s WHERE id = %s"
         stmt, values_list = build_sql_update_from_schema(
-            stmt, payload_dict, id
+            stmt, payload_dict, id, self.fields
         )
         return stmt, values_list
 

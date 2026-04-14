@@ -131,6 +131,18 @@ class Field[FieldType]:
     def __new__(cls, *args: Any, **kwargs: Any) -> FieldType:
         return super().__new__(cls)
 
+    def to_sql_update(self, field_name: str, value: Any) -> tuple[str, Any]:
+        """Возвращает (SQL-fragment для SET-клаузы, bind-value).
+
+        По умолчанию: 'field=%s' с обычным значением как параметром.
+        Поля с особым SQL (TranslatedChar с jsonb_set, TSVector и т.п.)
+        переопределяют этот метод и возвращают свой SQL-фрагмент.
+
+        Билдер вызывает этот метод для каждого поля из payload —
+        тогда никакая логика конкретных типов полей не утекает в билдер.
+        """
+        return f"{field_name}=%s", value
+
     @staticmethod
     def _can_apply_to_db(default: Any) -> bool:
         """Можно ли default сериализовать как DDL DEFAULT литерал.
@@ -468,6 +480,10 @@ class JSONField(Field[dict | list]):
     def serialization(self, value):
         return json.dumps(value, ensure_ascii=False)
 
+    def to_sql_update(self, field_name: str, value: Any) -> tuple[str, Any]:
+        """JSONField: сериализуем dict/list в JSON-строку для BIND-параметра."""
+        return f"{field_name}=%s", self.serialization(value)
+
 
 class TranslatedChar(JSONField):
     """Переводимая строка.
@@ -529,15 +545,38 @@ class TranslatedChar(JSONField):
         )
 
     def serialization(self, value):
-        """str - {current_lang: value} - JSON-строка для записи в БД.
+        """str/dict → JSON-строка для записи в БД.
 
-        Принимает ТОЛЬКО строку — она пишется в текущий язык пользователя.
-        Остальные переводы затираются.
+        - str: оборачиваем в {current_lang: value} — используется при
+          CREATE (запись новая, другим языкам взяться неоткуда).
+        - dict: json.dumps как есть — multi-language override.
 
-        Для multi-language записи используйте update_field_translations —
-        этот путь через serialization не идёт.
+        При UPDATE со строкой serialization НЕ вызывается — там
+        to_sql_update возвращает jsonb_set(...) для atomic merge.
         """
-        return json.dumps({self._current_lang(): value}, ensure_ascii=False)
+        if isinstance(value, str):
+            value = {self._current_lang(): value}
+        return super().serialization(value)
+
+    def to_sql_update(self, field_name: str, value: Any) -> tuple[str, Any]:
+        """TranslatedChar: для str — atomic jsonb_set merge в текущий язык,
+        для dict — полный override через serialization (как обычный JSON).
+
+        jsonb_set(COALESCE(col, '{}'::jsonb), '{lang}', to_jsonb(%s::text)):
+        - COALESCE защищает от NULL (если колонка пустая).
+        - '{lang}' — путь: обновляем только ключ текущего языка.
+        - to_jsonb(%s::text) — оборачивает строку в jsonb-значение.
+        Другие языки в колонке НЕ затираются — истинный merge.
+        """
+        if isinstance(value, str):
+            lang = self._current_lang()
+            sql = (
+                f"{field_name} = jsonb_set("
+                f"COALESCE({field_name}, '{{}}'::jsonb), "
+                f"'{{{lang}}}', to_jsonb(%s::text))"
+            )
+            return sql, value
+        return super().to_sql_update(field_name, value)
 
 
 # class TranslatedText(TranslatedChar):
