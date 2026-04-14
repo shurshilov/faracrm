@@ -38,6 +38,7 @@ class ChatWebPushApp(App):
 
         await self._ensure_contact_type(env)
         await self._ensure_seed_connector(env)
+        await self._ensure_rules(env)
 
     @staticmethod
     async def _ensure_contact_type(env):
@@ -133,4 +134,68 @@ class ChatWebPushApp(App):
         )
         logger.info(
             "[web_push] Created seed connector (inactive, VAPID keys ready)"
+        )
+
+    @staticmethod
+    async def _ensure_rules(env):
+        """
+        Создаёт record-level правило: запрещает обычным пользователям
+        редактировать и удалять контакты типа web_push.
+
+        Устроено по той же схеме, что и правила в chat/app.py и users/app.py:
+        - role_id=None → правило действует для всех не-админов
+          (глобальный User.is_admin получает полный байпас в AccessChecker).
+        - perm_update=True, perm_delete=True → правило применяется к этим
+          операциям; запись проходит, только если попадает под domain.
+        - domain [contact_type_id != <web_push_id>] — значит редактировать
+          и удалять можно всё, КРОМЕ web_push-контактов.
+        - perm_create/perm_read=False → ничего не ограничиваем, чтение
+          и создание остаются в ведении ACL и прочих правил.
+
+        Резолвим id типа web_push прямо здесь, т.к. _ensure_contact_type
+        уже отработал. Если типа нет — ничего не делаем, чтобы не упасть
+        на старте: правило досоздастся при следующем post_init.
+        """
+        from backend.base.crm.security.models.rules import Rule
+
+        contact_model = await env.models.model.search(
+            filter=[("name", "=", "contact")],
+            limit=1,
+        )
+        if not contact_model:
+            logger.warning(
+                "[web_push] Model 'contact' not found, skip rule creation"
+            )
+            return
+
+        web_push_type = await env.models.contact_type.search(
+            filter=[("name", "=", "web_push")],
+            limit=1,
+        )
+        if not web_push_type:
+            logger.warning(
+                "[web_push] contact_type 'web_push' not found, skip rule"
+            )
+            return
+
+        rule_name = "Only admin can edit/delete web_push contacts"
+        existing = await env.models.rule.search(
+            filter=[("name", "=", rule_name)],
+            limit=1,
+        )
+        if existing:
+            return
+
+        await env.models.rule.create(
+            payload=Rule(
+                name=rule_name,
+                active=True,
+                model_id=contact_model[0],
+                role_id=None,
+                domain=[["contact_type_id", "!=", web_push_type[0].id]],
+                perm_create=False,
+                perm_read=False,
+                perm_update=True,
+                perm_delete=False,
+            ),
         )
