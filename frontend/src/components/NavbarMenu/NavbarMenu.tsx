@@ -1,5 +1,5 @@
 import { Box } from '@mantine/core';
-import { MenuGroup, isMenuGroup } from './menuData';
+import { MenuGroup, isMenuGroup } from '@config/menuData';
 import { NavbarMenuGroup } from './NavbarMenuGroup/NavbarMenuGroup';
 import { useSidebar } from './SidebarContext';
 

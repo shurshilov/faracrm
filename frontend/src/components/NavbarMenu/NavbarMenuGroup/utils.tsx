@@ -6,7 +6,7 @@ import {
   MenuSimple,
   isMenuCategory,
   isMenuSimple,
-} from '../menuData';
+} from '@config/menuData';
 
 export const scrollToLink = (linkRef: React.RefObject<HTMLButtonElement>) => {
   const element = linkRef.current;

@@ -8,7 +8,7 @@ import {
   MenuCategory,
   MenuSimple,
   isMenuCategory,
-} from '@/components/NavbarMenu/menuData';
+} from '@config/menuData';
 import classes from './HorizontalMenu.module.css';
 
 interface HorizontalMenuProps {

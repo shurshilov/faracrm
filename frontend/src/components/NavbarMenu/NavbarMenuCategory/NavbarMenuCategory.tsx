@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Icon as IconType, IconChevronRight } from '@tabler/icons-react';
 import { useState } from 'react';
 import classes from './NavbarMenuCategory.module.css';
-import { MenuSimple } from '../menuData';
+import { MenuSimple } from '@config/menuData';
 import { NavbarMenuSimple } from '../NavbarMenuSimple/NavbarMenuSimple';
 
 interface NavbarMenuCategoryProps {

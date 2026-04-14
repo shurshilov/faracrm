@@ -4,7 +4,7 @@ import { Box, Flex, Tooltip, UnstyledButton } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 
 import { IconChevronDown, Icon as IconType } from '@tabler/icons-react';
-import { MenuCategory, MenuSimple } from '../menuData';
+import { MenuCategory, MenuSimple } from '@config/menuData';
 
 import classes from './NavbarMenuGroup.module.css';
 import { hasActiveLink, scrollToLink, treeMenuComponents } from './utils';
@@ -83,7 +83,8 @@ export function NavbarMenuGroup({
   };
 
   // Определяем активное состояние: либо точное совпадение, либо есть активный элемент в подменю
-  const isActive = location.pathname === to || hasActiveLink(submenus, location.pathname);
+  const isActive =
+    location.pathname === to || hasActiveLink(submenus, location.pathname);
 
   const buttonContent = (
     <UnstyledButton

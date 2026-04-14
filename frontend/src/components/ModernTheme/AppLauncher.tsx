@@ -3,11 +3,7 @@ import { Box, Text, SimpleGrid, UnstyledButton, Portal } from '@mantine/core';
 import { IconApps } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  MenuGroup,
-  MenuCategory,
-  MenuSimple,
-} from '@/components/NavbarMenu/menuData';
+import { MenuGroup, MenuCategory, MenuSimple } from '@config/menuData';
 import classes from './AppLauncher.module.css';
 
 interface AppLauncherProps {

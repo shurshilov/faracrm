@@ -7,7 +7,7 @@ import ThemeToggle from '@/components/ThemeToggle';
 import FaraRouters from '@/route/Routers';
 import Logo from '@/components/Logo';
 import { NavbarMenu } from '@/components/NavbarMenu/NavbarMenu';
-import { getVisibleMenuItems } from '@/components/NavbarMenu/menuData';
+import { getVisibleMenuItems } from '@config/menuData';
 import {
   SidebarContext,
   SidebarState,
