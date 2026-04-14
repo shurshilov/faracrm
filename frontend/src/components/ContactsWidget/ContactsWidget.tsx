@@ -63,6 +63,33 @@ function getIcon(iconName: string): React.ElementType {
 }
 
 /**
+ * Для типа web_push значение в поле `name` — это JSON PushSubscription
+ * с полями endpoint/keys, т.е. огромная строка. Показывать её целиком
+ * в списке контактов бессмысленно. Возвращаем короткое представление:
+ * "Web Push · <домен endpoint-а>" (например, "Web Push · fcm.googleapis.com"),
+ * чтобы было понятно, какому провайдеру принадлежит подписка.
+ * Для всех остальных типов возвращаем исходное значение.
+ */
+function formatContactDisplay(contact: Contact): string {
+  if (contact.contact_type !== 'web_push') return contact.name;
+  try {
+    const parsed = JSON.parse(contact.name);
+    const endpoint: string | undefined = parsed?.endpoint;
+    if (endpoint) {
+      try {
+        const host = new URL(endpoint).hostname;
+        return `Web Push · ${host}`;
+      } catch {
+        return 'Web Push';
+      }
+    }
+  } catch {
+    // не JSON — отдадим просто короткий лейбл
+  }
+  return 'Web Push';
+}
+
+/**
  * Виджет для управления контактами партнёра/пользователя.
  *
  * Типы контактов загружаются из API (таблица contact_type).
@@ -387,14 +414,16 @@ export function ContactsWidget({
                   />
                 ) : (
                   <>
-                    <Text className={classes.contactValue}>{contact.name}</Text>
+                    <Text className={classes.contactValue} title={contact.name}>
+                      {formatContactDisplay(contact)}
+                    </Text>
 
                     <Text className={classes.contactType}>
                       {config?.label || contact.contact_type}
                     </Text>
 
                     <Group className={classes.contactActions} gap={2}>
-                      {!disabled && (
+                      {!disabled && contact.contact_type !== 'web_push' && (
                         <Tooltip label="Редактировать" withArrow>
                           <ActionIcon
                             size="xs"
