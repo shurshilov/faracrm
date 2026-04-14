@@ -3,7 +3,6 @@
 from abc import ABCMeta
 import asyncio
 from enum import IntEnum
-import json
 from types import UnionType
 from typing import (
     TYPE_CHECKING,
@@ -47,6 +46,7 @@ from .fields import (
     One2many,
     One2one,
     PolymorphicMany2one,
+    TranslatedChar,
 )
 
 
@@ -194,7 +194,7 @@ class DotModel(
         json_fields = [
             name
             for name, field in fields.items()
-            if isinstance(field, JSONField)
+            if isinstance(field, (JSONField, TranslatedChar))
         ]
         compute_fields = [
             (name, field)
@@ -215,14 +215,23 @@ class DotModel(
         # Десериализация JSON полей (если пришла строка из БД)
         # asyncpg не десериализует jsonb автоматически без кодека,
         # поэтому нужен fallback json.loads для строковых значений.
+        # Для TranslatedChar дополнительно распаковываем dict в строку
+        # текущего языка пользователя.
         if cls._cache_has_json_fields:
+            cls_fields = cls._cache_all_fields
             for name in cls._cache_json_fields:
                 value = self.__dict__.get(name)
-                if isinstance(value, str):
-                    try:
-                        self.__dict__[name] = json.loads(value)
-                    except (json.JSONDecodeError, TypeError):
-                        pass
+                if value is not None:
+                    self.__dict__[name] = cls_fields[name].deserialization(
+                        value
+                    )
+            # cls_fields = cls._cache_all_fields
+            # for name in cls._cache_json_fields:
+            #     value = self.__dict__.get(name)
+            #     if isinstance(value, str):
+            #         field_obj = cls_fields.get(name)
+            #         if field_obj:
+            #             self.__dict__[name] = field_obj.deserialization(value)
 
         # Вычисляемые поля (compute, не хранящиеся в БД)
         if cls._cache_has_compute_fields:
@@ -764,10 +773,10 @@ class DotModel(
             # Сериализуем JSONField в строку при записи в БД
             elif (
                 only_store
-                and isinstance(field_class, JSONField)
-                and isinstance(field, (dict, list))
+                and isinstance(field_class, (JSONField, TranslatedChar))
+                # and isinstance(field, (dict, list))
             ):
-                fields_json[field_name] = json.dumps(field, ensure_ascii=False)
+                fields_json[field_name] = field_class.serialization(field)
             # ЗАДАНО как значение (число строка время...)
             # иначе поле считается прочитанным из БД и просто пробрасывается
             else:

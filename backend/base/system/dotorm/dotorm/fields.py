@@ -2,8 +2,11 @@
 
 import datetime
 from decimal import Decimal as PythonDecimal
+import json
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Type, Literal
+
+from .access import get_access_session
 
 if TYPE_CHECKING:
     from .model import DotModel
@@ -452,6 +455,95 @@ class JSONField(Field[dict | list]):
 
     class _db_mysql:
         sql_type = "JSON"
+
+    def deserialization(self, value):
+        try:
+            value = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            # Не JSON — значит это Python-input (Role(name="Admin")),
+            # возвращаем как есть.
+            return value
+        return value
+
+    def serialization(self, value):
+        return json.dumps(value, ensure_ascii=False)
+
+
+class TranslatedChar(JSONField):
+    """Переводимая строка.
+
+    В БД хранится как JSONB-словарь {"en": "...", "ru": "...", ...}.
+    При чтении значения для текущего языка пользователя.
+    При записи строки — пишется в текущий язык, остальные переводы затираются.
+    При записи dict — записывается как есть.
+
+    Язык берётся из access_session.user_id.lang_id.code, fallback "en".
+    """
+
+    # обман тайп-чекинга на самом деле это dict | list
+    # при чтении из бд, но мы всегда достаем строку
+    # при этом при записи можем использовать дикты
+    if TYPE_CHECKING:
+
+        def __new__(cls, value: str = "", **kwargs: Any) -> str: ...
+
+    else:
+
+        def __new__(cls, *args, **kwargs):
+            return super().__new__(cls)
+
+    @staticmethod
+    def _current_lang() -> str:
+        """Код языка из текущей сессии.
+
+        Контракт: session должен реализовать метод get_lang() -> str.
+        Если сессии нет (фон, post_init, cron) — возвращает 'en'.
+        """
+        session = get_access_session()
+        return session.get_lang() if session else "en"
+
+    def deserialization(self, value):
+        """JSON-строка из БД → строка для текущего языка пользователя.
+
+        Fallback: текущий язык → 'en' → первое непустое → "".
+        Если value — Python-input (Role(name="Admin")) и не JSON,
+        возвращается как есть.
+        """
+        if not value:
+            return ""
+
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return value
+
+        if not isinstance(value, dict):
+            return ""
+
+        lang = self._current_lang()
+        return (
+            value.get(lang)
+            or value.get("en")
+            or next((v for v in value.values() if v), "")
+        )
+
+    def serialization(self, value):
+        """str - {current_lang: value} - JSON-строка для записи в БД.
+
+        Принимает ТОЛЬКО строку — она пишется в текущий язык пользователя.
+        Остальные переводы затираются.
+
+        Для multi-language записи используйте update_field_translations —
+        этот путь через serialization не идёт.
+        """
+        return json.dumps({self._current_lang(): value}, ensure_ascii=False)
+
+
+# class TranslatedText(TranslatedChar):
+#     """Переводимый длинный текст. Поведение идентично TranslatedChar."""
+
+#     pass
 
 
 class Binary(Field[bytes]):

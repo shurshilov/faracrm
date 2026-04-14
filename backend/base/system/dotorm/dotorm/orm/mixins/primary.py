@@ -1,6 +1,7 @@
 """Primary ORM operations mixin."""
 
 import asyncio
+import json
 from typing import TYPE_CHECKING, Self, TypeVar
 
 from ...exceptions import RecordNotFound
@@ -9,6 +10,7 @@ from ...access import Operation
 from ...components.dialect import POSTGRES
 from ...model import JsonMode
 from ...decorators import hybridmethod
+from ...fields import TranslatedChar
 
 if TYPE_CHECKING:
     from ..protocol import DotModelProtocol
@@ -216,6 +218,56 @@ class OrmPrimaryMixin(_Base):
         await cls._check_access(Operation.CREATE, record_ids=[record_id])
 
         return record_id
+
+    def _check_translated_field(self, field_name):
+        """Проверяет что поле существует и это TranslatedChar. Возвращает field."""
+
+        field = self.__class__._cache_all_fields.get(field_name)
+        if not isinstance(field, TranslatedChar):
+            raise TypeError(
+                f"{self.__class__.__name__}.{field_name} is not TranslatedChar"
+            )
+        return field
+
+    @hybridmethod
+    async def get_field_translations(
+        self, field_name: str, session=None
+    ) -> dict:
+        """Возвращает все переводы TranslatedChar поля (обходит deserialization)."""
+
+        self._check_translated_field(field_name)
+        await self.__class__._check_access(
+            Operation.READ, record_ids=[self.id]
+        )
+        session = self.__class__._get_db_session(session)
+        stmt = f'SELECT "{field_name}" FROM "{self.__class__.__table__}" WHERE id = $1'
+        rows = await session.execute(stmt, [self.id], cursor="fetch")
+        if not rows:
+            return {}
+        raw = rows[0][field_name]
+        return json.loads(raw) if isinstance(raw, str) and raw else (raw or {})
+
+    @hybridmethod
+    async def update_field_translations(
+        self, field_name: str, translations: dict, session=None
+    ) -> None:
+        """Merge-обновление переводов TranslatedChar поля в БД."""
+
+        self._check_translated_field(field_name)
+        current = await self.get_field_translations(
+            field_name, session=session
+        )
+        merged = {**current, **translations}
+        await self.__class__._check_access(
+            Operation.UPDATE, record_ids=[self.id]
+        )
+        session = self.__class__._get_db_session(session)
+        stmt = f'UPDATE "{self.__class__.__table__}" SET "{field_name}" = $1 WHERE id = $2'
+        await session.execute(
+            stmt,
+            [json.dumps(merged, ensure_ascii=False), self.id],
+            cursor="void",
+        )
 
     @hybridmethod
     async def create_bulk(self, payload: list[_M], session=None):

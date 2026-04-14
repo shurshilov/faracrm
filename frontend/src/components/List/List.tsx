@@ -286,7 +286,7 @@ export const List = <RecordType extends FaraRecord>({
         onClearSelection={() => setSelectedRecords([])}
       />
       <DataTable
-        minHeight={height * 0.82}
+        minHeight={200}
         withTableBorder={false}
         borderRadius="sm"
         // withColumnBorders
@@ -307,13 +307,18 @@ export const List = <RecordType extends FaraRecord>({
         onSelectedRecordsChange={setSelectedRecords}
         onRowClick={({ record: { id } }) => navigate(`${id}`)}
         rowClassName={rowClassName as ((record: unknown) => string) | undefined}
-        // pagination
-        totalRecords={data.total}
-        recordsPerPage={pageSize}
-        page={page}
-        onPageChange={p => setPage(p)}
-        recordsPerPageOptions={PAGE_SIZES}
-        onRecordsPerPageChange={setPageSize}
+        // pagination — показываем только если total > минимального pageSize,
+        // иначе нет смысла (всё помещается на одну страницу).
+        {...(data?.total > PAGE_SIZES[1]
+          ? {
+              totalRecords: data?.total,
+              recordsPerPage: pageSize,
+              page,
+              onPageChange: (p: number) => setPage(p),
+              recordsPerPageOptions: PAGE_SIZES,
+              onRecordsPerPageChange: setPageSize,
+            }
+          : {})}
         // sort
         sortStatus={sortStatus}
         onSortStatusChange={setSortStatus}

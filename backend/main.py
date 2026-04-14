@@ -26,7 +26,10 @@ async def lifespan(app: FastAPI):
     await env.start_services_before(app)
     await env.load_routers(app)
     await env.start_services_after(app)
-    await env.start_post_init(app)
+    # пропускаем инициализацию в кроне она не нужна
+    # и может вызывать рейс кондишен
+    if not getattr(env, "cron_mode", False):
+        await env.start_post_init(app)
     yield
     # shutdown
     await env.stop_services(app)

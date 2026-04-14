@@ -2,6 +2,7 @@
 // import { FieldTypes } from '@/types/fields';
 import { FieldInteger } from './FieldInteger';
 import { FieldChar } from './FieldChar';
+import { FieldTranslatedChar } from './FieldTranslatedChar';
 import { FieldText } from './FieldText';
 import { FieldBoolean } from './FieldBoolean';
 import { FieldFloat } from './FieldFloat';
@@ -29,6 +30,7 @@ export const FieldComponents: Record<
 > = {
   FieldInteger,
   FieldChar,
+  FieldTranslatedChar,
   FieldText,
   FieldBoolean,
   FieldFloat,

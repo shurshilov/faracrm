@@ -6,6 +6,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Char,
     Datetime,
+    Field,
     Integer,
     Many2one,
 )
@@ -53,6 +54,16 @@ class SystemSession:
 
 class Session(DotModel):
     __table__ = "sessions"
+
+    def get_lang(self) -> str:
+        """Контракт DotORM: код текущего языка."""
+        if (
+            self.user_id
+            and self.user_id.lang_id
+            and not isinstance(self.user_id.lang_id, Field)
+        ):
+            return self.user_id.lang_id.code or "en"
+        return "en"
 
     # Значение по умолчанию — 1 день (используется если system_settings недоступен)
     DEFAULT_TTL = 60 * 60 * 24 * 1
@@ -113,9 +124,12 @@ class Session(DotModel):
                 s.cookie_token,
                 u.id as user_id,
                 u.is_admin,
-                u.name
+                u.lang_id,
+                u.name,
+                l.code as lang_code
             FROM sessions s
             JOIN users u ON s.user_id = u.id
+            LEFT JOIN language l ON u.lang_id = l.id
             WHERE s.token = %s AND s.active = true
             LIMIT 1
         """
@@ -160,6 +174,10 @@ class Session(DotModel):
                 id=session_id["user_id"],
                 is_admin=session_id["is_admin"],
                 name=session_id["name"],
+                lang_id=env.models.language(
+                    id=session_id["lang_id"],
+                    code=session_id["lang_code"],
+                ),
             ),
         )
 

@@ -10,7 +10,13 @@ if TYPE_CHECKING:
 else:
     _Base = object
 
-from ...fields import PolymorphicMany2one, Field, Many2many, Many2one
+from ...fields import (
+    PolymorphicMany2one,
+    Field,
+    Many2many,
+    Many2one,
+    TranslatedChar,
+)
 
 
 class DDLMixin(_Base):
@@ -233,13 +239,14 @@ CREATE TABLE IF NOT EXISTS "{cls.__table__}" (\
 
         # ОПТИМИЗАЦИЯ: получаем все колонки таблицы ОДНИМ запросом
         existing_columns_sql = f"""
-            SELECT column_name
+            SELECT column_name, udt_name
             FROM information_schema.columns
             WHERE table_name = '{cls.__table__}'
         """
         existing_columns_result = await session.execute(existing_columns_sql)
         existing_columns = {
-            row["column_name"] for row in existing_columns_result
+            row["column_name"]: row["udt_name"]
+            for row in existing_columns_result
         }
 
         # Добавляем только отсутствующие колонки
@@ -247,6 +254,20 @@ CREATE TABLE IF NOT EXISTS "{cls.__table__}" (\
             if field_name not in existing_columns:
                 await session.execute(
                     f'ALTER TABLE "{cls.__table__}" ADD COLUMN {field_declaration};'
+                )
+
+        # Авто-миграция Char (varchar) → TranslatedChar (jsonb) при изменении типа поля.
+        # Существующие значения оборачиваются в {"en": value}. Другие переходы типов
+        # не поддерживаются — мигрируйте вручную через SQL.
+        for field_name, field in cls._cache_store_fields_dict.items():
+            existing_udt = existing_columns.get(field_name)
+            if existing_udt == "varchar" and isinstance(field, TranslatedChar):
+                await session.execute(
+                    f'ALTER TABLE "{cls.__table__}" '
+                    f'ALTER COLUMN "{field_name}" TYPE jsonb '
+                    f"USING jsonb_build_object("
+                    f"'en', \"{field_name}\", "
+                    f"'ru', \"{field_name}\")"
                 )
 
         # создаём индексы
