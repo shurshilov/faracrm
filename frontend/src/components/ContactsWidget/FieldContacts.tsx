@@ -162,25 +162,34 @@ export function FieldContacts({
           contact_type_id: contact.contact_type_id,
           name: contact.name,
           is_primary: contact.is_primary,
-          [relatedField]: ownerId || 'VirtualId',
+          // [relatedField]: ownerId || 'VirtualId',
         });
       } else if (contact._isDeleted && contact.id) {
         deleted.push(contact.id);
       }
     }
 
-    try {
-      await deleteBulk({
-        model: 'contact',
-        ids: deleted,
-      }).unwrap();
+    // Нет владельца (новая запись ещё не сохранена) — откладываем
+    // API-вызовы до момента создания родителя. Сохраняем в служебное
+    // поле `_${name}`, ButtonCreate подхватит и сделает bulk-create
+    // контактов с актуальным ownerId после создания родителя.
+    if (!ownerId) {
+      form.setValues({
+        [`_${name}`]: { created, deleted, relatedField },
+      });
+      return;
+    }
 
-      // TODO: вообще в идеале можно ускорить создание bulk
-      // но на самом деле больше одного не создается
+    // Владелец есть — работаем через API сразу.
+    try {
+      if (deleted.length > 0) {
+        await deleteBulk({ model: 'contact', ids: deleted }).unwrap();
+      }
+      // TODO: можно ускорить через bulk-create, но обычно создаётся одна запись
       for (const item of created) {
         await create({
           model: 'contact',
-          values: item,
+          values: { ...item, [relatedField]: ownerId },
         });
       }
     } catch (error) {

@@ -133,18 +133,60 @@ export function ButtonCreate({
           // }
           // console.log(valuesCreate, 'valuesCreate');
           const valuesToCreate = structuredClone(form.getValues());
+
+          // ВАЖНО: собираем pending O2M-изменения ДО prepareValuesToSave.
+          // prepareValuesToSave мигрирует `_contact_ids` → `contact_ids`
+          // и удаляет служебный префиксный ключ. Используется FieldContacts
+          // когда родителя ещё нет — вместо немедленного API-вызова
+          // изменения складываются в `_<fieldName>` со структурой
+          // { created, deleted, relatedField }. После create родителя
+          // ниже мы создадим дочерние записи с актуальным id родителя.
+          const pendingO2m: {
+            fieldName: string;
+            created: any[];
+            relatedField: string;
+          }[] = [];
+          for (const [key, val] of Object.entries(valuesToCreate)) {
+            if (
+              key.startsWith('_') &&
+              val &&
+              typeof val === 'object' &&
+              'created' in val &&
+              'relatedField' in val
+            ) {
+              pendingO2m.push({
+                fieldName: key.slice(1),
+                created: (val as any).created || [],
+                relatedField: (val as any).relatedField,
+              });
+              // Удаляем служебное поле — иначе prepareValuesToSave
+              // перенесёт его в настоящий contact_ids в payload и бэк
+              // получит лишние данные.
+              delete (valuesToCreate as any)[key];
+            }
+          }
+
           prepareValuesToSave(fieldsServer, valuesToCreate);
+
           const { data } = await create({
             model,
             values: valuesToCreate,
           });
 
           if (data?.id) {
+            // Создаём отложенные дочерние записи с актуальным id родителя.
+            for (const { fieldName, created: createdItems, relatedField } of pendingO2m) {
+              const childModel =
+                fieldsServer[fieldName]?.relatedModel || 'contact';
+              for (const item of createdItems) {
+                await create({
+                  model: childModel,
+                  values: { ...item, [relatedField]: data.id },
+                });
+              }
+            }
+
             form.reset();
-            // инвалидируем кеш и переходим на новую запись
-            // dispatch(
-            //   crudApi.util.invalidateTags([{ type: model, id: data.id }]),
-            // );
             navigate(`/${model}/${data?.id}`);
           } else navigate(`/${model}`);
         }
