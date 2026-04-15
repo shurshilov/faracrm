@@ -3,7 +3,6 @@
 # OPTIMIZED: cascade deactivation of routes, cache clearing
 
 import logging
-from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
@@ -14,9 +13,12 @@ from backend.base.system.dotorm.dotorm.fields import (
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
-
-if TYPE_CHECKING:
-    from .attachments_route import AttachmentRoute
+from backend.base.crm.attachments.strategies import (
+    get_strategy,
+    has_strategy,
+)
+from .attachments_route import AttachmentRoute
+from .attachments_cache import AttachmentCache
 
 logger = logging.getLogger(__name__)
 
@@ -107,13 +109,8 @@ class AttachmentStorage(DotModel):
         relation_table_field="storage_id",
     )
 
-    # ========================================================================
-    # Activation / Deactivation with cascade
-    # ========================================================================
-
     async def activate(self) -> None:
         """Активировать хранилище и все его маршруты."""
-        from .attachments_route import AttachmentRoute
 
         async with env.apps.db.get_transaction():
             await super().update(AttachmentStorage(active=True))
@@ -134,8 +131,6 @@ class AttachmentStorage(DotModel):
 
     async def deactivate(self) -> None:
         """Деактивировать хранилище, его маршруты и очистить кеш."""
-        from .attachments_route import AttachmentRoute
-        from .attachments_cache import AttachmentCache
 
         async with env.apps.db.get_transaction():
             # Деактивируем routes
@@ -171,7 +166,7 @@ class AttachmentStorage(DotModel):
         return result[0] if result else None
 
     @classmethod
-    async def get_or_create_default(cls) -> "AttachmentStorage":
+    async def get_or_create_default(cls):
         storage = await cls.get_active_storage()
         if storage:
             return storage
@@ -191,10 +186,6 @@ class AttachmentStorage(DotModel):
         result = await cls.search(filter=[("id", "=", storage_id)], limit=1)
         return result[0] if result else new_storage
 
-    # ========================================================================
-    # Route management
-    # ========================================================================
-
     async def get_routes(self):
         """
         Get all routes for this storage.
@@ -202,15 +193,10 @@ class AttachmentStorage(DotModel):
         Returns:
             List of routes
         """
-        from .attachments_route import AttachmentRoute
 
         return await AttachmentRoute.search(
             filter=[("storage_id", "=", self.id), ("active", "=", True)],
         )
-
-    # ========================================================================
-    # CRUD with cascade activation
-    # ========================================================================
 
     async def update(
         self,
@@ -244,7 +230,6 @@ class AttachmentStorage(DotModel):
             await storage._sync_one_way()
 
     async def _sync_one_way(self) -> None:
-        from .attachments import Attachment
 
         logger.info("One-way sync for storage %s: %s", self.id, self.name)
         routes = await self.get_routes()
@@ -253,7 +238,7 @@ class AttachmentStorage(DotModel):
             attachment_ids = await route.get_attachments_to_sync(self.id)
             for attach_id in attachment_ids:
                 try:
-                    attachments = await Attachment.search(
+                    attachments = await env.models.attachment.search(
                         filter=[("id", "=", attach_id)],
                         fields=["id", "storage_id", "route_id"],
                         limit=1,
@@ -261,7 +246,9 @@ class AttachmentStorage(DotModel):
                     if attachments:
                         attach = attachments[0]
                         await attach.update(
-                            Attachment(storage_id=self, route_id=route)
+                            env.models.attachment(
+                                storage_id=self, route_id=route
+                            )
                         )
                 except Exception as e:
                     logger.error(
@@ -279,11 +266,6 @@ class AttachmentStorage(DotModel):
 
     async def _sync_two_way(self) -> None:
         """Sync this storage two-way."""
-        from .attachments import Attachment
-        from backend.base.crm.attachments.strategies import (
-            get_strategy,
-            has_strategy,
-        )
 
         logger.info("Two-way sync for storage %s: %s", self.id, self.name)
 
@@ -307,7 +289,7 @@ class AttachmentStorage(DotModel):
             return
 
         # Get files from FARA
-        attachments = await Attachment.search(
+        attachments = await env.models.attachment.search(
             filter=[
                 ("storage_id", "=", self.id),
                 ("storage_file_id", "!=", None),
@@ -354,7 +336,6 @@ class AttachmentStorage(DotModel):
         self, cloud_file: dict, strategy
     ) -> None:
         """Import a file from cloud to FARA."""
-        from .attachments import Attachment
 
         # Get metadata from parent folder if available
         metadata = {}
@@ -364,7 +345,7 @@ class AttachmentStorage(DotModel):
             )
 
         # Create attachment record
-        attach = Attachment()
+        attach = env.models.attachment()
         attach.name = cloud_file.get("name", "Unknown")
         attach.storage_id = self
         attach.storage_file_id = cloud_file.get("id")
@@ -380,7 +361,7 @@ class AttachmentStorage(DotModel):
             int(metadata.get("route_id")) if metadata.get("route_id") else None
         )
 
-        await Attachment.create(attach)
+        await env.models.attachment.create(attach)
         logger.debug("Imported file %s from cloud", cloud_file.get("id"))
 
     @classmethod

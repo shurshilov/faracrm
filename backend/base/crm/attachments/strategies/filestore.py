@@ -1,6 +1,12 @@
 # Copyright 2025 FARA CRM
 # Attachments module - FileStore (local filesystem) strategy
 
+import re
+import unicodedata
+
+import aiofiles
+import aiofiles.os
+import asyncio
 import os
 import hashlib
 import logging
@@ -18,15 +24,110 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+# Символы, которые ВСЕГДА удаляем из имени файла:
+# - \x00..\x1F и \x7F — control chars (включая NULL, \n, \t, \r),
+#   ломают open(), шеллы, логи, заголовки HTTP.
+# - / и \ — path separators, иначе path traversal.
+# - <>:"|?* — Windows-reserved символы (для кросс-платформенности).
+_FORBIDDEN_FILENAME_CHARS = re.compile(r'[\x00-\x1f\x7f<>:"/\\|?*]')
+
+# Windows-reserved базовые имена (без расширения, регистронезависимо).
+_WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
+
+# Максимальная длина имени файла в БАЙТАХ для большинства FS
+# (ext4, NTFS, APFS, XFS — все 255).
+_MAX_FILENAME_BYTES = 255
+
+
+def sanitize_filename(filename: str, fallback: str = "file") -> str:
+    """
+    Минимальная очистка имени файла под современные best practices.
+
+    Принципы (state of the art 2024-2026; см. pathvalidate, npm
+    sanitize-filename, S3/GDrive guidelines):
+    - Удаляем ТОЛЬКО то, что реально опасно или невалидно для FS:
+      control chars, path separators, Windows-reserved символы.
+    - Сохраняем максимум исходного: кириллицу, любой Unicode,
+      эмодзи, пробелы, скобки, точки внутри имени.
+    - Нормализуем в NFC (каноничная форма для FS, рекомендация W3C).
+      NFKD — НЕ годится: разваливает символы и в паре с
+      .encode("ascii", "ignore") убивает кириллицу полностью.
+    - Защита от path traversal через os.path.basename.
+    - Лимит длины — в БАЙТАХ (255), а не символах: один UTF-8 символ
+      может занимать до 4 байт, обрезка по символам некорректна.
+    - Fallback для пустого результата, ".", "..", только-точек/пробелов.
+    - Windows-reserved имена (CON, PRN, NUL, COM1..LPT9) префиксуем
+      подчёркиванием, чтобы файл создавался корректно везде.
+
+    Args:
+        filename: исходное имя (может содержать что угодно от пользователя).
+        fallback: что подставить, если после очистки ничего не осталось.
+
+    Returns:
+        Безопасное имя файла, валидное на ext4/NTFS/APFS.
+    """
+    # 1. Path traversal: оставляем только базовое имя
+    filename = os.path.basename(filename or "")
+
+    # 2. NFC: каноничная форма (НЕ NFKD — тот разваливает символы)
+    filename = unicodedata.normalize("NFC", filename)
+
+    # 3. Удаляем только реально опасные символы
+    filename = _FORBIDDEN_FILENAME_CHARS.sub("", filename)
+
+    # 4. Trailing/leading whitespace и точки на конце ломают Windows
+    filename = filename.strip().rstrip(".")
+
+    # 5. Спецслучаи "." / ".." / пусто
+    if filename in ("", ".", ".."):
+        return fallback
+
+    # 6. Windows-reserved (CON, PRN, NUL, LPT1...) — префикс
+    name, ext = os.path.splitext(filename)
+    if name.upper() in _WINDOWS_RESERVED_NAMES:
+        name = f"_{name}"
+        filename = f"{name}{ext}"
+
+    # 7. Обрезка до 255 байт с сохранением расширения и валидного UTF-8
+    encoded = filename.encode("utf-8")
+    if len(encoded) > _MAX_FILENAME_BYTES:
+        ext_bytes = ext.encode("utf-8")
+        max_name_bytes = _MAX_FILENAME_BYTES - len(ext_bytes)
+        if max_name_bytes <= 0:
+            # Экзотика: расширение само длиннее лимита — режем целиком
+            filename = encoded[:_MAX_FILENAME_BYTES].decode(
+                "utf-8", errors="ignore"
+            )
+        else:
+            name_bytes = name.encode("utf-8")[:max_name_bytes]
+            # errors="ignore" срежет хвостовой битый UTF-8
+            name = name_bytes.decode("utf-8", errors="ignore")
+            filename = f"{name}{ext}"
+
+    # 8. После всех манипуляций имя могло опять стать пустым
+    return filename or fallback
+
+
+# Backward-compatible alias: старое имя для импортов извне модуля.
+# Внутри модуля и в новом коде — звать sanitize_filename напрямую.
+slugify_filename = sanitize_filename
+
+
 class FileStoreStrategy(StorageStrategyBase):
     """
     Стратегия хранения файлов в локальной файловой системе.
 
     Файлы сохраняются в структуре:
         filestore/
-        └── <res_model>/
-            └── <res_id>/
-                └── <checksum_prefix>/<filename>
+        └── <parent_id>/
+            └── <filename>
 
     Attributes:
         strategy_type: "file"
@@ -68,17 +169,16 @@ class FileStoreStrategy(StorageStrategyBase):
         """
         Build file path for storage.
 
-        Structure: filestore/<res_model>/<res_id>/<filename>
+        Structure: filestore/<parent_id>/<filename>
         """
         base_path = await self._get_base_path(storage)
+        # Безопасное имя файла (Path Traversal Protection)
+        safe_name = os.path.basename(filename)
+
         parts = [base_path]
-
-        # Add default folder
         if parent_id:
-            parts.append(parent_id)
-
-        # Add filename
-        parts.append(filename)
+            parts.append(str(parent_id))
+        parts.append(safe_name)
 
         return os.path.join(*parts)
 
@@ -106,28 +206,27 @@ class FileStoreStrategy(StorageStrategyBase):
             Dict with storage_file_url
         """
         self._log_operation("create_file", attachment, filename=filename)
+        loop = asyncio.get_running_loop()
 
-        # Compute checksum
-        checksum = self._compute_checksum(content)
-
-        # Build file path
-        file_path = await self._get_file_path(
-            storage,
-            attachment,
-            filename,
-            parent_id,
-            checksum,
+        # 1. Подготовка данных
+        safe_filename = sanitize_filename(os.path.basename(filename))
+        checksum = await loop.run_in_executor(
+            None, self._compute_checksum, content
         )
 
-        # Create directories
+        file_path = await self._get_file_path(
+            storage, attachment, safe_filename, parent_id, checksum
+        )
         dir_path = os.path.dirname(file_path)
-        os.makedirs(dir_path, exist_ok=True)
 
-        # Write file
-        with open(file_path, "wb") as f:
-            f.write(content)
+        # 2. Создание директорий (синхронно в потоке)
+        await loop.run_in_executor(
+            None, lambda: os.makedirs(dir_path, exist_ok=True)
+        )
 
-        logger.info("[file] Created file: %s", file_path)
+        # 3. Асинхронная запись
+        async with aiofiles.open(file_path, mode="wb") as f:
+            await f.write(content)
 
         return {
             "storage_file_url": file_path,
@@ -161,12 +260,12 @@ class FileStoreStrategy(StorageStrategyBase):
             )
             return None
 
-        if not os.path.exists(file_path):
+        if not await aiofiles.os.path.exists(file_path):
             logger.warning("[file] File not found: %s", file_path)
             return None
 
-        with open(file_path, "rb") as f:
-            return f.read()
+        async with aiofiles.open(file_path, mode="rb") as f:
+            return await f.read()
 
     async def update_file(
         self,
@@ -193,15 +292,16 @@ class FileStoreStrategy(StorageStrategyBase):
             Dict with updated storage info
         """
         self._log_operation("update_file", attachment, filename=filename)
-
+        loop = asyncio.get_running_loop()
         result = {}
         old_path = attachment.storage_file_url
 
         # If content is provided, update the file
         if content:
-            checksum = self._compute_checksum(content)
-            new_filename = filename or attachment.name
-
+            checksum = await loop.run_in_executor(
+                None, self._compute_checksum, content
+            )
+            new_filename = sanitize_filename(filename or attachment.name)
             # Build new path
             new_path = await self._get_file_path(
                 storage,
@@ -211,32 +311,37 @@ class FileStoreStrategy(StorageStrategyBase):
                 checksum,
             )
 
-            # Create directories
-            dir_path = os.path.dirname(new_path)
-            os.makedirs(dir_path, exist_ok=True)
+            # Создаем папки и записываем
+            await loop.run_in_executor(
+                None,
+                lambda: os.makedirs(os.path.dirname(new_path), exist_ok=True),
+            )
+            async with aiofiles.open(new_path, mode="wb") as f:
+                await f.write(content)
 
-            # Write new file
-            with open(new_path, "wb") as f:
-                f.write(content)
-
-            # Remove old file if path changed
-            if old_path and old_path != new_path and os.path.exists(old_path):
+            # Удаляем старый файл, если путь изменился
+            if old_path and old_path != new_path:
                 try:
-                    os.remove(old_path)
-                    # Try to remove empty parent directories
-                    self._cleanup_empty_dirs(os.path.dirname(old_path))
+                    if await aiofiles.os.path.exists(old_path):
+                        await aiofiles.os.remove(old_path)
+                        await loop.run_in_executor(
+                            None,
+                            self._cleanup_empty_dirs,
+                            os.path.dirname(old_path),
+                        )
                 except Exception as e:
-                    logger.warning("[file] Failed to remove old file: %s", e)
+                    logger.warning("[file] Cleanup failed: %s", e)
 
-            result["storage_file_url"] = new_path
-            result["checksum"] = checksum
+            result.update({"storage_file_url": new_path, "checksum": checksum})
 
         # If only filename changed (no content), rename
         elif filename and filename != attachment.name and old_path:
-            new_path = os.path.join(os.path.dirname(old_path), filename)
-
-            if os.path.exists(old_path):
-                os.rename(old_path, new_path)
+            # Только переименование
+            new_path = os.path.join(
+                os.path.dirname(old_path), sanitize_filename(filename)
+            )
+            if await aiofiles.os.path.exists(old_path):
+                await aiofiles.os.rename(old_path, new_path)
                 result["storage_file_url"] = new_path
 
         return result
@@ -262,24 +367,24 @@ class FileStoreStrategy(StorageStrategyBase):
         if not file_path:
             return True  # Nothing to delete
 
-        if not os.path.exists(file_path):
+        if not await aiofiles.os.path.exists(file_path):
             logger.debug("[file] File already deleted: %s", file_path)
             return True
 
         try:
-            os.remove(file_path)
-
-            # Try to remove empty parent directories
-            self._cleanup_empty_dirs(os.path.dirname(file_path))
-
-            logger.info("[file] Deleted file: %s", file_path)
+            await aiofiles.os.remove(file_path)
+            # Очистку пустых папок лучше оставить в executor, так как это рекурсивный системный обход
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None, self._cleanup_empty_dirs, os.path.dirname(file_path)
+            )
             return True
 
         except Exception as e:
-            logger.error("[file] Failed to delete file %s: %s", file_path, e)
+            logger.error("[file] Delete error: %s", e)
             return False
 
-    def _cleanup_empty_dirs(self, dir_path: str) -> None:
+    def _cleanup_empty_dirs(self, dir_path: str):
         """
         Remove empty directories up to base path.
 
@@ -288,12 +393,15 @@ class FileStoreStrategy(StorageStrategyBase):
         """
         base_path = self._cached_path or self.DEFAULT_FILESTORE_PATH
         try:
-            while dir_path and dir_path != base_path:
-                if os.path.isdir(dir_path) and not os.listdir(dir_path):
-                    os.rmdir(dir_path)
-                    dir_path = os.path.dirname(dir_path)
-                else:
-                    break
+            # Используем dir_path как в исходной сигнатуре
+            while (
+                dir_path
+                and dir_path != base_path
+                and os.path.isdir(dir_path)
+                and not os.listdir(dir_path)
+            ):
+                os.rmdir(dir_path)
+                dir_path = os.path.dirname(dir_path)
         except Exception as e:
             logger.debug("[file] Could not cleanup directories: %s", e)
 
@@ -320,14 +428,21 @@ class FileStoreStrategy(StorageStrategyBase):
             Folder path
         """
         base_path = await self._get_base_path(storage)
+        loop = asyncio.get_running_loop()
+
+        # Очищаем имя папки от спецсимволов и путей
+        safe_folder_name = sanitize_filename(os.path.basename(folder_name))
 
         if parent_id:
-            folder_path = os.path.join(parent_id, folder_name)
+            # Если parent_id это путь, убеждаемся, что он внутри base_path (опционально, для безопасности)
+            folder_path = os.path.join(parent_id, safe_folder_name)
         else:
-            folder_path = os.path.join(base_path, folder_name)
+            folder_path = os.path.join(base_path, safe_folder_name)
 
-        # Create the directory
-        os.makedirs(folder_path, exist_ok=True)
+        # Создаем директорию асинхронно через executor
+        await loop.run_in_executor(
+            None, lambda: os.makedirs(folder_path, exist_ok=True)
+        )
 
         logger.debug("[file] Created folder: %s", folder_path)
         return folder_path
@@ -343,14 +458,23 @@ class FileStoreStrategy(StorageStrategyBase):
             True if path is accessible
         """
         base_path = await self._get_base_path(storage)
+        loop = asyncio.get_running_loop()
 
         try:
-            os.makedirs(base_path, exist_ok=True)
-            # Test write access
+            # 1. Проверяем/создаем базовую директорию
+            await loop.run_in_executor(
+                None, lambda: os.makedirs(base_path, exist_ok=True)
+            )
+
             test_file = os.path.join(base_path, ".test_write")
-            with open(test_file, "w") as f:
-                f.write("test")
-            os.remove(test_file)
+
+            # 2. Тестовая запись через aiofiles
+            async with aiofiles.open(test_file, mode="w") as f:
+                await f.write("test")
+
+            # 3. Удаление через aiofiles.os
+            await aiofiles.os.remove(test_file)
+
             return True
         except Exception as e:
             logger.error("[file] Storage validation failed: %s", e)

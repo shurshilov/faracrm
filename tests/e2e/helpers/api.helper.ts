@@ -226,6 +226,64 @@ export class ApiHelper {
     });
   }
 
+  // ==================== Attachments ====================
+
+  /**
+   * Получить вложения для записи.
+   *
+   * Используется e2e-тестами для проверки что после UI-загрузки
+   * на бэке создались записи с правильными name/size/mimetype/checksum.
+   */
+  async getAttachmentsFor(
+    session: Session,
+    resModel: string,
+    resId: number,
+  ): Promise<any[]> {
+    const res = await this.searchRecords(session, 'attachments', {
+      fields: [
+        'id',
+        'name',
+        'size',
+        'mimetype',
+        'checksum',
+        'storage_file_url',
+        'res_model',
+        'res_id',
+      ],
+      filter: [
+        ['res_model', '=', resModel],
+        ['res_id', '=', resId],
+        ['folder', '=', false],
+      ],
+      sort: 'id',
+      limit: 100,
+    });
+    return res.data;
+  }
+
+  /**
+   * Скачать содержимое вложения как ArrayBuffer.
+   *
+   * Используется чтобы проверить, что записанный файл идентичен
+   * тому, что мы загружали (round-trip test).
+   */
+  async fetchAttachmentContent(
+    session: Session,
+    attachmentId: number,
+  ): Promise<Uint8Array> {
+    const res = await fetch(
+      `${this.apiUrl}/attachments/${attachmentId}`,
+      { headers: this.headers(session) },
+    );
+    if (!res.ok) {
+      throw new Error(
+        `Fetch attachment ${attachmentId} failed: ${res.status}`,
+      );
+    }
+    const buf = await res.arrayBuffer();
+    return new Uint8Array(buf);
+  }
+
   // ==================== Utils ====================
 
   private headers(session: Session) {
