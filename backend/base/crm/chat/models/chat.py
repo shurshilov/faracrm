@@ -93,6 +93,8 @@ class Chat(DotModel):
     """
 
     __table__ = "chat"
+    # Отключаем публичные /auto/chat/... эндпоинты.
+    __auto_crud__ = False
 
     id: int = Integer(primary_key=True)
     name: str = Char(max_length=255, description="Название чата/канала")

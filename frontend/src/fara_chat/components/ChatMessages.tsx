@@ -235,6 +235,19 @@ export function ChatMessages({
     message.author?.type === 'user' &&
     Number(message.author?.id) === Number(currentUserId);
 
+  // Является ли текущий пользователь админом этого чата.
+  // Берём из chat.members[].permissions.is_admin — тот же источник истины,
+  // что и в ChatSettingsModal. Админ чата может редактировать/удалять
+  // любые сообщения (на бэке это проверяется в messages.py). Здесь мы
+  // лишь приводим UI в соответствие: показываем пункты Edit/Delete.
+  const isCurrentUserChatAdmin = (chat.members || []).some(
+    m => m.id === currentUserId && m.permissions?.is_admin,
+  );
+  const canEditMessage = (message: ChatMessage) =>
+    isOwnMessage(message) || isCurrentUserChatAdmin;
+  const canDeleteMessage = (message: ChatMessage) =>
+    isOwnMessage(message) || isCurrentUserChatAdmin;
+
   const handleOpenGallery = (message: ChatMessage, attachmentIndex: number) => {
     const imageAttachments =
       message.attachments?.filter(a => isImageMimetype(a.mimetype)) || [];
@@ -806,7 +819,7 @@ export function ChatMessages({
                 <Text size="sm">{t('downloadFile')}</Text>
               </Box>
             )}
-            {isOwnMessage(contextMenu.message) && (
+            {canEditMessage(contextMenu.message) && (
               <Box className={styles.contextMenuItem} onClick={handleEditClick}>
                 <IconEdit size={16} />
                 <Text size="sm">{t('edit')}</Text>
@@ -836,7 +849,7 @@ export function ChatMessages({
               <IconArrowForward size={16} />
               <Text size="sm">{t('forward')}</Text>
             </Box>
-            {isOwnMessage(contextMenu.message) && (
+            {canDeleteMessage(contextMenu.message) && (
               <Box
                 className={styles.contextMenuItemDanger}
                 onClick={handleDelete}>

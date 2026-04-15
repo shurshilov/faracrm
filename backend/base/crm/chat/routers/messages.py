@@ -357,11 +357,17 @@ async def delete_message(req: Request, chat_id: int, message_id: int):
         fields_nested={"author_user_id": ["id"]},
     )
 
-    # Проверяем права: своё сообщение или can_delete_others
+    # Проверяем права: своё сообщение, can_delete_others или админ чата.
+    # Глобальный is_admin тоже проходит (single source of truth — роутер).
     is_own_message = (
         message.author_user_id and message.author_user_id.id == user_id
     )
-    if not is_own_message and not member.has_permission("can_delete_others"):
+    is_chat_admin = member.is_admin or auth_session.user_id.is_admin
+    if (
+        not is_own_message
+        and not is_chat_admin
+        and not member.has_permission("can_delete_others")
+    ):
         raise FaraException(
             {
                 "content": "PERMISSION_DENIED",
@@ -397,8 +403,8 @@ async def edit_message(
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство
-    await ChatMember.check_membership(chat_id, user_id)
+    # Проверяем членство и сразу получаем member (нужен is_admin ниже)
+    member = await ChatMember.check_membership(chat_id, user_id)
 
     message = await env.models.chat_message.get(
         message_id,
@@ -406,8 +412,12 @@ async def edit_message(
         fields_nested={"author_user_id": ["id"]},
     )
 
-    # Проверяем что это своё сообщение
-    if not message.author_user_id or message.author_user_id.id != user_id:
+    # Редактировать сообщение может автор или админ чата.
+    # Глобальный is_admin байпасит проверки прав на уровне ORM,
+    # но здесь мы в императивной ветке — учитываем его явно.
+    is_author = message.author_user_id and message.author_user_id.id == user_id
+    is_chat_admin = member.is_admin or auth_session.user_id.is_admin
+    if not is_author and not is_chat_admin:
         raise FaraException(
             {
                 "content": "PERMISSION_DENIED",

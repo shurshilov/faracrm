@@ -72,7 +72,15 @@ class DotormCrudAutoService(Service):
 
         # Шаг 2: Создаём роутеры
         for model in models:
-            model.__auto_crud__ = self.default_auto_crud
+            # Уважаем явный opt-in/opt-out на модели: если класс модели
+            # сам задал __auto_crud__ (в собственном __dict__, а не
+            # унаследовал из DotModel) — используем это значение.
+            # Иначе применяем default сервиса. Это позволяет моделям
+            # чата/сообщений/участников отключить публичные /auto/...
+            # эндпоинты, оставив доступ только через специализированные
+            # роутеры.
+            if "__auto_crud__" not in model.__dict__:
+                model.__auto_crud__ = self.default_auto_crud
             model.__schema__ = schema_registry.get_base_schema(model)
 
             if model.__auto_crud__:

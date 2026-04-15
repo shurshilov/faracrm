@@ -30,6 +30,8 @@ class ChatMember(DotModel):
     """
 
     __table__ = "chat_member"
+    # Отключаем публичные /auto/chat_member/... эндпоинты.
+    __auto_crud__ = False
 
     id: int = Integer(primary_key=True)
 
