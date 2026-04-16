@@ -2,7 +2,7 @@
 # Attachments module - Attachment model with Strategy pattern
 # OPTIMIZED: priority-based routing, folder cache in separate table
 
-import base64
+import asyncio
 import hashlib
 import logging
 from typing import Self, TYPE_CHECKING
@@ -287,20 +287,18 @@ class Attachment(DotModel):
 
     @hybridmethod
     async def create(self, payload: Self, session=None) -> int:
-        if not payload or isinstance(payload.content, Binary):
-            return await super().create(payload)
+        # Нет контента или это Binary-sentinel — обычный INSERT без FS
+        if (
+            not payload
+            or not payload.content
+            or isinstance(payload.content, Binary)
+        ):
+            return await super().create(payload, session)
 
         async with env.apps.db.get_transaction():
-            try:
-                content_bytes = base64.b64decode(payload.content)
-            except Exception as e:
-                logger.error("Failed to decode content: %s", e)
-                raise ValueError("Invalid base64 content") from e
-
             if not payload.size:
-                payload.size = len(content_bytes)
-
-            payload.checksum = hashlib.sha1(content_bytes).hexdigest()
+                payload.size = len(payload.content)
+            payload.checksum = hashlib.sha1(payload.content).hexdigest()
 
             # TODO: убрать когда при инициализации будем заполнять None
             if isinstance(payload.res_model, Field):
@@ -333,7 +331,7 @@ class Attachment(DotModel):
             result = await strategy.create_file(
                 storage=storage,
                 attachment=payload,
-                content=content_bytes,
+                content=payload.content,
                 filename=payload.name or "unnamed",
                 mimetype=payload.mimetype,
                 parent_id=parent_folder_id,
@@ -362,37 +360,32 @@ class Attachment(DotModel):
         fields: list | None = None,
         session=None,
     ) -> None:
-        if not isinstance(payload.content, Binary) and not isinstance(
-            self.storage_id, int
+        if (
+            not payload.content
+            or isinstance(payload.content, Binary)
+            or isinstance(self.storage_id, int)
         ):
-            async with env.apps.db.get_transaction():
-                try:
-                    content_bytes = base64.b64decode(payload.content)
-                except Exception as e:
-                    logger.error("Failed to decode content: %s", e)
-                    raise ValueError("Invalid base64 content") from e
+            await super().update(payload, fields, session)
+            return
 
-                if not payload.size:
-                    payload.size = len(content_bytes)
+        async with env.apps.db.get_transaction():
+            # payload.content здесь гарантированно bytes (None и Binary отсечены выше)
+            if not payload.size:
+                payload.size = len(payload.content)
+            payload.checksum = hashlib.sha1(payload.content).hexdigest()
 
-                payload.checksum = hashlib.sha1(content_bytes).hexdigest()
+            strategy = get_strategy(self.storage_id.type)
+            result = await strategy.update_file(
+                storage=self.storage_id,
+                attachment=self,
+                content=payload.content,
+                filename=(payload.name if payload.name != self.name else None),
+                mimetype=payload.mimetype,
+            )
 
-                strategy = get_strategy(self.storage_id.type)
-                result = await strategy.update_file(
-                    storage=self.storage_id,
-                    attachment=self,
-                    content=content_bytes,
-                    filename=(
-                        payload.name if payload.name != self.name else None
-                    ),
-                    mimetype=payload.mimetype,
-                )
+            if result.get("storage_file_url"):
+                payload.storage_file_url = result["storage_file_url"]
 
-                if result.get("storage_file_url"):
-                    payload.storage_file_url = result["storage_file_url"]
-
-                await super().update(payload, fields, session)
-        else:
             await super().update(payload, fields, session)
 
     @hybridmethod
@@ -401,78 +394,116 @@ class Attachment(DotModel):
     ) -> list[int]:
         """
         Массовое создание вложений с сохранением файлов через стратегию.
-
         Args:
             payloads: Список данных для создания
-            session: Сессия БД (опционально)
+            session: Сессия БД (опционально). Если None — create_bulk откроет
+                     свою транзакцию.
 
         Returns:
-            Список ID созданных вложений
+            Список ID созданных вложений (в порядке payloads)
         """
+        # Если session передана — используем её (работаем в транзакции
+        # вызывающего кода). Иначе — открываем свою для атомарности.
+        if session is not None:
+            return await self._create_bulk_in_session(payloads, session)
 
-        async with env.apps.db.get_transaction():
-            folder_cache: dict = {}
+        async with env.apps.db.get_transaction() as own_session:
+            return await self._create_bulk_in_session(payloads, own_session)
 
-            for attachment in payloads:
-                if isinstance(attachment.content, Binary):
-                    continue
+    @hybridmethod
+    async def _create_bulk_in_session(
+        self, payloads: list[Self], session
+    ) -> list[int]:
+        """
+        Внутренняя реализация create_bulk с явной сессией.
+        Разделено, чтобы не плодить ветвление внутри основного метода.
+        """
+        folder_cache: dict = {}
 
-                try:
-                    content_bytes = base64.b64decode(attachment.content)
-                except Exception as e:
-                    logger.error(
-                        "Failed to decode content for '%s': %s",
-                        attachment.name,
-                        e,
-                    )
-                    continue
+        prepared: list[tuple[Self, bytes, object, object]] = []
+        # tuple = (payload, content_bytes, storage, parent_folder_id)
 
-                if not attachment.size:
-                    attachment.size = len(content_bytes)
+        for attachment in payloads:
+            # Нет контента (None или Binary-sentinel) — пропускаем FS-часть,
+            # payload всё равно пойдёт в bulk INSERT, но без storage_file_url.
+            if not attachment.content or isinstance(
+                attachment.content, Binary
+            ):
+                prepared.append((attachment, None, None, None))
+                continue
 
-                attachment.checksum = hashlib.sha1(content_bytes).hexdigest()
+            # content здесь гарантированно bytes — после Pydantic Base64Bytes
+            # и отсева None/Binary выше.
+            if not attachment.size:
+                attachment.size = len(attachment.content)
+            attachment.checksum = hashlib.sha1(attachment.content).hexdigest()
 
-                route, storage, parent_folder_id, parent_folder_name = (
-                    await self._resolve_route_and_folder(
-                        res_model=attachment.res_model,
-                        res_id=attachment.res_id,
-                        folder_cache=folder_cache,
-                    )
+            route, storage, parent_folder_id, parent_folder_name = (
+                await self._resolve_route_and_folder(
+                    res_model=attachment.res_model,
+                    res_id=attachment.res_id,
+                    folder_cache=folder_cache,
                 )
+            )
+            if not storage:
+                storage = await AttachmentStorage.get_or_create_default()
+            if not has_strategy(storage.type):
+                # Нет стратегии — пропускаем FS-часть, payload пойдёт в
+                # INSERT без storage_file_url (как fallback в старой
+                # версии кода).
+                prepared.append((attachment, None, None, None))
+                continue
 
-                if not storage:
-                    storage = await AttachmentStorage.get_or_create_default()
+            attachment.storage_id = storage
+            if route:
+                attachment.route_id = route
+            if storage.type != "file":
+                attachment.show_preview = False
+            # Заранее запоминаем storage_parent_* из resolve, FS-этап
+            # может их не вернуть.
+            attachment.storage_parent_id = parent_folder_id
+            attachment.storage_parent_name = parent_folder_name
 
-                if not has_strategy(storage.type):
-                    continue
+            prepared.append(
+                (attachment, attachment.content, storage, parent_folder_id)
+            )
 
-                attachment.storage_id = storage
-                if route:
-                    attachment.route_id = route
+        async def _write_one(
+            payload: Self,
+            content_bytes: bytes,
+            storage,
+            parent_folder_id,
+        ) -> None:
+            strategy = get_strategy(storage.type)
+            result = await strategy.create_file(
+                storage=storage,
+                attachment=payload,
+                content=content_bytes,
+                filename=payload.name or "unnamed",
+                mimetype=payload.mimetype,
+                parent_id=parent_folder_id,
+            )
+            # Заполняем поля payload результатом записи
+            payload.storage_file_url = result.get("storage_file_url")
+            payload.storage_file_id = result.get("storage_file_id")
+            if result.get("storage_parent_id"):
+                payload.storage_parent_id = result.get("storage_parent_id")
+            if result.get("storage_parent_name"):
+                payload.storage_parent_name = result.get("storage_parent_name")
 
-                if storage.type != "file":
-                    attachment.show_preview = False
+        write_tasks = [
+            _write_one(p, cb, st, pid)
+            for (p, cb, st, pid) in prepared
+            if cb is not None  # только те, у кого есть контент и storage
+        ]
+        if write_tasks:
+            # return_exceptions=False: если одна запись упала — падаем
+            # целиком. В транзакции это приведёт к откату, а на диске
+            # останутся файлы от уже завершившихся тасков (orphan'ы —
+            # это отдельная тема cleanup'а, решаем не здесь).
+            await asyncio.gather(*write_tasks)
 
-                strategy = get_strategy(storage.type)
-                result = await strategy.create_file(
-                    storage=storage,
-                    attachment=attachment,
-                    content=content_bytes,
-                    filename=attachment.name or "unnamed",
-                    mimetype=attachment.mimetype,
-                    parent_id=parent_folder_id,
-                )
-
-                attachment.storage_file_url = result.get("storage_file_url")
-                attachment.storage_file_id = result.get("storage_file_id")
-                attachment.storage_parent_id = (
-                    result.get("storage_parent_id") or parent_folder_id
-                )
-                attachment.storage_parent_name = (
-                    result.get("storage_parent_name") or parent_folder_name
-                )
-
-            return await super().create_bulk(payloads, session)
+        return await super().create_bulk(payloads, session)
 
     async def delete(self) -> bool:
         """

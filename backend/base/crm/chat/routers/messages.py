@@ -1,7 +1,6 @@
 # Copyright 2025 FARA CRM
 # Chat module - messages router
 
-import base64
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Query
 from starlette.status import HTTP_403_FORBIDDEN
@@ -200,7 +199,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
     # Проверяем право на отправку сообщений
     await ChatMember.check_can_write(chat_id, user_id)
 
-    async with env.apps.db.get_transaction():
+    async with env.apps.db.get_transaction() as session:
         # Создаём сообщение внутреннее
         message = await env.models.chat_message.post_message(
             chat_id=chat_id,
@@ -210,29 +209,31 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
             parent_id=body.parent_id,
         )
 
-        # Создаём аттачменты и привязываем к сообщению
-        attachments_data: list[Attachment] = []
+        # Создаём аттачменты и привязываем к сообщению.
         attachments_content_data: list[Attachment] = []
-        for file_data in body.attachments:
-            attachment = env.models.attachment(
-                name=file_data.name,
-                mimetype=file_data.mimetype,
-                size=file_data.size,
-                # TODO: переделать на байты
-                content=file_data.content,
-                res_model="chat_message",
-                res_id=message.id,
-                is_voice=file_data.is_voice,
+        if body.attachments:
+            payloads: list[Attachment] = [
+                env.models.attachment(
+                    name=file_data.name,
+                    mimetype=file_data.mimetype,
+                    size=file_data.size,
+                    # size=len(file_data.content),
+                    content=bytes(file_data.content),  # уже bytes
+                    res_model="chat_message",
+                    res_id=message.id,
+                    is_voice=file_data.is_voice,
+                )
+                for file_data in body.attachments
+            ]
+            records = await env.models.attachment.create_bulk(
+                payloads, session=session
             )
-            attachment_with_data = env.models.attachment(**attachment.json())
-            attachment_with_data.content = base64.b64decode(file_data.content)
-
-            att_id = await env.models.attachment.create(attachment)
-            attachment.id = att_id
-            attachments_data.append(attachment)
-
-            attachment_with_data.id = att_id
-            attachments_content_data.append(attachment_with_data)
+            # records — список записей [{id: ...}, ...] в том же порядке,
+            # что и payloads. Для внешней отправки (Telegram/WhatsApp и т.д.)
+            # передаём payloads как есть — у них в content уже bytes.
+            for payload, id in zip(payloads, records or []):
+                payload.id = id
+                attachments_content_data.append(payload)
 
         # Если указан connector_id - отправляем во внешний сервис
         if body.connector_id:

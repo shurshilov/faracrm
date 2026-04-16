@@ -5,6 +5,10 @@ from datetime import datetime
 from typing import Literal
 from pydantic import BaseModel, Field
 
+from backend.base.system.dotorm.dotorm.integrations.pydantic import (
+    Base64DecodedBytes,
+)
+
 # ====================== CHAT SCHEMAS ======================
 
 
@@ -134,7 +138,10 @@ class AttachmentInput(BaseModel):
     name: str = Field(..., description="File name")
     mimetype: str = Field(..., description="MIME type")
     size: int = Field(..., description="File size in bytes")
-    content: str = Field(..., description="Base64 encoded content")
+    content: Base64DecodedBytes = Field(
+        ...,
+        description="File content (base64-encoded on the wire, decoded to bytes)",
+    )
     is_voice: bool = Field(False, description="Is voice message recording")
 
 

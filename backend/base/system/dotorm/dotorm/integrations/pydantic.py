@@ -1,5 +1,6 @@
 """Pydantic integration for DotORM models."""
 
+import base64
 from types import UnionType
 from typing import (
     Annotated,
@@ -15,15 +16,58 @@ from typing import (
 )
 
 try:
-    from pydantic import BaseModel, ConfigDict, Field, create_model
+    from pydantic import (
+        BaseModel,
+        BeforeValidator,
+        ConfigDict,
+        Field,
+        create_model,
+    )
 except ImportError:
     print("pydantic lib not installed")
 
 from ..fields import (
+    Binary,
     Many2many,
     One2many,
     Field as DotField,
 )
+
+
+# ---- Кастомный тип для Binary-полей ------------------------------------
+# Base64DecodedBytes — асимметричная семантика:
+#   - на input (validate): base64-строка → bytes (реально декодирует).
+#     Также принимает bytes as-is — для совместимости с внутренними
+#     вызовами, где данные уже в бинарной форме.
+#   - на output (serialize, mode='python'): bytes → bytes как есть,
+#     БЕЗ обратного base64-кодирования.
+#
+# Готовый pydantic.Base64Bytes не подходит: он симметричный, и при
+# model_dump() кодирует bytes обратно в base64 (для роунд-трипа).
+# В auto-CRUD есть код вида Model(**payload.model_dump()), и если
+# использовать Base64Bytes — в ORM-модель попадает base64-строка вместо
+# настоящих байт.
+def _decode_base64_input(v):
+    """Принять base64-строку или bytes — вернуть bytes."""
+    if isinstance(v, (bytes, bytearray, memoryview)):
+        return bytes(v)
+    if isinstance(v, str):
+        try:
+            return base64.b64decode(v)
+        except Exception as e:
+            raise ValueError(f"Invalid base64 content: {e}") from e
+    if v is None:
+        return None
+    raise TypeError(
+        f"Base64DecodedBytes expects str or bytes-like, got {type(v).__name__}"
+    )
+
+
+Base64DecodedBytes = Annotated[
+    bytes,
+    BeforeValidator(_decode_base64_input),
+    # PlainSerializer(lambda b: b, return_type=bytes, when_used="always"),
+]
 
 
 def dotorm_to_pydantic_nested_one(cls):
@@ -103,8 +147,20 @@ def convert_field_type(
 ):
     """
     Оборачиваем тип в Annotated и корректно обрабатываем None.
+
+    Специальный случай для Binary-полей: на HTTP-границе бинарные
+    данные передаются base64-строкой. Подменяем тип на
+    Base64DecodedBytes — он декодит base64 на входе и возвращает
+    сырые bytes на выходе model_dump (без обратного кодирования).
+    Это важно, потому что в auto-CRUD payload сериализуется через
+    model_dump перед передачей в ORM, и двойная сериализация
+    (base64 → bytes → base64) сломала бы контент.
     """
     final_type = replace_custom_types(py_type, class_map)
+
+    # Binary field → Base64DecodedBytes (см. docstring модуля).
+    if isinstance(field_value, Binary):
+        final_type = Base64DecodedBytes
 
     # --- определяем, допускает ли поле None ---
     allows_none = False
