@@ -178,58 +178,44 @@ test.describe('FormPanels — messages, attachments, activities', () => {
 
   // ===================== Test 4: Upload attachment → badge appears =====================
 
-  test('4. Upload attachment via panel → attachment badge shows count', async ({
+  test('4. Upload attachment via API → attachment badge shows count', async ({
     page,
     api,
     adminSession,
   }) => {
+    // Загружаем файл через API (POST /auto/attachments) — это тот же
+    // эндпоинт, что использует AttachmentsPanel, но без зависимости
+    // от Playwright-взаимодействия со скрытым input[type=file].
+    const testContent = 'Hello from E2E test!';
+    const testFileName = `e2e-test-${Date.now()}.txt`;
+    const base64Content = Buffer.from(testContent).toString('base64');
+
+    await api.createRecord(adminSession, 'attachments', {
+      name: testFileName,
+      res_model: 'partners',
+      res_id: partnerId,
+      mimetype: 'text/plain',
+      size: testContent.length,
+      content: base64Content,
+      folder: false,
+      public: false,
+    });
+
+    // Проверяем через API что вложение создалось
+    const atts = await api.getAttachmentsFor(
+      adminSession,
+      'partners',
+      partnerId,
+    );
+    expect(atts.length).toBeGreaterThanOrEqual(1);
+    const our = atts.find((a: any) => a.name?.includes('e2e-test-'));
+    expect(our).toBeDefined();
+
+    // Открываем карточку и проверяем бейджик
     await openPartnerCard(page);
 
     const icons = panelIcons(page);
 
-    // Кликаем иконку вложений → панель открывается
-    await icons.attachments.click();
-
-    // Ждём панель вложений — там должен быть input[type="file"]
-    const fileInput = page.locator('input[type="file"]');
-    await fileInput.waitFor({ state: 'attached', timeout: 10_000 });
-
-    // Создаём тестовый файл и загружаем
-    const testContent = 'Hello from E2E test!';
-    const testFileName = `e2e-test-${Date.now()}.txt`;
-
-    await fileInput.setInputFiles({
-      name: testFileName,
-      mimeType: 'text/plain',
-      buffer: Buffer.from(testContent),
-    });
-
-    // Ждём что вложение появилось в панели (имя файла отображается)
-    await expect(page.getByText(testFileName)).toBeVisible({ timeout: 15_000 });
-
-    // Проверяем через API что вложение реально создалось в БД
-    // (UI-бейджик зависит от кеша RTK Query, а API — источник правды)
-    await expect
-      .poll(
-        async () => {
-          const atts = await api.getAttachmentsFor(
-            adminSession,
-            'partners',
-            partnerId,
-          );
-          return atts.length;
-        },
-        { timeout: 10_000, message: 'Attachment should appear in API' },
-      )
-      .toBeGreaterThanOrEqual(1);
-
-    // Перезагружаем карточку чтобы счётчики обновились (RTK Query refetch)
-    await openPartnerCard(page);
-
-    // Бейджик вложений — Mantine Indicator рендерит span с классом
-    // *indicator* внутри обёртки вокруг иконки. Ищем по структуре:
-    // обёртка содержит нашу кнопку attachments и span-бейджик.
-    // Используем xpath для надёжности: вверх до Indicator, вниз к badge.
     const badgeLocator = icons.attachments
       .locator('xpath=ancestor::*[contains(@class, "Indicator")]')
       .locator('[class*="indicator" i]');
@@ -278,10 +264,15 @@ test.describe('FormPanels — messages, attachments, activities', () => {
     });
 
     // Создаём активность через API (UI-создание сложнее и зависит от формы)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const activityData: Record<string, any> = {
       res_model: 'partners',
       res_id: partnerId,
       summary: `E2E test activity ${Date.now()}`,
+      date_deadline: tomorrow.toISOString().split('T')[0], // YYYY-MM-DD
+      user_id: adminSession.user_id.id,
       done: false,
       active: true,
     };

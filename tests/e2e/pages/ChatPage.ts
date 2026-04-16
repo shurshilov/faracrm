@@ -178,16 +178,33 @@ export class ChatPage {
   // ==================== Сообщения ====================
 
   async sendMessage(text: string) {
-    // Ждём что input видим и готов к вводу
     await this.messageInput.waitFor({ state: 'visible', timeout: 10_000 });
     await this.messageInput.click();
-    await this.messageInput.fill(text);
+    await this.messageInput.clear();
+    await this.messageInput.pressSequentially(text, { delay: 10 });
+
+    // Перехватываем ответ сервера
+    const responsePromise = this.page.waitForResponse(
+      resp => resp.url().includes('/messages') && resp.request().method() === 'POST',
+      { timeout: 15_000 },
+    );
+
     await this.page.keyboard.press('Enter');
 
-    // Ждём что сообщение появилось где-то на странице (chatArea или
-    // sidebar preview). Раньше ограничивали поиск messagesContainer,
-    // но chatArea может быть ещё не переключена на нужный чат —
-    // race condition при быстром клике. Ищем на всей странице.
+    const response = await responsePromise;
+    if (!response.ok()) {
+      const body = await response.text().catch(() => 'no body');
+      throw new Error(
+        `POST messages failed: ${response.status()} ${response.statusText()} — ${body}`,
+      );
+    }
+
+    // После POST сервер ответил 200. Сообщение появится на странице
+    // через один из путей:
+    // 1. Оптимистик-апдейт RTK Query (мгновенно, если кеш инициализирован)
+    // 2. invalidatesTags → refetch getChatMessages (через ~100-300ms)
+    // 3. WebSocket new_message (для других участников)
+    // Ждём появления текста на странице.
     await expect(
       this.page.getByText(text, { exact: false }).first(),
     ).toBeVisible({ timeout: 10_000 });

@@ -5,19 +5,22 @@
  *   import { test, expect } from '../fixtures';
  *   test('...', async ({ adminPage, api, adminToken }) => { ... });
  */
-import { test as base, expect, Page, BrowserContext } from '@playwright/test';
-import { ApiHelper, Session } from '../helpers/api.helper';
-import { WSClient } from '../helpers/ws.helper';
-import path from 'path';
+import { test as base, expect, Page, BrowserContext } from "@playwright/test";
+import { ApiHelper, Session } from "../helpers/api.helper";
+import { WSClient } from "../helpers/ws.helper";
+import path from "path";
 
-const API_URL = process.env.API_URL || 'http://localhost:8090';
-const WS_URL = (process.env.API_URL || 'http://localhost:8090').replace('http', 'ws');
-const ADMIN_LOGIN = process.env.ADMIN_LOGIN || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
-const USER2_LOGIN = process.env.USER2_LOGIN || 'test1';
-const USER2_PASSWORD = process.env.USER2_PASSWORD || 'test1';
-const USER3_LOGIN = process.env.USER3_LOGIN || 'test2';
-const USER3_PASSWORD = process.env.USER3_PASSWORD || 'test2';
+const API_URL = process.env.API_URL || "http://localhost:8090";
+const WS_URL = (process.env.API_URL || "http://localhost:8090").replace(
+  "http",
+  "ws",
+);
+const ADMIN_LOGIN = process.env.ADMIN_LOGIN || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
+const USER2_LOGIN = process.env.USER2_LOGIN || "test1";
+const USER2_PASSWORD = process.env.USER2_PASSWORD || "test1";
+const USER3_LOGIN = process.env.USER3_LOGIN || "test2";
+const USER3_PASSWORD = process.env.USER3_PASSWORD || "test2";
 
 // Кэш сессий чтобы не логиниться каждый тест
 let adminSessionCache: Session | null = null;
@@ -77,7 +80,7 @@ export const test = base.extend<TestFixtures>({
       try {
         user2SessionCache = await api.login(USER2_LOGIN, USER2_PASSWORD);
       } catch (e) {
-        console.warn('User2 login failed, multi-user tests will fail:', e);
+        console.warn("User2 login failed, multi-user tests will fail:", e);
         await use(null as any);
         return;
       }
@@ -86,11 +89,11 @@ export const test = base.extend<TestFixtures>({
   },
 
   user2Token: async ({ user2Session }, use) => {
-    await use(user2Session?.token || '');
+    await use(user2Session?.token || "");
   },
 
   user2Context: async ({ browser }, use) => {
-    const authFile = path.join(__dirname, '..', '.auth', 'user2.json');
+    const authFile = path.join(__dirname, "..", ".auth", "user2.json");
     const context = await browser.newContext({ storageState: authFile });
     await use(context);
     await context.close();
@@ -121,7 +124,7 @@ export const test = base.extend<TestFixtures>({
       try {
         user3SessionCache = await api.login(USER3_LOGIN, USER3_PASSWORD);
       } catch (e) {
-        console.warn('User3 login failed, presence tests will fail:', e);
+        console.warn("User3 login failed, presence tests will fail:", e);
         await use(null as any);
         return;
       }
@@ -130,7 +133,7 @@ export const test = base.extend<TestFixtures>({
   },
 
   user3Token: async ({ user3Session }, use) => {
-    await use(user3Session?.token || '');
+    await use(user3Session?.token || "");
   },
 
   user3WS: async ({ user3Token }, use) => {

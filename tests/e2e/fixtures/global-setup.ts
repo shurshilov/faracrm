@@ -18,7 +18,12 @@ const USER3_LOGIN = process.env.USER3_LOGIN || 'test2';
 const USER3_PASSWORD = process.env.USER3_PASSWORD || 'test2';
 
 async function globalSetup(config: FullConfig) {
-  // Убедимся что директория существует
+  // Удаляем старые auth-файлы — они могут содержать протухшие
+  // сессии от предыдущего запуска (сервер перезапустился,
+  // session expired, другой порт).
+  if (fs.existsSync(AUTH_DIR)) {
+    fs.rmSync(AUTH_DIR, { recursive: true });
+  }
   fs.mkdirSync(AUTH_DIR, { recursive: true });
 
   const api = new ApiHelper(API_URL);

@@ -201,6 +201,9 @@ const chatApi = api.injectEndpoints({
           ...(includeDeleted && { include_deleted: 1 }),
         },
       }),
+      providesTags: (_result, _error, { chatId }) => [
+        { type: 'ChatMessage' as const, id: chatId },
+      ],
     }),
 
     // Send message to chat (with optimistic update)
@@ -213,6 +216,17 @@ const chatApi = api.injectEndpoints({
         method: 'POST',
         body,
       }),
+      // После успешного POST — refetch сообщений этого чата.
+      // Это страховка: оптимистик-апдейт ниже добавляет сообщение
+      // в кеш мгновенно, но если по какой-то причине он не сработал
+      // (кеш не инициализирован, race condition), refetch гарантирует
+      // что сообщение появится из БД.
+      // Также решает проблему с exclude_user в WS: отправитель не
+      // получает своё сообщение через WebSocket, и без refetch'а
+      // полагается только на оптимистик-апдейт.
+      invalidatesTags: (_result, _error, { chatId }) => [
+        { type: 'ChatMessage' as const, id: chatId },
+      ],
       // Optimistic update - immediately add message to cache
       async onQueryStarted(
         { chatId, body, attachments, currentUserId, currentUserName },
