@@ -131,6 +131,7 @@
       "active": "Активен",
       "type": "Тип",
       "category": "Категория",
+      "contactType": "Тип контакта",
       "connectorUrl": "URL API",
       "webhookUrl": "URL вебхука",
       "webhookHash": "Секретный хеш",

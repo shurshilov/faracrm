@@ -36,8 +36,12 @@ export function ConnectorForm(props: ViewFormProps) {
           <Field name="name" label={t('connector.fields.name')} />
           <Field name="active" label={t('connector.fields.active')} />
         </FormRow>
-        <FormRow cols={2}>
+        <FormRow cols={3}>
           <Field name="type" label={t('connector.fields.type')} />
+          <Field
+            name="contact_type_id"
+            label={t('connector.fields.contactType')}
+          />
           <Field name="category" label={t('connector.fields.category')} />
         </FormRow>
       </FormSheet>

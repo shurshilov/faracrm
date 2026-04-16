@@ -45,6 +45,10 @@ def _hydrate_m2o_values(
             continue
 
         val = values[field_name]
+
+        if not isinstance(val, dict):
+            continue
+
         related_model = field_class.relation_table
         if related_model:
             # Рекурсия: вложенные M2O внутри dict

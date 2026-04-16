@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Self
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
     FilterExpression,
 )
-from backend.base.system.dotorm.dotorm.decorators import hybridmethod
+from backend.base.system.dotorm.dotorm.decorators import hybridmethod, onchange
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
     Char,
@@ -183,6 +183,18 @@ class ChatConnector(DotModel):
         description="Операторы, работающие с этим коннектором",
         default=[],
     )
+
+    @onchange("type")
+    async def onchange_type(self) -> dict:
+        first_type = await env.models.contact_type.search(
+            filter=[("name", "=", self.type)],
+            fields=["id", "name"],
+            limit=1,
+        )
+        if first_type:
+            return {"contact_type_id": first_type[0]}
+        else:
+            return {"contact_type_id": None}
 
     @hybridmethod
     async def create(self, payload: Self, session=None) -> int:

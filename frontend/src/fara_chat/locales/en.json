@@ -130,6 +130,7 @@
       "name": "Name",
       "active": "Active",
       "type": "Type",
+      "contactType": "Contact type",
       "category": "Category",
       "connectorUrl": "API URL",
       "webhookUrl": "Webhook URL",
