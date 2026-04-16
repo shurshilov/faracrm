@@ -852,6 +852,20 @@ const recordChatApi = api.injectEndpoints({
         method: 'POST',
       }),
     }),
+
+    // Count of chat_message linked to a record.
+    // auto-CRUD для chat_message отключён (права проверяются через
+    // ChatMember), поэтому search напрямую через /auto/chat_message/search
+    // не работает. Для бейджика в FormPanels достаточно только числа.
+    getRecordMessagesCount: build.query<
+      { total: number },
+      { resModel: string; resId: number }
+    >({
+      query: ({ resModel, resId }) => ({
+        url: '/chats/messages/count',
+        params: { res_model: resModel, res_id: resId },
+      }),
+    }),
   }),
   overrideExisting: false,
 });
@@ -885,5 +899,8 @@ export const {
   useLazyGetConnectorWebhookInfoQuery,
 } = chatApi;
 
-export const { useFindRecordChatQuery, useGetOrCreateRecordChatMutation } =
-  recordChatApi;
+export const {
+  useFindRecordChatQuery,
+  useGetOrCreateRecordChatMutation,
+  useGetRecordMessagesCountQuery,
+} = recordChatApi;

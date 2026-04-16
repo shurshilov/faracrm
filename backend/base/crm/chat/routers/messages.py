@@ -182,6 +182,54 @@ async def get_messages(
     return {"data": result}
 
 
+@router_private.get("/chats/messages/count")
+async def get_messages_count(
+    req: Request,
+    res_model: str = Query(
+        ..., description="Модель записи (partner, lead, ...)"
+    ),
+    res_id: int = Query(..., description="ID записи"),
+):
+    """
+    Количество chat_message в record-чате записи `res_model`/`res_id`.
+
+    Логика: находим record-чат по (res_model, res_id), считаем
+    сообщения в нём. res_model/res_id живут только у chat — у сообщения
+    их нет. Это избегает дублирования и рассинхронизации.
+
+    Зачем отдельный эндпоинт: auto-CRUD для chat_message отключён
+    (ChatMessage.__auto_crud__ = False) — писать/читать сообщения можно
+    только через /chats/... с проверкой прав ChatMember. А для бейджика
+    на карточке партнёра/сделки нужен только счётчик.
+
+    Безопасность: отдаём только число. Доступ к самой карточке уже
+    проверен Rules-ами соответствующей модели.
+    """
+    env: "Environment" = req.app.state.env
+
+    # Если record-чата ещё нет (никто не подписывался) — сообщений нет.
+    chat_record = await env.models.chat.search(
+        filter=[
+            ("res_model", "=", res_model),
+            ("res_id", "=", res_id),
+            ("chat_type", "=", "record"),
+            ("active", "=", True),
+        ],
+        fields=["id"],
+        limit=1,
+    )
+    if not chat_record:
+        return {"total": 0}
+
+    total = await env.models.chat_message.search_count(
+        filter=[
+            ("chat_id", "=", chat_record[0].id),
+            ("is_deleted", "=", False),
+        ]
+    )
+    return {"total": total}
+
+
 @router_private.post("/chats/{chat_id}/messages")
 async def post_message(req: Request, chat_id: int, body: MessageCreate):
     """

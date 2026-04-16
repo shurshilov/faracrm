@@ -12,6 +12,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { IconBell, IconMessage, IconPaperclip } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useSearchQuery } from '@/services/api/crudApi';
+import { useGetRecordMessagesCountQuery } from '@/services/api/chat';
 import { ActivityPanel } from './ActivityPanel';
 import { MessagesPanel } from './MessagesPanel';
 import { AttachmentsPanel } from './AttachmentsPanel';
@@ -61,15 +62,12 @@ export function FormPanelsBadges({
     limit: COUNT_LIMIT + 1,
   });
 
-  const { data: messagesData } = useSearchQuery({
-    model: 'chat_message',
-    fields: ['id'],
-    filter: [
-      ['res_model', '=', resModel],
-      ['res_id', '=', resId],
-      ['is_deleted', '=', false],
-    ],
-    limit: COUNT_LIMIT + 1,
+  // chat_message: auto-CRUD отключён (права через ChatMember),
+  // поэтому для бейджика используем выделенный эндпоинт,
+  // возвращающий только число.
+  const { data: messagesData } = useGetRecordMessagesCountQuery({
+    resModel,
+    resId,
   });
 
   const { data: attachmentsData } = useSearchQuery({
@@ -84,7 +82,7 @@ export function FormPanelsBadges({
   });
 
   const activityCount = activitiesData?.data?.length || 0;
-  const messageCount = messagesData?.data?.length || 0;
+  const messageCount = messagesData?.total || 0;
   const attachmentCount = attachmentsData?.data?.length || 0;
 
   const formatCount = (count: number) =>
@@ -272,7 +270,9 @@ export function FormPanelSide({
           minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
-          borderLeft: isMobile ? 'none' : '1px solid var(--mantine-color-default-border)',
+          borderLeft: isMobile
+            ? 'none'
+            : '1px solid var(--mantine-color-default-border)',
           overflow: 'hidden',
         }}>
         {/* Header */}

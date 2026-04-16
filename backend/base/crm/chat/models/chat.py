@@ -5,9 +5,6 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
-from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
-    ContainerTransaction,
-)
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
     Char,
@@ -436,8 +433,8 @@ class Chat(DotModel):
             return chat
 
         # Slow path — чат не найден, берём lock и создаём
-        # с защитой от дублей, так как чат создается лениво
-        async with ContainerTransaction() as session:
+        # с защитой от дублей, так как чат создается лениво.
+        async with env.apps.db.get_transaction() as session:
             await session.execute(
                 "SELECT pg_advisory_xact_lock(hashtext(%s), %s)",
                 (f"chat:{res_model}", res_id),
