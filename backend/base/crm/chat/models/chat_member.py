@@ -83,8 +83,6 @@ class ChatMember(DotModel):
         description="ID последнего прочитанного сообщения (watermark)",
     )
 
-    # ==================== Instance Methods ====================
-
     def has_permission(self, permission: str) -> bool:
         """
         Проверить есть ли у участника определённое право.
@@ -104,8 +102,6 @@ class ChatMember(DotModel):
             "can_delete_others": self.can_delete_others or self.is_admin,
             "is_admin": self.is_admin,
         }
-
-    # ==================== Class Methods ====================
 
     @classmethod
     async def get_membership(

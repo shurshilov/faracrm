@@ -23,6 +23,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.chat.strategies import get_strategy
 
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat_external_account import (
@@ -190,17 +191,16 @@ class ChatConnector(DotModel):
         для назначенных операторов.
         """
         # Создаём коннектор (Many2many operator_ids заполнится автоматически)
-        connector_id = await super().create(payload=payload, session=session)
+        self.id = await super().create(payload=payload, session=session)
 
         # Получаем операторов из Many2many таблицы
-        self.id = connector_id
         new_operator_ids = await self._get_current_operator_ids()
 
         # Создаём ChatExternalAccount для операторов
         if new_operator_ids:
-            await self._sync_operators(connector_id, [], new_operator_ids)
+            await self._sync_operators(self.id, [], new_operator_ids)
 
-        return connector_id
+        return self.id
 
     @hybridmethod
     async def update(self, payload, fields=None, session=None):
@@ -249,106 +249,84 @@ class ChatConnector(DotModel):
         old_set = set(old_ids)
         new_set = set(new_ids)
 
-        added = new_set - old_set
-        removed = old_set - new_set
+        added = list(new_set - old_set)
+        removed = list(old_set - new_set)
 
         if not added and not removed:
             return
 
-        # Получаем данные коннектора
         connector = await self.get(
-            connector_id,
-            fields=[
-                "id",
-                "name",
-                "type",
-                "external_account_id",
-                "contact_type_id",
-            ],
+            id=connector_id,
+            fields=["id", "name", "external_account_id", "contact_type_id"],
         )
 
-        # Определяем тип контакта для этого коннектора (Many2one → contact_type)
-        contact_type_id = connector.contact_type_id
-        if contact_type_id is None:
-            raise ValueError("Contact type must be set")
+        if not connector.contact_type_id:
+            raise ValueError(
+                f"Contact type not set for connector {connector_id}"
+            )
 
-        # Значение контакта — ID аккаунта из коннектора
+        contact_type = connector.contact_type_id
         contact_value = connector.external_account_id or connector.name
 
-        # Batch: получаем всех пользователей за один запрос
-        users_map = {}
         if added:
+            # Загружаем пользователей и существующие контакты параллельно (если позволяет движок)
             users = await env.models.user.search(
-                filter=[("id", "in", list(added))],
-                fields=["id", "name"],
+                filter=[("id", "in", added)], fields=["id", "name"]
             )
             users_map = {u.id: u for u in users}
 
-        # Batch: получаем существующие контакты для добавляемых операторов
-        existing_contacts_map = {}
-        if added:
             existing_contacts = await env.models.contact.search(
                 filter=[
-                    ("user_id", "in", list(added)),
-                    ("contact_type_id", "=", contact_type_id.id),
+                    ("user_id", "in", added),
+                    ("contact_type_id", "=", contact_type.id),
                 ],
+                fields=["id", "name", "user_id"],
             )
             existing_contacts_map = {
                 c.user_id.id: c for c in existing_contacts if c.user_id
             }
 
-        # Создаём/реактивируем Contact для добавленных операторов
-        # Реактивируем неактивные контакты
-        contacts_to_reactivate = [
-            c
-            for c in existing_contacts_map.values()
-            if c.user_id and c.user_id.id in added and not c.active
-        ]
-        if contacts_to_reactivate:
-            ids = [c.id for c in contacts_to_reactivate]
-            await env.models.contact.update_bulk(
-                ids, env.models.contact(active=False)
-            )
-            logger.info("Reactivated %s contacts for operators", len(ids))
-
-        # Создаём новые контакты для операторов без существующих
-        new_contacts = []
-        for user_id in added:
-            user = users_map.get(user_id)
-            if not user:
-                continue
-
-            if user_id not in existing_contacts_map:
-                new_contacts.append(
-                    env.models.contact(
-                        user_id=user,
-                        contact_type_id=contact_type_id,
-                        name=contact_value,
-                        is_primary=True,
-                    )
+            # 1. Реактивация (исправлено active=True)
+            to_reactivate = [c.id for c in existing_contacts if not c.active]
+            if to_reactivate:
+                await env.models.contact.update_bulk(
+                    to_reactivate, env.models.contact(active=True)
                 )
+                logger.info("Reactivated %s contacts", len(to_reactivate))
 
-        if new_contacts:
-            await env.models.contact.create_bulk(new_contacts)
-            logger.info("Created %s contacts for operators", len(new_contacts))
+            # 2. Создание новых
+            new_contacts = [
+                env.models.contact(
+                    user_id=users_map[uid],
+                    contact_type_id=contact_type,
+                    name=contact_value,
+                    is_primary=True,
+                    active=True,
+                )
+                for uid in added
+                if uid in users_map and uid not in existing_contacts_map
+            ]
 
-        # Batch: деактивируем Contact для удалённых операторов
+            if new_contacts:
+                await env.models.contact.create_bulk(new_contacts)
+                logger.info("Created %s new contacts", len(new_contacts))
+
         if removed:
-            contacts_to_deactivate = await env.models.contact.search(
+            # Сразу ищем активные контакты для удаления
+            to_deactivate = await env.models.contact.search(
                 filter=[
-                    ("user_id", "in", list(removed)),
-                    ("contact_type_id", "=", contact_type_id.id),
+                    ("user_id", "in", removed),
+                    ("contact_type_id", "=", contact_type.id),
                     ("active", "=", True),
                 ],
+                fields=["id"],
             )
-            if contacts_to_deactivate:
-                ids = [c.id for c in contacts_to_deactivate]
+            if to_deactivate:
+                ids = [c.id for c in to_deactivate]
                 await env.models.contact.update_bulk(
                     ids, env.models.contact(active=False)
                 )
-                logger.info(
-                    "Deactivated %s contacts for removed operators", len(ids)
-                )
+                logger.info("Deactivated %s contacts", len(ids))
 
     async def get_next_operator(self):
         """
@@ -372,16 +350,8 @@ class ChatConnector(DotModel):
         Получить стратегию для данного типа коннектора.
         Стратегии регистрируются в env.chat_strategies
         """
-        from backend.base.crm.chat.strategies import get_strategy
 
         return get_strategy(self.type)
-
-    async def get_or_generate_token(self) -> str | None:
-        """
-        Получить существующий токен или сгенерировать новый.
-        Делегирует логику стратегии.
-        """
-        return await self.strategy.get_or_generate_token(self)
 
     async def set_webhook(self, base_url: str | None = None) -> bool:
         """
@@ -474,7 +444,7 @@ class ChatConnector(DotModel):
 
         for connector in connectors:
             try:
-                await connector.get_or_generate_token()
+                await connector.strategy.get_or_generate_token(self)
             except Exception:
                 # Логируем ошибку но продолжаем для других коннекторов
                 pass

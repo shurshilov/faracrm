@@ -124,8 +124,6 @@ class ChatExternalAccount(DotModel):
         ),
     )
 
-    # ==================== Properties ====================
-
     @property
     def is_operator(self) -> bool:
         """Является ли аккаунт оператором (сотрудником)."""
@@ -146,8 +144,6 @@ class ChatExternalAccount(DotModel):
         if self.contact_id:
             return self.contact_id.user_id
         return None
-
-    # ==================== Instance Methods ====================
 
     async def find_by_external_id(
         self, external_id: str, connector_id: int
