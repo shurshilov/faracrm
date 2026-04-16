@@ -45,37 +45,79 @@ async def get_chats(
         None, description="Фильтр по коннектору: telegram, whatsapp, etc"
     ),
     include_deleted: int = Query(
-        0, description="Admin: показать удалённые чаты"
+        0, description="Показать удалённые чаты (active=false)"
+    ),
+    include_record: int = Query(
+        0, description="Показать record-чаты (chat_type='record')"
+    ),
+    include_foreign: int = Query(
+        0,
+        description="Admin-only: показать чужие чаты "
+        "(где текущий user не активный мембер)",
     ),
 ):
     """
     Получить список чатов текущего пользователя.
 
+    По умолчанию пользователь (в т.ч. админ) видит только свои активные чаты,
+    не являющиеся record-чатами:
+      - chat_member.user_id = me AND chat_member.is_active = true
+      - chat.active = true
+      - chat.chat_type != 'record'
+
+    Query-флаги снимают отдельные ограничения:
+      - include_deleted=1  → снимает фильтр по chat.active (доступно всем)
+      - include_record=1   → показывает record-чаты                 (доступно всем)
+      - include_foreign=1  → снимает требование членства             (только админ,
+                              для не-админа → 403 ADMIN_REQUIRED)
+
     Комбо-фильтрация:
     - is_internal=True + chat_type=direct → Внутренние личные
-    - is_internal=True + chat_type=group → Внутренние группы
+    - is_internal=True + chat_type=group  → Внутренние группы
     - is_internal=False + connector_type=telegram → Telegram чаты
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
+    is_sys_admin = bool(auth_session.user_id.is_admin)
+
+    # include_foreign разрешён только системному админу. Не-админам
+    # бросаем 403, чтобы ошибка не маскировалась под «пустой результат».
+    if bool(include_foreign) and not is_sys_admin:
+        raise FaraException(
+            {"content": "ADMIN_REQUIRED", "status_code": HTTP_403_FORBIDDEN}
+        )
 
     session = env.apps.db.get_session()
 
-    # Строим SQL динамически
-    base_query = """
-        SELECT DISTINCT c.id, c.last_message_date
-        FROM chat c
-        JOIN chat_member cm ON c.id = cm.chat_id AND cm.is_active = true
-    """
+    _show_foreign = bool(include_foreign) and is_sys_admin
 
-    conditions = ["cm.user_id = %s"]
-    params: list = [user_id]
+    # Строим SQL динамически.
+    # По умолчанию JOIN по членству. При include_foreign JOIN убираем —
+    # админ видит все чаты (в т.ч. те, где он не мембер).
+    if _show_foreign:
+        base_query = """
+            SELECT DISTINCT c.id, c.last_message_date
+            FROM chat c
+        """
+        conditions: list[str] = []
+        params: list = []
+    else:
+        base_query = """
+            SELECT DISTINCT c.id, c.last_message_date
+            FROM chat c
+            JOIN chat_member cm ON c.id = cm.chat_id AND cm.is_active = true
+        """
+        conditions = ["cm.user_id = %s"]
+        params = [user_id]
 
-    # Soft-delete: только админ может видеть удалённые чаты
-    _show_deleted = bool(include_deleted) and auth_session.user_id.is_admin
-    if not _show_deleted:
+    # Soft-delete: фильтр по active снимается флагом (доступно всем)
+    if not bool(include_deleted):
         conditions.append("c.active = true")
+
+    # Record-чаты: по умолчанию исключены. Флаг снимает исключение (доступно всем)
+    if not bool(include_record):
+        conditions.append("c.chat_type != 'record'")
 
     # Фильтр is_internal
     if is_internal is True:
@@ -112,7 +154,7 @@ async def get_chats(
             """
             params.insert(0, contact_type_id_for_filter.id)
 
-    where_clause = " AND ".join(conditions)
+    where_clause = " AND ".join(conditions) if conditions else "TRUE"
     chat_ids_query = f"""
         {base_query}
         WHERE {where_clause}

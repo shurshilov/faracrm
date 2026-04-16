@@ -16,6 +16,8 @@ const chatApi = api.injectEndpoints({
           ...(args?.chat_type && { chat_type: args.chat_type }),
           ...(args?.connector_type && { connector_type: args.connector_type }),
           ...(args?.include_deleted && { include_deleted: 1 }),
+          ...(args?.include_record && { include_record: 1 }),
+          ...(args?.include_foreign && { include_foreign: 1 }),
         },
       }),
       providesTags: result =>
@@ -710,6 +712,9 @@ export interface GetChatsArgs {
   chat_type?: 'direct' | 'group';
   connector_type?: string;
   include_deleted?: boolean;
+  include_record?: boolean;
+  /** Admin-only: показать чужие чаты (где user не мембер). */
+  include_foreign?: boolean;
 }
 
 export interface GetChatsResponse {

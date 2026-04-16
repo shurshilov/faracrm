@@ -1,4 +1,4 @@
-import { AdminSettingsPopover } from './AdminSettingsPopover';
+import { ViewSettingsPopover } from './ViewSettingsPopover';
 import { Box, Text, Group, Avatar, ActionIcon, Menu } from '@mantine/core';
 import {
   IconDots,
@@ -132,7 +132,7 @@ export function ChatHeader({
           </ActionIcon>
 
           {/* Soft-delete: show deleted messages (admin only) */}
-          <AdminSettingsPopover
+          <ViewSettingsPopover
             size="lg"
             variant="subtle"
             title={t('chatSettings')}
@@ -145,6 +145,7 @@ export function ChatHeader({
                 ),
                 checked: showDeletedMessages,
                 onChange: v => onToggleShowDeletedMessages?.(v),
+                adminOnly: true,
               },
             ]}
           />
