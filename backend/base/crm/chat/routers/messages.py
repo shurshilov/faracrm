@@ -191,23 +191,30 @@ async def get_messages_count(
     res_id: int = Query(..., description="ID записи"),
 ):
     """
-    Количество chat_message в record-чате записи `res_model`/`res_id`.
+    Статистика по сообщениям в record-чате записи `res_model`/`res_id`.
 
-    Логика: находим record-чат по (res_model, res_id), считаем
-    сообщения в нём. res_model/res_id живут только у chat — у сообщения
-    их нет. Это избегает дублирования и рассинхронизации.
+    Ответ:
+        {
+            "total": N,   // всего не удалённых сообщений в чате
+            "unread": N   // непрочитанных для текущего пользователя
+        }
 
-    Зачем отдельный эндпоинт: auto-CRUD для chat_message отключён
-    (ChatMessage.__auto_crud__ = False) — писать/читать сообщения можно
-    только через /chats/... с проверкой прав ChatMember. А для бейджика
-    на карточке партнёра/сделки нужен только счётчик.
+    unread считается так:
+    - 0 если record-чата ещё нет (никто не подписался),
+    - 0 если пользователь не член чата (не подписан),
+    - иначе COUNT(*) сообщений с id > last_read_message_id пользователя,
+      не считая своих (author_user_id != me).
 
-    Безопасность: отдаём только число. Доступ к самой карточке уже
-    проверен Rules-ами соответствующей модели.
+    Такой же SQL-паттерн используется в GET /chats (watermark-based unread).
+
+    Безопасность: отдаём только числа. Доступ к записи (res_model/res_id)
+    уже проверен Rules-ами соответствующей модели.
     """
     env: "Environment" = req.app.state.env
+    auth_session: "Session" = req.state.session
+    user_id = auth_session.user_id.id
 
-    # Если record-чата ещё нет (никто не подписывался) — сообщений нет.
+    # Если record-чата ещё нет — ни total, ни unread смысла не имеют.
     chat_record = await env.models.chat.search(
         filter=[
             ("res_model", "=", res_model),
@@ -219,15 +226,41 @@ async def get_messages_count(
         limit=1,
     )
     if not chat_record:
-        return {"total": 0}
+        return {"total": 0, "unread": 0}
+
+    chat_id = chat_record[0].id
 
     total = await env.models.chat_message.search_count(
         filter=[
-            ("chat_id", "=", chat_record[0].id),
+            ("chat_id", "=", chat_id),
             ("is_deleted", "=", False),
         ]
     )
-    return {"total": total}
+
+    # unread считаем одним SQL-ом с JOIN к chat_member (LEFT JOIN,
+    # чтобы не подписанные просто получили 0, а не ошибку). Watermark
+    # в chat_member.last_read_message_id — id последнего прочитанного
+    # сообщения. Свои сообщения исключаем, как в /chats.
+    session = env.apps.db.get_session()
+    unread_rows = await session.execute(
+        """
+        SELECT COUNT(*) AS unread
+        FROM chat_message m
+        LEFT JOIN chat_member cm
+          ON cm.chat_id = m.chat_id
+         AND cm.user_id = %s
+         AND cm.is_active = true
+        WHERE m.chat_id = %s
+          AND m.is_deleted = false
+          AND (m.author_user_id IS NULL OR m.author_user_id != %s)
+          AND cm.id IS NOT NULL  -- только если пользователь — член чата
+          AND m.id > COALESCE(cm.last_read_message_id, 0)
+        """,
+        (user_id, chat_id, user_id),
+    )
+    unread = unread_rows[0]["unread"] if unread_rows else 0
+
+    return {"total": total, "unread": unread}
 
 
 @router_private.post("/chats/{chat_id}/messages")

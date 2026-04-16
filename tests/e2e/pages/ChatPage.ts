@@ -178,11 +178,18 @@ export class ChatPage {
   // ==================== Сообщения ====================
 
   async sendMessage(text: string) {
+    // Ждём что input видим и готов к вводу
+    await this.messageInput.waitFor({ state: 'visible', timeout: 10_000 });
     await this.messageInput.click();
     await this.messageInput.fill(text);
     await this.page.keyboard.press('Enter');
+
+    // Ждём что сообщение появилось где-то на странице (chatArea или
+    // sidebar preview). Раньше ограничивали поиск messagesContainer,
+    // но chatArea может быть ещё не переключена на нужный чат —
+    // race condition при быстром клике. Ищем на всей странице.
     await expect(
-      this.messagesContainer.getByText(text, { exact: false }).first(),
+      this.page.getByText(text, { exact: false }).first(),
     ).toBeVisible({ timeout: 10_000 });
   }
 

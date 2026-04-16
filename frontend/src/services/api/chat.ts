@@ -858,7 +858,7 @@ const recordChatApi = api.injectEndpoints({
     // ChatMember), поэтому search напрямую через /auto/chat_message/search
     // не работает. Для бейджика в FormPanels достаточно только числа.
     getRecordMessagesCount: build.query<
-      { total: number },
+      { total: number; unread: number },
       { resModel: string; resId: number }
     >({
       query: ({ resModel, resId }) => ({

@@ -284,6 +284,44 @@ export class ApiHelper {
     return new Uint8Array(buf);
   }
 
+  // ==================== Record Chat ====================
+
+  /**
+   * Найти record-чат для записи (без создания).
+   * Возвращает { chat_id, name } или { chat_id: null }.
+   */
+  async findRecordChat(
+    session: Session,
+    resModel: string,
+    resId: number,
+  ): Promise<{ chat_id: number | null; name?: string }> {
+    const res = await fetch(
+      `${this.apiUrl}/records/${resModel}/${resId}/chat`,
+      { headers: this.headers(session) },
+    );
+    if (!res.ok)
+      throw new Error(`Find record chat failed: ${res.status}`);
+    return res.json();
+  }
+
+  /**
+   * Получить счётчики сообщений для записи.
+   * Возвращает { total, unread }.
+   */
+  async getMessagesCount(
+    session: Session,
+    resModel: string,
+    resId: number,
+  ): Promise<{ total: number; unread: number }> {
+    const res = await fetch(
+      `${this.apiUrl}/chats/messages/count?res_model=${resModel}&res_id=${resId}`,
+      { headers: this.headers(session) },
+    );
+    if (!res.ok)
+      throw new Error(`Get messages count failed: ${res.status}`);
+    return res.json();
+  }
+
   // ==================== Utils ====================
 
   private headers(session: Session) {

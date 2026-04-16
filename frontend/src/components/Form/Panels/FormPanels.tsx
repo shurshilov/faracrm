@@ -83,10 +83,16 @@ export function FormPanelsBadges({
 
   const activityCount = activitiesData?.data?.length || 0;
   const messageCount = messagesData?.total || 0;
+  const unreadMessageCount = messagesData?.unread || 0;
   const attachmentCount = attachmentsData?.data?.length || 0;
 
   const formatCount = (count: number) =>
     count > COUNT_LIMIT ? `${COUNT_LIMIT}+` : String(count);
+
+  // Иконка серая, если по этой вкладке ничего нет. Иначе — акцент
+  // цветом через ActionIcon color (bleed при subtle variant сильный).
+  const iconColor = (count: number, active: string) =>
+    activePanel === active ? undefined : count > 0 ? 'blue' : 'gray';
 
   const panelTitle: Record<string, string> = {
     activities: t('activity:menu.activity', 'Активности'),
@@ -104,6 +110,7 @@ export function FormPanelsBadges({
         offset={4}>
         <ActionIcon
           variant={activePanel === 'activities' ? 'filled' : 'subtle'}
+          color={iconColor(activityCount, 'activities')}
           size="md"
           onClick={() => onToggle('activities')}
           title={panelTitle.activities}>
@@ -112,13 +119,14 @@ export function FormPanelsBadges({
       </Indicator>
 
       <Indicator
-        label={formatCount(messageCount)}
+        label={formatCount(unreadMessageCount)}
         size={14}
-        disabled={messageCount === 0}
+        disabled={unreadMessageCount === 0}
         color="blue"
         offset={4}>
         <ActionIcon
           variant={activePanel === 'messages' ? 'filled' : 'subtle'}
+          color={iconColor(messageCount, 'messages')}
           size="md"
           onClick={() => onToggle('messages')}
           title={panelTitle.messages}>
@@ -134,6 +142,7 @@ export function FormPanelsBadges({
         offset={4}>
         <ActionIcon
           variant={activePanel === 'attachments' ? 'filled' : 'subtle'}
+          color={iconColor(attachmentCount, 'attachments')}
           size="md"
           onClick={() => onToggle('attachments')}
           title={panelTitle.attachments}>
