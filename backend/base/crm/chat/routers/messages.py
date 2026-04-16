@@ -211,6 +211,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
 
         # Создаём аттачменты и привязываем к сообщению.
         attachments_content_data: list[Attachment] = []
+        attachments_response: list[dict] = []
         if body.attachments:
             payloads: list[Attachment] = [
                 env.models.attachment(
@@ -218,7 +219,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                     mimetype=file_data.mimetype,
                     size=file_data.size,
                     # size=len(file_data.content),
-                    content=bytes(file_data.content),  # уже bytes
+                    content=file_data.content,  # уже bytes
                     res_model="chat_message",
                     res_id=message.id,
                     is_voice=file_data.is_voice,
@@ -231,9 +232,23 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
             # records — список записей [{id: ...}, ...] в том же порядке,
             # что и payloads. Для внешней отправки (Telegram/WhatsApp и т.д.)
             # передаём payloads как есть — у них в content уже bytes.
-            for payload, id in zip(payloads, records or []):
-                payload.id = id
+            for payload, record in zip(payloads, records or []):
+                payload.id = record["id"]
                 attachments_content_data.append(payload)
+
+        attachments_response = [
+            {
+                "id": a.id,
+                "name": a.name,
+                "mimetype": a.mimetype,
+                "size": a.size,
+                "is_voice": a.is_voice,
+                "storage_file_url": a.storage_file_url,
+                "checksum": a.checksum,
+                "show_preview": a.show_preview,
+            }
+            for a in attachments_content_data
+        ]
 
         # Если указан connector_id - отправляем во внешний сервис
         if body.connector_id:
@@ -303,7 +318,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                     "pinned": False,
                     "is_edited": False,
                     "is_read": False,
-                    "attachments": attachments_data,
+                    "attachments": attachments_response,
                 },
             },
             exclude_user=user_id,
@@ -335,7 +350,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                 if message.create_date
                 else None
             ),
-            "attachments": attachments_data,
+            "attachments": attachments_response,
         }
     }
 

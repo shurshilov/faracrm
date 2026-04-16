@@ -390,9 +390,7 @@ class Attachment(DotModel):
             await super().update(payload, fields, session)
 
     @hybridmethod
-    async def create_bulk(
-        self, payloads: list[Self], session=None
-    ) -> list[int]:
+    async def create_bulk(self, payloads: list[Self], session=None):
         """
         Массовое создание вложений с сохранением файлов через стратегию.
 
