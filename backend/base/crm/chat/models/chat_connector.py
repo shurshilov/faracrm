@@ -267,10 +267,13 @@ class ChatConnector(DotModel):
         if not added and not removed:
             return
 
-        connector = await self.get(
-            id=connector_id,
-            fields=["id", "name", "external_account_id", "contact_type_id"],
+        connector = await self.search(
+            filter=[("id", "=", connector_id)],
+            # fields=["id", "name", "external_account_id", "contact_type_id"],
         )
+        if not connector:
+            raise ValueError(f"Connector {connector_id} not found")
+        connector = connector[0]
 
         if not connector.contact_type_id:
             raise ValueError(
