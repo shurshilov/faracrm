@@ -39,6 +39,14 @@ class ContactType(DotModel):
         index=True,
     )
 
+    # Признак "тип использует телефонный номер как идентификатор"
+    is_phone_format: bool = Boolean(
+        default=False,
+        description="Тип использует телефонный номер (phone, whatsapp, viber). "
+        "Разрешает fallback-поиск контакта между такими типами.",
+        index=True,
+    )
+
     # Отображаемое название
     label: str = Char(
         max_length=100,
@@ -144,6 +152,7 @@ INITIAL_CONTACT_TYPES = [
     {
         "name": "phone",
         "label": "Телефон",
+        "is_phone_format": True,
         "icon": "IconPhone",
         "color": "green",
         "placeholder": "+7 999 123-45-67",
@@ -171,6 +180,7 @@ INITIAL_CONTACT_TYPES = [
     {
         "name": "whatsapp",
         "label": "WhatsApp",
+        "is_phone_format": True,
         "icon": "IconBrandWhatsapp",
         "color": "teal",
         "placeholder": "+7 999 123-45-67",
@@ -180,6 +190,7 @@ INITIAL_CONTACT_TYPES = [
     {
         "name": "viber",
         "label": "Viber",
+        "is_phone_format": True,
         "icon": "IconMessageCircle",
         "color": "violet",
         "placeholder": "+7 999 123-45-67",

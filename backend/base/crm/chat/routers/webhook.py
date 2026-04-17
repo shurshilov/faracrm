@@ -14,6 +14,7 @@ from starlette.status import (
     HTTP_200_OK,
     HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
 )
 
 if TYPE_CHECKING:
@@ -76,7 +77,18 @@ async def chat_webhook(
         )
 
     # 2. Получаем коннектор и валидируем
-    connector = await env.models.chat_connector.get(connector_id)
+    connector = await env.models.chat_connector.search(
+        filter=[("id", "=", connector_id)],
+        fields_nested={"contact_type_id": ["id", "name", "is_phone_format"]},
+        limit=1,
+    )
+    if connector:
+        connector = connector[0]
+    else:
+        return JSONResponse(
+            content={"error": "CONNECTOR_NOT_FOUND"},
+            status_code=HTTP_404_NOT_FOUND,
+        )
 
     # 3. Проверяем webhook_hash
     if connector.webhook_hash != webhook_hash:
