@@ -1,6 +1,7 @@
 # Copyright 2025 FARA CRM
 # Chat module - connector model for external integrations
 
+import asyncio
 import logging
 import secrets
 from datetime import datetime, timezone
@@ -383,13 +384,11 @@ class ChatConnector(DotModel):
                     settings_base_url = (
                         await env.models.system_settings.get_base_url()
                     )
-                    if not settings_base_url:
-                        base_url = "http://127.0.0.1"
-                    else:
-                        if isinstance(settings_base_url, str):
-                            base_url = settings_base_url
-                        else:
-                            base_url = "http://127.0.0.1"
+                    base_url = (
+                        settings_base_url
+                        if isinstance(settings_base_url, str)
+                        else "http://127.0.0.1"
+                    )
 
                 self.webhook_url = self.generate_webhook_url(base_url)
 
@@ -422,7 +421,9 @@ class ChatConnector(DotModel):
             )
             return True
         except Exception as e:
-            await self.update(ChatConnector(last_response=str(e)))
+            await self.update(
+                ChatConnector(last_response=str(e), webhook_state="failed"),
+            )
             return False
 
     async def get_active_connectors(
@@ -457,12 +458,22 @@ class ChatConnector(DotModel):
         """
         connectors = await self.get_active_connectors()
 
-        for connector in connectors:
-            try:
-                await connector.strategy.get_or_generate_token(self)
-            except Exception:
-                # Логируем ошибку но продолжаем для других коннекторов
-                pass
+        # Создаем список задач
+        tasks = [
+            connector.strategy.get_or_generate_token(self)
+            for connector in connectors
+        ]
+
+        # Запускаем всё параллельно.
+        # return_exceptions=True позволит собрать результаты, даже если один упал.
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Логируем ошибки, если они были
+        for connector, result in zip(connectors, results):
+            if isinstance(result, Exception):
+                logger.error(
+                    f"Failed to refresh token for {connector.id}: {result}"
+                )
 
     def generate_webhook_url(self, base_url: str) -> str:
         """
@@ -475,8 +486,12 @@ class ChatConnector(DotModel):
             Полный webhook URL
         """
         if not self.id:
-            raise ValueError("Cannot generate webhook_url without ID")
+            raise ValueError("ID is required to generate webhook URL")
+
+        # Убеждаемся, что хеш есть, но лучше это делать при создании записи
         if not self.webhook_hash:
             self.webhook_hash = secrets.token_hex(32)
 
-        return f"{base_url}/chat/webhook/{self.webhook_hash}/{self.id}"
+        # Убираем лишние слеши, если base_url пришел с '/' в конце
+        clean_url = base_url.rstrip("/")
+        return f"{clean_url}/chat/webhook/{self.webhook_hash}/{self.id}"

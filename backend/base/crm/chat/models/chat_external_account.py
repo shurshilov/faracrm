@@ -198,6 +198,7 @@ class ChatExternalAccount(DotModel):
             contact = await env.models.contact.search(
                 filter=[("id", "=", existing.contact_id.id)],
                 fields=["id", "partner_id", "user_id", "name"],
+                limit=1,
             )
             return existing, contact[0], False
 
