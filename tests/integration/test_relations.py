@@ -21,6 +21,12 @@ pytestmark = [pytest.mark.integration, pytest.mark.api]
 # ====================
 # Helpers
 # ====================
+from backend.base.crm.users.models.users import User
+from backend.base.crm.sales.models.sale_line import SaleLine
+from backend.base.crm.sales.models.sale import Sale
+from backend.base.crm.sales.models.sale_stage import SaleStage
+from backend.base.crm.products.models.product import Product
+from backend.base.crm.partners.models.partners import Partner
 
 
 async def _create_language(code="en", name="English"):
@@ -81,7 +87,6 @@ class TestM2MUserRolesORM:
 
     async def test_assign_role_to_new_user(self, db_pool):
         """Create user, then assign role via M2M selected."""
-        from backend.base.crm.users.models.users import User
 
         lang_id = await _create_language()
         role_id = await _create_role("test_m2m_1", "Test Role 1")
@@ -96,7 +101,6 @@ class TestM2MUserRolesORM:
 
     async def test_assign_multiple_roles(self, db_pool):
         """Assign multiple roles at once."""
-        from backend.base.crm.users.models.users import User
 
         lang_id = await _create_language()
         r1 = await _create_role("multi_r1", "Role A")
@@ -113,7 +117,6 @@ class TestM2MUserRolesORM:
 
     async def test_unselect_role(self, db_pool):
         """Assign roles, then remove one via unselected."""
-        from backend.base.crm.users.models.users import User
 
         lang_id = await _create_language()
         r1 = await _create_role("unsel_r1")
@@ -133,7 +136,6 @@ class TestM2MUserRolesORM:
 
     async def test_replace_all_roles(self, db_pool):
         """Unselect old roles and select new ones in one update."""
-        from backend.base.crm.users.models.users import User
 
         lang_id = await _create_language()
         old = await _create_role("replace_old")
@@ -179,7 +181,6 @@ class TestM2MUserRolesAPI:
 
     async def test_update_user_remove_role(self, authenticated_client):
         """Remove role from user via PUT API."""
-        from backend.base.crm.users.models.users import User
 
         client, auth_user_id, _ = authenticated_client
 
@@ -203,7 +204,6 @@ class TestM2MUserRolesAPI:
 
     async def test_read_user_with_roles(self, authenticated_client):
         """Read user with nested role_ids via GET API."""
-        from backend.base.crm.users.models.users import User
 
         client, auth_user_id, _ = authenticated_client
 
@@ -241,9 +241,6 @@ class TestO2MSaleLinesORM:
     """ORM-level tests for O2M sale order lines."""
 
     async def _setup(self):
-        from backend.base.crm.sales.models.sale_stage import SaleStage
-        from backend.base.crm.partners.models.partners import Partner
-        from backend.base.crm.products.models.product import Product
 
         stage_id = await SaleStage.create(SaleStage(name="Draft", sequence=1))
         partner_id = await Partner.create(Partner(name="Customer"))
@@ -252,8 +249,6 @@ class TestO2MSaleLinesORM:
 
     async def test_create_sale_with_lines_via_update(self, db_pool):
         """Create sale, then add lines via O2M created."""
-        from backend.base.crm.sales.models.sale import Sale
-        from backend.base.crm.sales.models.sale_line import SaleLine
 
         stage_id, partner_id, prod_id = await self._setup()
         sale_id = await _create_sale("SO-O2M-1", partner_id, stage_id)
@@ -291,8 +286,6 @@ class TestO2MSaleLinesORM:
 
     async def test_delete_sale_line_via_update(self, db_pool):
         """Create lines, then delete one via O2M deleted."""
-        from backend.base.crm.sales.models.sale import Sale
-        from backend.base.crm.sales.models.sale_line import SaleLine
 
         stage_id, partner_id, prod_id = await self._setup()
         sale_id = await _create_sale("SO-O2M-DEL", partner_id, stage_id)
@@ -335,8 +328,6 @@ class TestO2MSaleLinesORM:
 
     async def test_add_and_delete_lines_simultaneously(self, db_pool):
         """Add new line and delete old one in single update."""
-        from backend.base.crm.sales.models.sale import Sale
-        from backend.base.crm.sales.models.sale_line import SaleLine
 
         stage_id, partner_id, prod_id = await self._setup()
         sale_id = await _create_sale("SO-O2M-BOTH", partner_id, stage_id)
@@ -384,9 +375,6 @@ class TestO2MSaleLinesAPI:
     """API-level tests for O2M sale lines via CRUD."""
 
     async def _setup(self):
-        from backend.base.crm.sales.models.sale_stage import SaleStage
-        from backend.base.crm.partners.models.partners import Partner
-        from backend.base.crm.products.models.product import Product
 
         stage_id = await SaleStage.create(SaleStage(name="Draft", sequence=1))
         partner_id = await Partner.create(Partner(name="API Customer"))
@@ -397,7 +385,6 @@ class TestO2MSaleLinesAPI:
 
     async def test_api_add_lines_to_sale(self, authenticated_client):
         """Add order lines to existing sale via PUT API."""
-        from backend.base.crm.sales.models.sale_line import SaleLine
 
         client, _, _ = authenticated_client
         stage_id, partner_id, prod_id = await self._setup()
@@ -430,7 +417,6 @@ class TestO2MSaleLinesAPI:
 
     async def test_api_delete_line_from_sale(self, authenticated_client):
         """Delete order line from sale via PUT API."""
-        from backend.base.crm.sales.models.sale_line import SaleLine
 
         client, _, _ = authenticated_client
         stage_id, partner_id, prod_id = await self._setup()
@@ -464,7 +450,6 @@ class TestO2MSaleLinesAPI:
 
     async def test_api_read_sale_with_lines(self, authenticated_client):
         """Read sale with nested order_line_ids via GET API."""
-        from backend.base.crm.sales.models.sale_line import SaleLine
 
         client, _, _ = authenticated_client
         stage_id, partner_id, prod_id = await self._setup()
@@ -518,7 +503,6 @@ class TestM2OUserLanguageORM:
 
     async def test_create_user_with_language(self, db_pool):
         """Create user with M2O language set."""
-        from backend.base.crm.users.models.users import User
 
         lang_id = await _create_language("en", "English")
         user_id = await _create_user("m2o_create", lang_id=lang_id)
@@ -533,7 +517,6 @@ class TestM2OUserLanguageORM:
 
     async def test_change_language(self, db_pool):
         """Change user language from one to another."""
-        from backend.base.crm.users.models.users import User
 
         lang_en = await _create_language("en", "English")
         lang_ru = await _create_language("ru", "Russian")
@@ -561,7 +544,6 @@ class TestM2OUserLanguageAPI:
 
     async def test_api_change_language(self, authenticated_client):
         """Change user language via PUT API."""
-        from backend.base.crm.users.models.users import User
 
         client, _, _ = authenticated_client
         lang_en = await _create_language("en", "English")

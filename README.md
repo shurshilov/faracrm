@@ -55,7 +55,7 @@ yarn dev
 fara/
 ├── backend/
 │   ├── main.py                  # FastAPI entry point
-│   ├── cron_main.py             # Cron-задачи
+│   ├── main_cron.py             # Cron-задачи
 │   ├── project_setup.py         # Models, Apps, Settings
 │   └── base/
 │       ├── system/              # Ядро: ORM, auth, services

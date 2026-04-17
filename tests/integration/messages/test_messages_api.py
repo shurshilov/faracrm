@@ -19,6 +19,11 @@ import pytest
 from unittest.mock import AsyncMock, patch
 
 pytestmark = [pytest.mark.integration, pytest.mark.api]
+from backend.base.crm.chat.models.chat import Chat
+from backend.base.crm.chat.models.chat_message import ChatMessage
+from backend.base.crm.chat.models.chat_member import ChatMember
+from backend.base.crm.users.models.users import User
+from backend.base.crm.languages.models.language import Language
 
 
 class TestGetMessagesAPI:
@@ -27,10 +32,6 @@ class TestGetMessagesAPI:
     async def _setup_chat_with_messages(self, authenticated_client):
         """Helper: create chat, member, and messages."""
         client, user_id, token = authenticated_client
-
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
-        from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Test Chat"))
 
@@ -109,9 +110,6 @@ class TestPostMessageAPI:
     async def _setup_chat(self, authenticated_client):
         client, user_id, token = authenticated_client
 
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_member import ChatMember
-
         chat_id = await Chat.create(Chat(name="Send Chat"))
         await ChatMember.create(
             ChatMember(
@@ -165,10 +163,6 @@ class TestEditMessageAPI:
     async def _setup(self, authenticated_client):
         client, user_id, token = authenticated_client
 
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
-        from backend.base.crm.chat.models.chat_member import ChatMember
-
         chat_id = await Chat.create(Chat(name="Edit Chat"))
         await ChatMember.create(
             ChatMember(
@@ -205,8 +199,6 @@ class TestEditMessageAPI:
         assert response.status_code == 200
         assert response.json()["success"] is True
 
-        from backend.base.crm.chat.models.chat_message import ChatMessage
-
         msg = await ChatMessage.get(msg_id)
         assert msg.body == "Edited text"
         assert msg.is_edited is True
@@ -217,10 +209,6 @@ class TestDeleteMessageAPI:
 
     async def _setup(self, authenticated_client):
         client, user_id, token = authenticated_client
-
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
-        from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Delete Chat"))
         await ChatMember.create(
@@ -253,8 +241,6 @@ class TestDeleteMessageAPI:
         assert response.status_code == 200
         assert response.json()["success"] is True
 
-        from backend.base.crm.chat.models.chat_message import ChatMessage
-
         msg = await ChatMessage.get(msg_id)
         assert msg.is_deleted is True
 
@@ -264,10 +250,6 @@ class TestPinMessageAPI:
 
     async def _setup(self, authenticated_client):
         client, user_id, token = authenticated_client
-
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
-        from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Pin Chat"))
         await ChatMember.create(
@@ -337,12 +319,6 @@ class TestMarkAsReadAPI:
     async def test_mark_as_read(self, mock_ws, authenticated_client):
         client, user_id, token = authenticated_client
 
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
-        from backend.base.crm.chat.models.chat_member import ChatMember
-        from backend.base.crm.users.models.users import User
-        from backend.base.crm.languages.models.language import Language
-
         chat_id = await Chat.create(Chat(name="Read Chat"))
         await ChatMember.create(
             ChatMember(
@@ -386,10 +362,6 @@ class TestReactionsAPI:
 
     async def _setup(self, authenticated_client):
         client, user_id, token = authenticated_client
-
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
-        from backend.base.crm.chat.models.chat_member import ChatMember
 
         chat_id = await Chat.create(Chat(name="Reactions Chat"))
         await ChatMember.create(

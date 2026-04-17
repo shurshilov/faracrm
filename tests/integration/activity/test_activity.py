@@ -15,7 +15,13 @@ import pytest
 from datetime import timedelta, datetime, timezone
 
 pytestmark = pytest.mark.integration
-
+from backend.base.crm.activity.models.activity_type import (
+    ActivityType,
+    INITIAL_ACTIVITY_TYPES,
+)
+from backend.base.crm.users.models.users import User
+from backend.base.crm.languages.models.language import Language
+from backend.base.crm.activity.models.activity import Activity
 
 # ====================
 # ActivityType Tests
@@ -26,7 +32,6 @@ class TestActivityType:
     """Tests for ActivityType model."""
 
     async def test_create_activity_type(self):
-        from backend.base.crm.activity.models.activity_type import ActivityType
 
         at_id = await ActivityType.create(
             ActivityType(
@@ -42,10 +47,6 @@ class TestActivityType:
         assert at.default_days == 0
 
     async def test_create_all_initial_types(self):
-        from backend.base.crm.activity.models.activity_type import (
-            ActivityType,
-            INITIAL_ACTIVITY_TYPES,
-        )
 
         for data in INITIAL_ACTIVITY_TYPES:
             await ActivityType.create(ActivityType(**data))
@@ -54,7 +55,6 @@ class TestActivityType:
         assert len(all_types) == len(INITIAL_ACTIVITY_TYPES)
 
     async def test_search_active_types(self):
-        from backend.base.crm.activity.models.activity_type import ActivityType
 
         await ActivityType.create(
             ActivityType(name="Active", active=True, sequence=1)
@@ -72,7 +72,6 @@ class TestActivityType:
         assert "Inactive" not in names
 
     async def test_update_activity_type(self):
-        from backend.base.crm.activity.models.activity_type import ActivityType
 
         at_id = await ActivityType.create(
             ActivityType(name="Old Name", default_days=1, sequence=1)
@@ -85,7 +84,6 @@ class TestActivityType:
         assert updated.default_days == 5
 
     async def test_delete_activity_type(self):
-        from backend.base.crm.activity.models.activity_type import ActivityType
 
         at_id = await ActivityType.create(
             ActivityType(name="To Delete", sequence=1)
@@ -104,9 +102,6 @@ class TestActivityCRUD:
     """Tests for Activity model basic CRUD."""
 
     async def _create_deps(self):
-        from backend.base.crm.activity.models.activity_type import ActivityType
-        from backend.base.crm.users.models.users import User
-        from backend.base.crm.languages.models.language import Language
 
         at_id = await ActivityType.create(
             ActivityType(name="Test Type", default_days=1, sequence=1)
@@ -126,7 +121,6 @@ class TestActivityCRUD:
         return at_id, user_id
 
     async def test_create_activity(self):
-        from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
 
@@ -149,7 +143,6 @@ class TestActivityCRUD:
 
     async def test_polymorphic_binding(self):
         """Activities can bind to any model via res_model/res_id."""
-        from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
         dl = datetime.now(timezone.utc) + timedelta(days=1)
@@ -193,10 +186,6 @@ class TestActivityCRUD:
         assert len(task_acts) == 1
 
     async def test_search_by_user(self):
-        from backend.base.crm.activity.models.activity import Activity
-        from backend.base.crm.users.models.users import User
-        from backend.base.crm.languages.models.language import Language
-        from backend.base.crm.activity.models.activity_type import ActivityType
 
         at_id = await ActivityType.create(
             ActivityType(name="T", default_days=1, sequence=1)
@@ -250,7 +239,6 @@ class TestActivityCRUD:
         assert len(u1_acts) == 3
 
     async def test_state_transition_to_done(self):
-        from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
 
@@ -274,7 +262,6 @@ class TestActivityCRUD:
         assert updated.done_datetime is not None
 
     async def test_state_cancelled(self):
-        from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
 
@@ -295,7 +282,6 @@ class TestActivityCRUD:
         assert updated.state == "cancelled"
 
     async def test_search_overdue(self):
-        from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
 
@@ -343,7 +329,6 @@ class TestActivityCRUD:
         assert len(overdue) == 1
 
     async def test_delete_activity(self):
-        from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
 
@@ -361,7 +346,6 @@ class TestActivityCRUD:
         assert await Activity.get_or_none(aid) is None
 
     async def test_notification_sent_flag(self):
-        from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
 
@@ -385,7 +369,6 @@ class TestActivityCRUD:
 
     async def test_search_pending_notifications(self):
         """Find activities that need notifications (today/overdue, not sent)."""
-        from backend.base.crm.activity.models.activity import Activity
 
         at_id, user_id = await self._create_deps()
 

@@ -13,20 +13,21 @@ Run: pytest tests/integration/products/test_products.py -v -m integration
 import pytest
 
 pytestmark = pytest.mark.integration
+from backend.base.crm.products.models.product import Product
+from backend.base.crm.products.models.category import Category
+from backend.base.crm.products.models.uom import Uom
 
 
 class TestProductCreate:
     """Tests for product creation."""
 
     async def test_create_product_minimal(self):
-        from backend.base.crm.products.models.product import Product
 
         pid = await Product.create(Product(name="Widget"))
         p = await Product.get(pid)
         assert p.name == "Widget"
 
     async def test_create_product_with_price(self):
-        from backend.base.crm.products.models.product import Product
 
         pid = await Product.create(
             Product(
@@ -38,7 +39,6 @@ class TestProductCreate:
         assert p.list_price == pytest.approx(299.99, abs=0.01)
 
     async def test_create_product_types(self):
-        from backend.base.crm.products.models.product import Product
 
         goods_id = await Product.create(Product(name="Physical", type="consu"))
         service_id = await Product.create(
@@ -51,14 +51,12 @@ class TestProductCreate:
         assert service.type == "service"
 
     async def test_create_product_default_type(self):
-        from backend.base.crm.products.models.product import Product
 
         pid = await Product.create(Product(name="Default Type"))
         p = await Product.get(pid)
         assert p.type == "consu"
 
     async def test_create_product_with_description(self):
-        from backend.base.crm.products.models.product import Product
 
         pid = await Product.create(
             Product(
@@ -74,7 +72,6 @@ class TestProductRead:
     """Tests for reading products."""
 
     async def test_search_products(self):
-        from backend.base.crm.products.models.product import Product
 
         for i in range(5):
             await Product.create(Product(name=f"Product {i}"))
@@ -82,7 +79,6 @@ class TestProductRead:
         assert len(prods) == 5
 
     async def test_search_by_type(self):
-        from backend.base.crm.products.models.product import Product
 
         await Product.create(Product(name="Goods 1", type="consu"))
         await Product.create(Product(name="Goods 2", type="consu"))
@@ -95,7 +91,6 @@ class TestProductRead:
         assert len(goods) == 2
 
     async def test_count_products(self):
-        from backend.base.crm.products.models.product import Product
 
         for i in range(7):
             await Product.create(Product(name=f"Count {i}"))
@@ -107,7 +102,6 @@ class TestProductUpdate:
     """Tests for updating products."""
 
     async def test_update_price(self):
-        from backend.base.crm.products.models.product import Product
 
         pid = await Product.create(Product(name="Repriced", list_price=100.0))
         p = await Product.get(pid)
@@ -116,7 +110,6 @@ class TestProductUpdate:
         assert updated.list_price == pytest.approx(150.0, abs=0.01)
 
     async def test_deactivate_product(self):
-        from backend.base.crm.products.models.product import Product
 
         pid = await Product.create(Product(name="Active Prod", active=True))
         p = await Product.get(pid)
@@ -129,7 +122,6 @@ class TestProductDelete:
     """Tests for deleting products."""
 
     async def test_delete_product(self):
-        from backend.base.crm.products.models.product import Product
 
         pid = await Product.create(Product(name="Del Me"))
         p = await Product.get(pid)
@@ -146,14 +138,12 @@ class TestCategory:
     """Tests for product categories."""
 
     async def test_create_category(self):
-        from backend.base.crm.products.models.category import Category
 
         cid = await Category.create(Category(name="Electronics"))
         c = await Category.get(cid)
         assert c.name == "Electronics"
 
     async def test_search_categories(self):
-        from backend.base.crm.products.models.category import Category
 
         for name in ["Electronics", "Clothing", "Food"]:
             await Category.create(Category(name=name))
@@ -161,8 +151,6 @@ class TestCategory:
         assert len(cats) == 3
 
     async def test_product_with_category(self):
-        from backend.base.crm.products.models.product import Product
-        from backend.base.crm.products.models.category import Category
 
         cid = await Category.create(Category(name="Gadgets"))
         pid = await Product.create(
@@ -185,14 +173,12 @@ class TestUom:
     """Tests for units of measure."""
 
     async def test_create_uom(self):
-        from backend.base.crm.products.models.uom import Uom
 
         uid = await Uom.create(Uom(name="Piece"))
         u = await Uom.get(uid)
         assert u.name == "Piece"
 
     async def test_multiple_uoms(self):
-        from backend.base.crm.products.models.uom import Uom
 
         for name in ["Piece", "Kg", "Liter", "Box"]:
             await Uom.create(Uom(name=name))

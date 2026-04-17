@@ -13,20 +13,21 @@ Run: pytest tests/integration/chat/test_chat.py -v -m integration
 import pytest
 
 pytestmark = pytest.mark.integration
+from backend.base.crm.chat.models.chat import Chat
+from backend.base.crm.chat.models.chat_message import ChatMessage
+from backend.base.crm.security.models.sessions import Session
 
 
 class TestChatCreate:
     """Tests for Chat model."""
 
     async def test_create_chat(self):
-        from backend.base.crm.chat.models.chat import Chat
 
         cid = await Chat.create(Chat(name="Support Chat"))
         c = await Chat.get(cid)
         assert c.name == "Support Chat"
 
     async def test_create_chat_with_type(self):
-        from backend.base.crm.chat.models.chat import Chat
 
         cid = await Chat.create(
             Chat(
@@ -38,7 +39,6 @@ class TestChatCreate:
         assert c.chat_type == "private"
 
     async def test_search_chats(self):
-        from backend.base.crm.chat.models.chat import Chat
 
         await Chat.create(Chat(name="Chat A"))
         await Chat.create(Chat(name="Chat B"))
@@ -51,8 +51,6 @@ class TestChatMessages:
     """Tests for ChatMessage model."""
 
     async def test_create_message(self):
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
 
         cid = await Chat.create(Chat(name="Msg Chat"))
         mid = await ChatMessage.create(
@@ -65,8 +63,6 @@ class TestChatMessages:
         assert m.body == "Hello, world!"
 
     async def test_search_messages_by_chat(self):
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
 
         c1 = await Chat.create(Chat(name="Chat 1"))
         c2 = await Chat.create(Chat(name="Chat 2"))
@@ -82,8 +78,6 @@ class TestChatMessages:
         assert len(msgs) == 2
 
     async def test_message_ordering(self):
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
 
         cid = await Chat.create(Chat(name="Order Chat"))
         for i in range(5):
@@ -109,7 +103,6 @@ class TestChatDelete:
     """Tests for deleting chats."""
 
     async def test_delete_chat(self):
-        from backend.base.crm.chat.models.chat import Chat
 
         cid = await Chat.create(Chat(name="Delete Me"))
         c = await Chat.get(cid)
@@ -117,8 +110,6 @@ class TestChatDelete:
         assert await Chat.get_or_none(cid) is None
 
     async def test_delete_message(self):
-        from backend.base.crm.chat.models.chat import Chat
-        from backend.base.crm.chat.models.chat_message import ChatMessage
 
         cid = await Chat.create(Chat(name="Msg Del Chat"))
         mid = await ChatMessage.create(
@@ -145,8 +136,6 @@ class TestChatVisibilityFilters:
         """Create a user and authenticated session; return (client, user_id)."""
         import secrets
         from datetime import datetime, timedelta, timezone
-
-        from backend.base.crm.security.models.sessions import Session
 
         user = await user_factory(
             name=f"Test {login}", login=login, is_admin=is_admin
@@ -187,7 +176,6 @@ class TestChatVisibilityFilters:
         inactive_member_user_ids simulates the soft-leave case
         (user was a member but left — chat_member.is_active=false).
         """
-        from backend.base.crm.chat.models.chat import Chat
 
         payload = Chat(name=name, chat_type=chat_type, active=active)
         if res_model is not None:

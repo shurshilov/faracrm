@@ -88,7 +88,7 @@ class CronApp(Service):
             [
                 sys.executable,
                 "-c",
-                "from backend.cron_main import main; main()",
+                "from backend.main_cron import main; main()",
             ],
             cwd=os.getcwd(),
         )
@@ -124,7 +124,7 @@ class CronApp(Service):
         """
         Запускает cron worker как subprocess.
 
-        Если CRON__ENABLED=false (ставится в cron_main.py),
+        Если CRON__ENABLED=false (ставится в main_cron.py),
         startup пропускается — нет рекурсии.
         """
         await super().startup(app)
@@ -143,10 +143,10 @@ class CronApp(Service):
             [
                 sys.executable,
                 "-c",
-                "from backend.cron_main import main; main()",
+                "from backend.main_cron import main; main()",
             ],
             cwd=os.getcwd(),
-            # Не передаём CRON__ENABLED — cron_main сам поставит false
+            # Не передаём CRON__ENABLED — main_cron сам поставит false
             # чтобы не отравлять env родительского процесса
         )
 

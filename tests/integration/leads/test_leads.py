@@ -13,13 +13,16 @@ Run: pytest tests/integration/leads/test_leads.py -v -m integration
 import pytest
 
 pytestmark = pytest.mark.integration
+from backend.base.crm.leads.models.lead_stage import LeadStage
+from backend.base.crm.leads.models.leads import Lead
+from backend.base.crm.leads.models.team_crm import TeamCrm
+from backend.base.crm.partners.models.partners import Partner
 
 
 class TestLeadStages:
     """Tests for LeadStage model."""
 
     async def test_create_stage(self):
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         s = await LeadStage.get(sid)
@@ -27,7 +30,6 @@ class TestLeadStages:
         assert s.sequence == 1
 
     async def test_create_pipeline(self):
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         stages = [
             ("New", 1),
@@ -53,8 +55,6 @@ class TestLeadCreate:
     """Tests for lead creation."""
 
     async def test_create_lead_minimal(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         lid = await Lead.create(Lead(name="Test Lead", stage_id=sid))
@@ -64,9 +64,6 @@ class TestLeadCreate:
         assert lead.active is True
 
     async def test_create_lead_with_partner(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
-        from backend.base.crm.partners.models.partners import Partner
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         pid = await Partner.create(Partner(name="Lead Partner"))
@@ -86,8 +83,6 @@ class TestLeadCreate:
         assert lead.parent_id.id == pid
 
     async def test_create_lead_with_contact_info(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         lid = await Lead.create(
@@ -100,8 +95,6 @@ class TestLeadCreate:
         lead = await Lead.get(lid)
 
     async def test_create_lead_types(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
 
@@ -118,8 +111,6 @@ class TestLeadCreate:
         assert opp.type == "opportunity"
 
     async def test_create_lead_default_type(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         lid = await Lead.create(Lead(name="Default Type", stage_id=sid))
@@ -132,8 +123,6 @@ class TestLeadRead:
     """Tests for reading leads."""
 
     async def test_search_all_leads(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         for i in range(5):
@@ -143,8 +132,6 @@ class TestLeadRead:
         assert len(leads) == 5
 
     async def test_search_by_type(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         await Lead.create(Lead(name="Lead 1", stage_id=sid, type="lead"))
@@ -158,8 +145,6 @@ class TestLeadRead:
         assert len(leads) == 2
 
     async def test_search_by_name_ilike(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         await Lead.create(Lead(name="Acme Project", stage_id=sid))
@@ -177,8 +162,6 @@ class TestLeadUpdate:
     """Tests for updating leads."""
 
     async def test_move_to_next_stage(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         s1 = await LeadStage.create(LeadStage(name="New", sequence=1))
         s2 = await LeadStage.create(LeadStage(name="Qualified", sequence=2))
@@ -195,8 +178,6 @@ class TestLeadUpdate:
         assert updated.stage_id.id == s2
 
     async def test_convert_lead_to_opportunity(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         lid = await Lead.create(
@@ -210,8 +191,6 @@ class TestLeadUpdate:
         assert updated.type == "opportunity"
 
     async def test_deactivate_lead(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         lid = await Lead.create(Lead(name="Archive Me", stage_id=sid))
@@ -227,8 +206,6 @@ class TestLeadDelete:
     """Tests for deleting leads."""
 
     async def test_delete_lead(self):
-        from backend.base.crm.leads.models.leads import Lead
-        from backend.base.crm.leads.models.lead_stage import LeadStage
 
         sid = await LeadStage.create(LeadStage(name="New", sequence=1))
         lid = await Lead.create(Lead(name="Delete Me", stage_id=sid))
@@ -247,14 +224,12 @@ class TestTeamCrm:
     """Tests for TeamCrm (sales teams)."""
 
     async def test_create_team(self):
-        from backend.base.crm.leads.models.team_crm import TeamCrm
 
         tid = await TeamCrm.create(TeamCrm(name="Sales Team A"))
         t = await TeamCrm.get(tid)
         assert t.name == "Sales Team A"
 
     async def test_search_teams(self):
-        from backend.base.crm.leads.models.team_crm import TeamCrm
 
         await TeamCrm.create(TeamCrm(name="Team A"))
         await TeamCrm.create(TeamCrm(name="Team B"))

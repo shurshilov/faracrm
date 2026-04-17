@@ -16,13 +16,13 @@ import pytest
 from datetime import datetime, timedelta, timezone
 
 pytestmark = pytest.mark.integration
+from backend.base.system.cron.models.cron_job import CronJob
 
 
 class TestCronJobCRUD:
     """Tests for CronJob model basic CRUD."""
 
     async def test_create_cron_job(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(
@@ -41,7 +41,6 @@ class TestCronJobCRUD:
         assert j.interval_type == "days"
 
     async def test_create_code_job(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(
@@ -57,7 +56,6 @@ class TestCronJobCRUD:
         assert j.interval_type == "minutes"
 
     async def test_search_active_jobs(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         await CronJob.create(
             CronJob(
@@ -83,7 +81,6 @@ class TestCronJobCRUD:
         assert "Inactive Job" not in names
 
     async def test_update_cron_job(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(
@@ -101,7 +98,6 @@ class TestCronJobCRUD:
         assert updated.interval_type == "days"
 
     async def test_delete_cron_job(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(name="Delete Me", nextcall=datetime.now(timezone.utc))
@@ -115,7 +111,6 @@ class TestCalculateNextCall:
     """Tests for CronJob.calculate_next_call() method."""
 
     async def test_minutes_interval(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         now = datetime.now(timezone.utc)
         job = CronJob(
@@ -128,7 +123,6 @@ class TestCalculateNextCall:
         assert abs((next_call - expected).total_seconds()) < 2
 
     async def test_hours_interval(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         now = datetime.now(timezone.utc)
         job = CronJob(interval_number=2, interval_type="hours", lastcall=now)
@@ -137,7 +131,6 @@ class TestCalculateNextCall:
         assert abs((next_call - expected).total_seconds()) < 2
 
     async def test_days_interval(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         now = datetime.now(timezone.utc)
         job = CronJob(interval_number=7, interval_type="days", lastcall=now)
@@ -146,7 +139,6 @@ class TestCalculateNextCall:
         assert abs((next_call - expected).total_seconds()) < 2
 
     async def test_weeks_interval(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         now = datetime.now(timezone.utc)
         job = CronJob(interval_number=2, interval_type="weeks", lastcall=now)
@@ -155,7 +147,6 @@ class TestCalculateNextCall:
         assert abs((next_call - expected).total_seconds()) < 2
 
     async def test_months_interval(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         now = datetime.now(timezone.utc)
         job = CronJob(interval_number=3, interval_type="months", lastcall=now)
@@ -165,7 +156,6 @@ class TestCalculateNextCall:
 
     async def test_past_next_call_returns_now(self):
         """If computed next_call is in the past, use now instead."""
-        from backend.base.system.cron.models.cron_job import CronJob
 
         past = datetime.now(timezone.utc) - timedelta(days=100)
         job = CronJob(interval_number=1, interval_type="days", lastcall=past)
@@ -175,7 +165,6 @@ class TestCalculateNextCall:
         assert (now - next_call).total_seconds() < 5
 
     async def test_no_lastcall_uses_now(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         job = CronJob(interval_number=1, interval_type="hours", lastcall=None)
         next_call = job.calculate_next_call()
@@ -189,7 +178,6 @@ class TestJobState:
     """Tests for job state tracking fields."""
 
     async def test_initial_state_pending(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(name="State Test", nextcall=datetime.now(timezone.utc))
@@ -199,7 +187,6 @@ class TestJobState:
         assert j.run_count == 0
 
     async def test_track_success(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(name="Success Test", nextcall=datetime.now(timezone.utc))
@@ -221,7 +208,6 @@ class TestJobState:
         assert updated.run_count == 1
 
     async def test_track_error(self):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(name="Error Test", nextcall=datetime.now(timezone.utc))
@@ -241,7 +227,6 @@ class TestJobState:
 
     async def test_numbercall_limit(self):
         """Job should be deactivated when run_count reaches numbercall."""
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(
@@ -263,7 +248,6 @@ class TestJobState:
 
     async def test_unlimited_runs(self):
         """numbercall=-1 means unlimited."""
-        from backend.base.system.cron.models.cron_job import CronJob
 
         jid = await CronJob.create(
             CronJob(
@@ -283,7 +267,6 @@ class TestCreateOrUpdate:
     """Tests for CronJob.create_or_update() idempotency."""
 
     async def test_create_new_job(self, test_env):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         result = await CronJob.create_or_update(
             env=test_env,
@@ -302,7 +285,6 @@ class TestCreateOrUpdate:
         assert len(jobs) == 1
 
     async def test_update_existing_job(self, test_env):
-        from backend.base.system.cron.models.cron_job import CronJob
 
         # Create
         await CronJob.create_or_update(

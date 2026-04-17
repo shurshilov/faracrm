@@ -21,14 +21,16 @@ pytestmark = [pytest.mark.integration, pytest.mark.api]
 # Signin Tests
 # ====================
 
+from backend.base.crm.users.models.users import User
+from backend.base.crm.languages.models.language import Language
+
 
 class TestSigninAPI:
     """Tests for signin endpoint."""
 
     async def test_signin_success(self, client):
         """Test successful signin."""
-        from backend.base.crm.users.models.users import User
-        from backend.base.crm.languages.models.language import Language
+
         import secrets
 
         # Create language
@@ -73,8 +75,7 @@ class TestSigninAPI:
 
     async def test_signin_wrong_password(self, client):
         """Test signin with wrong password."""
-        from backend.base.crm.users.models.users import User
-        from backend.base.crm.languages.models.language import Language
+
         import secrets
 
         lang_id = await Language.create(
@@ -230,7 +231,7 @@ class TestCopyUserAPI:
         self, authenticated_client, user_factory, db_pool
     ):
         """Test copying user with roles."""
-        from backend.base.crm.users.models.users import User
+
         from backend.base.crm.security.models.roles import Role
 
         client, auth_user_id, token = authenticated_client
@@ -391,7 +392,6 @@ class TestUserCRUDAPI:
 
     async def test_create_user_via_api(self, authenticated_client, db_pool):
         """Test creating user via API."""
-        from backend.base.crm.languages.models.language import Language
 
         client, _, _ = authenticated_client
 
@@ -447,7 +447,6 @@ class TestUserCRUDAPI:
         assert response.status_code == 200
 
         # Verify update
-        from backend.base.crm.users.models.users import User
 
         updated = await User.get(user.id)
         assert updated.name == "After Update"
@@ -466,7 +465,6 @@ class TestUserCRUDAPI:
         assert response.status_code == 200
 
         # Verify deletion
-        from backend.base.crm.users.models.users import User
 
         deleted = await User.get_or_none(user_id)
         assert deleted is None
@@ -493,7 +491,6 @@ class TestUserCRUDAPI:
         assert response.status_code == 200
 
         # Verify deletion
-        from backend.base.crm.users.models.users import User
 
         for user_id in ids:
             assert await User.get_or_none(user_id) is None
@@ -533,9 +530,9 @@ class TestUserAuthorization:
 
     async def test_expired_token(self, client):
         """Test that expired tokens are rejected."""
-        from backend.base.crm.users.models.users import User
+
         from backend.base.crm.security.models.sessions import Session
-        from backend.base.crm.languages.models.language import Language
+
         from datetime import datetime, timedelta, timezone
         import secrets
 

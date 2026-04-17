@@ -20,6 +20,13 @@ pytestmark = pytest.mark.integration
 # ====================
 # Role Tests
 # ====================
+from backend.base.crm.security.models.roles import Role
+from backend.base.crm.security.models.models import Model
+from backend.base.crm.security.models.acls import AccessList
+from backend.base.crm.security.models.rules import Rule
+from backend.base.crm.security.models.sessions import Session
+from backend.base.crm.security.models.apps import App
+from backend.base.crm.users.models.users import User
 
 
 class TestRoles:
@@ -27,7 +34,6 @@ class TestRoles:
 
     async def test_create_role(self):
         """Test creating a role."""
-        from backend.base.crm.security.models.roles import Role
 
         role_id = await Role.create(Role(name="Admin"))
 
@@ -38,8 +44,6 @@ class TestRoles:
 
     async def test_create_role_with_model(self):
         """Test creating role with associated model."""
-        from backend.base.crm.security.models.roles import Role
-        from backend.base.crm.security.models.models import Model
 
         model_id = await Model.create(Model(name="users"))
 
@@ -59,7 +63,6 @@ class TestRoles:
 
     async def test_assign_users_to_role(self, user_factory):
         """Test assigning users to role via Many2many."""
-        from backend.base.crm.security.models.roles import Role
 
         user1 = await user_factory(name="Role User 1", login="role_user1")
         user2 = await user_factory(name="Role User 2", login="role_user2")
@@ -82,7 +85,6 @@ class TestRoles:
 
     async def test_search_roles(self):
         """Test searching roles."""
-        from backend.base.crm.security.models.roles import Role
 
         await Role.create(Role(name="Role A"))
         await Role.create(Role(name="Role B"))
@@ -93,7 +95,6 @@ class TestRoles:
 
     async def test_delete_role(self):
         """Test deleting role."""
-        from backend.base.crm.security.models.roles import Role
 
         role_id = await Role.create(Role(name="To Delete"))
         role = await Role.get(role_id)
@@ -114,9 +115,6 @@ class TestAccessList:
 
     async def test_create_acl(self):
         """Test creating ACL."""
-        from backend.base.crm.security.models.acls import AccessList
-        from backend.base.crm.security.models.roles import Role
-        from backend.base.crm.security.models.models import Model
 
         model_id = await Model.create(
             Model(
@@ -148,9 +146,6 @@ class TestAccessList:
 
     async def test_create_read_only_acl(self):
         """Test creating read-only ACL."""
-        from backend.base.crm.security.models.acls import AccessList
-        from backend.base.crm.security.models.roles import Role
-        from backend.base.crm.security.models.models import Model
 
         model_id = await Model.create(Model(name="reports", model="reports"))
         role_id = await Role.create(Role(name="Viewer"))
@@ -176,7 +171,6 @@ class TestAccessList:
 
     async def test_acl_default_inactive(self):
         """Test ACL default values."""
-        from backend.base.crm.security.models.acls import AccessList
 
         acl_id = await AccessList.create(AccessList(name="Default ACL"))
 
@@ -187,8 +181,6 @@ class TestAccessList:
 
     async def test_search_acls_by_role(self):
         """Test searching ACLs by role."""
-        from backend.base.crm.security.models.acls import AccessList
-        from backend.base.crm.security.models.roles import Role
 
         role1_id = await Role.create(Role(name="Role 1"))
         role2_id = await Role.create(Role(name="Role 2"))
@@ -215,8 +207,6 @@ class TestRules:
 
     async def test_create_rule(self):
         """Test creating rule."""
-        from backend.base.crm.security.models.rules import Rule
-        from backend.base.crm.security.models.roles import Role
 
         role_id = await Role.create(Role(name="Rule Test Role"))
 
@@ -234,8 +224,6 @@ class TestRules:
 
     async def test_search_rules_by_role(self):
         """Test searching rules by role."""
-        from backend.base.crm.security.models.rules import Rule
-        from backend.base.crm.security.models.roles import Role
 
         role_id = await Role.create(Role(name="Rules Role"))
 
@@ -260,7 +248,7 @@ class TestSessions:
 
     async def test_create_session(self, user_factory):
         """Test creating session."""
-        from backend.base.crm.security.models.sessions import Session
+
         import secrets
 
         user = await user_factory()
@@ -287,7 +275,7 @@ class TestSessions:
 
     async def test_session_expiration(self, user_factory):
         """Test session expiration check."""
-        from backend.base.crm.security.models.sessions import Session
+
         import secrets
 
         user = await user_factory()
@@ -341,7 +329,7 @@ class TestSessions:
 
     async def test_deactivate_session(self, user_factory):
         """Test deactivating session."""
-        from backend.base.crm.security.models.sessions import Session
+
         import secrets
 
         user = await user_factory()
@@ -369,7 +357,7 @@ class TestSessions:
 
     async def test_find_session_by_token(self, user_factory):
         """Test finding session by token."""
-        from backend.base.crm.security.models.sessions import Session
+
         import secrets
 
         user = await user_factory()
@@ -408,7 +396,6 @@ class TestModels:
 
     async def test_create_model(self):
         """Test creating model entry."""
-        from backend.base.crm.security.models.models import Model
 
         model_id = await Model.create(
             Model(
@@ -422,7 +409,6 @@ class TestModels:
 
     async def test_search_models(self):
         """Test searching models."""
-        from backend.base.crm.security.models.models import Model
 
         await Model.create(Model(name="model_a", model="model_a"))
         await Model.create(Model(name="model_b", model="model_b"))
@@ -441,7 +427,6 @@ class TestApps:
 
     async def test_create_app(self):
         """Test creating app entry."""
-        from backend.base.crm.security.models.apps import App
 
         app_id = await App.create(
             App(
@@ -456,7 +441,6 @@ class TestApps:
 
     async def test_search_apps_ordered(self):
         """Test searching apps with ordering."""
-        from backend.base.crm.security.models.apps import App
 
         await App.create(App(name="App C", sequence=30))
         await App.create(App(name="App A", sequence=10))
@@ -482,11 +466,6 @@ class TestSecurityIntegration:
 
     async def test_full_permission_setup(self, user_factory):
         """Test complete permission setup flow."""
-        from backend.base.crm.security.models.roles import Role
-        from backend.base.crm.security.models.acls import AccessList
-        from backend.base.crm.security.models.rules import Rule
-        from backend.base.crm.security.models.models import Model
-        from backend.base.crm.users.models.users import User
 
         # 1. Create model
         model_id = await Model.create(
@@ -545,8 +524,6 @@ class TestSecurityIntegration:
 
     async def test_user_multiple_roles(self, user_factory):
         """Test user with multiple roles."""
-        from backend.base.crm.security.models.roles import Role
-        from backend.base.crm.users.models.users import User
 
         # Create roles
         admin_role_id = await Role.create(Role(name="Admin"))

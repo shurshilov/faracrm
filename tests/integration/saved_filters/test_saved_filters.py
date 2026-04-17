@@ -15,15 +15,15 @@ import pytest
 import json
 
 pytestmark = pytest.mark.integration
+from backend.base.system.saved_filters.models.saved_filter import (
+    SavedFilter,
+)
 
 
 class TestSavedFilterCRUD:
     """Tests for SavedFilter model basic CRUD."""
 
     async def test_create_saved_filter(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         filter_data = json.dumps([["name", "ilike", "%test%"]])
         sf_id = await SavedFilter.create(
@@ -39,9 +39,6 @@ class TestSavedFilterCRUD:
         assert json.loads(sf.filter_data) == [["name", "ilike", "%test%"]]
 
     async def test_create_filter_with_user(self, user_factory):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         user = await user_factory(name="Filter Owner", login="filter_owner")
 
@@ -57,9 +54,6 @@ class TestSavedFilterCRUD:
         assert sf.name == "My Filter"
 
     async def test_search_filters_by_model(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         await SavedFilter.create(
             SavedFilter(name="F1", model_name="partners", filter_data="[]")
@@ -78,9 +72,6 @@ class TestSavedFilterCRUD:
         assert len(partner_filters) == 2
 
     async def test_update_filter(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         sf_id = await SavedFilter.create(
             SavedFilter(name="Old Name", model_name="users", filter_data="[]")
@@ -97,9 +88,6 @@ class TestSavedFilterCRUD:
         assert json.loads(updated.filter_data) == [["is_admin", "=", True]]
 
     async def test_delete_filter(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         sf_id = await SavedFilter.create(
             SavedFilter(name="Delete Me", model_name="users", filter_data="[]")
@@ -113,9 +101,6 @@ class TestSavedFilterGlobal:
     """Tests for global vs personal filters."""
 
     async def test_global_filter(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         sf_id = await SavedFilter.create(
             SavedFilter(
@@ -129,9 +114,6 @@ class TestSavedFilterGlobal:
         assert sf.is_global is True
 
     async def test_search_global_filters(self, user_factory):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         user = await user_factory(name="U", login="u_global")
 
@@ -167,9 +149,6 @@ class TestSavedFilterDefault:
     """Tests for default filter functionality."""
 
     async def test_default_filter(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         sf_id = await SavedFilter.create(
             SavedFilter(
@@ -183,9 +162,6 @@ class TestSavedFilterDefault:
         assert sf.is_default is True
 
     async def test_search_default_for_model(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         await SavedFilter.create(
             SavedFilter(
@@ -219,9 +195,6 @@ class TestSavedFilterUsage:
     """Tests for usage tracking."""
 
     async def test_initial_use_count(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         sf_id = await SavedFilter.create(
             SavedFilter(name="New", model_name="leads", filter_data="[]")
@@ -230,9 +203,7 @@ class TestSavedFilterUsage:
         assert sf.use_count == 0
 
     async def test_increment_use_count(self):
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
+
         from datetime import datetime, timezone
 
         sf_id = await SavedFilter.create(
@@ -253,9 +224,6 @@ class TestSavedFilterUsage:
 
     async def test_complex_filter_data(self):
         """Ensure complex JSON filter data round-trips correctly."""
-        from backend.base.system.saved_filters.models.saved_filter import (
-            SavedFilter,
-        )
 
         complex_filter = json.dumps(
             [

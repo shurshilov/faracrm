@@ -12,13 +12,13 @@ Run: pytest tests/integration/attachments/test_attachments.py -v -m integration
 import pytest
 
 pytestmark = pytest.mark.integration
+from backend.base.crm.attachments.models.attachments import Attachment
 
 
 class TestAttachmentCreate:
     """Tests for attachment creation."""
 
     async def test_create_attachment(self, test_env):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         aid = await test_env.models.attachment.create(
             Attachment(
@@ -34,7 +34,6 @@ class TestAttachmentCreate:
         assert a.size == 1024
 
     async def test_create_image_attachment(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         aid = await Attachment.create(
             Attachment(
@@ -49,7 +48,6 @@ class TestAttachmentCreate:
         assert a.public is True
 
     async def test_create_attachment_with_resource(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         aid = await Attachment.create(
             Attachment(
@@ -66,7 +64,6 @@ class TestAttachmentCreate:
         assert a.res_id == 1
 
     async def test_create_folder(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         aid = await Attachment.create(
             Attachment(
@@ -78,7 +75,6 @@ class TestAttachmentCreate:
         assert a.folder is True
 
     async def test_create_with_storage_url(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         aid = await Attachment.create(
             Attachment(
@@ -96,7 +92,6 @@ class TestAttachmentRead:
     """Tests for reading attachments."""
 
     async def test_search_attachments(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         for i in range(5):
             await Attachment.create(Attachment(name=f"file_{i}.txt"))
@@ -104,7 +99,6 @@ class TestAttachmentRead:
         assert len(atts) == 5
 
     async def test_search_by_mimetype(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         await Attachment.create(
             Attachment(name="doc.pdf", mimetype="application/pdf")
@@ -123,7 +117,6 @@ class TestAttachmentRead:
         assert len(pdfs) == 2
 
     async def test_search_by_resource(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         await Attachment.create(
             Attachment(name="a1", res_model="users", res_id=1)
@@ -142,7 +135,6 @@ class TestAttachmentRead:
         assert len(user_atts) == 2
 
     async def test_search_public_only(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         await Attachment.create(Attachment(name="public.pdf", public=True))
         await Attachment.create(Attachment(name="private.pdf", public=False))
@@ -159,7 +151,6 @@ class TestAttachmentUpdate:
     """Tests for updating attachments."""
 
     async def test_rename_attachment(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         aid = await Attachment.create(Attachment(name="old_name.pdf"))
         a = await Attachment.get(aid)
@@ -168,7 +159,6 @@ class TestAttachmentUpdate:
         assert updated.name == "new_name.pdf"
 
     async def test_make_public(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         aid = await Attachment.create(
             Attachment(name="test.pdf", public=False)
@@ -183,7 +173,6 @@ class TestAttachmentDelete:
     """Tests for deleting attachments."""
 
     async def test_delete_attachment(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         aid = await Attachment.create(Attachment(name="delete_me.pdf"))
         a = await Attachment.get(aid)
@@ -191,7 +180,6 @@ class TestAttachmentDelete:
         assert await Attachment.get_or_none(aid) is None
 
     async def test_bulk_delete(self):
-        from backend.base.crm.attachments.models.attachments import Attachment
 
         ids = [
             await Attachment.create(Attachment(name=f"bulk_{i}.txt"))

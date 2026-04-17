@@ -14,7 +14,9 @@ Run: pytest tests/integration/partners/test_partners.py -v -m integration
 import pytest
 
 pytestmark = pytest.mark.integration
-
+from backend.base.crm.partners.models.partners import Partner
+from backend.base.crm.partners.models.contact_type import ContactType
+from backend.base.crm.partners.models.contact import Contact
 
 # ====================
 # Partner CRUD
@@ -26,7 +28,6 @@ class TestPartnerCreate:
 
     async def test_create_partner_minimal(self):
         """Test creating partner with minimal fields."""
-        from backend.base.crm.partners.models.partners import Partner
 
         partner_id = await Partner.create(Partner(name="Test Partner"))
         assert partner_id > 0
@@ -37,7 +38,6 @@ class TestPartnerCreate:
 
     async def test_create_customer(self):
         """Test creating customer partner."""
-        from backend.base.crm.partners.models.partners import Partner
 
         pid = await Partner.create(Partner(name="Customer Corp"))
 
@@ -46,7 +46,6 @@ class TestPartnerCreate:
 
     async def test_create_supplier(self):
         """Test creating supplier partner."""
-        from backend.base.crm.partners.models.partners import Partner
 
         pid = await Partner.create(
             Partner(
@@ -59,7 +58,6 @@ class TestPartnerCreate:
 
     async def test_create_partner_hierarchy(self):
         """Test creating parent/child partners."""
-        from backend.base.crm.partners.models.partners import Partner
 
         parent_id = await Partner.create(Partner(name="Parent Corp"))
         child_id = await Partner.create(
@@ -78,7 +76,6 @@ class TestPartnerCreate:
 
     async def test_create_partner_bulk(self):
         """Test bulk creating partners."""
-        from backend.base.crm.partners.models.partners import Partner
 
         partners = [Partner(name=f"Bulk Partner {i}") for i in range(10)]
         result = await Partner.create_bulk(partners)
@@ -90,7 +87,6 @@ class TestPartnerRead:
 
     async def test_search_partners(self):
         """Test searching partners."""
-        from backend.base.crm.partners.models.partners import Partner
 
         await Partner.create(Partner(name="Alpha Corp"))
         await Partner.create(Partner(name="Beta Ltd"))
@@ -101,7 +97,6 @@ class TestPartnerRead:
 
     async def test_search_by_name_ilike(self):
         """Test case-insensitive name search."""
-        from backend.base.crm.partners.models.partners import Partner
 
         await Partner.create(Partner(name="Acme Corporation"))
         await Partner.create(Partner(name="acme industries"))
@@ -115,7 +110,6 @@ class TestPartnerRead:
 
     async def test_search_active_only(self):
         """Test searching active partners only."""
-        from backend.base.crm.partners.models.partners import Partner
 
         await Partner.create(Partner(name="Active", active=True))
         await Partner.create(Partner(name="Inactive", active=False))
@@ -129,7 +123,6 @@ class TestPartnerRead:
 
     async def test_search_with_sort_and_pagination(self):
         """Test sorted and paginated search."""
-        from backend.base.crm.partners.models.partners import Partner
 
         for i in range(20):
             await Partner.create(Partner(name=f"Partner {i:03d}"))
@@ -159,7 +152,6 @@ class TestPartnerUpdate:
 
     async def test_update_partner_name(self):
         """Test updating partner name."""
-        from backend.base.crm.partners.models.partners import Partner
 
         pid = await Partner.create(Partner(name="Old Name"))
         p = await Partner.get(pid)
@@ -171,7 +163,6 @@ class TestPartnerUpdate:
 
     async def test_deactivate_partner(self):
         """Test deactivating partner."""
-        from backend.base.crm.partners.models.partners import Partner
 
         pid = await Partner.create(Partner(name="Active Partner", active=True))
         p = await Partner.get(pid)
@@ -183,7 +174,6 @@ class TestPartnerUpdate:
 
     async def test_bulk_update_partners(self):
         """Test bulk updating partners."""
-        from backend.base.crm.partners.models.partners import Partner
 
         ids = []
         for i in range(5):
@@ -202,7 +192,6 @@ class TestPartnerDelete:
 
     async def test_delete_partner(self):
         """Test deleting partner."""
-        from backend.base.crm.partners.models.partners import Partner
 
         pid = await Partner.create(Partner(name="To Delete"))
         p = await Partner.get(pid)
@@ -212,7 +201,6 @@ class TestPartnerDelete:
 
     async def test_delete_bulk_partners(self):
         """Test bulk deleting partners."""
-        from backend.base.crm.partners.models.partners import Partner
 
         ids = [
             await Partner.create(Partner(name=f"Del {i}")) for i in range(5)
@@ -235,7 +223,6 @@ class TestContactTypes:
 
     async def test_create_contact_type(self):
         """Test creating contact type."""
-        from backend.base.crm.partners.models.contact_type import ContactType
 
         ct_id = await ContactType.create(
             ContactType(name="Phone", label="Phone")
@@ -245,7 +232,6 @@ class TestContactTypes:
 
     async def test_create_multiple_types(self):
         """Test creating multiple contact types."""
-        from backend.base.crm.partners.models.contact_type import ContactType
 
         types = ["Phone", "Email", "Telegram", "WhatsApp"]
         for t in types:
@@ -265,9 +251,6 @@ class TestContacts:
 
     async def test_create_contact_for_partner(self):
         """Test creating contact linked to partner."""
-        from backend.base.crm.partners.models.partners import Partner
-        from backend.base.crm.partners.models.contact import Contact
-        from backend.base.crm.partners.models.contact_type import ContactType
 
         ct_id = await ContactType.create(
             ContactType(name="Phone", label="Phone")
@@ -289,9 +272,6 @@ class TestContacts:
 
     async def test_partner_multiple_contacts(self):
         """Test partner with multiple contacts."""
-        from backend.base.crm.partners.models.partners import Partner
-        from backend.base.crm.partners.models.contact import Contact
-        from backend.base.crm.partners.models.contact_type import ContactType
 
         phone_id = await ContactType.create(
             ContactType(name="Phone", label="Phone")
