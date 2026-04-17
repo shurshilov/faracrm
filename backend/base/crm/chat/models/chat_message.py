@@ -187,7 +187,7 @@ class ChatMessage(DotModel):
         message_type: str = "comment",
         connector_id: int | None = None,
         parent_id: int | None = None,
-        attachment_ids: list[int] | None = None,
+        # attachment_ids: list[int] | None = None,
         res_model: str | None = None,
         res_id: int | None = None,
     ):
@@ -241,20 +241,21 @@ class ChatMessage(DotModel):
             res_id=res_id,
         )
 
-        message.id = await self.create(payload=message)
+        async with env.apps.db.get_transaction():
+            message.id = await self.create(payload=message)
 
-        # Обновляем дату последнего сообщения в чате
-        await chat.update_last_message_date()
+            # Обновляем дату последнего сообщения в чате
+            await chat.update_last_message_date()
 
-        # Связываем вложения с сообщением
-        if attachment_ids:
-            for att_id in attachment_ids:
-                attachment = env.models.attachment(id=att_id)
-                await attachment.update(
-                    env.models.attachment(
-                        res_id=message.id, res_model="chat_message"
-                    )
-                )
+            # Связываем вложения с сообщением
+            # if attachment_ids:
+            #     for att_id in attachment_ids:
+            #         attachment = env.models.attachment(id=att_id)
+            #         await attachment.update(
+            #             env.models.attachment(
+            #                 res_id=message.id, res_model="chat_message"
+            #             )
+            #         )
 
         return message
 
@@ -348,12 +349,13 @@ class ChatMessage(DotModel):
 
         return messages
 
-    async def soft_delete(self) -> bool:
-        """Мягкое удаление сообщения."""
-        await self.update(
-            ChatMessage(
-                is_deleted=True,
-                write_date=datetime.now(timezone.utc),
-            )
-        )
-        return True
+    # async def soft_delete(self) -> bool:
+    #     """Мягкое удаление сообщения."""
+
+    #     await self.update(
+    #         ChatMessage(
+    #             is_deleted=True,
+    #             write_date=datetime.now(timezone.utc),
+    #         )
+    #     )
+    #     return True

@@ -594,7 +594,7 @@ class Chat(DotModel):
         now = datetime.now(timezone.utc)
         await self.update(Chat(last_message_date=now, write_date=now))
 
-    async def get_available_connectors(self) -> list[dict]:
+    async def get_available_connectors(self):
         """
         Получить список доступных коннекторов для чата.
 
