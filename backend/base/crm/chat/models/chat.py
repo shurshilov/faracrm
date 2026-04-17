@@ -250,7 +250,11 @@ class Chat(DotModel):
         """Найти существующий прямой чат между двумя пользователями."""
         session = self._get_db_session()
         query = """
-            SELECT c.id FROM chat c
+            SELECT c.id, c.name, c.chat_type,
+                c.create_user_id, c.create_date, c.write_date,
+                c.default_can_read, c.default_can_write, c.default_can_invite,
+                c.default_can_pin, c.default_can_delete_others
+            FROM chat c
             JOIN chat_member cm1 ON c.id = cm1.chat_id
                 AND cm1.user_id = %s AND cm1.is_active = true
             JOIN chat_member cm2 ON c.id = cm2.chat_id
@@ -260,8 +264,9 @@ class Chat(DotModel):
         """
         result = await session.execute(query, (user1_id, user2_id))
         if result:
-            return await self.get(result[0]["id"])
-        return None
+            return Chat(**result[0])
+        else:
+            return None
 
     @hybridmethod
     async def create_group_chat(
@@ -475,9 +480,7 @@ class Chat(DotModel):
 
         # Уведомляем пользователя о новом чате через WS (вне транзакции)
         try:
-            from backend.base.crm.chat import chat_manager
-
-            await chat_manager.notify_new_chat(user_id, chat.id)
+            await env.apps.chat.chat_manager.notify_new_chat(user_id, chat.id)
         except Exception:
             pass  # WS не обязателен
 
@@ -610,7 +613,7 @@ class Chat(DotModel):
         ]
 
         if not self.is_internal:
-            session = self._get_db_session()
+            session = env.apps.db.get_session()
             # Маппинг contact connector через общий contact_type_id (integer FK)
             query = """
                 SELECT DISTINCT

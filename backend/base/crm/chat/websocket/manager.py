@@ -481,7 +481,3 @@ class ConnectionManager:
                     },
                     exclude_user=user_id,
                 )
-
-
-# Глобальный экземпляр менеджера
-chat_manager = ConnectionManager()

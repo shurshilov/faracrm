@@ -38,7 +38,6 @@ async def post_system_message(
         Логирует warning и возвращает управление — не бросает наружу,
         чтобы сбой в cosmetics не ронял основную операцию чата.
     """
-    from ..websocket import chat_manager  # локальный импорт
 
     try:
         payload = {"event": event, "params": params or {}}
@@ -51,7 +50,7 @@ async def post_system_message(
             message_type="system",
         )
 
-        await chat_manager.send_to_chat(
+        await env.apps.chat.chat_manager.send_to_chat(
             chat_id=chat_id,
             message={
                 "type": "new_message",

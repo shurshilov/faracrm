@@ -110,7 +110,6 @@ class PhoneStrategyBase(ChatStrategyBase):
         Создаёт новое сообщение type='call' в чате.
         Если чата нет — создаёт новый.
         """
-        from backend.base.crm.chat.websocket import chat_manager
 
         # Проверяем дубликат (по call_id провайдера)
         if await self._find_existing_message(env, connector, adapter):
@@ -173,7 +172,7 @@ class PhoneStrategyBase(ChatStrategyBase):
 
         # Отправляем через WebSocket
         await self._notify_ws(
-            chat_manager,
+            env.apps.chat.chat_manager,
             chat_id,
             message,
             adapter,
@@ -202,7 +201,6 @@ class PhoneStrategyBase(ChatStrategyBase):
         Обновляет существующее сообщение (найденное по call_id).
         Если ringing не было — создаёт новое.
         """
-        from backend.base.crm.chat.websocket import chat_manager
 
         existing = await self._find_existing_message(env, connector, adapter)
 
@@ -224,7 +222,7 @@ class PhoneStrategyBase(ChatStrategyBase):
             message_id = existing.message_id.id
             chat_id = await self._get_chat_id_from_message(env, message_id)
             if chat_id:
-                await chat_manager.send_to_chat(
+                await env.apps.chat.chat_manager.send_to_chat(
                     chat_id=chat_id,
                     message={
                         "type": "message_edited",
@@ -255,7 +253,6 @@ class PhoneStrategyBase(ChatStrategyBase):
 
         Финализирует сообщение: disposition, duration, запись.
         """
-        from backend.base.crm.chat.websocket import chat_manager
 
         existing = await self._find_existing_message(env, connector, adapter)
 
@@ -291,7 +288,7 @@ class PhoneStrategyBase(ChatStrategyBase):
             # WS уведомление
             chat_id = await self._get_chat_id_from_message(env, message_id)
             if chat_id:
-                await chat_manager.send_to_chat(
+                await env.apps.chat.chat_manager.send_to_chat(
                     chat_id=chat_id,
                     message={
                         "type": "message_edited",
@@ -474,7 +471,6 @@ class PhoneStrategyBase(ChatStrategyBase):
 
         Создаёт сообщение со всеми заполненными полями сразу.
         """
-        from backend.base.crm.chat.websocket import chat_manager
 
         external_account, contact, created = (
             await env.models.chat_external_account.find_or_create_for_webhook(
@@ -533,7 +529,7 @@ class PhoneStrategyBase(ChatStrategyBase):
         await self._process_call_record(env, connector, adapter, message.id)
 
         await self._notify_ws(
-            chat_manager,
+            env.apps.chat.chat_manager,
             chat_id,
             message,
             adapter,

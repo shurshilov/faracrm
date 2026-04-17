@@ -18,7 +18,7 @@ from .strategies import (
     get_strategy,
     list_strategies,
 )
-from .websocket import ConnectionManager, chat_manager
+from .websocket import ConnectionManager
 from .routers import (
     chats_router_private,
     messages_router_private,
@@ -47,7 +47,6 @@ __all__ = [
     "list_strategies",
     # WebSocket
     "ConnectionManager",
-    "chat_manager",
     # Routers
     "chats_router_private",
     "messages_router_private",

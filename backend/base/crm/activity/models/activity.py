@@ -293,9 +293,7 @@ class Activity(DotModel):
 
         # Отправляем через WebSocket
         try:
-            from backend.base.crm.chat import chat_manager
-
-            await chat_manager.send_to_user(
+            await env.apps.chat.chat_manager.send_to_user(
                 user_id,
                 {
                     "type": "notification",
@@ -359,9 +357,7 @@ class Activity(DotModel):
 
         # Уведомляем пользователя о новом чате через WS
         try:
-            from backend.base.crm.chat import chat_manager
-
-            await chat_manager.notify_new_chat(user_id, chat.id)
+            await env.apps.chat.chat_manager.notify_new_chat(user_id, chat.id)
         except Exception:
             pass
 

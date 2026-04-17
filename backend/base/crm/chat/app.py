@@ -4,6 +4,7 @@
 import logging
 from typing import TYPE_CHECKING
 
+from .websocket.manager import ConnectionManager
 from backend.base.system.core.service import Service
 from backend.base.crm.security.acl_post_init_mixin import ACL
 
@@ -39,6 +40,8 @@ class ChatApp(Service):
         "sequence": 90,
     }
 
+    chat_manager: ConnectionManager
+
     BASE_USER_ACL = {
         "chat": ACL.FULL,
         "chat_member": ACL.FULL,
@@ -67,9 +70,9 @@ class ChatApp(Service):
             create_pubsub_backend,
             PubSubSettings,
         )
-        from .websocket import chat_manager
 
         env: "Environment" = app.state.env
+        self.chat_manager = ConnectionManager()
 
         # Загружаем настройки из env переменных
         try:
@@ -103,10 +106,10 @@ class ChatApp(Service):
             logger.info("ChatApp: using PostgreSQL pub/sub (LISTEN/NOTIFY)")
 
         # Устанавливаем backend в chat_manager
-        chat_manager.set_pubsub(backend)
+        self.chat_manager.set_pubsub(backend)
 
         # Запускаем listener — каждый event будет обработан chat_manager
-        await backend.start_listening(chat_manager.handle_pubsub_event)
+        await backend.start_listening(self.chat_manager.handle_pubsub_event)
 
         logger.info(
             "ChatApp: pub/sub started (backend=%s) — "
@@ -116,11 +119,10 @@ class ChatApp(Service):
 
     async def shutdown(self, app: "FastAPI"):
         """Остановка pub/sub backend."""
-        from .websocket import chat_manager
 
-        if chat_manager.pubsub:
-            await chat_manager.pubsub.stop()
-            chat_manager.set_pubsub(None)
+        if self.chat_manager.pubsub:
+            await self.chat_manager.pubsub.stop()
+            self.chat_manager.set_pubsub(None)
 
         logger.info("ChatApp: pub/sub stopped")
 

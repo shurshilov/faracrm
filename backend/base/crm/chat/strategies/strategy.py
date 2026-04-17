@@ -256,7 +256,6 @@ class ChatStrategyBase(ABC):
         5. Обработать вложения
         6. Отправить через WebSocket
         """
-        from backend.base.crm.chat.websocket import chat_manager
 
         # 1. Найти или создать ExternalAccount + Contact
         external_account, contact, created = (
@@ -332,7 +331,7 @@ class ChatStrategyBase(ABC):
             "type": "user" if author_user_id else "partner",
         }
 
-        await chat_manager.send_to_chat(
+        await env.apps.chat.chat_manager.send_to_chat(
             chat_id=chat_id,
             message={
                 "type": "new_message",

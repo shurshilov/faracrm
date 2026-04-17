@@ -7,7 +7,6 @@ from starlette.status import HTTP_403_FORBIDDEN
 
 from backend.base.crm.attachments.models.attachments import Attachment
 from backend.base.crm.auth_token.app import AuthTokenApp
-from backend.base.crm.chat.websocket import chat_manager
 from backend.base.crm.chat_web_push.notification_service import (
     notify_on_new_message,
 )
@@ -376,7 +375,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
             )
 
         # Отправляем через WebSocket
-        await chat_manager.send_to_chat(
+        await env.apps.chat.chat_manager.send_to_chat(
             chat_id=chat_id,
             message={
                 "type": "new_message",
@@ -477,7 +476,7 @@ async def delete_message(req: Request, chat_id: int, message_id: int):
     await message.update(env.models.chat_message(is_deleted=True))
 
     # Уведомляем через WebSocket
-    await chat_manager.send_to_chat(
+    await env.apps.chat.chat_manager.send_to_chat(
         chat_id=chat_id,
         message={
             "type": "message_deleted",
@@ -528,7 +527,7 @@ async def edit_message(
     )
 
     # Уведомляем через WebSocket
-    await chat_manager.send_to_chat(
+    await env.apps.chat.chat_manager.send_to_chat(
         chat_id=chat_id,
         message={
             "type": "message_edited",
@@ -561,7 +560,7 @@ async def pin_message(
     await message.update(env.models.chat_message(pinned=body.pinned))
 
     # Уведомляем через WebSocket
-    await chat_manager.send_to_chat(
+    await env.apps.chat.chat_manager.send_to_chat(
         chat_id=chat_id,
         message={
             "type": "message_pinned",
@@ -612,7 +611,7 @@ async def mark_as_read(req: Request, chat_id: int):
 
     # Уведомляем через WebSocket — остальные участники увидят, что
     # этот user прочитал чат (для будущих UX-индикаторов).
-    await chat_manager.send_to_chat(
+    await env.apps.chat.chat_manager.send_to_chat(
         chat_id=chat_id,
         message={
             "type": "messages_read",
@@ -722,7 +721,7 @@ async def add_reaction(
     reactions = await get_message_reactions(env, message_id)
 
     # Уведомляем через WebSocket
-    await chat_manager.send_to_chat(
+    await env.apps.chat.chat_manager.send_to_chat(
         chat_id=chat_id,
         message={
             "type": "reaction_changed",
@@ -819,7 +818,7 @@ async def forward_message(
     )
 
     # Уведомляем через WebSocket
-    await chat_manager.send_to_chat(
+    await env.apps.chat.chat_manager.send_to_chat(
         chat_id=body.target_chat_id,
         message={
             "type": "new_message",

@@ -5,8 +5,6 @@ import logging
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from backend.base.crm.chat.websocket import chat_manager
-
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
@@ -55,7 +53,7 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     # Подключаем пользователя
-    connected = await chat_manager.connect(websocket, user_id)
+    connected = await env.apps.chat.chat_manager.connect(websocket, user_id)
 
     if not connected:
         return
@@ -63,10 +61,12 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            await chat_manager.handle_message(websocket, user_id, data)
+            await env.apps.chat.chat_manager.handle_message(
+                websocket, user_id, data
+            )
 
     except WebSocketDisconnect:
-        await chat_manager.disconnect(websocket, user_id)
+        await env.apps.chat.chat_manager.disconnect(websocket, user_id)
     except Exception as e:
         logger.error("WebSocket error for user %s: %s", user_id, e)
-        await chat_manager.disconnect(websocket, user_id)
+        await env.apps.chat.chat_manager.disconnect(websocket, user_id)

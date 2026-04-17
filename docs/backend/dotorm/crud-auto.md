@@ -148,7 +148,7 @@ async def send_message(req: Request, chat_id: int, body: MessageCreate):
     )
 
     # WebSocket уведомление
-    await chat_manager.send_to_chat(chat_id, {...})
+    await env.apps.chat.chat_manager.send_to_chat(chat_id, {...})
 
     return {"data": {"id": msg_id}}
 ```

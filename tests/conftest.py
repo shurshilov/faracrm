@@ -498,6 +498,47 @@ async def authenticated_client(client, test_env) -> AsyncGenerator:
 
 
 # ====================
+# Chat WebSocket mocking
+# ====================
+
+
+@pytest_asyncio.fixture
+async def mock_chat_ws(test_env):
+    """
+    Mock chat_manager WebSocket broadcast methods.
+
+    После рефакторинга chat_manager живёт на экземпляре ChatApp
+    (test_env.apps.chat.chat_manager), а не как модульный синглтон.
+    Эта фикстура патчит send_to_chat / send_to_user / send_to_user_in_chat
+    на реальном инстансе, чтобы тесты не уходили в PubSub.
+
+    Использование:
+        async def test_something(self, authenticated_client, mock_chat_ws):
+            ...
+            mock_chat_ws.send_to_chat.assert_called_once()
+    """
+    from unittest.mock import AsyncMock
+
+    chat_manager = test_env.apps.chat.chat_manager
+
+    originals = {}
+    for method_name in (
+        "send_to_chat",
+        "send_to_user",
+        "send_to_user_in_chat",
+    ):
+        if hasattr(chat_manager, method_name):
+            originals[method_name] = getattr(chat_manager, method_name)
+            setattr(chat_manager, method_name, AsyncMock())
+
+    yield chat_manager
+
+    # Restore originals
+    for method_name, original in originals.items():
+        setattr(chat_manager, method_name, original)
+
+
+# ====================
 # Factory fixtures
 # ====================
 

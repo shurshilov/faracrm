@@ -16,7 +16,6 @@ Run: pytest tests/integration/messages/test_messages_api.py -v -m integration
 """
 
 import pytest
-from unittest.mock import AsyncMock, patch
 
 pytestmark = [pytest.mark.integration, pytest.mark.api]
 from backend.base.crm.chat.models.chat import Chat
@@ -122,11 +121,7 @@ class TestPostMessageAPI:
 
         return client, chat_id, user_id
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
-    async def test_send_message(self, mock_ws, authenticated_client):
+    async def test_send_message(self, authenticated_client, mock_chat_ws):
         client, chat_id, user_id = await self._setup_chat(authenticated_client)
 
         response = await client.post(
@@ -139,12 +134,8 @@ class TestPostMessageAPI:
         assert data["data"]["body"] == "Hello, World!"
         assert "id" in data["data"]
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
     async def test_send_empty_message_fails(
-        self, mock_ws, authenticated_client
+        self, authenticated_client, mock_chat_ws
     ):
         client, chat_id, user_id = await self._setup_chat(authenticated_client)
 
@@ -182,11 +173,7 @@ class TestEditMessageAPI:
 
         return client, chat_id, msg_id, user_id
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
-    async def test_edit_own_message(self, mock_ws, authenticated_client):
+    async def test_edit_own_message(self, authenticated_client, mock_chat_ws):
         client, chat_id, msg_id, user_id = await self._setup(
             authenticated_client
         )
@@ -229,11 +216,9 @@ class TestDeleteMessageAPI:
 
         return client, chat_id, msg_id
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
-    async def test_delete_own_message(self, mock_ws, authenticated_client):
+    async def test_delete_own_message(
+        self, authenticated_client, mock_chat_ws
+    ):
         client, chat_id, msg_id = await self._setup(authenticated_client)
 
         response = await client.delete(f"/chats/{chat_id}/messages/{msg_id}")
@@ -271,11 +256,7 @@ class TestPinMessageAPI:
 
         return client, chat_id, msg_id
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
-    async def test_pin_message(self, mock_ws, authenticated_client):
+    async def test_pin_message(self, authenticated_client, mock_chat_ws):
         client, chat_id, msg_id = await self._setup(authenticated_client)
 
         response = await client.post(
@@ -286,11 +267,7 @@ class TestPinMessageAPI:
         assert response.status_code == 200
         assert response.json()["pinned"] is True
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
-    async def test_unpin_message(self, mock_ws, authenticated_client):
+    async def test_unpin_message(self, authenticated_client, mock_chat_ws):
         client, chat_id, msg_id = await self._setup(authenticated_client)
 
         # Pin first
@@ -312,11 +289,7 @@ class TestPinMessageAPI:
 class TestMarkAsReadAPI:
     """Tests for POST /chats/{chat_id}/read."""
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
-    async def test_mark_as_read(self, mock_ws, authenticated_client):
+    async def test_mark_as_read(self, authenticated_client, mock_chat_ws):
         client, user_id, token = authenticated_client
 
         chat_id = await Chat.create(Chat(name="Read Chat"))
@@ -381,11 +354,7 @@ class TestReactionsAPI:
 
         return client, chat_id, msg_id
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
-    async def test_add_reaction(self, mock_ws, authenticated_client):
+    async def test_add_reaction(self, authenticated_client, mock_chat_ws):
         client, chat_id, msg_id = await self._setup(authenticated_client)
 
         response = await client.post(
@@ -397,11 +366,7 @@ class TestReactionsAPI:
         data = response.json()
         assert data["action"] == "added"
 
-    @patch(
-        "backend.base.crm.chat.websocket.chat_manager.send_to_chat",
-        new_callable=AsyncMock,
-    )
-    async def test_toggle_reaction(self, mock_ws, authenticated_client):
+    async def test_toggle_reaction(self, authenticated_client, mock_chat_ws):
         """Adding same reaction twice should remove it (toggle)."""
         client, chat_id, msg_id = await self._setup(authenticated_client)
 

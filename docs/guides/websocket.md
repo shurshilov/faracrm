@@ -22,10 +22,10 @@ sequenceDiagram
 
 ## Backend — отправка события
 
-### 1. Импорт chat_manager
+### 1. Где лежит chat_manager
 
 ```python title="backend/base/crm/tickets/routers/tickets.py"
-from backend.base.crm.chat.websocket import chat_manager
+env.apps.chat.chat_manager
 ```
 
 ### 2. Отправка после действия
@@ -42,7 +42,7 @@ async def assign_ticket(req: Request, ticket_id: int, body: AssignBody):
     ))
 
     # Уведомить назначенного пользователя
-    await chat_manager.send_to_user(             # (1)!
+    await env.apps.chat.chat_manager.send_to_user(             # (1)!
         user_id=body.user_id,
         message={
             "type": "ticket_assigned",

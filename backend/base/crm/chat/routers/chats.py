@@ -492,7 +492,6 @@ async def create_chat(req: Request, body: ChatCreate):
 
     # Определяем тип чата: внутренний или внешний
     has_partners = len(body.partner_ids) > 0
-    len(body.user_ids) > 0
 
     async with env.apps.db.get_transaction():
         if body.chat_type == "direct":
@@ -547,8 +546,6 @@ async def create_chat(req: Request, body: ChatCreate):
                 is_internal = True
 
     # Уведомляем всех участников о новом чате через WebSocket
-    from ..websocket import chat_manager
-
     chat_data = {
         "id": chat.id,
         "name": chat.name,
@@ -561,10 +558,10 @@ async def create_chat(req: Request, body: ChatCreate):
 
     for uid in all_user_ids:
         # Подписываем участника на чат
-        await chat_manager.subscribe_to_chat(uid, chat.id)
+        await env.apps.chat.chat_manager.subscribe_to_chat(uid, chat.id)
         # Отправляем уведомление о новом чате (кроме создателя)
         if uid != user_id:
-            await chat_manager.send_to_user(
+            await env.apps.chat.chat_manager.send_to_user(
                 uid,
                 {
                     "type": "chat_created",

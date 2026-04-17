@@ -241,21 +241,20 @@ class ChatMessage(DotModel):
             res_id=res_id,
         )
 
-        async with env.apps.db.get_transaction():
-            message.id = await self.create(payload=message)
+        message.id = await self.create(payload=message)
 
-            # Обновляем дату последнего сообщения в чате
-            await chat.update_last_message_date()
+        # Обновляем дату последнего сообщения в чате
+        await chat.update_last_message_date()
 
-            # Связываем вложения с сообщением
-            # if attachment_ids:
-            #     for att_id in attachment_ids:
-            #         attachment = env.models.attachment(id=att_id)
-            #         await attachment.update(
-            #             env.models.attachment(
-            #                 res_id=message.id, res_model="chat_message"
-            #             )
-            #         )
+        # Связываем вложения с сообщением
+        # if attachment_ids:
+        #     for att_id in attachment_ids:
+        #         attachment = env.models.attachment(id=att_id)
+        #         await attachment.update(
+        #             env.models.attachment(
+        #                 res_id=message.id, res_model="chat_message"
+        #             )
+        #         )
 
         return message
 
