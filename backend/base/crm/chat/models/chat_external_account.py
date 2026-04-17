@@ -173,119 +173,103 @@ class ChatExternalAccount(DotModel):
         raw: str | None = None,
     ) -> tuple["ChatExternalAccount", "Contact", bool]:
         """
-        Найти или создать аккаунт для входящего webhook.
+        Найти или создать ExternalAccount для входящего webhook.
 
-        Алгоритм:
-        1. Ищем ExternalAccount по (connector_id, external_id)
-        2. Если нашли — возвращаем вместе с контактом
-        3. Если нет — ищем Contact по contact_value
-        4. Если нет Contact — создаём Partner + Contact
-        5. Создаём ExternalAccount привязанный к Contact
+        Потоки:
+            A) Аккаунт уже существовал и привязан к контакту — отдаём его.
+            B) Аккаунта нет (или он без контакта) — резолвим контакт через
+               Contact.find_for_webhook (exact → phone-format fallback); если
+               не нашли — Contact.create_with_partner создаёт Partner+Contact.
+               Затем создаём или доcвязываем аккаунт.
 
         Args:
-            connector: Коннектор
-            external_id: ID из API мессенджера
-            contact_value: Человекочитаемое значение (@username, +7999...) — сохраняется в Contact.name
-            display_name: Имя из профиля (для создания партнёра и ExternalAccount.name)
-            raw: Сырые данные webhook
+            connector: Коннектор.
+            external_id: ID из API мессенджера.
+            contact_value: Человекочитаемое значение (@username, +7999...) —
+                           сохраняется в Contact.name.
+            display_name: Имя из профиля (для нового Partner и ExternalAccount.name).
+            raw: Сырые данные webhook.
 
         Returns:
-            Tuple[ChatExternalAccount, Contact, created: bool]
+            (account, contact, created) — created=True, если в рамках вызова
+            был создан новый Contact (не просто новый аккаунт).
         """
-        # 1. Ищем существующий ExternalAccount
+        # Поток A — аккаунт уже привязан к контакту
         existing = await self.find_by_external_id(external_id, connector.id)
         if existing and existing.contact_id:
-            contact = await env.models.contact.search(
-                filter=[("id", "=", existing.contact_id.id)],
-                fields=["id", "partner_id", "user_id", "name"],
-                limit=1,
-            )
-            return existing, contact[0], False
-
-        # 2. Определяем тип контакта для этого коннектора (через contact_type_id на коннекторе)
-        contact_type_id = connector.contact_type_id
-        if contact_type_id is None:
-            raise ValueError("Contact type must be set")
-
-        # 3. Ищем Contact по name (значению контакта)
-        contact = None
-        if contact_value:
             contacts = await env.models.contact.search(
-                filter=[
-                    ("contact_type_id", "=", contact_type_id.id),
-                    ("name", "=", contact_value),
-                    ("active", "=", True),
-                ],
+                filter=[("id", "=", existing.contact_id.id)],
                 fields=["id", "name", "user_id", "partner_id"],
                 limit=1,
             )
-            if contacts:
-                contact = contacts[0]
+            return existing, contacts[0], False
 
-        # 4. Если Contact не найден — ищем по родительскому типу
-        # (например whatsapp-коннектор → ищем контакт типа phone)
-        if not contact and contact_value:
-            # Ищем контакт по name типа (phone для whatsapp)
-            ct_obj = await env.models.contact_type.get_by_name(
-                contact_type_id.name
+        # Поток B — резолв/создание контакта + создание/доcвязка аккаунта
+        if connector.contact_type_id is None:
+            raise ValueError("Contact type must be set")
+        contact_type = connector.contact_type_id
+
+        contact = await env.models.contact.find_for_webhook(
+            contact_type=contact_type,
+            value=contact_value,
+        )
+        created = contact is None
+        if created:
+            contact = await env.models.contact.create_with_partner(
+                contact_type=contact_type,
+                value=contact_value or external_id,
+                partner_name=display_name or f"Client {external_id}",
             )
-            if ct_obj and ct_obj.id != contact_type_id.id:
-                fallback_contacts = await env.models.contact.search(
-                    filter=[
-                        ("contact_type_id", "=", ct_obj.id),
-                        ("name", "=", contact_value),
-                        ("active", "=", True),
-                    ],
-                    fields=["id", "name", "user_id", "partner_id"],
-                    limit=1,
-                )
-                if fallback_contacts:
-                    contact = fallback_contacts[0]
-
-        # 5. Если Contact не найден — создаём Partner + Contact
-        created = False
-        if not contact:
-            partner_name = display_name or f"Client {external_id}"
-            partner = env.models.partner(name=partner_name)
-            partner.id = await env.models.partner.create(payload=partner)
-
-            contact = env.models.contact(
-                user_id=None,
-                partner_id=partner,
-                contact_type_id=contact_type_id,
-                name=contact_value or external_id,
-                is_primary=True,
-            )
-            contact.id = await env.models.contact.create(payload=contact)
-            created = True
-
             logger.info(
                 "Created Partner %s with Contact %s for external_id=%s",
-                partner.id,
+                contact.partner_id.id if contact.partner_id else None,
                 contact.id,
                 external_id,
             )
 
-        # 6. Создаём или обновляем ExternalAccount
-        if existing:
-            # Привязываем к найденному контакту
-            await existing.update(ChatExternalAccount(contact_id=contact))
-            account = existing
-        else:
-            # Создаём новый
-            account = ChatExternalAccount(
-                name=display_name or contact_value or external_id,
-                external_id=external_id,
-                connector_id=connector,
-                contact_id=contact,
-                raw=raw,
-            )
-            account.id = await self.create(payload=account)
-
-            logger.info(
-                "Created ChatExternalAccount %s linked to Contact %s",
-                account.id,
-                contact.id,
-            )
-
+        account = await self._attach_account(
+            existing=existing,
+            connector=connector,
+            contact=contact,
+            external_id=external_id,
+            contact_value=contact_value,
+            display_name=display_name,
+            raw=raw,
+        )
         return account, contact, created
+
+    @hybridmethod
+    async def _attach_account(
+        self,
+        existing: "ChatExternalAccount | None",
+        connector: "ChatConnector",
+        contact: "Contact",
+        external_id: str,
+        contact_value: str | None,
+        display_name: str | None,
+        raw: str | None,
+    ) -> "ChatExternalAccount":
+        """
+        Привязать аккаунт к контакту.
+
+        Если пришёл existing (аккаунт был, но без contact_id) — доcвязываем.
+        Иначе создаём новый ChatExternalAccount.
+        """
+        if existing:
+            await existing.update(ChatExternalAccount(contact_id=contact))
+            return existing
+
+        account = ChatExternalAccount(
+            name=display_name or contact_value or external_id,
+            external_id=external_id,
+            connector_id=connector,
+            contact_id=contact,
+            raw=raw,
+        )
+        account.id = await self.create(payload=account)
+        logger.info(
+            "Created ChatExternalAccount %s linked to Contact %s",
+            account.id,
+            contact.id,
+        )
+        return account

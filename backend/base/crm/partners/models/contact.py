@@ -99,6 +99,98 @@ class Contact(DotModel):
         """Автоопределение типа контакта по значению."""
         return await env.models.contact_type.detect_contact_type(value)
 
+    @classmethod
+    async def find_for_webhook(
+        cls,
+        contact_type: "ContactType",
+        value: str | None,
+    ) -> "Contact | None":
+        """
+        Найти активный контакт по значению внутри данного типа, либо —
+        при is_phone_format — по любому телефонному типу (phone, whatsapp,
+        viber используют один и тот же номер как идентификатор человека).
+        """
+        if not value:
+            return None
+
+        # 1) Точное совпадение по типу
+        exact = await env.models.contact.search(
+            filter=[
+                ("contact_type_id", "=", contact_type.id),
+                ("name", "=", value),
+                ("active", "=", True),
+            ],
+            fields=["id", "name", "user_id", "partner_id"],
+            limit=1,
+        )
+        if exact:
+            return exact[0]
+
+        # 2) Fallback по семейству телефонных типов — только если применимо
+        if not contact_type.is_phone_format:
+            return None
+
+        session = env.apps.db.get_session()
+        rows = await session.execute(
+            """
+            SELECT c.id, c.name, c.user_id, c.partner_id
+            FROM contact c
+            JOIN contact_type ct ON ct.id = c.contact_type_id
+            WHERE ct.is_phone_format = true
+              AND ct.active = true
+              AND ct.id != %s
+              AND c.name = %s
+              AND c.active = true
+            LIMIT 1
+            """,
+            (contact_type.id, value),
+        )
+        if not rows:
+            return None
+
+        row = rows[0]
+        return env.models.contact(
+            id=row["id"],
+            name=row["name"],
+            user_id=(
+                env.models.user(id=row["user_id"])
+                if row["user_id"] is not None
+                else None
+            ),
+            partner_id=(
+                env.models.partner(id=row["partner_id"])
+                if row["partner_id"] is not None
+                else None
+            ),
+        )
+
+    @classmethod
+    async def create_with_partner(
+        cls,
+        contact_type: "ContactType",
+        value: str,
+        partner_name: str,
+    ) -> "Contact":
+        """
+        Создать нового Partner и привязанный к нему Contact.
+
+        Удобство для сценариев, когда контакт появляется вместе с новым
+        субъектом (например, входящий webhook от неизвестного отправителя).
+        Возвращает созданный Contact с заполненным id и ссылкой на Partner.
+        """
+        partner = env.models.partner(name=partner_name)
+        partner.id = await env.models.partner.create(payload=partner)
+
+        contact = env.models.contact(
+            user_id=None,
+            partner_id=partner,
+            contact_type_id=contact_type,
+            name=value,
+            is_primary=True,
+        )
+        contact.id = await env.models.contact.create(payload=contact)
+        return contact
+
     # ==================== Instance Methods ====================
 
     async def get_partner_contacts(self, partner_id: int):
