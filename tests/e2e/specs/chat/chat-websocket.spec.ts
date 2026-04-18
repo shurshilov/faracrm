@@ -263,12 +263,10 @@ test.describe("WebSocket — messages_read", () => {
 
 test.describe("WebSocket — presence", () => {
   /**
-   * При create_chat бэк шлёт ОДНО presence_update всем онлайн-участникам
-   * со списком online user_ids чата. Оба (admin, user2) онлайн через
-   * fixture-сокеты → оба получат событие с add=[admin, user2].
+   * При create_chat бэк шлёт ОДНО событие chat_created всем онлайн-участникам.
+   * В нём — online_users со списком онлайн-юзеров этого чата.
    *
-   * offline летит при закрытии ПОСЛЕДНЕГО коннекта юзера:
-   * presence_update { add:[], remove:[user_id] }.
+   * При disconnect последнего коннекта юзера — presence_update { remove:[uid] }.
    */
 
   test("presence online при создании чата", async ({
@@ -288,14 +286,14 @@ test.describe("WebSocket — presence", () => {
       user_ids: [user2Session.user_id.id],
     });
 
-    // admin получает presence_update с user2 в add
+    // admin получает chat_created с user2 в online_users
     const event = await adminWS.waitForPresence(
       user2Session.user_id.id,
       "online",
       15_000,
     );
-    expect(event.type).toBe("presence_update");
-    expect(event.add).toContain(user2Session.user_id.id);
+    expect(event.type).toBe("chat_created");
+    expect(event.online_users).toContain(user2Session.user_id.id);
 
     await api.deleteChat(adminSession, chat.id);
   });
@@ -309,7 +307,6 @@ test.describe("WebSocket — presence", () => {
   }) => {
     test.setTimeout(60_000);
 
-    // user3 — отдельный коннект, чтобы его закрытие было последним
     const user3ws = new WSClient(WS_URL, user3Token);
     await user3ws.connect();
 
@@ -320,14 +317,13 @@ test.describe("WebSocket — presence", () => {
       user_ids: [user3Session.user_id.id],
     });
 
-    // admin получает presence_update online про user3
+    // admin получает chat_created с user3 в online_users
     await adminWS.waitForPresence(
       user3Session.user_id.id,
       "online",
       15_000,
     );
 
-    // Закрываем единственный коннект user3 → offline полетит
     adminWS.clearMessages();
     await user3ws.close();
 

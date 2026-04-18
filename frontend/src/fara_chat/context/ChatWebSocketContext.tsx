@@ -84,9 +84,36 @@ export function ChatWebSocketProvider({
         }
       });
 
-      // Presence: один тип события со списками add/remove.
-      // Обрабатываем в контексте (а не в ChatPage), чтобы первое событие
-      // после connect не терялось до монтирования страницы чата.
+      // Обработка нового чата
+      if (message.type === 'chat_created') {
+        const chatId = (message as any).chat_id;
+        console.log('New chat created:', chatId);
+
+        // Мёржим онлайн-юзеров этого чата в общий onlineUsers
+        const onlineFromEvent = (message as any).online_users as
+          | number[]
+          | undefined;
+        if (onlineFromEvent?.length) {
+          setOnlineUsers(prev => {
+            const next = new Set(prev);
+            for (const uid of onlineFromEvent) next.add(uid);
+            return next;
+          });
+        }
+
+        // Подписываемся на WS-события нового чата
+        if (chatId && wsRef.current?.readyState === WebSocket.OPEN) {
+          wsRef.current.send(
+            JSON.stringify({ type: 'subscribe', chat_id: chatId }),
+          );
+        }
+
+        // Refetch списка чатов чтобы получить полные данные
+        dispatch(chatApi.util.invalidateTags([{ type: 'Chat', id: 'LIST' }]));
+      }
+
+      // Presence: add/remove по юзерам. Живёт в контексте, а не в ChatPage,
+      // чтобы не терять первое событие до монтирования страницы чата.
       if (message.type === 'presence_update') {
         const add = (message as any).add as number[] | undefined;
         const remove = (message as any).remove as number[] | undefined;
@@ -98,22 +125,6 @@ export function ChatWebSocketProvider({
             return next;
           });
         }
-      }
-
-      // Обработка нового чата
-      if (message.type === 'chat_created') {
-        const chatId = (message as any).chat_id;
-        console.log('New chat created:', chatId);
-
-        // Подписываемся на WS-события нового чата
-        if (chatId && wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(
-            JSON.stringify({ type: 'subscribe', chat_id: chatId }),
-          );
-        }
-
-        // Refetch списка чатов чтобы получить полные данные
-        dispatch(chatApi.util.invalidateTags([{ type: 'Chat', id: 'LIST' }]));
       }
 
       // Глобальное обновление кэша RTK Query

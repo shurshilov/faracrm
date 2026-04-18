@@ -558,39 +558,24 @@ async def create_chat(req: Request, body: ChatCreate):
 
     cm = env.apps.chat.chat_manager
 
-    # Атомарно подписываем всех и получаем онлайн-участников
+    # Атомарная подписка + получение списка онлайн-участников
     online_user_ids = await cm.get_online_members(chat.id, all_user_ids)
 
-    tasks = [
-        cm.send_to_user(
-            uid,
-            {
-                "type": "chat_created",
-                "chat_id": chat.id,
-                "chat": chat_data,
-            },
-        )
-        for uid in all_user_ids
-        if uid != user_id and uid in online_user_ids
-    ]
-
-    # Одно presence_update всем онлайн-участникам — список онлайн юзеров чата
+    # Одно событие chat_created всем онлайн-участникам (включая создателя).
+    # Внутри — и данные чата, и список онлайн-юзеров для обновления presence.
     if online_user_ids:
         from datetime import datetime, timezone
 
-        presence_msg = {
-            "type": "presence_update",
-            "sybtype": "chat_created",
-            "add": sorted(online_user_ids),
-            "remove": [],
+        msg = {
+            "type": "chat_created",
+            "chat_id": chat.id,
+            "chat": chat_data,
+            "online_users": sorted(online_user_ids),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-        tasks.extend(
-            cm.send_to_user(uid, presence_msg) for uid in online_user_ids
+        await asyncio.gather(
+            *(cm.send_to_user(uid, msg) for uid in online_user_ids)
         )
-
-    if tasks:
-        await asyncio.gather(*tasks)
 
     return {
         "data": {

@@ -168,20 +168,25 @@ export class WSClient {
   }
 
   /**
-   * Ждать presence_update с userId.
-   * status='online' → userId должен быть в add
-   * status='offline' → userId должен быть в remove
-   * без status → в любом из списков
+   * Ждать presence.
+   * status='online' → userId должен быть в chat_created.online_users
+   * status='offline' → userId должен быть в presence_update.remove
+   * без status → любой из двух путей
    */
   async waitForPresence(userId: number, status?: string, timeoutMs = 10_000): Promise<WSEvent> {
     return this.waitFor(
       (msg) => {
-        if (msg.type !== 'presence_update') return false;
-        const add: number[] = Array.isArray(msg.add) ? msg.add : [];
-        const remove: number[] = Array.isArray(msg.remove) ? msg.remove : [];
-        if (status === 'online') return add.includes(userId);
-        if (status === 'offline') return remove.includes(userId);
-        return add.includes(userId) || remove.includes(userId);
+        const inChatCreatedOnline =
+          msg.type === 'chat_created' &&
+          Array.isArray(msg.online_users) &&
+          msg.online_users.includes(userId);
+        const inPresenceRemove =
+          msg.type === 'presence_update' &&
+          Array.isArray(msg.remove) &&
+          msg.remove.includes(userId);
+        if (status === 'online') return inChatCreatedOnline;
+        if (status === 'offline') return inPresenceRemove;
+        return inChatCreatedOnline || inPresenceRemove;
       },
       timeoutMs,
     );
