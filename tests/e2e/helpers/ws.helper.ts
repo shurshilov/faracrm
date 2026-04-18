@@ -167,13 +167,22 @@ export class WSClient {
     );
   }
 
-  /** Ждать presence (online/offline) */
+  /**
+   * Ждать presence_update с userId.
+   * status='online' → userId должен быть в add
+   * status='offline' → userId должен быть в remove
+   * без status → в любом из списков
+   */
   async waitForPresence(userId: number, status?: string, timeoutMs = 10_000): Promise<WSEvent> {
     return this.waitFor(
-      (msg) =>
-        msg.type === 'presence' &&
-        msg.user_id === userId &&
-        (status ? msg.status === status : true),
+      (msg) => {
+        if (msg.type !== 'presence_update') return false;
+        const add: number[] = Array.isArray(msg.add) ? msg.add : [];
+        const remove: number[] = Array.isArray(msg.remove) ? msg.remove : [];
+        if (status === 'online') return add.includes(userId);
+        if (status === 'offline') return remove.includes(userId);
+        return add.includes(userId) || remove.includes(userId);
+      },
       timeoutMs,
     );
   }

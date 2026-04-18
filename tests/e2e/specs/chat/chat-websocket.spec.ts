@@ -263,16 +263,12 @@ test.describe("WebSocket — messages_read", () => {
 
 test.describe("WebSocket — presence", () => {
   /**
-   * При create_chat бэк зовёт subscribe_to_chats(..., is_new=True)
-   * для каждого участника по очереди:
-   *   1) первый uid (создатель) → notified={} → ничего не шлётся
-   *   2) второй uid (участник) → notified={creator_id}
-   *      → creator получает presence online про участника
-   *      → участник получает presence_snapshot с [creator]
+   * При create_chat бэк шлёт ОДНО presence_update всем онлайн-участникам
+   * со списком online user_ids чата. Оба (admin, user2) онлайн через
+   * fixture-сокеты → оба получат событие с add=[admin, user2].
    *
-   * В direct-чате admin(creator) + user2:
-   *   adminWS  → presence online про user2
-   *   user2WS  → presence_snapshot с [admin]
+   * offline летит при закрытии ПОСЛЕДНЕГО коннекта юзера:
+   * presence_update { add:[], remove:[user_id] }.
    */
 
   test("presence online при создании чата", async ({
@@ -284,23 +280,22 @@ test.describe("WebSocket — presence", () => {
   }) => {
     test.setTimeout(30_000);
 
-    // Чистим буфер ДО createChat — событие пролетит сразу при создании
     adminWS.clearMessages();
+    user2WS.clearMessages();
 
     const chat = await api.createChat(adminSession, {
       name: `Presence ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
 
-    // admin — создатель, подписан первым → получит presence online про user2
+    // admin получает presence_update с user2 в add
     const event = await adminWS.waitForPresence(
       user2Session.user_id.id,
       "online",
       15_000,
     );
-    expect(event.type).toBe("presence");
-    expect(event.status).toBe("online");
-    expect(event.user_id).toBe(user2Session.user_id.id);
+    expect(event.type).toBe("presence_update");
+    expect(event.add).toContain(user2Session.user_id.id);
 
     await api.deleteChat(adminSession, chat.id);
   });
@@ -314,9 +309,7 @@ test.describe("WebSocket — presence", () => {
   }) => {
     test.setTimeout(60_000);
 
-    // user3 — отдельное WS-соединение, чтобы закрытие было ПОСЛЕДНИМ
-    // для user3 (у fixture-сокетов там нет). Коннектим ДО createChat —
-    // тогда subscribe_to_chats увидит user3 онлайн и разошлёт presence.
+    // user3 — отдельный коннект, чтобы его закрытие было последним
     const user3ws = new WSClient(WS_URL, user3Token);
     await user3ws.connect();
 
@@ -327,14 +320,14 @@ test.describe("WebSocket — presence", () => {
       user_ids: [user3Session.user_id.id],
     });
 
-    // admin — создатель → получит presence online про user3
+    // admin получает presence_update online про user3
     await adminWS.waitForPresence(
       user3Session.user_id.id,
       "online",
       15_000,
     );
 
-    // Закрываем единственный коннект user3 → is_last=true → presence offline
+    // Закрываем единственный коннект user3 → offline полетит
     adminWS.clearMessages();
     await user3ws.close();
 
@@ -343,9 +336,8 @@ test.describe("WebSocket — presence", () => {
       "offline",
       20_000,
     );
-    expect(offlineEvent.type).toBe("presence");
-    expect(offlineEvent.status).toBe("offline");
-    expect(offlineEvent.user_id).toBe(user3Session.user_id.id);
+    expect(offlineEvent.type).toBe("presence_update");
+    expect(offlineEvent.remove).toContain(user3Session.user_id.id);
 
     await api.deleteChat(adminSession, chat.id);
   });

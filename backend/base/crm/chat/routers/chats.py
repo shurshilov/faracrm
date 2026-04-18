@@ -556,27 +556,50 @@ async def create_chat(req: Request, body: ChatCreate):
         "connectors": [],
     }
 
-    # Подписки — последовательно, чтобы порядок попадания в
-    # _chat_subscriptions[chat.id] был предсказуем (влияет на то,
-    # кому subscribe_to_chats разошлёт presence online).
-    for uid in all_user_ids:
-        await env.apps.chat.chat_manager.subscribe_to_chats(uid, [chat.id])
+    cm = env.apps.chat.chat_manager
 
-    # chat_created всем кроме создателя — параллельно.
-    await asyncio.gather(
-        *(
-            env.apps.chat.chat_manager.send_to_user(
-                uid,
-                {
-                    "type": "chat_created",
-                    "chat_id": chat.id,
-                    "chat": chat_data,
-                },
-            )
-            for uid in all_user_ids
-            if uid != user_id
+    # Атомарно подписываем всех и получаем онлайн-участников
+    online_user_ids = await cm.get_online_members(chat.id, all_user_ids)
+
+    tasks = [
+        cm.send_to_user(
+            uid,
+            {
+                "type": "chat_created",
+                "chat_id": chat.id,
+                "chat": chat_data,
+            },
         )
-    )
+        for uid in all_user_ids
+        if uid != user_id and uid in online_user_ids
+    ]
+
+    # Одно presence_update всем онлайн-участникам — список онлайн юзеров чата
+    if online_user_ids:
+        from datetime import datetime, timezone
+
+        presence_msg = {
+            "type": "presence_update",
+            "sybtype": "chat_created",
+            "add": sorted(online_user_ids),
+            "remove": [],
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        tasks.extend(
+            cm.send_to_user(uid, presence_msg) for uid in online_user_ids
+        )
+
+    if tasks:
+        await asyncio.gather(*tasks)
+
+    return {
+        "data": {
+            "id": chat.id,
+            "name": chat.name,
+            "chat_type": chat.chat_type,
+            "is_internal": is_internal,
+        }
+    }
 
 
 @router_private.post("/chats/{chat_id}/members")

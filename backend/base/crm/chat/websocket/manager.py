@@ -156,9 +156,10 @@ class ConnectionManager:
         # Уведомляем о выходе — только если это было последнее подключение
         if is_last and notified:
             presence_msg = {
-                "type": "presence",
-                "user_id": user_id,
-                "status": "offline",
+                "type": "presence_update",
+                "subtype": "disconnect",
+                "add": [],
+                "remove": [user_id],
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
             # cross-process: участники могут сидеть на других воркерах
@@ -226,8 +227,9 @@ class ConnectionManager:
         await self._send_to_user(
             user_id,
             {
-                "type": "presence_snapshot",
-                "users": sorted(notified),
+                "type": "presence_update",
+                "subtype": "subscribe_to_chat",
+                "add": sorted(notified),
                 "timestamp": timestamp,
             },
         )
@@ -235,15 +237,32 @@ class ConnectionManager:
         # 2. Остальным — presence=online про юзера, cross-process.
         # Участники могут сидеть на других воркерах, поэтому через pubsub.
         presence_msg = {
-            "type": "presence",
-            "user_id": user_id,
-            "status": "online",
+            "type": "presence_update",
+            "subtype": "subscribe_to_chat_me",
+            "add": [user_id],
             "timestamp": timestamp,
         }
         await asyncio.gather(
             *[self.send_to_user(uid, presence_msg) for uid in notified],
             return_exceptions=True,
         )
+
+        logger.info("User %s subscribed to %s chats", user_id, len(chat_ids))
+
+    async def get_online_members(
+        self, chat_id: int, user_ids: list[int]
+    ) -> list[int]:
+        """
+        Атомарно подписать всех user_ids на chat_id под одним локом
+        и вернуть тех из них, у кого есть активные WS-соединения.
+        """
+        async with self._lock:
+            if chat_id not in self._chat_subscriptions:
+                self._chat_subscriptions[chat_id] = set()
+            for uid in user_ids:
+                self._chat_subscriptions[chat_id].add(uid)
+                self._user_subscriptions.setdefault(uid, set()).add(chat_id)
+            return [uid for uid in user_ids if self._connections.get(uid)]
 
     async def unsubscribe_from_chat(self, user_id: int, chat_id: int):
         """

@@ -803,9 +803,10 @@ export interface WSPresence {
   timestamp: string;
 }
 
-export interface WSPresenceSnapshot {
-  type: 'presence_snapshot';
-  users: number[];
+export interface WSPresenceUpdate {
+  type: 'presence_update';
+  add: number[];
+  remove: number[];
   timestamp: string;
 }
 

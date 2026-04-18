@@ -20,12 +20,6 @@ interface ChatWebSocketContextValue {
   sendTyping: (chatId: number) => void;
   sendRead: (chatId: number, messageId?: number) => void;
   addMessageListener: (listener: (message: WSMessage) => void) => () => void;
-  /**
-   * Множество user_id тех, кто сейчас онлайн.
-   * Живёт здесь (а не в ChatPage), чтобы не терять presence_snapshot,
-   * который приходит сразу после connect — раньше, чем ChatPage монтируется
-   * и успевает зарегистрировать listener.
-   */
   onlineUsers: Set<number>;
   isUserOnline: (userId: number) => boolean;
 }
@@ -90,32 +84,17 @@ export function ChatWebSocketProvider({
         }
       });
 
-      // Presence: обрабатываем ЗДЕСЬ (в контексте), а не в ChatPage.
-      // Причина: presence_snapshot приходит сразу после subscribe_all,
-      // когда ChatPage ещё может быть не смонтирован / listener не навешан.
-      // Если держать state в ChatPage — первый snapshot теряется.
-      if (message.type === 'presence') {
-        const uid = (message as any).user_id as number;
-        const status = (message as any).status as string;
-        if (typeof uid === 'number') {
+      // Presence: один тип события со списками add/remove.
+      // Обрабатываем в контексте (а не в ChatPage), чтобы первое событие
+      // после connect не терялось до монтирования страницы чата.
+      if (message.type === 'presence_update') {
+        const add = (message as any).add as number[] | undefined;
+        const remove = (message as any).remove as number[] | undefined;
+        if ((add && add.length) || (remove && remove.length)) {
           setOnlineUsers(prev => {
             const next = new Set(prev);
-            if (status === 'online') {
-              next.add(uid);
-            } else {
-              next.delete(uid);
-            }
-            return next;
-          });
-        }
-      }
-
-      if (message.type === 'presence_snapshot') {
-        const users = (message as any).users as number[] | undefined;
-        if (users && users.length > 0) {
-          setOnlineUsers(prev => {
-            const next = new Set(prev);
-            for (const uid of users) next.add(uid);
+            if (add) for (const uid of add) next.add(uid);
+            if (remove) for (const uid of remove) next.delete(uid);
             return next;
           });
         }
@@ -199,16 +178,12 @@ export function ChatWebSocketProvider({
 
         if (chatId !== undefined && userId === currentUserId) {
           dispatch(
-            chatApi.util.updateQueryData(
-              'getChats',
-              { limit: 100 },
-              draft => {
-                const chat = draft.data.find(c => c.id === chatId);
-                if (chat) {
-                  chat.unread_count = 0;
-                }
-              },
-            ),
+            chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
+              const chat = draft.data.find(c => c.id === chatId);
+              if (chat) {
+                chat.unread_count = 0;
+              }
+            }),
           );
         }
       }
@@ -348,7 +323,6 @@ export function ChatWebSocketProvider({
         console.log('ChatWebSocketProvider: Disconnected');
         isConnectingRef.current = false;
         setIsConnected(false);
-        // Сбрасываем presence — после реконнекта сервер пришлёт свежий snapshot
         setOnlineUsers(new Set());
 
         if (pingIntervalRef.current) {
