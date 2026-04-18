@@ -263,20 +263,19 @@ test.describe("WebSocket — messages_read", () => {
 
 test.describe("WebSocket — presence", () => {
   /**
-   * Бэк шлёт presence=online только тем, кто УЖЕ подписан на общий чат
-   * к моменту, когда новый юзер подписывается. Поэтому порядок строгий:
-   *   1) observer (user2) подписывается на чат ПЕРВЫМ
-   *   2) subject (admin) подписывается ВТОРЫМ
-   *   → observer получает presence online про subject.
+   * При create_chat бэк зовёт subscribe_to_chats(..., is_new=True)
+   * для каждого участника по очереди:
+   *   1) первый uid (создатель) → notified={} → ничего не шлётся
+   *   2) второй uid (участник) → notified={creator_id}
+   *      → creator получает presence online про участника
+   *      → участник получает presence_snapshot с [creator]
    *
-   * presence=offline летит только при disconnect ПОСЛЕДНЕГО соединения юзера.
-   * Fixture-сокеты (adminWS/user2WS) для этого не годятся — они прожили
-   * с прошлых тестов, и admin считается online «навсегда». Поэтому для теста
-   * offline используем отдельного user3, у которого НЕТ fixture-WS, и создаём
-   * его единственное соединение прямо в тесте.
+   * В direct-чате admin(creator) + user2:
+   *   adminWS  → presence online про user2
+   *   user2WS  → presence_snapshot с [admin]
    */
 
-  test("presence online при подключении", async ({
+  test("presence online при создании чата", async ({
     adminWS,
     user2WS,
     adminSession,
@@ -285,27 +284,23 @@ test.describe("WebSocket — presence", () => {
   }) => {
     test.setTimeout(30_000);
 
+    // Чистим буфер ДО createChat — событие пролетит сразу при создании
+    adminWS.clearMessages();
+
     const chat = await api.createChat(adminSession, {
       name: `Presence ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
 
-    // 1. user2 подписывается ПЕРВЫМ → попадает в _chat_subscriptions[chat.id]
-    await user2WS.subscribe(chat.id);
-    user2WS.clearMessages();
-
-    // 2. admin подписывается ВТОРЫМ → бэк найдёт user2 в notified
-    //    → user2 получит presence online про admin
-    await adminWS.subscribe(chat.id);
-
-    const event = await user2WS.waitForPresence(
-      adminSession.user_id.id,
+    // admin — создатель, подписан первым → получит presence online про user2
+    const event = await adminWS.waitForPresence(
+      user2Session.user_id.id,
       "online",
       15_000,
     );
     expect(event.type).toBe("presence");
     expect(event.status).toBe("online");
-    expect(event.user_id).toBe(adminSession.user_id.id);
+    expect(event.user_id).toBe(user2Session.user_id.id);
 
     await api.deleteChat(adminSession, chat.id);
   });
@@ -319,30 +314,27 @@ test.describe("WebSocket — presence", () => {
   }) => {
     test.setTimeout(60_000);
 
+    // user3 — отдельное WS-соединение, чтобы закрытие было ПОСЛЕДНИМ
+    // для user3 (у fixture-сокетов там нет). Коннектим ДО createChat —
+    // тогда subscribe_to_chats увидит user3 онлайн и разошлёт presence.
+    const user3ws = new WSClient(WS_URL, user3Token);
+    await user3ws.connect();
+
+    adminWS.clearMessages();
+
     const chat = await api.createChat(adminSession, {
       name: `Presence Off ${Date.now()}`,
       user_ids: [user3Session.user_id.id],
     });
 
-    // admin — observer, подписывается первым через fixture-сокет
-    await adminWS.subscribe(chat.id);
-    adminWS.clearMessages();
-
-    // user3 — единственное живое соединение создаётся здесь.
-    // Закрытие этого сокета будет последним для user3 → offline полетит.
-    const user3ws = new WSClient(WS_URL, user3Token);
-    await user3ws.connect();
-    await user3ws.subscribe(chat.id);
-
-    // Ждём presence online про user3 (подписчик до него был только admin)
-    const onlineEvent = await adminWS.waitForPresence(
+    // admin — создатель → получит presence online про user3
+    await adminWS.waitForPresence(
       user3Session.user_id.id,
       "online",
       15_000,
     );
-    expect(onlineEvent.status).toBe("online");
 
-    // Закрываем единственный коннект user3 → is_last=true → offline
+    // Закрываем единственный коннект user3 → is_last=true → presence offline
     adminWS.clearMessages();
     await user3ws.close();
 
