@@ -161,8 +161,9 @@ class ConnectionManager:
                 "status": "offline",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             }
+            # cross-process: участники могут сидеть на других воркерах
             await asyncio.gather(
-                *[self._send_to_user(uid, presence_msg) for uid in notified],
+                *[self.send_to_user(uid, presence_msg) for uid in notified],
                 return_exceptions=True,
             )
 
@@ -221,6 +222,7 @@ class ConnectionManager:
         timestamp = datetime.now(timezone.utc).isoformat()
 
         # 1. Юзеру — snapshot онлайн-пиров (одним кадром, меньше шума фронту).
+        # Сам юзер только что подключился к ЭТОМУ воркеру — можно локально.
         await self._send_to_user(
             user_id,
             {
@@ -230,7 +232,8 @@ class ConnectionManager:
             },
         )
 
-        # 2. Остальным — presence=online про юзера, параллельно.
+        # 2. Остальным — presence=online про юзера, cross-process.
+        # Участники могут сидеть на других воркерах, поэтому через pubsub.
         presence_msg = {
             "type": "presence",
             "user_id": user_id,
@@ -238,7 +241,7 @@ class ConnectionManager:
             "timestamp": timestamp,
         }
         await asyncio.gather(
-            *[self._send_to_user(uid, presence_msg) for uid in notified],
+            *[self.send_to_user(uid, presence_msg) for uid in notified],
             return_exceptions=True,
         )
 

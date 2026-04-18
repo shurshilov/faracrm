@@ -63,7 +63,6 @@ export function ChatPage({
     {},
   );
   const [typingUsers, setTypingUsers] = useState<Record<number, string[]>>({});
-  const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
   const selectedChatRef = useRef<Chat | null>(null);
   const refetchChatsRef = useRef<(() => void) | null>(null);
   const skipMarkAsReadRef = useRef(false);
@@ -239,31 +238,6 @@ export function ChatPage({
           });
           break;
         }
-        case 'presence': {
-          if (message.status === 'online') {
-            setOnlineUsers(prev => new Set(prev).add(message.user_id));
-          } else {
-            setOnlineUsers(prev => {
-              const next = new Set(prev);
-              next.delete(message.user_id);
-              return next;
-            });
-          }
-          break;
-        }
-        case 'presence_snapshot': {
-          // Одним кадром пополняем список онлайн-пиров.
-          // Приходит в ответ на subscribe/subscribe_all — серверный pull.
-          const users = (message as any).users as number[] | undefined;
-          if (users && users.length > 0) {
-            setOnlineUsers(prev => {
-              const next = new Set(prev);
-              for (const uid of users) next.add(uid);
-              return next;
-            });
-          }
-          break;
-        }
         case 'message_deleted': {
           const chatId = (message as any).chat_id;
           const messageId = (message as any).message_id;
@@ -320,6 +294,7 @@ export function ChatPage({
     sendTyping,
     sendRead,
     addMessageListener,
+    isUserOnline,
   } = useChatWebSocketContext();
 
   // Подписываемся на сообщения WebSocket
@@ -426,7 +401,7 @@ export function ChatPage({
     const otherMember = selectedChat.members.find(
       m => Number(m.id) !== Number(currentUserId),
     );
-    return otherMember ? onlineUsers.has(otherMember.id) : false;
+    return otherMember ? isUserOnline(Number(otherMember.id)) : false;
   };
 
   const getTypingUserNames = () => {
