@@ -371,8 +371,10 @@ class ConnectionManager:
         """
         async with self._lock:
             websockets = list(self._connections.get(user_id, ()))
-        for ws in websockets:
-            await self._send_to_websocket(ws, message)
+        if websockets:
+            await asyncio.gather(
+                *(self._send_to_websocket(ws, message) for ws in websockets)
+            )
 
     # async def _broadcast_presence(self, user_id: int, status: str):
     #     """
