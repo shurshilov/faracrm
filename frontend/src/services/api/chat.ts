@@ -803,6 +803,12 @@ export interface WSPresence {
   timestamp: string;
 }
 
+export interface WSPresenceSnapshot {
+  type: 'presence_snapshot';
+  users: number[];
+  timestamp: string;
+}
+
 export interface WSRead {
   type: 'messages_read';
   chat_id: number;
@@ -840,6 +846,7 @@ export type WSMessage =
   | WSNewMessage
   | WSTyping
   | WSPresence
+  | WSPresenceSnapshot
   | WSRead
   | WSReactionChanged
   | WSMessageEdited

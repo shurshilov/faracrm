@@ -20,18 +20,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
     Требует авторизации через query параметр token.
     """
-    # Сначала принимаем соединение
-    await websocket.accept()
-
-    # Получаем токен из query параметров
+    # 1. Сначала извлекаем токен
     token = websocket.query_params.get("token")
+    env: "Environment" = websocket.app.state.env
 
     if not token:
-        await websocket.close(code=4001, reason="Token required")
         return
-
-    # Проверяем токен
-    env: "Environment" = websocket.app.state.env
 
     try:
         sessions = await env.models.session.search(
@@ -39,23 +33,24 @@ async def websocket_endpoint(websocket: WebSocket):
             limit=1,
             fields=["id", "user_id"],
         )
-
-        if not sessions:
-            await websocket.close(code=4001, reason="Invalid token")
-            return
-
-        user_session = sessions[0]
-        user_id = user_session.user_id.id
-
     except Exception as e:
         logger.error("WebSocket auth error: %s", e)
-        await websocket.close(code=4001, reason="Auth error")
         return
 
-    # Подключаем пользователя
-    connected = await env.apps.chat.chat_manager.connect(websocket, user_id)
+    if not sessions:
+        return
 
+    user_id = sessions[0].user_id.id
+
+    # accept только после успешной авторизации
+    await websocket.accept()
+
+    connected = await env.apps.chat.chat_manager.connect(websocket, user_id)
     if not connected:
+        try:
+            await websocket.close(code=1011, reason="Connect failed")
+        except Exception:
+            pass
         return
 
     try:
@@ -64,9 +59,11 @@ async def websocket_endpoint(websocket: WebSocket):
             await env.apps.chat.chat_manager.handle_message(
                 websocket, user_id, data
             )
-
     except WebSocketDisconnect:
-        await env.apps.chat.chat_manager.disconnect(websocket, user_id)
+        logger.info("User %s disconnected", user_id)
     except Exception as e:
-        logger.error("WebSocket error for user %s: %s", user_id, e)
+        logger.error(
+            "WebSocket error for user %s: %s", user_id, e, exc_info=True
+        )
+    finally:
         await env.apps.chat.chat_manager.disconnect(websocket, user_id)

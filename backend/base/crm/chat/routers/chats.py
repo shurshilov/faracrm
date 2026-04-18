@@ -558,7 +558,7 @@ async def create_chat(req: Request, body: ChatCreate):
 
     for uid in all_user_ids:
         # Подписываем участника на чат
-        await env.apps.chat.chat_manager.subscribe_to_chat(uid, chat.id)
+        await env.apps.chat.chat_manager.subscribe_to_chats(uid, [chat.id])
         # Отправляем уведомление о новом чате (кроме создателя)
         if uid != user_id:
             await env.apps.chat.chat_manager.send_to_user(

@@ -251,6 +251,19 @@ export function ChatPage({
           }
           break;
         }
+        case 'presence_snapshot': {
+          // Одним кадром пополняем список онлайн-пиров.
+          // Приходит в ответ на subscribe/subscribe_all — серверный pull.
+          const users = (message as any).users as number[] | undefined;
+          if (users && users.length > 0) {
+            setOnlineUsers(prev => {
+              const next = new Set(prev);
+              for (const uid of users) next.add(uid);
+              return next;
+            });
+          }
+          break;
+        }
         case 'message_deleted': {
           const chatId = (message as any).chat_id;
           const messageId = (message as any).message_id;
