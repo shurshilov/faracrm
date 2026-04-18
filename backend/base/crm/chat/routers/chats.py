@@ -556,12 +556,16 @@ async def create_chat(req: Request, body: ChatCreate):
         "connectors": [],
     }
 
+    # Подписки — последовательно, чтобы порядок попадания в
+    # _chat_subscriptions[chat.id] был предсказуем (влияет на то,
+    # кому subscribe_to_chats разошлёт presence online).
     for uid in all_user_ids:
-        # Подписываем участника на чат
         await env.apps.chat.chat_manager.subscribe_to_chats(uid, [chat.id])
-        # Отправляем уведомление о новом чате (кроме создателя)
-        if uid != user_id:
-            await env.apps.chat.chat_manager.send_to_user(
+
+    # chat_created всем кроме создателя — параллельно.
+    await asyncio.gather(
+        *(
+            env.apps.chat.chat_manager.send_to_user(
                 uid,
                 {
                     "type": "chat_created",
@@ -569,15 +573,10 @@ async def create_chat(req: Request, body: ChatCreate):
                     "chat": chat_data,
                 },
             )
-
-    return {
-        "data": {
-            "id": chat.id,
-            "name": chat.name,
-            "chat_type": chat.chat_type,
-            "is_internal": is_internal,
-        }
-    }
+            for uid in all_user_ids
+            if uid != user_id
+        )
+    )
 
 
 @router_private.post("/chats/{chat_id}/members")
