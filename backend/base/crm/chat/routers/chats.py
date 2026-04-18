@@ -3,6 +3,7 @@
 
 import asyncio
 import logging
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Query
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
@@ -564,8 +565,6 @@ async def create_chat(req: Request, body: ChatCreate):
     # Одно событие chat_created всем онлайн-участникам (включая создателя).
     # Внутри — и данные чата, и список онлайн-юзеров для обновления presence.
     if online_user_ids:
-        from datetime import datetime, timezone
-
         msg = {
             "type": "chat_created",
             "chat_id": chat.id,

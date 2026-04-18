@@ -2,6 +2,7 @@
 # Chat module - WebSocket manager for real-time messaging
 
 import asyncio
+from enum import Enum
 import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Set
@@ -13,6 +14,21 @@ if TYPE_CHECKING:
     from .pubsub.base import PubSubBackend
 
 logger = logging.getLogger(__name__)
+
+
+class WebsocketCommand(str, Enum):
+    ping = "ping"
+    subscribe = "subscribe"
+    subscribe_all = "subscribe_all"
+    unsubscribe = "unsubscribe"
+    typing = "typing"
+    read = "read"
+
+
+class PubSubCommand(str, Enum):
+    SEND_CHAT = "send_to_chat"
+    SEND_USER = "send_to_user"
+    NEW_CHAT = "notify_new_chat"
 
 
 class ConnectionManager:
@@ -290,7 +306,7 @@ class ConnectionManager:
         """
         if self._pubsub:
             await self._pubsub.publish(
-                "send_to_chat",
+                PubSubCommand.SEND_CHAT,
                 {
                     "chat_id": chat_id,
                     "message": message,
@@ -305,7 +321,7 @@ class ConnectionManager:
         """
         if self._pubsub:
             await self._pubsub.publish(
-                "send_to_user",
+                PubSubCommand.SEND_USER,
                 {
                     "user_id": user_id,
                     "message": message,
@@ -319,7 +335,7 @@ class ConnectionManager:
         """
         if self._pubsub:
             await self._pubsub.publish(
-                "notify_new_chat",
+                PubSubCommand.NEW_CHAT,
                 {
                     "user_id": user_id,
                     "chat_id": chat_id,
@@ -336,7 +352,7 @@ class ConnectionManager:
         """Обработчик event-ов от pubsub."""
         event_type = event.get("type")
 
-        if event_type == "send_to_chat":
+        if event_type == PubSubCommand.SEND_CHAT:
             chat_id = event["chat_id"]
             message = event["message"]
             exclude_user = event.get("exclude_user")
@@ -349,10 +365,10 @@ class ConnectionManager:
                     continue
                 await self._send_to_user(user_id, message)
 
-        elif event_type == "send_to_user":
+        elif event_type == PubSubCommand.SEND_USER:
             await self._send_to_user(event["user_id"], event["message"])
 
-        elif event_type == "notify_new_chat":
+        elif event_type == PubSubCommand.NEW_CHAT:
             user_id = event["user_id"]
             chat_id = event["chat_id"]
             await self.subscribe_to_chats(user_id, [chat_id])
@@ -465,13 +481,13 @@ class ConnectionManager:
         """
         message_type = data.get("type")
 
-        if message_type == "ping":
+        if message_type == WebsocketCommand.ping:
             # Heartbeat — отвечаем только в этот websocket
             async with self._lock:
                 self._user_activity[user_id] = datetime.now(timezone.utc)
             await self._send_to_websocket(websocket, {"type": "pong"})
 
-        elif message_type == "subscribe":
+        elif message_type == WebsocketCommand.subscribe:
             # Подписка на чат
             chat_id = data.get("chat_id")
             if chat_id:
@@ -480,7 +496,7 @@ class ConnectionManager:
                     websocket, {"type": "subscribed", "chat_id": chat_id}
                 )
 
-        elif message_type == "subscribe_all":
+        elif message_type == WebsocketCommand.subscribe_all:
             # Подписка на несколько чатов одним запросом
             chat_ids = data.get("chat_ids", [])
             if chat_ids:
@@ -494,7 +510,7 @@ class ConnectionManager:
                     },
                 )
 
-        elif message_type == "unsubscribe":
+        elif message_type == WebsocketCommand.unsubscribe:
             # Отписка от чата
             chat_id = data.get("chat_id")
             if chat_id:
@@ -503,7 +519,7 @@ class ConnectionManager:
                     websocket, {"type": "unsubscribed", "chat_id": chat_id}
                 )
 
-        elif message_type == "typing":
+        elif message_type == WebsocketCommand.typing:
             # Индикатор набора текста
             chat_id = data.get("chat_id")
             if chat_id:
@@ -517,7 +533,7 @@ class ConnectionManager:
                     exclude_user=user_id,
                 )
 
-        elif message_type == "read":
+        elif message_type == WebsocketCommand.read:
             # Отметка о прочтении
             chat_id = data.get("chat_id")
             message_id = data.get("message_id")
