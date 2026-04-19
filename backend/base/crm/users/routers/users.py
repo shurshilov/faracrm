@@ -239,6 +239,9 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
         id = await env.models.session.create(payload=session)
         session.id = id
 
+        # Лимит активных сессий на пользователя.
+        await env.models.session.enforce_session_limit(user_id.id)
+
         response.set_cookie(
             key=env.settings.auth.cookie_name,
             value=cookie_token,

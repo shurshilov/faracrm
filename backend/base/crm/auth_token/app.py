@@ -38,6 +38,8 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         await super().post_init(app)
         env: "Environment" = app.state.env
 
+        # Настройки лимита активных сессий на пользователя.
+        # cache_ttl=-1 — прогреваются в SystemSettings.warm_cache().
         await env.models.system_settings.ensure_defaults(
             [
                 {
@@ -48,14 +50,47 @@ class AuthTokenApp(App, AuthStrategyAbstract):
                     "is_system": True,
                     "cache_ttl": -1,
                 },
+                {
+                    "key": "auth.max_active_sessions",
+                    "value": {"value": 50},
+                    "description": (
+                        "Максимум активных сессий на пользователя. "
+                        "При превышении самые старые деактивируются при "
+                        "следующем логине."
+                    ),
+                    "module": "auth_token",
+                    "is_system": True,
+                    "cache_ttl": -1,
+                },
+                {
+                    "key": "auth.sessions_cleanup_batch",
+                    "value": {"value": 10},
+                    "description": (
+                        "Сколько самых старых сессий закрывать при превышении "
+                        "лимита max_active_sessions."
+                    ),
+                    "module": "auth_token",
+                    "is_system": True,
+                    "cache_ttl": -1,
+                },
             ]
         )
-
         value = await env.models.system_settings.get_value(
             "auth.session_cache_enabled", False
         )
         if value:
             AuthTokenApp.session_cache_enabled = value
+
+        # Cron: ежечасно деактивировать протухшие сессии.
+        await env.models.cron_job.create_or_update(
+            env=env,
+            name="Auth: deactivate expired sessions",
+            code=("result = await env.models.session.cron_expire_sessions()"),
+            interval_number=1,
+            interval_type="hours",
+            active=True,
+            priority=50,
+        )
 
     @staticmethod
     async def verify_access(

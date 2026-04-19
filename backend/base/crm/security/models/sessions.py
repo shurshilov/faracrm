@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
@@ -103,6 +104,116 @@ class Session(DotModel):
             return int(value)
         except Exception:
             return cls.DEFAULT_TTL
+
+    # Дефолты лимитов активных сессий на пользователя.
+    # Переопределяются через system_settings:
+    #   auth.max_active_sessions       — порог, при превышении чистим
+    #   auth.sessions_cleanup_batch    — сколько самых старых закрывать
+    DEFAULT_MAX_ACTIVE_SESSIONS = 50
+    DEFAULT_SESSIONS_CLEANUP_BATCH = 10
+
+    @classmethod
+    async def enforce_session_limit(cls, user_id: int) -> int:
+        """
+        Ограничить число активных сессий пользователя.
+
+        Если активных > max_active_sessions (дефолт 50) — деактивировать
+        sessions_cleanup_batch самых старых (дефолт 10).
+        Вызывается после успешного создания сессии при логине.
+
+        Returns:
+            Количество деактивированных сессий (0 если лимит не превышен).
+        """
+        max_active = int(
+            await env.models.system_settings.get_value(
+                "auth.max_active_sessions",
+                cls.DEFAULT_MAX_ACTIVE_SESSIONS,
+            )  # type: ignore
+        )
+        cleanup_batch = int(
+            await env.models.system_settings.get_value(
+                "auth.sessions_cleanup_batch",
+                cls.DEFAULT_SESSIONS_CLEANUP_BATCH,
+            )  # type: ignore
+        )
+        db_session = cls._get_db_session()
+
+        # Одним SQL: посчитать активные, и если > max — деактивировать
+        # cleanup_batch самых старых. CTE, никаких race-ов.
+        stmt = """
+            WITH active_count AS (
+                SELECT COUNT(*)::int AS c FROM sessions
+                WHERE user_id = %s AND active = true
+            ),
+            to_deactivate AS (
+                SELECT id FROM sessions
+                WHERE user_id = %s AND active = true
+                ORDER BY create_datetime ASC
+                LIMIT %s
+            ),
+            did_update AS (
+                UPDATE sessions
+                SET active = false
+                WHERE id IN (SELECT id FROM to_deactivate)
+                  AND (SELECT c FROM active_count) > %s
+                RETURNING id
+            )
+            SELECT COUNT(*)::int AS cnt,
+                   ARRAY_AGG(id) AS ids
+            FROM did_update
+        """
+        result = await db_session.execute(
+            stmt,
+            [user_id, user_id, cleanup_batch, max_active],
+        )
+        if not result:
+            return 0
+
+        row = result[0]
+        deactivated = int(row.get("cnt") or 0)
+        ids = row.get("ids") or []
+
+        # Инвалидируем SessionCache на всех воркерах если что-то деактивировали
+        if deactivated > 0 and ids and AuthTokenApp.session_cache_enabled:
+            await cls.publish_revoked(list(ids))
+
+        return deactivated
+
+    @classmethod
+    async def cron_expire_sessions(cls) -> dict:
+        """
+        Крон: пометить все протухшие активные сессии неактивными.
+        active = true AND expired_datetime < now() → active = false.
+
+        Returns:
+            {"deactivated": N} — сколько сессий закрыто.
+        """
+        db_session = cls._get_db_session()
+        stmt = """
+            WITH expired AS (
+                UPDATE sessions
+                SET active = false
+                WHERE active = true
+                  AND expired_datetime IS NOT NULL
+                  AND expired_datetime < now()
+                RETURNING id
+            )
+            SELECT COUNT(*)::int AS cnt,
+                   ARRAY_AGG(id) AS ids
+            FROM expired
+        """
+        result = await db_session.execute(stmt)
+        if not result:
+            return {"deactivated": 0}
+
+        row = result[0]
+        cnt = int(row.get("cnt") or 0)
+        ids = row.get("ids") or []
+
+        if ids and AuthTokenApp.session_cache_enabled:
+            await cls.publish_revoked(list(ids))
+
+        return {"deactivated": cnt}
 
     @hybridmethod
     async def session_check(self, token: str, cookie_token: str | None = None):
