@@ -237,3 +237,229 @@ class Session(DotModel):
         )
 
         return session_obj
+
+    # ================================================================
+    # CACHED-ВЕРСИИ: параллельные реализации проверки через SessionCache.
+    # Оригинальные session_check / session_check_by_cookie оставлены выше
+    # без изменений. Выбор между версиями делается на уровне AuthTokenApp
+    # через флаг auth.session_cache_enabled (читается при старте).
+    # ================================================================
+
+    @hybridmethod
+    async def session_check_cached(
+        self, token: str, cookie_token: str | None = None
+    ):
+        """
+        Cached-версия session_check: сначала смотрит в SessionCache,
+        при cache miss — идёт в БД и кладёт результат в кэш.
+        """
+        from backend.base.crm.auth_token.session_cache import (
+            SessionCache,
+        )
+        from backend.base.crm.auth_token.app import AuthTokenApp
+
+        cache: SessionCache = AuthTokenApp.session_cache
+        cached = await cache.get_by_token(token)
+
+        if cached is None:
+            cached = await self._fetch_session_from_db(token, cache)
+            if cached is None:
+                raise AuthException.SessionNotExist()
+
+        if cached.revoked:
+            raise AuthException.SessionNotExist()
+
+        now = datetime.now(timezone.utc)
+        if cached.expired_datetime < now:
+            session = self._get_db_session()
+            await session.execute(
+                "UPDATE sessions SET active = false WHERE id = %s",
+                [cached.session_id],
+            )
+            await cache.drop_by_token(token)
+            await Session.publish_revoked([cached.session_id])
+            raise AuthException.SessionExpired()
+
+        # Token Binding: cookie_token обязателен.
+        if (
+            not cached.cookie_token
+            or not cookie_token
+            or cookie_token != cached.cookie_token
+        ):
+            raise AuthException.SessionNotExist()
+
+        return Session(
+            id=cached.session_id,
+            ttl=cached.ttl,
+            create_datetime=cached.create_datetime,
+            active=True,
+            user_id=env.models.user(
+                id=cached.user_id,
+                is_admin=cached.is_admin,
+                name=cached.user_name,
+                lang_id=env.models.language(
+                    id=cached.lang_id,
+                    code=cached.lang_code,
+                ),
+            ),
+        )
+
+    @hybridmethod
+    async def session_check_by_cookie_cached(self, cookie_token: str):
+        """
+        Cached-версия session_check_by_cookie.
+        """
+        from backend.base.crm.auth_token.app import AuthTokenApp
+
+        cache = AuthTokenApp.session_cache
+        cached = await cache.get_by_cookie(cookie_token)
+
+        if cached is None:
+            cached = await self._fetch_session_by_cookie_from_db(
+                cookie_token, cache
+            )
+            if cached is None:
+                raise AuthException.SessionNotExist()
+
+        if cached.revoked:
+            raise AuthException.SessionNotExist()
+
+        now = datetime.now(timezone.utc)
+        if cached.expired_datetime < now:
+            session = self._get_db_session()
+            await session.execute(
+                "UPDATE sessions SET active = false WHERE id = %s",
+                [cached.session_id],
+            )
+            await cache.drop_by_token(cached.token or "")
+            await Session.publish_revoked([cached.session_id])
+            raise AuthException.SessionExpired()
+
+        return Session(
+            id=cached.session_id,
+            ttl=cached.ttl,
+            create_datetime=cached.create_datetime,
+            active=True,
+            user_id=env.models.user(
+                id=cached.user_id,
+                is_admin=cached.is_admin,
+                name=cached.user_name,
+            ),
+        )
+
+    async def _fetch_session_from_db(self, token: str, cache):
+        """Cache miss для session_check_cached: загружает из БД."""
+        from backend.base.crm.auth_token.session_cache import CachedSession
+
+        session = self._get_db_session()
+        stmt = """
+            SELECT
+                s.id,
+                s.ttl,
+                s.create_datetime,
+                s.expired_datetime,
+                s.active,
+                s.token,
+                s.cookie_token,
+                u.id as user_id,
+                u.is_admin,
+                u.lang_id,
+                u.name,
+                l.code as lang_code
+            FROM sessions s
+            JOIN users u ON s.user_id = u.id
+            LEFT JOIN language l ON u.lang_id = l.id
+            WHERE s.token = %s AND s.active = true
+            LIMIT 1
+        """
+        result = await session.execute(stmt, [token])
+        if not result:
+            return None
+
+        row = result[0]
+        cached = CachedSession(
+            session_id=row["id"],
+            user_id=row["user_id"],
+            is_admin=row["is_admin"],
+            user_name=row["name"],
+            lang_id=row["lang_id"],
+            lang_code=row["lang_code"],
+            cookie_token=row.get("cookie_token"),
+            token=row.get("token"),
+            expired_datetime=row["expired_datetime"],
+            ttl=row["ttl"],
+            create_datetime=row["create_datetime"],
+        )
+        await cache.put(cached)
+        return cached
+
+    async def _fetch_session_by_cookie_from_db(self, cookie_token: str, cache):
+        """Cache miss для session_check_by_cookie_cached."""
+        from backend.base.crm.auth_token.session_cache import CachedSession
+
+        session = self._get_db_session()
+        stmt = """
+            SELECT
+                s.id,
+                s.ttl,
+                s.create_datetime,
+                s.expired_datetime,
+                s.active,
+                s.token,
+                s.cookie_token,
+                u.id as user_id,
+                u.is_admin,
+                u.name
+            FROM sessions s
+            JOIN users u ON s.user_id = u.id
+            WHERE s.cookie_token = %s AND s.active = true
+            LIMIT 1
+        """
+        result = await session.execute(stmt, [cookie_token])
+        if not result:
+            return None
+
+        row = result[0]
+        cached = CachedSession(
+            session_id=row["id"],
+            user_id=row["user_id"],
+            is_admin=row["is_admin"],
+            user_name=row["name"],
+            lang_id=None,
+            lang_code=None,
+            cookie_token=row.get("cookie_token"),
+            token=row.get("token"),
+            expired_datetime=row["expired_datetime"],
+            ttl=row["ttl"],
+            create_datetime=row["create_datetime"],
+        )
+        await cache.put(cached)
+        return cached
+
+    @classmethod
+    async def publish_revoked(cls, session_ids: list[int]) -> None:
+        """
+        Опубликовать событие revoke в pg_notify. Все воркеры инвалидируют
+        свой SessionCache. Переиспользуем pubsub из chat_manager.
+        Без-op если кэш выключен (no-op полезен чтобы код не падал).
+        """
+        if not session_ids:
+            return
+        try:
+            pubsub = env.apps.chat.chat_manager.pubsub
+        except Exception:
+            pubsub = None
+        if pubsub is None:
+            # Нет pubsub (тесты без chat-app) — инвалидируем локально
+            try:
+                from backend.base.crm.auth_token.app import AuthTokenApp
+
+                for sid in session_ids:
+                    await AuthTokenApp.session_cache.revoke(sid)
+            except Exception:
+                pass
+            return
+        await pubsub.publish(
+            "session_revoked",
+            {"session_ids": list(session_ids)},
+        )

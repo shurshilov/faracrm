@@ -239,6 +239,38 @@ class SystemSettings(DotModel):
         except Exception:
             pass
 
+    @classmethod
+    async def warm_cache(cls) -> int:
+        """
+        Прогрев кеша системных настроек при старте сервера.
+
+        Загружает все настройки с cache_ttl == -1 (постоянные) одним
+        SQL-запросом и кладёт их в in-memory кеш. После этого
+        последующие get_value для этих ключей не ходят в БД.
+
+        Вызывается один раз в lifespan/post_init ядра после готовности БД.
+
+        Returns:
+            Количество прогретых ключей.
+        """
+        records = await cls.search(
+            filter=[("cache_ttl", "=", -1)],
+            fields=["key", "value", "cache_ttl"],
+        )
+
+        count = 0
+        for rec in records:
+            raw = rec.value
+            if raw and isinstance(raw, dict):
+                result = raw.get("value", raw)
+            elif isinstance(raw, list):
+                result = raw
+            _cache.put(rec.key, result, -1)
+            count += 1
+
+        log.info("SystemSettings.warm_cache: warmed %s keys", count)
+        return count
+
     # ==================== Обратная совместимость ====================
 
     @classmethod

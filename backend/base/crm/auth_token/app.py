@@ -11,6 +11,7 @@ from backend.base.crm.security.exceptions.AuthException import (
     SessionExpired,
     SessionNotExist,
 )
+from .session_cache import SessionCache
 
 
 class AuthTokenApp(App, AuthStrategyAbstract):
@@ -27,7 +28,34 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         "license": "FARA CRM License v1.0",
         # TODO: добавить зависимость сессии
         "depends": ["security"],
+        "post_init": True,
     }
+
+    session_cache: SessionCache = SessionCache()
+    session_cache_enabled: bool = False
+
+    async def post_init(self, app: "FastAPI"):
+        await super().post_init(app)
+        env: "Environment" = app.state.env
+
+        await env.models.system_settings.ensure_defaults(
+            [
+                {
+                    "key": "auth.session_cache_enabled",
+                    "value": {"value": False},
+                    "description": "Включено ли кеширование сессий",
+                    "module": "auth_token",
+                    "is_system": True,
+                    "cache_ttl": -1,
+                },
+            ]
+        )
+
+        value = await env.models.system_settings.get_value(
+            "auth.session_cache_enabled", False
+        )
+        if value:
+            AuthTokenApp.session_cache_enabled = value
 
     @staticmethod
     async def verify_access(
@@ -52,6 +80,10 @@ class AuthTokenApp(App, AuthStrategyAbstract):
             AuthException.SessionErrorFormat: сессия не получена
             клиент передал пустые аутентификационные данные или не в том формате
         """
+        if AuthTokenApp.session_cache_enabled:
+            return await AuthTokenApp.verify_access_cached(
+                request, credentials
+            )
 
         if not credentials:
             raise SessionErrorFormat()
@@ -82,6 +114,10 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         Guard cookie содержит token привязанный к сессии — проверяем его
         через обратный lookup: cookie_token - session.
         """
+        # Диспетчер: если auth.session_cache_enabled=True — идём в cached-версию.
+        if AuthTokenApp.session_cache_enabled:
+            return await AuthTokenApp.verify_access_by_cookie_cached(request)
+
         env: Environment = request.app.state.env
         cookie_token = request.cookies.get(env.settings.auth.cookie_name)
         if not cookie_token:
@@ -93,6 +129,51 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         request.state.session = session
         set_access_session(session)
 
+        return session
+
+    # ================================================================
+    # CACHED-ВЕРСИИ. Оригинальные verify_access / verify_access_by_cookie
+    # остаются нетронутыми (кроме добавленного мини-диспетчера в начале).
+    # Флаг AuthTokenApp.session_cache_enabled устанавливается один раз
+    # в post_init из system_settings. Менять флаг → рестарт приложения.
+    # ================================================================
+
+    @staticmethod
+    async def verify_access_cached(
+        request: Request,
+        credentials: HTTPAuthorizationCredentials | None = Security(
+            HTTPBearer(auto_error=False)
+        ),
+    ):
+        """Cached-версия verify_access — использует session_check_cached."""
+        if not credentials:
+            raise SessionErrorFormat()
+
+        env: Environment = request.app.state.env
+        cookie_token = request.cookies.get(env.settings.auth.cookie_name)
+        if not cookie_token:
+            raise SessionErrorFormat()
+
+        session = await env.models.session.session_check_cached(
+            credentials.credentials, cookie_token=cookie_token
+        )
+        request.state.session = session
+        set_access_session(session)
+        return session
+
+    @staticmethod
+    async def verify_access_by_cookie_cached(request: Request):
+        """Cached-версия verify_access_by_cookie."""
+        env: Environment = request.app.state.env
+        cookie_token = request.cookies.get(env.settings.auth.cookie_name)
+        if not cookie_token:
+            raise SessionErrorFormat()
+
+        session = await env.models.session.session_check_by_cookie_cached(
+            cookie_token
+        )
+        request.state.session = session
+        set_access_session(session)
         return session
 
     def handler_errors(self, app_server: FastAPI):

@@ -164,6 +164,11 @@ class Environment:
             for service in self.apps.get_list():
                 if service.info.get("post_init"):
                     await service.post_init(app)
+            from backend.base.system.core.system_settings import (
+                SystemSettings,
+            )
+
+            await SystemSettings.warm_cache()
         finally:
             # Очищаем системную сессию после инициализации
             clear_access_session()

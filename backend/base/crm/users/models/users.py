@@ -5,6 +5,7 @@ import secrets
 from typing import TYPE_CHECKING
 
 from backend.base.crm.attachments.models.attachments import Attachment
+from ...auth_token.app import AuthTokenApp
 from ....system.dotorm.dotorm.components.filter_parser import FilterExpression
 from ...security.routers.sessions import TerminationMode
 from backend.base.system.dotorm.dotorm.fields import (
@@ -387,6 +388,10 @@ class User(DotModel):
             ids=ids_to_terminate,
             payload=Session(active=False),
         )
+
+        # Инвалидируем кэш на всех воркерах через pg_notify
+        if AuthTokenApp.session_cache_enabled:
+            await Session.publish_revoked(ids_to_terminate)
 
         return len(ids_to_terminate)
 

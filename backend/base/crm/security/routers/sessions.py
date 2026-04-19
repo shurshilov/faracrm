@@ -35,6 +35,9 @@ async def logout(req: Request, response: Response):
         [auth_session.id],
     )
 
+    if AuthTokenApp.session_cache_enabled:
+        await env.models.session.publish_revoked([auth_session.id])
+
     response.delete_cookie(
         key=env.settings.auth.cookie_name,
         httponly=True,
