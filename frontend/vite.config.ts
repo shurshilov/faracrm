@@ -4,6 +4,10 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
+  server: {
+    host: process.env.DOCKER === 'true' ? '0.0.0.0' : '127.0.0.1',
+    port: 5173,
+  },
   // optimizeDeps: {
   // exclude: ['.vite'],
   // entries: ['./src/**/*.{js,jsx,ts,tsx}'],
