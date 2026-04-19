@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 /**
  * Playwright конфигурация для FARA CRM E2E тестов.
@@ -13,11 +13,11 @@ import { defineConfig, devices } from '@playwright/test';
  *   npx playwright test --ui                   — интерактивный режим
  */
 
-const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
-const API_URL = process.env.API_URL || 'http://localhost:8090';
+const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:5173";
+const API_URL = process.env.API_URL || "http://127.0.0.1:8090";
 
 export default defineConfig({
-  testDir: './specs',
+  testDir: "./specs",
 
   /* Таймауты */
   timeout: 30_000,
@@ -29,25 +29,25 @@ export default defineConfig({
 
   /* Репортеры */
   reporter: process.env.CI
-    ? [['html', { open: 'never' }], ['github']]
-    : [['html', { open: 'on-failure' }]],
+    ? [["html", { open: "never" }], ["github"]]
+    : [["html", { open: "on-failure" }]],
 
   /* Retry при падениях */
   retries: process.env.CI ? 2 : 0,
 
   /* Глобальный setup — авторизация */
-  globalSetup: './fixtures/global-setup.ts',
+  globalSetup: "./fixtures/global-setup.ts",
 
   use: {
     baseURL: BASE_URL,
     /* Trace для дебага упавших тестов */
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    video: 'on-first-retry',
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
+    video: "on-first-retry",
     /* Локаль */
-    locale: 'ru-RU',
+    locale: "ru-RU",
     /* Авторизованное состояние по умолчанию */
-    storageState: '.auth/admin.json',
+    storageState: ".auth/admin.json",
   },
 
   /* Проекты:
@@ -60,13 +60,13 @@ export default defineConfig({
    */
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
       testIgnore: /specs\/smoke\//,
     },
     {
-      name: 'smoke',
-      use: { ...devices['Desktop Chrome'] },
+      name: "smoke",
+      use: { ...devices["Desktop Chrome"] },
       testMatch: /specs\/smoke\//,
     },
     // {

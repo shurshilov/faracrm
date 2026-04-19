@@ -26,9 +26,9 @@
 docker compose up --build
 ```
 
-- Frontend: http://localhost:7777
-- Backend API: http://localhost:7777/api/
-- Backend direct: http://localhost:8000
+- Frontend: http://127.0.0.1:7777
+- Backend API: http://127.0.0.1:7777/api/
+- Backend direct: http://127.0.0.1:8000
 
 ### Локально для разработки
 

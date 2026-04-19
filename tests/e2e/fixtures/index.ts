@@ -10,8 +10,8 @@ import { ApiHelper, Session } from "../helpers/api.helper";
 import { WSClient } from "../helpers/ws.helper";
 import path from "path";
 
-const API_URL = process.env.API_URL || "http://localhost:8090";
-const WS_URL = (process.env.API_URL || "http://localhost:8090").replace(
+const API_URL = process.env.API_URL || "http://127.0.0.1:8090";
+const WS_URL = (process.env.API_URL || "http://127.0.0.1:8090").replace(
   "http",
   "ws",
 );

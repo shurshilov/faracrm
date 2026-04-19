@@ -2,20 +2,20 @@
  * Global setup — авторизация перед запуском тестов.
  * Создаёт .auth/admin.json с cookies/storage для переиспользования.
  */
-import { chromium, FullConfig } from '@playwright/test';
-import { ApiHelper } from '../helpers/api.helper';
-import fs from 'fs';
-import path from 'path';
+import { chromium, FullConfig } from "@playwright/test";
+import { ApiHelper } from "../helpers/api.helper";
+import fs from "fs";
+import path from "path";
 
-const AUTH_DIR = path.join(__dirname, '..', '.auth');
-const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
-const API_URL = process.env.API_URL || 'http://localhost:8090';
-const ADMIN_LOGIN = process.env.ADMIN_LOGIN || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin';
-const USER2_LOGIN = process.env.USER2_LOGIN || 'test1';
-const USER2_PASSWORD = process.env.USER2_PASSWORD || 'test1';
-const USER3_LOGIN = process.env.USER3_LOGIN || 'test2';
-const USER3_PASSWORD = process.env.USER3_PASSWORD || 'test2';
+const AUTH_DIR = path.join(__dirname, "..", ".auth");
+const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:5173";
+const API_URL = process.env.API_URL || "http://127.0.0.1:8090";
+const ADMIN_LOGIN = process.env.ADMIN_LOGIN || "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin";
+const USER2_LOGIN = process.env.USER2_LOGIN || "test1";
+const USER2_PASSWORD = process.env.USER2_PASSWORD || "test1";
+const USER3_LOGIN = process.env.USER3_LOGIN || "test2";
+const USER3_PASSWORD = process.env.USER3_PASSWORD || "test2";
 
 async function globalSetup(config: FullConfig) {
   // Удаляем старые auth-файлы — они могут содержать протухшие
@@ -41,26 +41,31 @@ async function globalSetup(config: FullConfig) {
     // ВАЖНО: бэк требует ОБА header'а — Bearer token И Cookie session_cookie.
     // Без cookie возвращает 401.
     try {
-      const resetRes = await fetch(`${API_URL}/auto/users/${adminSession.user_id.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${adminSession.token}`,
-          'Cookie': `session_cookie=${adminSession.cookieToken}`,
+      const resetRes = await fetch(
+        `${API_URL}/auto/users/${adminSession.user_id.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminSession.token}`,
+            Cookie: `session_cookie=${adminSession.cookieToken}`,
+          },
+          body: JSON.stringify({ layout_theme: "modern" }),
         },
-        body: JSON.stringify({ layout_theme: 'modern' }),
-      });
+      );
       if (!resetRes.ok) {
-        console.warn(`⚠️ Could not reset admin layout_theme (status ${resetRes.status})`);
+        console.warn(
+          `⚠️ Could not reset admin layout_theme (status ${resetRes.status})`,
+        );
       } else {
         // Обновляем локальный объект чтобы storageState записал modern в localStorage.
         if (adminSession.user_id) {
-          (adminSession.user_id as any).layout_theme = 'modern';
+          (adminSession.user_id as any).layout_theme = "modern";
         }
-        console.log('✅ Admin layout_theme reset to modern');
+        console.log("✅ Admin layout_theme reset to modern");
       }
     } catch (e) {
-      console.warn('⚠️ Could not reset admin layout_theme:', e);
+      console.warn("⚠️ Could not reset admin layout_theme:", e);
     }
 
     const adminContext = await browser.newContext();
@@ -68,18 +73,21 @@ async function globalSetup(config: FullConfig) {
 
     // Устанавливаем session_cookie в browser context
     const apiHost = new URL(API_URL).hostname;
-    await adminContext.addCookies([{
-      name: 'session_cookie',
-      value: adminSession.cookieToken,
-      domain: apiHost,
-      path: '/',
-      httpOnly: true,
-      sameSite: 'Lax',
-    }]);
+    await adminContext.addCookies([
+      {
+        name: "session_cookie",
+        value: adminSession.cookieToken,
+        domain: apiHost,
+        path: "/",
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
 
     await adminPage.goto(BASE_URL);
     await adminPage.evaluate((session) => {
-      const { cookieToken, ...sessionData } = session; localStorage.setItem('session', JSON.stringify(sessionData));
+      const { cookieToken, ...sessionData } = session;
+      localStorage.setItem("session", JSON.stringify(sessionData));
     }, adminSession);
 
     // Перезагружаем чтобы app подхватил session
@@ -87,12 +95,12 @@ async function globalSetup(config: FullConfig) {
     await adminPage.waitForTimeout(2000);
 
     await adminContext.storageState({
-      path: path.join(AUTH_DIR, 'admin.json'),
+      path: path.join(AUTH_DIR, "admin.json"),
     });
     await adminPage.close();
     await adminContext.close();
 
-    console.log('✅ Admin session created');
+    console.log("✅ Admin session created");
 
     // --- Второй пользователь (для чат-тестов) ---
     // Автоматически создаёт test1/test1 с ролью Internal User
@@ -101,7 +109,7 @@ async function globalSetup(config: FullConfig) {
       await api.ensureUser(adminSession, {
         login: USER2_LOGIN,
         password: USER2_PASSWORD,
-        name: 'Test User 1',
+        name: "Test User 1",
       });
 
       const user2Session = await api.login(USER2_LOGIN, USER2_PASSWORD);
@@ -109,40 +117,48 @@ async function globalSetup(config: FullConfig) {
       const user2Page = await user2Context.newPage();
 
       // Устанавливаем session_cookie в browser context
-      await user2Context.addCookies([{
-        name: 'session_cookie',
-        value: user2Session.cookieToken,
-        domain: apiHost,
-        path: '/',
-        httpOnly: true,
-        sameSite: 'Lax',
-      }]);
+      await user2Context.addCookies([
+        {
+          name: "session_cookie",
+          value: user2Session.cookieToken,
+          domain: apiHost,
+          path: "/",
+          httpOnly: true,
+          sameSite: "Lax",
+        },
+      ]);
 
       await user2Page.goto(BASE_URL);
       await user2Page.evaluate((session) => {
-        const { cookieToken, ...sessionData } = session; localStorage.setItem('session', JSON.stringify(sessionData));
+        const { cookieToken, ...sessionData } = session;
+        localStorage.setItem("session", JSON.stringify(sessionData));
       }, user2Session);
 
       await user2Page.goto(BASE_URL);
       await user2Page.waitForTimeout(2000);
 
       await user2Context.storageState({
-        path: path.join(AUTH_DIR, 'user2.json'),
+        path: path.join(AUTH_DIR, "user2.json"),
       });
       await user2Page.close();
       await user2Context.close();
 
       // Сохраняем флаг что user2 доступен
       fs.writeFileSync(
-        path.join(AUTH_DIR, 'user2.ready'),
-        JSON.stringify({ login: USER2_LOGIN, userId: user2Session.user_id?.id }),
+        path.join(AUTH_DIR, "user2.ready"),
+        JSON.stringify({
+          login: USER2_LOGIN,
+          userId: user2Session.user_id?.id,
+        }),
       );
 
-      console.log('✅ User2 session created');
+      console.log("✅ User2 session created");
     } catch (e) {
-      console.warn('⚠️ Could not create user2 session:', e);
+      console.warn("⚠️ Could not create user2 session:", e);
       // Удаляем флаг если был
-      try { fs.unlinkSync(path.join(AUTH_DIR, 'user2.ready')); } catch {}
+      try {
+        fs.unlinkSync(path.join(AUTH_DIR, "user2.ready"));
+      } catch {}
     }
 
     // --- Третий пользователь (для presence-тестов, изолирован от user2) ---
@@ -150,23 +166,28 @@ async function globalSetup(config: FullConfig) {
       await api.ensureUser(adminSession, {
         login: USER3_LOGIN,
         password: USER3_PASSWORD,
-        name: 'Test User 2',
+        name: "Test User 2",
       });
 
       const user3Session = await api.login(USER3_LOGIN, USER3_PASSWORD);
 
       fs.writeFileSync(
-        path.join(AUTH_DIR, 'user3.ready'),
-        JSON.stringify({ login: USER3_LOGIN, userId: user3Session.user_id?.id }),
+        path.join(AUTH_DIR, "user3.ready"),
+        JSON.stringify({
+          login: USER3_LOGIN,
+          userId: user3Session.user_id?.id,
+        }),
       );
 
-      console.log('✅ User3 session created');
+      console.log("✅ User3 session created");
     } catch (e) {
-      console.warn('⚠️ Could not create user3 session:', e);
-      try { fs.unlinkSync(path.join(AUTH_DIR, 'user3.ready')); } catch {}
+      console.warn("⚠️ Could not create user3 session:", e);
+      try {
+        fs.unlinkSync(path.join(AUTH_DIR, "user3.ready"));
+      } catch {}
     }
   } catch (e) {
-    console.error('❌ Global setup failed:', e);
+    console.error("❌ Global setup failed:", e);
     throw e;
   }
 
