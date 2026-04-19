@@ -42,7 +42,7 @@ class AuthTokenApp(App, AuthStrategyAbstract):
             [
                 {
                     "key": "auth.session_cache_enabled",
-                    "value": {"value": False},
+                    "value": {"value": True},
                     "description": "Включено ли кеширование сессий",
                     "module": "auth_token",
                     "is_system": True,
