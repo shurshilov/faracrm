@@ -202,18 +202,50 @@ export const FieldMany2many = <RecordType extends FaraRecord>({
   // Используем данные из запроса или дефолтные значения
   const actualData = data || defaulValues;
 
+  // Проблема: defaulValues читается через form.getValues() на каждом рендере
+  // и возвращает НОВУЮ ссылку даже если содержимое не менялось. Из-за этого
+  // useEffect ниже срабатывает при любом изменении формы (например при вводе
+  // имени пользователя) и перезаписывает уже добавленные пользователем
+  // записи. Фиксируем через deps по id-массиву — ре-синхронизируем records
+  // ТОЛЬКО когда реально изменился набор записей с сервера.
+  const serverRecordsKey = actualData?.data
+    ? (actualData.data as FaraRecord[]).map(r => r.id).join(',')
+    : '';
+
   useEffect(() => {
-    if (actualData?.data) {
-      const records: RecordType[] = actualData.data.map((row: FaraRecord) => ({
+    if (!actualData?.data) return;
+
+    const serverRecords: RecordType[] = actualData.data.map(
+      (row: FaraRecord) => ({
         ...row,
         // На форме создания (нет id) дефолтные записи подсвечиваем зелёным —
         // как если бы пользователь добавил их вручную
         _color: !id ? 'new' : false,
-      }));
-      setRecords(records);
-      setRecordsCreated([]);
+      }),
+    );
+
+    // На форме создания у нас есть ручные добавления (через ButtonModalSelect),
+    // которые НЕ пришли с сервера. Нельзя просто setRecords(serverRecords) —
+    // затрём ручные выборы. Мержим: серверные + те что ручные (по _form state).
+    if (!id) {
+      const formState = form.getValues()['_' + name];
+      const manuallySelectedIds: number[] = formState?.selected || [];
+      setRecords(prev => {
+        const serverIds = new Set(
+          serverRecords.map(r => r.id).filter(Boolean),
+        );
+        // Оставляем ручные добавления которых нет в серверных данных
+        const manualOnly = prev.filter(
+          r => r.id && manuallySelectedIds.includes(r.id as number) && !serverIds.has(r.id),
+        );
+        return [...serverRecords, ...manualOnly];
+      });
+    } else {
+      // На форме редактирования просто берём данные с сервера
+      setRecords(serverRecords);
     }
-  }, [actualData]);
+    setRecordsCreated([]);
+  }, [serverRecordsKey, id]);
 
   useEffect(() => {
     const addCreated = form.getValues()['_' + name];

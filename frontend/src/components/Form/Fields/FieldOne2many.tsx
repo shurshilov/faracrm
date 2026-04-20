@@ -201,18 +201,56 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   // Используем данные из запроса или дефолтные значения
   const actualData = data || defaulValues;
 
+  // Проблема: defaulValues читается через form.getValues() на каждом рендере
+  // и возвращает НОВУЮ ссылку даже если содержимое не менялось. Из-за этого
+  // useEffect ниже срабатывал при любом изменении формы (например при вводе
+  // имени пользователя) и перезаписывал уже добавленные пользователем
+  // записи (через Создать). Фиксируем через deps по id-массиву — ре-
+  // синхронизируем records ТОЛЬКО когда реально изменился набор записей
+  // с сервера.
+  const serverRecordsKey = actualData?.data
+    ? (actualData.data as FaraRecord[]).map(r => r.id).join(',')
+    : '';
+
   useEffect(() => {
-    if (actualData?.data) {
-      const records: RecordType[] = actualData.data.map((row: FaraRecord) => ({
+    if (!actualData?.data) return;
+
+    const serverRecords: RecordType[] = actualData.data.map(
+      (row: FaraRecord) => ({
         ...row,
         // На форме создания (нет id) дефолтные записи подсвечиваем зелёным —
         // как если бы пользователь добавил их вручную
         _color: !id ? 'new' : false,
-      }));
-      setRecords(records);
+      }),
+    );
+
+    // На форме создания у нас могут быть ручные добавления — они хранятся
+    // в records/recordsCreated. НЕ сбрасываем recordsCreated: пользователь
+    // уже нажал "Создать" и хранит там строки. Мержим records: server +
+    // manuallySelectedIds из _form-state (для случаев ButtonModalSelect,
+    // хотя на create форме он обычно не работает).
+    if (!id) {
+      const formState = form.getValues()['_' + name];
+      const manuallySelectedIds: number[] = formState?.selected || [];
+      setRecords(prev => {
+        const serverIds = new Set(
+          serverRecords.map(r => r.id).filter(Boolean),
+        );
+        const manualOnly = prev.filter(
+          r =>
+            r.id &&
+            manuallySelectedIds.includes(r.id as number) &&
+            !serverIds.has(r.id),
+        );
+        return [...serverRecords, ...manualOnly];
+      });
+      // recordsCreated НЕ сбрасываем — там строки созданные через ButtonModalCreate
+    } else {
+      // На форме редактирования берём данные с сервера
+      setRecords(serverRecords);
       setRecordsCreated([]);
     }
-  }, [actualData]);
+  }, [serverRecordsKey, id]);
 
   useEffect(() => {
     const addCreated = form.getValues()['_' + name];

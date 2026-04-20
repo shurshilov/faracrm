@@ -107,6 +107,7 @@ class AttachmentStorage(DotModel):
         store=False,
         relation_table=lambda: env.models.attachment_route,
         relation_table_field="storage_id",
+        ondelete="cascade",
     )
 
     async def activate(self) -> None:
