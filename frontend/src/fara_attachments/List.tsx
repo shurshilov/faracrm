@@ -1,11 +1,20 @@
-import { Badge } from '@mantine/core';
-import { IconCheck, IconX, IconArrowUp } from '@tabler/icons-react';
+import { Badge, ActionIcon, Group, Tooltip } from '@mantine/core';
+import {
+  IconCheck,
+  IconX,
+  IconArrowUp,
+  IconBrandGoogleDrive,
+  IconCloud,
+  IconExternalLink,
+  IconEdit,
+} from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@/components/List/Field';
 import { List } from '@/components/List/List';
 import { RelationCell } from '@/components/ListCells';
 import { Attachment } from '@/services/api/attachments';
 import { SchemaAttachmentStorage } from '@/services/api/attachments';
+import { googleEditUrl, isGoogleEditable } from '@/utils/attachmentUrls';
 
 interface AttachmentRoute {
   id: number;
@@ -33,9 +42,30 @@ export function ViewListAttachments() {
       <Field
         name="storage_id"
         label={t('fields.storage_id')}
-        render={value => (
-          <RelationCell value={value} model="attachments_storage" />
-        )}
+        render={(value, record) => {
+          console.log(record.storage_id);
+          const storageType = record.storage_id?.type;
+          return (
+            <Group gap={6} wrap="nowrap">
+              {storageType === 'google' && (
+                <Tooltip label="Google Drive">
+                  <IconBrandGoogleDrive
+                    size={16}
+                    color="var(--mantine-color-yellow-7)"
+                  />
+                </Tooltip>
+              )}
+              {storageType &&
+                storageType !== 'file' &&
+                storageType !== 'google' && (
+                  <Tooltip label={`${storageType} storage`}>
+                    <IconCloud size={16} color="var(--mantine-color-blue-6)" />
+                  </Tooltip>
+                )}
+              <RelationCell value={value} model="attachments_storage" />
+            </Group>
+          );
+        }}
       />
       <Field
         name="route_id"
@@ -43,6 +73,55 @@ export function ViewListAttachments() {
         render={value => (
           <RelationCell value={value} model="attachments_route" />
         )}
+      />
+      <Field
+        name="storage_file_url"
+        label="Cloud"
+        fields={['storage_file_id']}
+        render={(_value, record) => {
+          const webUrl = record.storage_file_url;
+          const editUrl = googleEditUrl(
+            record.storage_file_id,
+            record.mimetype,
+          );
+          if (!webUrl && !editUrl) return null;
+          return (
+            <Group gap={4} wrap="nowrap">
+              {webUrl && (
+                <Tooltip label="Открыть в облаке">
+                  <ActionIcon
+                    size="sm"
+                    variant="light"
+                    color="blue"
+                    component="a"
+                    href={webUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}>
+                    <IconExternalLink size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+              {record.storage_id?.type === 'google' &&
+                record.storage_file_id &&
+                isGoogleEditable(record.mimetype) && (
+                  <Tooltip label="Редактировать в Google">
+                    <ActionIcon
+                      size="sm"
+                      variant="light"
+                      color="yellow"
+                      component="a"
+                      href={editUrl!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}>
+                      <IconEdit size={14} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+            </Group>
+          );
+        }}
       />
     </List>
   );

@@ -23,6 +23,9 @@ import {
   IconMicrophone,
   IconCloud,
   IconPhoto,
+  IconBrandGoogleDrive,
+  IconExternalLink,
+  IconEdit,
 } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useSearchQuery } from '@/services/api/crudApi';
@@ -50,6 +53,8 @@ import {
 import {
   attachmentPreviewUrl,
   attachmentContentUrl,
+  googleEditUrl,
+  isGoogleEditable,
 } from '@/utils/attachmentUrls';
 import { useTranslation } from 'react-i18next';
 import classes from './Kanban.module.css';
@@ -280,7 +285,9 @@ function AttachmentCard({
       </Box>
     );
   };
-
+  {
+    console.log(attachment.storage_id);
+  }
   return (
     <>
       <Card
@@ -295,17 +302,23 @@ function AttachmentCard({
 
         {/* Бейджи сверху справа */}
         <Box className={classes.topBadges}>
-          {/* Бейдж облачного хранилища */}
+          {/* Бейдж облачного хранилища — для google показываем фирменный лого */}
           {isCloudStorage && (
             <Tooltip
               label={`${attachment.storage_id?.type || 'Cloud'} storage`}>
               <ActionIcon
                 size="xs"
                 variant="filled"
-                color="blue"
+                color={
+                  attachment.storage_id?.type === 'google' ? 'yellow' : 'blue'
+                }
                 radius="xl"
                 mr={4}>
-                <IconCloud size={12} />
+                {attachment.storage_id?.type === 'google' ? (
+                  <IconBrandGoogleDrive size={12} />
+                ) : (
+                  <IconCloud size={12} />
+                )}
               </ActionIcon>
             </Tooltip>
           )}
@@ -369,6 +382,47 @@ function AttachmentCard({
                 <IconDownload size={14} />
               </ActionIcon>
             </Tooltip>
+
+            {/* Открыть в облаке (webViewLink для Google Drive) */}
+            {isCloudStorage && attachment.storage_file_url && (
+              <Tooltip label="Открыть в облаке">
+                <ActionIcon
+                  size="sm"
+                  variant="light"
+                  color="blue"
+                  component="a"
+                  href={attachment.storage_file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}>
+                  <IconExternalLink size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+
+            {/* Редактировать в Google Docs / Sheets / Slides — отдельное окно */}
+            {attachment.storage_id?.type === 'google' &&
+              attachment.storage_file_id &&
+              isGoogleEditable(attachment.mimetype) && (
+                <Tooltip label="Редактировать в Google">
+                  <ActionIcon
+                    size="sm"
+                    variant="light"
+                    color="yellow"
+                    component="a"
+                    href={
+                      googleEditUrl(
+                        attachment.storage_file_id,
+                        attachment.mimetype,
+                      )!
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}>
+                    <IconEdit size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
           </Group>
         </Stack>
       </Card>
@@ -400,6 +454,8 @@ export function ViewKanbanAttachments() {
       'res_model',
       'res_id',
       'storage_id',
+      'storage_file_url',
+      'storage_file_id',
     ],
     limit: 50,
     order: 'desc',

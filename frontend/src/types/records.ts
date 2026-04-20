@@ -395,6 +395,7 @@ export interface AttachmentRecord extends BaseRecord {
   show_preview: boolean;
   content: string | null;
   storage_file_url: string | null;
+  storage_file_id: string | null;
   res_model: string | null;
   res_id: number | null;
   storage_id: RelationRecord | null;

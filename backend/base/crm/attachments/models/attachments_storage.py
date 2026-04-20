@@ -107,8 +107,22 @@ class AttachmentStorage(DotModel):
         store=False,
         relation_table=lambda: env.models.attachment_route,
         relation_table_field="storage_id",
-        ondelete="cascade",
     )
+
+    def json_list(self):
+        """
+        Вложенная сериализация для LIST mode (/search).
+
+        Стандартный json_list возвращает {id, name}. Переопределяем чтобы
+        добавить `type` — фронтенду это нужно для отображения иконки
+        Google Drive / облака в Kanban и List атачментов. Без этого
+        пришлось бы делать дополнительный запрос за типами хранилищ.
+        """
+        return {
+            "id": self.id,
+            "name": getattr(self, "name", None) or str(self.id),
+            "type": getattr(self, "type", None),
+        }
 
     async def activate(self) -> None:
         """Активировать хранилище и все его маршруты."""
