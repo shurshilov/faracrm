@@ -165,7 +165,8 @@ class SecurityApp(Service):
                         abs_path = os.path.abspath(icon_path)
                         register_app_icon(app_code, abs_path)
                         registered.append(app_code)
-            except Exception:
+            except Exception as e:
+                log.warning("Application registration failed: %s", e)
                 continue
 
         if registered:

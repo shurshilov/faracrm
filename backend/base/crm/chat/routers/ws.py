@@ -49,8 +49,8 @@ async def websocket_endpoint(websocket: WebSocket):
     if not connected:
         try:
             await websocket.close(code=1011, reason="Connect failed")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to close a websocket: %s", e)
         return
 
     try:

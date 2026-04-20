@@ -1,4 +1,5 @@
 import io
+import logging
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Response, Query
 from fastapi.responses import JSONResponse
@@ -8,6 +9,8 @@ from urllib.parse import quote
 
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.schemas.base_schema import Id
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -158,9 +161,9 @@ async def attachment_preview(
             attachment_content = resize_image(
                 attachment_content, width, height, attach.mimetype
             )
-        except Exception:
+        except Exception as e:
             # Если ресайз не удался, возвращаем оригинал
-            pass
+            logger.warning("Resize image fails, return the original: %s", e)
 
     # ETag на основе checksum + размеров (уникальный ключ варианта)
     etag = f'"{attach.checksum or attach.id}-{w or 0}-{h or 0}"'

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, timedelta
+import logging
 from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.fields import (
@@ -17,6 +18,8 @@ from backend.base.system.core.enviroment import env
 from backend.base.crm.chat.models.chat import Chat
 from backend.base.crm.chat.models.chat_member import ChatMember
 from backend.base.system.dotorm.dotorm.access import get_access_session
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
@@ -358,8 +361,8 @@ class Activity(DotModel):
         # Уведомляем пользователя о новом чате через WS
         try:
             await env.apps.chat.chat_manager.notify_new_chat(user_id, chat.id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to send a websocket message: %s", e)
 
         return chat.id
 

@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
+import logging
 from typing import TYPE_CHECKING
 
 from backend.base.crm.auth_token.app import AuthTokenApp
+from backend.base.crm.auth_token.session_cache import CachedSession
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
@@ -14,8 +16,11 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.crm.security.exceptions import AuthException
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
+    from backend.base.crm.auth_token.session_cache import SessionCache
 from backend.base.system.core.enviroment import env
 
 # class _SystemUser:
@@ -364,12 +369,7 @@ class Session(DotModel):
         Cached-версия session_check: сначала смотрит в SessionCache,
         при cache miss — идёт в БД и кладёт результат в кэш.
         """
-        from backend.base.crm.auth_token.session_cache import (
-            SessionCache,
-        )
-        from backend.base.crm.auth_token.app import AuthTokenApp
-
-        cache: SessionCache = AuthTokenApp.session_cache
+        cache: "SessionCache" = AuthTokenApp.session_cache
         cached = await cache.get_by_token(token)
 
         if cached is None:
@@ -420,7 +420,6 @@ class Session(DotModel):
         """
         Cached-версия session_check_by_cookie.
         """
-        from backend.base.crm.auth_token.app import AuthTokenApp
 
         cache = AuthTokenApp.session_cache
         cached = await cache.get_by_cookie(cookie_token)
@@ -460,7 +459,6 @@ class Session(DotModel):
 
     async def _fetch_session_from_db(self, token: str, cache):
         """Cache miss для session_check_cached: загружает из БД."""
-        from backend.base.crm.auth_token.session_cache import CachedSession
 
         session = self._get_db_session()
         stmt = """
@@ -506,7 +504,6 @@ class Session(DotModel):
 
     async def _fetch_session_by_cookie_from_db(self, cookie_token: str, cache):
         """Cache miss для session_check_by_cookie_cached."""
-        from backend.base.crm.auth_token.session_cache import CachedSession
 
         session = self._get_db_session()
         stmt = """
@@ -563,12 +560,10 @@ class Session(DotModel):
         if pubsub is None:
             # Нет pubsub (тесты без chat-app) — инвалидируем локально
             try:
-                from backend.base.crm.auth_token.app import AuthTokenApp
-
                 for sid in session_ids:
                     await AuthTokenApp.session_cache.revoke(sid)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to revoke session: %s", e)
             return
         await pubsub.publish(
             "session_revoked",

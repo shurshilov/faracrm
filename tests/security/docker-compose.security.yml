@@ -1,0 +1,107 @@
+# ============================================================
+# docker-compose.security.yml
+#
+# Отдельный compose-файл для прогона сканера безопасности Nuclei
+# против локально запущенных сервисов FARA CRM.
+#
+# Ничего не запускает из самого приложения — фронт (Vite на 5173)
+# и бэк (FastAPI на 8090) должны быть подняты НА ХОСТЕ любым
+# привычным способом (npm run dev, uvicorn и т.п.).
+#
+# Запуск:
+#   # прогнать по фронту
+#   docker compose -f docker-compose.security.yml run --rm nuclei-frontend
+#
+#   # прогнать по бэку
+#   docker compose -f docker-compose.security.yml run --rm nuclei-backend
+#
+#   # прогнать по обоим
+#   docker compose -f docker-compose.security.yml run --rm nuclei-all
+#
+# Отчёты складываются в ./reports/nuclei/ на хосте.
+#
+# ВАЖНО про сеть:
+#   Из контейнера "localhost" = сам контейнер. Чтобы достучаться
+#   до сервисов на хосте, используем host.docker.internal.
+#   На Mac/Windows это работает из коробки, на Linux мы явно
+#   добавляем его через extra_hosts: host-gateway.
+# ============================================================
+
+services:
+  # -----------------------------------------------------------
+  # Скан фронта (Vite dev server, порт 5173)
+  # -----------------------------------------------------------
+  nuclei-frontend:
+    image: projectdiscovery/nuclei:latest
+    container_name: fara-nuclei-frontend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Кеш шаблонов (чтобы не тянуть их при каждом запуске)
+      - nuclei-templates:/root/nuclei-templates
+      # Отчёты наружу
+      - ./reports/nuclei:/reports
+    command: >
+      -u http://host.docker.internal:5173
+      -severity low,medium,high,critical
+      -rate-limit 50
+      -timeout 10
+      -stats
+      -o /reports/frontend.txt
+      -je /reports/frontend.json
+
+  # -----------------------------------------------------------
+  # Скан бэка (FastAPI, порт 8090)
+  # -----------------------------------------------------------
+  nuclei-backend:
+    image: projectdiscovery/nuclei:latest
+    container_name: fara-nuclei-backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - nuclei-templates:/root/nuclei-templates
+      - ./reports/nuclei:/reports
+    command: >
+      -u http://host.docker.internal:8090
+      -severity low,medium,high,critical
+      -rate-limit 50
+      -timeout 10
+      -stats
+      -o /reports/backend.txt
+      -je /reports/backend.json
+
+  # -----------------------------------------------------------
+  # Скан обоих сразу (оба URL одним прогоном)
+  # -----------------------------------------------------------
+  nuclei-all:
+    image: projectdiscovery/nuclei:latest
+    container_name: fara-nuclei-all
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - nuclei-templates:/root/nuclei-templates
+      - ./reports/nuclei:/reports
+    command: >
+      -u http://host.docker.internal:5173
+      -u http://host.docker.internal:8090
+      -severity low,medium,high,critical
+      -rate-limit 50
+      -timeout 10
+      -stats
+      -o /reports/all.txt
+      -je /reports/all.json
+
+  # -----------------------------------------------------------
+  # Обновление базы шаблонов Nuclei (запускать периодически)
+  #   docker compose -f docker-compose.security.yml run --rm nuclei-update
+  # -----------------------------------------------------------
+  nuclei-update:
+    image: projectdiscovery/nuclei:latest
+    container_name: fara-nuclei-update
+    volumes:
+      - nuclei-templates:/root/nuclei-templates
+    command: -update-templates
+
+volumes:
+  nuclei-templates:
+    name: fara-nuclei-templates

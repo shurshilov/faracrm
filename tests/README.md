@@ -126,3 +126,29 @@ async def test_example(user_factory, partner_factory, product_factory):
 2. Добавить маркер `pytestmark = pytest.mark.integration`
 3. Использовать фикстуры `db_pool`, `clean_tables`, фабрики
 4. Следовать паттерну: один класс на группу тестов (Create/Read/Update/Delete)
+
+## Проверка на безопасность
+1. Статические (bandit, semgrep) анализаторы кода
+2. Динамический (Nuclei) анализатор запущенного проекта
+
+```bash
+pip install bandit
+pip install semgrep
+```
+
+### 1. Bandit
+```bash
+python bandit.py
+```
+
+### 2. Semgrep
+```bash
+python semgrep.py
+```
+
+### 3. Nuclei
+```bash
+docker compose -f docker-compose.security.yml run --rm nuclei-frontend
+docker compose -f docker-compose.security.yml run --rm nuclei-backend
+# docker compose -f docker-compose.security.yml run --rm nuclei-update
+```
