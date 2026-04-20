@@ -75,29 +75,38 @@ function CloudPlaceholder({
   const { t } = useTranslation('attachments');
   const isImage = isImageMimetype(mimetype);
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (!isImage) return;
+    e.stopPropagation();
+    onLoadPreview();
+  };
+
   return (
     <Box className={classes.cloudPlaceholder}>
       {isLoading ? (
         <Loader size="sm" />
       ) : (
-        <>
-          <IconCloud size={32} className={classes.cloudIcon} />
-          {isImage && (
-            <Tooltip label={t('load_preview', 'Загрузить превью')}>
-              <ActionIcon
-                variant="light"
-                color="blue"
-                size="sm"
-                className={classes.loadPreviewBtn}
-                onClick={e => {
-                  e.stopPropagation();
-                  onLoadPreview();
-                }}>
-                <IconEye size={14} />
-              </ActionIcon>
-            </Tooltip>
-          )}
-        </>
+        <Tooltip
+          label={t('load_preview', 'Загрузить превью')}
+          disabled={!isImage}>
+          <Box
+            className={
+              isImage ? classes.clickableFileIcon : classes.iconArea
+            }
+            onClick={handleClick}
+            role={isImage ? 'button' : undefined}
+            tabIndex={isImage ? 0 : undefined}
+            onKeyDown={e => {
+              if (!isImage) return;
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                onLoadPreview();
+              }
+            }}>
+            <FileIcon mimetype={mimetype} size={48} />
+          </Box>
+        </Tooltip>
       )}
     </Box>
   );

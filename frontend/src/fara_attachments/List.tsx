@@ -1,4 +1,5 @@
 import { Badge, ActionIcon, Group, Tooltip } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {
   IconCheck,
   IconX,
@@ -7,6 +8,8 @@ import {
   IconCloud,
   IconExternalLink,
   IconEdit,
+  IconDownload,
+  IconCopy,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Field } from '@/components/List/Field';
@@ -14,7 +17,11 @@ import { List } from '@/components/List/List';
 import { RelationCell } from '@/components/ListCells';
 import { Attachment } from '@/services/api/attachments';
 import { SchemaAttachmentStorage } from '@/services/api/attachments';
-import { googleEditUrl, isGoogleEditable } from '@/utils/attachmentUrls';
+import {
+  attachmentContentUrl,
+  googleEditUrl,
+  isGoogleEditable,
+} from '@/utils/attachmentUrls';
 
 interface AttachmentRoute {
   id: number;
@@ -76,19 +83,43 @@ export function ViewListAttachments() {
       />
       <Field
         name="storage_file_url"
-        label="Cloud"
+        label={t('fields.actions', 'Действия')}
         fields={['storage_file_id']}
         render={(_value, record) => {
+          const storageType = record.storage_id?.type;
+          const isCloud = !!storageType && storageType !== 'file';
           const webUrl = record.storage_file_url;
           const editUrl = googleEditUrl(
             record.storage_file_id,
             record.mimetype,
           );
-          if (!webUrl && !editUrl) return null;
+
+          // storage_file_url хранит путь для файлового стора и webViewLink для облака.
+          // Если пусто — копировать нечего.
+          const copyText = record.storage_file_url || '';
+
+          const handleCopy = async (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (!copyText) return;
+            try {
+              await navigator.clipboard.writeText(copyText);
+              notifications.show({
+                message: t('copied', 'Скопировано'),
+                color: 'green',
+              });
+            } catch {
+              notifications.show({
+                message: t('copy_error', 'Не удалось скопировать'),
+                color: 'red',
+              });
+            }
+          };
+
           return (
             <Group gap={4} wrap="nowrap">
-              {webUrl && (
-                <Tooltip label="Открыть в облаке">
+              {/* Открыть в облаке — только для облачных */}
+              {isCloud && webUrl && (
+                <Tooltip label={t('open_in_cloud', 'Открыть в облаке')}>
                   <ActionIcon
                     size="sm"
                     variant="light"
@@ -102,16 +133,19 @@ export function ViewListAttachments() {
                   </ActionIcon>
                 </Tooltip>
               )}
-              {record.storage_id?.type === 'google' &&
+
+              {/* Редактировать в Google — только для редактируемых google-файлов */}
+              {storageType === 'google' &&
                 record.storage_file_id &&
-                isGoogleEditable(record.mimetype) && (
-                  <Tooltip label="Редактировать в Google">
+                isGoogleEditable(record.mimetype) &&
+                editUrl && (
+                  <Tooltip label={t('edit_in_google', 'Редактировать в Google')}>
                     <ActionIcon
                       size="sm"
                       variant="light"
                       color="yellow"
                       component="a"
-                      href={editUrl!}
+                      href={editUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}>
@@ -119,6 +153,40 @@ export function ViewListAttachments() {
                     </ActionIcon>
                   </Tooltip>
                 )}
+
+              {/* Скачать — и для локальных, и для облачных */}
+              {record.id && (
+                <Tooltip label={t('download', 'Скачать')}>
+                  <ActionIcon
+                    size="sm"
+                    variant="light"
+                    color="gray"
+                    component="a"
+                    href={attachmentContentUrl(record.id)}
+                    download={record.name || 'file'}
+                    onClick={e => e.stopPropagation()}>
+                    <IconDownload size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+
+              {/* Копировать путь / ссылку — всегда, если есть что копировать */}
+              {copyText && (
+                <Tooltip
+                  label={
+                    isCloud
+                      ? t('copy_link', 'Скопировать ссылку')
+                      : t('copy_path', 'Скопировать путь')
+                  }>
+                  <ActionIcon
+                    size="sm"
+                    variant="light"
+                    color="teal"
+                    onClick={handleCopy}>
+                    <IconCopy size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
             </Group>
           );
         }}
