@@ -82,4 +82,5 @@ class AttachmentsApp(App):
 
         storages = await env.models.attachment_storage.search(filter=[])
         for storage in storages:
-            await AttachmentRoute.ensure_default_route_for_storage(storage.id)
+            if storage.type == "file":
+                await AttachmentRoute.ensure_default_route_for_storage(storage)

@@ -456,8 +456,8 @@ class AttachmentRoute(DotModel):
 
     @classmethod
     async def ensure_default_route_for_storage(
-        cls, storage_id: int
-    ) -> "AttachmentRoute":
+        cls, storage_id: "AttachmentStorage"
+    ):
         """
         Ensure a default route exists for a storage.
 
@@ -471,7 +471,7 @@ class AttachmentRoute(DotModel):
         """
         # Check if default route already exists
         existing = await cls.search(
-            filter=[("storage_id", "=", storage_id), ("model", "=", None)],
+            filter=[("storage_id", "=", storage_id.id), ("model", "=", None)],
             limit=1,
         )
 
@@ -485,7 +485,7 @@ class AttachmentRoute(DotModel):
         default_route.pattern_root = "{model}"
         default_route.pattern_record = "{id}-{name}"
         default_route.flat = False
-        default_route.storage_id = env.models.attachment_storage(id=storage_id)
+        default_route.storage_id = storage_id
         default_route.active = True
 
         default_route.id = await cls.create(default_route)
