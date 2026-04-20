@@ -18,6 +18,7 @@
     "child_ids": "Subtasks",
     "user_id": "Assignee",
     "manager_id": "Manager",
+    "member_ids": "Members",
     "priority": "Priority",
     "tag_ids": "Tags",
     "task_ids": "Tasks",

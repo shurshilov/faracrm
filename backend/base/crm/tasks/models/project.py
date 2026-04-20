@@ -12,6 +12,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Text,
     Many2one,
+    Many2many,
     One2many,
     Selection,
     Datetime,
@@ -58,6 +59,22 @@ class Project(DotModel):
         string="Project Manager",
         ondelete="restrict",
         default=_default_current_user,
+    )
+
+    # Участники проекта — пользователи, которым разрешён доступ к проекту
+    # и его задачам через row-level rules. Используется в rules для
+    # project_user/project_manager ролей:
+    #   - можно видеть/править проект если ты manager_id или в member_ids
+    #   - то же самое для тасков через project_id.manager_id / .member_ids
+    member_ids: list["User"] = Many2many(
+        store=False,
+        relation_table=lambda: env.models.user,
+        many2many_table="project_member_many2many",
+        column1="user_id",
+        column2="project_id",
+        ondelete="cascade",
+        string="Members",
+        default=[],
     )
 
     date_start: datetime | None = Datetime(string="Start Date")

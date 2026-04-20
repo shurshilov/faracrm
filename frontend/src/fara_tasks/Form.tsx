@@ -132,7 +132,18 @@ export function ViewFormProject(props: ViewFormProps) {
       </FormSheet>
 
       {/* Вкладки */}
-      <FormTabs defaultTab="description">
+      <FormTabs defaultTab="member_ids_tab">
+        <FormTab
+          name="member_ids_tab"
+          label={t('fields.member_ids')}
+          icon={<IconAlignBoxLeftTop size={16} />}>
+          <Field name="member_ids" label={t('fields.member_ids')}>
+            <Field name="id" />
+            <Field name="name" />
+            <Field name="login" />
+          </Field>
+        </FormTab>
+
         {/* Описание */}
         <FormTab
           name="description"
