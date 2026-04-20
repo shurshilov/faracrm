@@ -1,6 +1,6 @@
 """FARA CRM project metadata."""
 
-VERSION = "1.0.286"
+VERSION = "1.0.296"
 
 
 DESCRIPTION = """
