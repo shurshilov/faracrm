@@ -23,9 +23,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     PolymorphicOne2many,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel, JsonMode
-from backend.base.system.dotorm.dotorm.integrations.pydantic import (
-    dotorm_to_pydantic_nested_one,
-)
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.schemas.base_schema import Id
 
@@ -65,6 +62,8 @@ class CRUDRouterGenerator(APIRouter):
         self._schema_search_input = schema_registry.get_search_input_schema(
             Model
         )
+        # Схема тела для ручек get/{id} и create_default — один раз.
+        self._schema_get_input = schema_registry.get_input_schema(Model)
 
         super().__init__(**kwargs)
 
@@ -299,7 +298,7 @@ class CRUDRouterGenerator(APIRouter):
     def _create_default_values(self) -> Callable:
         """Получение значений по умолчанию."""
         Model = self.Model
-        allowed_fields = dotorm_to_pydantic_nested_one(Model)
+        allowed_fields = self._schema_get_input
 
         async def route(payload: allowed_fields):  # type: ignore
             fields_client = []
@@ -380,7 +379,7 @@ class CRUDRouterGenerator(APIRouter):
     def _get(self) -> Callable:
         """Получение записи."""
         Model = self.Model
-        allowed_fields = dotorm_to_pydantic_nested_one(Model)
+        allowed_fields = self._schema_get_input
 
         async def route(id: int, payload: allowed_fields):  # type: ignore
             fields_client = []

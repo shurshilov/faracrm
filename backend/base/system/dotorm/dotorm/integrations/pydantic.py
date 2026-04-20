@@ -74,7 +74,12 @@ def dotorm_to_pydantic_nested_one(cls):
     """Работает с моделями DotOrm.
     Которая возвращает все поля модели.
     Используется на вход get и create_default
-    Прерывается на первом уровне вложенности"""
+    Прерывается на первом уровне вложенности.
+
+    Имена классов содержат имя модели — это обеспечивает:
+    - уникальность схем в Swagger (не дубликаты SchemaGetInput)
+    - правильное кэширование в SchemaRegistry
+    """
     fields_store = []
     fields_relation = []
 
@@ -95,14 +100,14 @@ def dotorm_to_pydantic_nested_one(cls):
                 # allowed_fields = list(relation_table.get_all_fields())
                 params = {field_name: (list[Literal[*allowed_fields]], ...)}
                 SchemaGetFieldRelationInput = create_model(
-                    "SchemaGetFieldRelationInput",
+                    f"{cls.__name__}Get_{field_name}_RelationInput",
                     **params,
                     # field_name=(list[Literal[*allowed_fields]], ...),
                 )
                 fields_relation.append(SchemaGetFieldRelationInput)
 
     return create_model(
-        "SchemaGetInput",
+        f"{cls.__name__}GetInput",
         fields=(list[Union[Literal[*fields_store], *fields_relation]], ...),
     )
 

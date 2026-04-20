@@ -40,6 +40,9 @@ from backend.base.system.dotorm_crud_auto.crud_pydantic_schemas import (
     SchemaRelationMany2ManyUpdateCreate,
     SchemaRelationOne2ManyUpdateCreate,
 )
+from backend.base.system.dotorm.dotorm.integrations.pydantic import (
+    dotorm_to_pydantic_nested_one,
+)
 
 # Типы отношений
 RELATION_TYPES = (
@@ -72,6 +75,10 @@ class SchemaRegistry:
         self._search_output_schemas: dict[str, type[BaseModel]] = {}
         self._read_output_schemas: dict[str, type[BaseModel]] = {}
         self._search_input_schemas: dict[str, type[BaseModel]] = {}
+        # Схемы для входа ручек get/create_default (тело запроса с fields=[...]).
+        # Раньше создавались при каждом вызове _get()/_create_default() и все
+        # назывались "SchemaGetInput" — отсюда дубликаты в Swagger.
+        self._get_input_schemas: dict[str, type[BaseModel]] = {}
         self._built = False
 
     def build_all(self, models: list[type]) -> None:
@@ -134,6 +141,11 @@ class SchemaRegistry:
                 # Search input schema
                 self._search_input_schemas[name] = (
                     self._build_search_input_schema(name, base, model)
+                )
+
+                # Get input schema (тело для GET/create_default)
+                self._get_input_schemas[name] = dotorm_to_pydantic_nested_one(
+                    model
                 )
 
             except Exception as e:
@@ -204,6 +216,16 @@ class SchemaRegistry:
             )
         return self._search_input_schemas[name]
 
+    def get_input_schema(self, model: type) -> type[BaseModel]:
+        """Получить схему тела для ручек get/create_default (fields=[...])."""
+        name = model.__name__
+        if name not in self._get_input_schemas:
+            # Ленивая генерация на случай если модель не попала в build_all
+            self._get_input_schemas[name] = dotorm_to_pydantic_nested_one(
+                model
+            )
+        return self._get_input_schemas[name]
+
     def reset(self) -> None:
         """
         Сбросить все кэшированные схемы.
@@ -215,6 +237,7 @@ class SchemaRegistry:
         self._search_output_schemas.clear()
         self._read_output_schemas.clear()
         self._search_input_schemas.clear()
+        self._get_input_schemas.clear()
         self._built = False
 
     @property
