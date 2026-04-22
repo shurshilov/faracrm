@@ -24,6 +24,11 @@ class ChatMember(MemberMixin):
     __table__ = "chat_member"
     __auto_crud__ = False
 
+    # Составной индекс для основного паттерна проверки membership:
+    # get_membership(chat_id, user_id) → фильтр (chat_id, user_id, is_active=True).
+    # Порядок (user_id, chat_id, is_active) — по запросу.
+    __indexes__ = [("user_id", "chat_id", "is_active")]
+
     _member_res_field = "chat_id"
     _member_res_model = staticmethod(lambda: env.models.chat)
 

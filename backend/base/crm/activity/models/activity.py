@@ -41,6 +41,10 @@ class Activity(DotModel):
 
     __table__ = "activity"
 
+    # Составные индексы: (res_model, res_id) — для полиморфной выборки
+    # всех активностей конкретной записи.
+    __indexes__ = [("res_model", "res_id")]
+
     id: int = Integer(primary_key=True)
 
     # Полиморфная привязка к записи

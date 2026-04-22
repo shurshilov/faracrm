@@ -47,6 +47,10 @@ class Attachment(DotModel):
 
     __table__ = "attachments"
 
+    # Составные индексы: (res_model, res_id) — для полиморфной выборки
+    # всех вложений конкретной записи (основной паттерн доступа).
+    __indexes__ = [("res_model", "res_id")]
+
     def json_list(self):
         """Добавляет checksum в LIST сериализацию для cache busting."""
         result = super().json_list()

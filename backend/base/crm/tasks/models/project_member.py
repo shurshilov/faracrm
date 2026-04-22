@@ -24,6 +24,11 @@ class ProjectMember(MemberMixin):
     __table__ = "project_member"
     # __auto_crud__ = False
 
+    # Составной индекс для основного паттерна проверки membership:
+    # get_membership(project_id, user_id) → фильтр (project_id, user_id, is_active=True).
+    # Порядок (user_id, project_id, is_active) — по запросу.
+    __indexes__ = [("user_id", "project_id", "is_active")]
+
     _member_res_field = "project_id"
     _member_res_model = staticmethod(lambda: env.models.project)
 

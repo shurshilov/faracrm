@@ -228,6 +228,31 @@ class DDLMixin(_Base):
                         f'CREATE INDEX IF NOT EXISTS "{m2m_index_name}" ON "{field.many2many_table}" ("{field.column1}", "{field.column2}")'
                     )
 
+        # Составные индексы из __indexes__ класса модели.
+        # Валидация делается здесь (а не при импорте), чтобы получить
+        # осмысленную ошибку с именем таблицы.
+        composite_indexes = getattr(cls, "__indexes__", None) or []
+        all_field_names = set(cls.get_fields().keys())
+        for cols in composite_indexes:
+            if not isinstance(cols, (tuple, list)) or len(cols) < 2:
+                raise ValueError(
+                    f"{cls.__name__}.__indexes__: each entry must be a tuple "
+                    f"of 2+ column names, got {cols!r}"
+                )
+            for col in cols:
+                if col not in all_field_names:
+                    raise ValueError(
+                        f"{cls.__name__}.__indexes__: unknown column "
+                        f"{col!r} (not a field of this model)"
+                    )
+            cols_joined = "_".join(cols)
+            index_name = f"idx_{cls.__table__}_{cols_joined}"
+            cols_sql = ", ".join(f'"{c}"' for c in cols)
+            index_statements.append(
+                f'CREATE INDEX IF NOT EXISTS "{index_name}" '
+                f'ON "{cls.__table__}" ({cols_sql})'
+            )
+
         # Создаём SQL-запрос для создания таблицы с определёнными полями.
         create_table_sql = f"""\
 CREATE TABLE IF NOT EXISTS "{cls.__table__}" (\

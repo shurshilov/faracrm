@@ -96,6 +96,11 @@ class Chat(DotModel):
     # Отключаем публичные /auto/chat/... эндпоинты.
     __auto_crud__ = False
 
+    # Составной индекс для поиска record-чата записи:
+    # вызывается при каждом открытии формы любой записи
+    # через /records/{res_model}/{res_id}/chat/exists.
+    __indexes__ = [("res_model", "res_id", "chat_type")]
+
     id: int = Integer(primary_key=True)
     name: str = Char(max_length=255, description="Название чата/канала")
     description: str | None = Text(description="Описание канала")

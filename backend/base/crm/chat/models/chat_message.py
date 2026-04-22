@@ -54,6 +54,13 @@ class ChatMessage(DotModel):
     # Отключаем публичные /auto/chat_message/... эндпоинты.
     __auto_crud__ = False
 
+    # Составной индекс для самого горячего запроса в чатах:
+    # выборка сообщений чата с фильтром is_deleted=false и сортировкой по id.
+    # Покрывает: /chats/.../messages/unread-count, /chats/.../messages/mark-read,
+    # search_count, watermark-запрос unread. id в конце даёт index-only scan
+    # для ORDER BY id DESC LIMIT 1 (последнее сообщение).
+    __indexes__ = [("chat_id", "is_deleted", "id")]
+
     id: int = Integer(primary_key=True)
 
     # Содержимое сообщения

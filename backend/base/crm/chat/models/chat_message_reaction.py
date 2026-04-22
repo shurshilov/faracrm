@@ -29,6 +29,11 @@ class ChatMessageReaction(DotModel):
 
     __table__ = "chat_message_reaction"
 
+    # Составной индекс для toggle-логики реакций:
+    # фильтр (message_id, user_id, emoji) при каждом клике на эмодзи.
+    # Также покрывает get_message_reactions по message_id (prefix scan).
+    __indexes__ = [("message_id", "user_id")]
+
     id: int = Integer(primary_key=True)
 
     # Эмодзи реакции
