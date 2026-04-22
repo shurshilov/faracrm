@@ -708,6 +708,11 @@ class DotModel(
                 if mode == JsonMode.LIST:
                     # обрубаем, исключаем все релейшен поля
                     fields_json[field_name] = field.json_list()
+                elif mode == JsonMode.NESTED_LIST:
+                    # Вложенный список (напр. O2M внутри FORM) —
+                    # для Many2one также возвращаем компактное {id, name},
+                    # иначе поле теряется при сериализации.
+                    fields_json[field_name] = field.json_list()
                 elif mode == JsonMode.FORM:
                     fields_json[field_name] = field.json(
                         exclude_unset=True, mode=JsonMode.FORM
