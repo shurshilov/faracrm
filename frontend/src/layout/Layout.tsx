@@ -22,9 +22,6 @@ function ThemedLayout() {
 
 export function Layout() {
   const authenticated = useSelector(selectIsLoggedIn);
-  // navigator.serviceWorker.register('/sw.js');
-  console.log(authenticated, 'authenticated');
-
   const AppLayout = useMemo(() => {
     if (authenticated) {
       // Возвращаем компонент с провайдером темы

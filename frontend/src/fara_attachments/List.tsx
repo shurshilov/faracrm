@@ -50,7 +50,6 @@ export function ViewListAttachments() {
         name="storage_id"
         label={t('fields.storage_id')}
         render={(value, record) => {
-          console.log(record.storage_id);
           const storageType = record.storage_id?.type;
           return (
             <Group gap={6} wrap="nowrap">
@@ -139,7 +138,8 @@ export function ViewListAttachments() {
                 record.storage_file_id &&
                 isGoogleEditable(record.mimetype) &&
                 editUrl && (
-                  <Tooltip label={t('edit_in_google', 'Редактировать в Google')}>
+                  <Tooltip
+                    label={t('edit_in_google', 'Редактировать в Google')}>
                     <ActionIcon
                       size="sm"
                       variant="light"
