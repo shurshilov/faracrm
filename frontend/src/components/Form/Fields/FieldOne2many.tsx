@@ -1,6 +1,5 @@
 import {
   ActionIcon,
-  Anchor,
   Box,
   Button,
   Group,
@@ -9,7 +8,7 @@ import {
   Tooltip,
 } from '@mantine/core';
 import { FormFieldsContext, useFormContext } from '../FormContext';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Children,
   isValidElement,
@@ -45,6 +44,7 @@ import {
   IconDatabaseOff,
 } from '@tabler/icons-react';
 import { InlineCell } from './InlineCell';
+import { BooleanCell, RelationCell, DateTimeCell } from '@/components/ListCells';
 import classes from './FieldRelation.module.css';
 
 const PAGE_SIZES = [10, 20, 40, 100];
@@ -350,6 +350,10 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
 
         // Readonly mode (default)
         if (cellValue === null || cellValue === undefined) {
+          // Для Boolean null трактуем как false — всё равно рисуем кружок
+          if (field.type === 'Boolean') {
+            return <BooleanCell value={false} />;
+          }
           return (
             <Text c="dimmed" size="sm">
               —
@@ -366,13 +370,22 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
         if (field.type === 'Many2one') {
           const relationModel = field.relation || field.relatedModel;
           return (
-            <Anchor
-              component={Link}
-              to={`/${relationModel}/${cellValue?.id}`}
-              size="sm"
-              onClick={event => event.stopPropagation()}>
-              {cellValue?.name || `#${cellValue?.id}`}
-            </Anchor>
+            <RelationCell
+              value={cellValue}
+              model={relationModel}
+              variant="link"
+            />
+          );
+        }
+        if (field.type === 'Boolean') {
+          return <BooleanCell value={Boolean(cellValue)} />;
+        }
+        if (field.type === 'Datetime' || field.type === 'Date') {
+          return (
+            <DateTimeCell
+              value={cellValue}
+              format={field.type === 'Date' ? 'date' : 'full'}
+            />
           );
         }
         return <Text size="sm">{`${cellValue}`}</Text>;

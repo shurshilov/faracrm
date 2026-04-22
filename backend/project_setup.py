@@ -87,6 +87,7 @@ from backend.base.crm.tasks.models.project import Project
 from backend.base.crm.tasks.models.task_stage import TaskStage
 from backend.base.crm.tasks.models.task_tag import TaskTag
 from backend.base.crm.tasks.models.task import Task
+from backend.base.crm.tasks.models.project_member import ProjectMember
 
 # Activity
 from backend.base.crm.activity.models.activity_type import ActivityType
@@ -265,6 +266,7 @@ class Models(ModelsCore, ExtensibleMixin):
     task_tag = TaskTag
     task_stage = TaskStage
     project = Project
+    project_member = ProjectMember
     # activity
     activity = Activity
     activity_type = ActivityType

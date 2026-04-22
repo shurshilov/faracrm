@@ -52,6 +52,17 @@
     "high": "High",
     "urgent": "Urgent"
   },
+  "project_member":{
+    "user_id": "User",
+    "partner_id": "Partner",
+    "is_admin": "Admin",
+    "is_active": "Active",
+    "can_read": "Can read",
+    "can_write": "Can write",
+    "can_assign": "Can assign",
+    "can_invite": "Can invite",
+    "can_archive": "Can archive"
+  },
   "status": {
     "active": "Active",
     "on_hold": "On Hold",

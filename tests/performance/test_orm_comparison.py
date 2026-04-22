@@ -130,7 +130,7 @@ async def raw_pool():
             CREATE INDEX idx_raw_date_deadline ON bench_activity_raw (date_deadline);
             CREATE INDEX idx_raw_state ON bench_activity_raw (state);
             CREATE INDEX idx_raw_done ON bench_activity_raw (done);
-            CREATE INDEX idx_raw_res_model ON bench_activity_raw (res_model);
+            CREATE INDEX idx_raw_member_res_model ON bench_activity_raw (res_model);
         """)
         await conn.execute(
             """
@@ -227,7 +227,7 @@ class TestRawAsyncpg:
                     SEARCH_LIMIT,
                 )
 
-    async def test_search_filter_res_model(self, raw_pool):
+    async def test_search_filter_member_res_model(self, raw_pool):
         async with raw_pool.acquire() as conn:
             async with bench(
                 self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
@@ -499,7 +499,7 @@ class TestSQLAlchemy:
                 )
                 result.scalars().all()
 
-    async def test_search_filter_res_model(self, sa_session):
+    async def test_search_filter_member_res_model(self, sa_session):
         async with sa_session() as s:
             async with bench(
                 self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
@@ -734,7 +734,7 @@ class TestTortoise:
                 .all()
             )
 
-    async def test_search_filter_res_model(self, tortoise_db):
+    async def test_search_filter_member_res_model(self, tortoise_db):
         async with bench(
             self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
         ):
@@ -934,7 +934,7 @@ class TestDotorm:
                     limit=SEARCH_LIMIT,
                 )
 
-    async def test_search_filter_res_model(
+    async def test_search_filter_member_res_model(
         self, db_pool, dotorm_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity

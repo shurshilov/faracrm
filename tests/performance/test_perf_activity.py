@@ -82,7 +82,7 @@ class TestActivityPerformance:
             )
         assert len(result) >= 1
 
-    async def test_search_by_res_model(
+    async def test_search_by_member_res_model(
         self, db_pool, seed_activities, perf_report
     ):
         """Filter by polymorphic field res_model."""

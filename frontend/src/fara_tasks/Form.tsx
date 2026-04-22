@@ -22,8 +22,7 @@ import type {
   TaskStageRecord,
   TaskTagRecord,
 } from '@/types/records';
-import { FieldColor } from '@/components/Form/Fields/FieldColor';
-import ColorCell from '@/components/ListCells/ColorCell';
+import { RelationCell } from '@/components/ListCells';
 
 // ==================== Task Form ====================
 
@@ -137,10 +136,21 @@ export function ViewFormProject(props: ViewFormProps) {
           name="member_ids_tab"
           label={t('fields.member_ids')}
           icon={<IconAlignBoxLeftTop size={16} />}>
-          <Field name="member_ids" label={t('fields.member_ids')}>
-            <Field name="id" />
-            <Field name="name" />
-            <Field name="login" />
+          <Field
+            name="member_ids"
+            label={t('fields.member_ids')}
+            showCreate={true}
+            showSelect={false}>
+            {/* <Field name="id" /> */}
+            <Field name="user_id" />
+            <Field name="partner_id" />
+            <Field name="is_admin" label={t('project_member.is_admin')} />
+            <Field name="is_active" label={t('project_member.is_active')} />
+            <Field name="can_read" label={t('project_member.can_read')} />
+            <Field name="can_write" label={t('project_member.can_write')} />
+            <Field name="can_assign" label={t('project_member.can_assign')} />
+            <Field name="can_invite" label={t('project_member.can_invite')} />
+            <Field name="can_archive" label={t('project_member.can_archive')} />
           </Field>
         </FormTab>
 
@@ -206,6 +216,33 @@ export function ViewFormTaskTag(props: ViewFormProps) {
           <Field name="color" label={t('fields.color')} widget="color" />
         </FormRow>
         <Field name="active" label={t('fields.active')} />
+      </FormSheet>
+    </Form>
+  );
+}
+
+export function ViewFormProjectMember(props: ViewFormProps) {
+  const { t } = useTranslation('tasks');
+  return (
+    <Form model="project_member" {...props}>
+      <FormSheet>
+        <FormRow cols={2}>
+          <Field name="user_id" label={t('project_member.user_id')} />
+          <Field name="partner_id" label={t('project_member.partner_id')} />
+        </FormRow>
+        <FormRow cols={2}>
+          <Field name="is_admin" label={t('project_member.is_admin')} />
+          <Field name="is_active" label={t('project_member.is_active')} />
+        </FormRow>
+        <FormRow cols={2}>
+          <Field name="can_read" label={t('project_member.can_read')} />
+          <Field name="can_write" label={t('project_member.can_write')} />
+        </FormRow>
+        <FormRow cols={3}>
+          <Field name="can_assign" label={t('project_member.can_assign')} />
+          <Field name="can_invite" label={t('project_member.can_invite')} />
+          <Field name="can_archive" label={t('project_member.can_archive')} />
+        </FormRow>
       </FormSheet>
     </Form>
   );

@@ -453,6 +453,13 @@ export const modelsConfig: Record<string, ModelConfig> = {
         default: m.ViewGanttTasks,
       })),
   },
+  project_member: {
+    // menu не указываем — это вспомогательная модель, не нужна в сайдбаре
+    form: () =>
+      import('@/fara_tasks/Form').then(m => ({
+        default: m.ViewFormProjectMember,
+      })),
+  },
   project: {
     menu: MenuGroups.projects,
     list: () =>
