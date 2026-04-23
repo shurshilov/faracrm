@@ -32,5 +32,10 @@ class ChatSettings(BaseSettings):
     # Pub/Sub backend: "pg" (PostgreSQL LISTEN/NOTIFY) или "redis"
     pubsub_backend: Literal["pg", "redis"] = "pg"
 
-    # Redis URL (используется только при pubsub_backend="redis")
+    # Redis
     redis_url: str = "redis://localhost:6379/0"
+    redis_channel: str = "ws_events"
+
+    # PostgreSQL
+    pg_channel: str = "ws_events"
+    pg_max_payload: int = 7900

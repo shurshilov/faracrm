@@ -12,6 +12,59 @@ services:
       # - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+    # PostgreSQL разумные дефолты для небольшого prod-стенда
+    # (подобраны под 2 vCPU / 4 GB RAM — работают на любой машине от этого размера).
+    # Если у тебя больше RAM — подкрути цифры по комментариям.
+    # Формат: "наше значение   # PG default: <дефолт>"
+    command:
+      - "postgres"
+      # ── Memory ────────────────────────────────────────
+      # shared_buffers: главный кеш таблиц/индексов в RAM.
+      # Правило: 25% RAM. Для 4GB = 256MB, 8GB = 1GB, 16GB = 4GB.
+      - "-c"
+      - "shared_buffers=256MB"               # PG default: 128MB
+      # effective_cache_size: ПОДСКАЗКА планировщику (память не резервируется),
+      # сколько данных помещается в OS page cache + shared_buffers.
+      # Правило: 50-75% RAM. Для 4GB = 2GB, 8GB = 4GB, 16GB = 12GB.
+      - "-c"
+      - "effective_cache_size=4GB"           # PG default: 4GB
+      # work_mem: RAM на каждую sort/hash операцию в запросе.
+      # Дефолт 4MB безопасен — не взорвёт память при много коннектов.
+      # Для 8GB+ RAM можно поднять до 16MB.
+      - "-c"
+      - "work_mem=4MB"                       # PG default: 4MB (оставлен)
+      # maintenance_work_mem: RAM для VACUUM / CREATE INDEX.
+      # Ускоряет создание индексов и вакуум. Для 8GB+ можно 512MB, 16GB+ — 1GB.
+      - "-c"
+      - "maintenance_work_mem=128MB"         # PG default: 64MB
+      # ── Planner (SSD-оптимизированные) ────────────────
+      # random_page_cost: стоимость random read vs sequential.
+      # Дефолт 4.0 для HDD, для SSD/NVMe = 1.1. Разница критична — на HDD-дефолте
+      # планировщик делает seq scan вместо index scan.
+      - "-c"
+      - "random_page_cost=1.1"               # PG default: 4.0 (HDD)
+      # effective_io_concurrency: сколько параллельных IO-запросов может сделать диск.
+      # Для SSD = 200, NVMe = 300, HDD = 2. По умолчанию всего 1.
+      - "-c"
+      - "effective_io_concurrency=200"       # PG default: 1
+      # ── WAL / Checkpoints ─────────────────────────────
+      # checkpoint_completion_target: размазывает IO от checkpoint по времени.
+      # В PG 16+ уже дефолт 0.9, указан явно для явности.
+      - "-c"
+      - "checkpoint_completion_target=0.9"   # PG default: 0.9 (PG 16+)
+      # ── Logging (диагностика) ─────────────────────────
+      # Логирует запросы дольше 1000 мс — помогает ловить slow queries.
+      - "-c"
+      - "log_min_duration_statement=1000"    # PG default: -1 (off)
+      # Логирует ожидания блокировок (lock contention).
+      - "-c"
+      - "log_lock_waits=on"                  # PG default: off
+
+    # Dev shared memory для параллельных запросов и больших shared_buffers.
+    # Дефолт Docker всего 64MB, не хватает даже для умеренного shared_buffers.
+    shm_size: 256mb                          # Docker default: 64MB
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U openpg -d fara"]
       interval: 5s
@@ -41,7 +94,17 @@ services:
       # Disable SSL for local Docker postgres
       PGSSLMODE: disable
       # Cookie only https, because use double token pattern
-      # COOKIE_SECURE: "true"
+      # AUTH__COOKIE_SECURE: "fasle"
+      # AUTH__COOKIE_NAME: session_cookie
+      # AUTH__COOKIE_SAMESITE: lax
+
+      # Your domain name
+      # BASE_URL: "http://127.0.0.1:8090"
+
+      # Cron settings
+      # CRON__ENABLED: "true"
+      # CRON__CHECK_INTERVAL: 60
+      # CRON__MAX_THREADS: 2
 
       # Logger
       LOGGER__LOG_LEVEL: DEBUG

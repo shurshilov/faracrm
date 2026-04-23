@@ -22,6 +22,13 @@ class AdministrationApp(App):
 
     async def post_init(self, app: FastAPI):
         env: Environment = app.state.env
+        # Дефолт base_url берём из env (SettingsCore.base_url),
+        # чтобы БД-запись при первом старте соответствовала тому,
+        # что разработчик настроил в .env/docker-compose.
+        base_url_default = getattr(
+            env.settings, "base_url", "http://localhost:8090"
+        )
+
         # создаёт системную настройку `ui.demo_mode`,
         # которая управляет префиллом формы логина на фронте.
         await env.models.system_settings.ensure_defaults(
@@ -39,6 +46,23 @@ class AdministrationApp(App):
                     "is_system": True,
                     # Не меняется часто → кешируем до перезапуска.
                     # set_value() сам инвалидирует кеш при изменении.
+                    "cache_ttl": -1,
+                },
+                {
+                    # Базовый URL сервера: используется для генерации
+                    # webhook-URL и внешних ссылок. Дефолт берётся из env
+                    # (BASE_URL), но админ может переопределить на лету
+                    # через UI system_settings без рестарта.
+                    "key": "core.base_url",
+                    "value": {"value": base_url_default},
+                    "description": (
+                        "Базовый URL сервера. Используется для генерации "
+                        "webhook-URL и внешних ссылок. По умолчанию "
+                        "подхватывается из env-переменной BASE_URL."
+                    ),
+                    "module": "core",
+                    "is_system": True,
+                    # Редко меняется → кешируем до перезапуска.
                     "cache_ttl": -1,
                 },
             ]

@@ -68,28 +68,18 @@ class ChatApp(Service):
         """
         from .websocket.pubsub import (
             create_pubsub_backend,
-            PubSubSettings,
         )
 
         env: "Environment" = app.state.env
         self.chat_manager = ConnectionManager()
 
-        # Загружаем настройки из env переменных
-        try:
-            settings = PubSubSettings()
-        except Exception:
-            logger.warning(
-                "ChatApp: failed to load PubSubSettings, "
-                "using defaults (pg backend)",
-                exc_info=True,
-            )
-            settings = PubSubSettings(backend="pg")
+        settings = env.settings.chat
 
         # Создаём backend через фабрику (Strategy pattern)
         backend = create_pubsub_backend(settings)
 
         # Инициализируем в зависимости от типа
-        if settings.backend == "redis":
+        if settings.pubsub_backend == "redis":
             await backend.setup(redis_url=settings.redis_url)
             logger.info(
                 "ChatApp: using Redis pub/sub (%s)", settings.redis_url
@@ -114,7 +104,7 @@ class ChatApp(Service):
         logger.info(
             "ChatApp: pub/sub started (backend=%s) — "
             "WS events are cross-process",
-            settings.backend,
+            settings.pubsub_backend,
         )
 
     async def shutdown(self, app: "FastAPI"):

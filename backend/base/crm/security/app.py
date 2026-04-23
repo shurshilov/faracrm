@@ -109,8 +109,8 @@ class SecurityApp(Service):
             [
                 {
                     "key": "auth.session_ttl",
-                    "value": {"value": 60 * 60 * 24},
-                    "description": "Время жизни сессии в секундах (по умолчанию 24 часа)",
+                    "value": {"value": 60 * 60 * 24 * 7},
+                    "description": "Время жизни сессии в секундах (по умолчанию 7 дней)",
                     "module": "auth",
                     "is_system": True,
                     "cache_ttl": -1,

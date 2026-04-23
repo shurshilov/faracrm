@@ -274,6 +274,9 @@ class SystemSettings(DotModel):
     # ==================== Обратная совместимость ====================
 
     @classmethod
-    async def get_base_url(cls):
-        """Получить базовый URL сервера."""
-        return await cls.get_value("base_url", "")
+    async def get_base_url(cls) -> str:
+        """
+        Получить базовый URL сервера.
+        """
+
+        return await cls.get_value("core.base_url", "http://localhost:8090")
