@@ -91,23 +91,29 @@ services:
       DOTORM_DATABASES_POSTGRES__FARA__DATABASE: fara
       DOTORM_DATABASES_POSTGRES__FARA__DRIVER: asyncpg
       DOTORM_DATABASES_POSTGRES__FARA__SYNC_DB: "true"
+
       # Disable SSL for local Docker postgres
       PGSSLMODE: disable
+
+      # Logger
+      LOGGER__LOG_LEVEL: DEBUG
+
       # Cookie only https, because use double token pattern
       # AUTH__COOKIE_SECURE: "fasle"
       # AUTH__COOKIE_NAME: session_cookie
       # AUTH__COOKIE_SAMESITE: lax
-
-      # Your domain name
-      # BASE_URL: "http://127.0.0.1:8090"
 
       # Cron settings
       # CRON__ENABLED: "true"
       # CRON__CHECK_INTERVAL: 60
       # CRON__MAX_THREADS: 2
 
-      # Logger
-      LOGGER__LOG_LEVEL: DEBUG
+      # Work with external api, Telegram, Whatsapp, Google etc...
+      # SITE_URL: "https://mydomain.com"
+      # API_URL: "https://mydomain.com/api"
+
+      # SITE_URL: "http://127.0.0.1:7777"
+      # API_URL: "http://127.0.0.1:7777/api"
     ports:
       - "8000:8000"
     volumes:

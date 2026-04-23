@@ -161,16 +161,15 @@ async def oauth2_callback(req: Request):
             state=storage.google_verify_code,
         )
 
-        # Определяем redirect_uri
-        base_url = str(req.base_url).rstrip("/")
-        if base_url.startswith(r"http://127.0.0.1"):
-            base_url = "http://localhost" + base_url[16:]
+        api_url = await env.models.system_settings.get_api_url()
+        # Приводим localhost чтобы работало локально, политика гугл
+        if api_url.startswith(r"http://127.0.0.1"):
+            api_url = "http://localhost" + api_url[16:]
 
         # Приводим к HTTPS если не localhost
-        elif base_url.startswith("http:") and "localhost" not in base_url:
-            base_url = "https:" + base_url[5:]
-
-        redirect_uri = f"{base_url}/google/callback"
+        elif api_url.startswith("http:") and "localhost" not in api_url:
+            api_url = "https:" + api_url[5:]
+        redirect_uri = f"{api_url.rstrip('/')}/google/callback"
 
         flow.redirect_uri = redirect_uri
 
@@ -344,21 +343,18 @@ async def oauth2_start(req: Request, storage_id: int):
             state=verify_code,
         )
 
-        # Определяем redirect_uri
-        base_url = str(req.base_url).rstrip("/")
-        if base_url.startswith(r"http://127.0.0.1"):
-            base_url = "http://localhost" + base_url[16:]
+        # redirect_uri берётся из SystemSettings (core.api_url).
+        # Должен совпадать с URL, зарегистрированным в Google Cloud Console.
+        # См. комментарий в oauth2_callback выше.
+        api_url = await env.models.system_settings.get_api_url()
+        # Приводим localhost чтобы работало локально, политика гугл
+        if api_url.startswith(r"http://127.0.0.1"):
+            api_url = "http://localhost" + api_url[16:]
 
         # Приводим к HTTPS если не localhost
-        elif base_url.startswith("http:") and "localhost" not in base_url:
-            base_url = "https:" + base_url[5:]
-            # raise ValueError(
-            #     f"Please check, that system parameter web.base.url, \
-            #     should start 'HTTPS://' or be localhost (example - http://127.0.0.1:8069). \
-            #     Current web.base.url: {base_url}"
-            # )
-
-        flow.redirect_uri = f"{base_url}/google/callback"
+        elif api_url.startswith("http:") and "localhost" not in api_url:
+            api_url = "https:" + api_url[5:]
+        flow.redirect_uri = f"{api_url.rstrip('/')}/google/callback"
 
         # Генерируем URL авторизации
         authorization_url, state = flow.authorization_url(

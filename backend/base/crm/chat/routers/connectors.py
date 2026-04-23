@@ -42,9 +42,11 @@ async def set_connector_webhook(req: Request, connector_id: int):
 
     connector = await env.models.chat_connector.get(connector_id)
 
-    # Передаём base_url из request если нет в настройках
-    base_url = str(req.base_url).rstrip("/")
-    success = await connector.set_webhook(base_url=base_url)
+    # api_url берётся из SystemSettings (core.api_url) внутри set_webhook.
+    # Ранее здесь использовался str(req.base_url) — ненадёжно за nginx:
+    # он зависит от X-Forwarded-Host/Proto и может не совпадать с тем,
+    # что зарегистрировано в Telegram.
+    success = await connector.set_webhook()
 
     return {
         "success": success,

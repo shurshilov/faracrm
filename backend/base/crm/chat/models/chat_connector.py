@@ -369,28 +369,31 @@ class ChatConnector(DotModel):
 
         return get_strategy(self.type)
 
-    async def set_webhook(self, base_url: str | None = None) -> bool:
+    async def set_webhook(self, api_url: str | None = None) -> bool:
         """
         Установить вебхук.
 
         Args:
-            base_url: Базовый URL сервера. Если не указан, берётся из SystemSettings.
+            api_url: URL бэкенда снаружи. Если не указан, берётся из
+                     SystemSettings (core.api_url).
+                     Это именно api_url, а не site_url: webhook
+                     приземляется на роут бэкенда (/chat/webhook/...),
+                     а не на фронт.
         """
         try:
             # Генерируем webhook_url если его нет
             if not self.webhook_url:
-                if not base_url:
-
-                    settings_base_url = (
-                        await env.models.system_settings.get_base_url()
+                if not api_url:
+                    settings_api_url = (
+                        await env.models.system_settings.get_api_url()
                     )
-                    base_url = (
-                        settings_base_url
-                        if isinstance(settings_base_url, str)
-                        else "http://127.0.0.1"
+                    api_url = (
+                        settings_api_url
+                        if isinstance(settings_api_url, str)
+                        else "http://127.0.0.1:8090"
                     )
 
-                self.webhook_url = self.generate_webhook_url(base_url)
+                self.webhook_url = self.generate_webhook_url(api_url)
 
             await self.strategy.set_webhook(self)
             await self.update(
@@ -475,12 +478,12 @@ class ChatConnector(DotModel):
                     f"Failed to refresh token for {connector.id}: {result}"
                 )
 
-    def generate_webhook_url(self, base_url: str) -> str:
+    def generate_webhook_url(self, api_url: str) -> str:
         """
         Генерирует webhook URL для коннектора.
 
         Args:
-            base_url: Базовый URL сервера
+            api_url: URL бэкенда снаружи (см. set_webhook).
 
         Returns:
             Полный webhook URL
@@ -492,6 +495,6 @@ class ChatConnector(DotModel):
         if not self.webhook_hash:
             self.webhook_hash = secrets.token_hex(32)
 
-        # Убираем лишние слеши, если base_url пришел с '/' в конце
-        clean_url = base_url.rstrip("/")
+        # Убираем лишние слеши, если api_url пришел с '/' в конце
+        clean_url = api_url.rstrip("/")
         return f"{clean_url}/chat/webhook/{self.webhook_hash}/{self.id}"

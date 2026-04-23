@@ -1,7 +1,7 @@
 import { test, expect } from "../../fixtures";
 import { WSClient } from "../../helpers/ws.helper";
 
-const API_URL = process.env.API_URL || "http://localhost:8090";
+const API_URL = process.env.API_URL || "http://127.0.0.1:8090";
 const WS_URL = API_URL.replace("http", "ws");
 
 // Все WS тесты — последовательно, чтобы не конфликтовать по 1-WS-per-user
@@ -318,11 +318,7 @@ test.describe("WebSocket — presence", () => {
     });
 
     // admin получает chat_created с user3 в online_users
-    await adminWS.waitForPresence(
-      user3Session.user_id.id,
-      "online",
-      15_000,
-    );
+    await adminWS.waitForPresence(user3Session.user_id.id, "online", 15_000);
 
     adminWS.clearMessages();
     await user3ws.close();

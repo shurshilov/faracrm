@@ -271,12 +271,18 @@ class SystemSettings(DotModel):
         log.info("SystemSettings.warm_cache: warmed %s keys", count)
         return count
 
-    # ==================== Обратная совместимость ====================
+    # ==================== Хелперы для URL ====================
 
     @classmethod
-    async def get_base_url(cls) -> str:
+    async def get_site_url(cls) -> str:
         """
-        Получить базовый URL сервера.
+        Получить URL корня сайта (где юзер открывает CRM в браузере).
         """
+        return await cls.get_value("core.site_url", "http://127.0.0.1:5173")
 
-        return await cls.get_value("core.base_url", "http://localhost:8090")
+    @classmethod
+    async def get_api_url(cls) -> str:
+        """
+        Получить URL бэкенда, доступный СНАРУЖИ.
+        """
+        return await cls.get_value("core.api_url", "http://127.0.0.1:8090")
