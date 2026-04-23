@@ -7,7 +7,6 @@
     CRON__ENABLED: bool = True - включить/выключить cron worker
     CRON__CHECK_INTERVAL: int = 60 - интервал проверки задач (секунды)
     CRON__MAX_THREADS: int = 2 - максимум параллельных задач
-    CRON__RUN_ON_STARTUP: bool = True - (deprecated, ignored)
 
 Пример .env:
     CRON__ENABLED=true
@@ -29,6 +28,3 @@ class CronSettings(BaseSettings):
 
     # Максимум параллельных задач
     max_threads: int = 2
-
-    # Deprecated: раньше управлял запуском в lifespan, теперь игнорируется
-    run_on_startup: bool = True
