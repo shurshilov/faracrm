@@ -22,6 +22,10 @@ interface ChatWebSocketContextValue {
   addMessageListener: (listener: (message: WSMessage) => void) => () => void;
   onlineUsers: Set<number>;
   isUserOnline: (userId: number) => boolean;
+  // Сырая отправка JSON-сообщения в WebSocket. Нужна для WebRTC-сигналинга
+  // (call.offer, call.answer, call.ice) и future-команд, которым не хочется
+  // заводить отдельный метод в провайдере.
+  send: (message: object) => void;
 }
 
 const ChatWebSocketContext = createContext<ChatWebSocketContextValue | null>(
@@ -468,6 +472,7 @@ export function ChatWebSocketProvider({
     addMessageListener,
     onlineUsers,
     isUserOnline,
+    send: sendMessage,
   };
 
   return (

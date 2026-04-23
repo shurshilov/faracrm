@@ -176,6 +176,22 @@ async def get_messages(
             "is_deleted": msg.is_deleted is True,
         }
 
+        # Call-поля (добавляем только для message_type='call',
+        # чтобы не раздувать payload обычных сообщений).
+        if msg.message_type == "call":
+            msg_data["call_direction"] = msg.call_direction
+            msg_data["call_disposition"] = msg.call_disposition
+            msg_data["call_duration"] = msg.call_duration
+            msg_data["call_talk_duration"] = msg.call_talk_duration
+            msg_data["call_answer_time"] = (
+                msg.call_answer_time.isoformat()
+                if msg.call_answer_time
+                else None
+            )
+            msg_data["call_end_time"] = (
+                msg.call_end_time.isoformat() if msg.call_end_time else None
+            )
+
         result.append(msg_data)
 
     return {"data": result}

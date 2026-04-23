@@ -24,11 +24,23 @@ class WebsocketCommand(str, Enum):
     typing = "typing"
     read = "read"
 
+    # ── WebRTC call signaling ──
+    # (см. docs/calls-webrtc.md). Клиент → сервер:
+    call_invite_ack = (
+        "call.invite_ack"  # подтверждение получения invite (presence check)
+    )
+    call_offer = "call.offer"  # SDP offer
+    call_answer = "call.answer"  # SDP answer
+    call_ice = "call.ice"  # ICE candidate
+
 
 class PubSubCommand(str, Enum):
     SEND_CHAT = "send_to_chat"
     SEND_USER = "send_to_user"
     NEW_CHAT = "notify_new_chat"
+    # Cross-worker уведомление "callee получил invite с ack'нулся".
+    # Будит asyncio.Event в HTTP /calls/start на любом воркере.
+    CALL_ACK = "call_ack"
 
 
 class ConnectionManager:
@@ -376,6 +388,12 @@ class ConnectionManager:
                 user_id, {"type": "chat_created", "chat_id": chat_id}
             )
 
+        elif event_type == PubSubCommand.CALL_ACK:
+            # Локально разбудить pending Event, если он есть в этом воркере.
+            call_id = event.get("call_id")
+            if call_id is not None:
+                self._notify_invite_ack_local(int(call_id))
+
     async def _send_to_websocket(self, ws: WebSocket, message: dict) -> bool:
         """Отправить в один сокет. Если сдох — удалить из всех списков."""
         if ws.client_state == WebSocketState.CONNECTED:
@@ -548,3 +566,142 @@ class ConnectionManager:
                     },
                     exclude_user=user_id,
                 )
+
+        # ── WebRTC call signaling ─────────────────────────────────────
+        # Все call-события tuнeлируются между двумя участниками звонка.
+        # Сервер здесь — тупой router через PubSub: нашёл "второго"
+        # участника по call_id и переслал ему payload. Бизнес-логики ноль.
+        elif message_type in (
+            WebsocketCommand.call_offer,
+            WebsocketCommand.call_answer,
+            WebsocketCommand.call_ice,
+        ):
+            await self._handle_call_signal(user_id, data)
+
+        elif message_type == WebsocketCommand.call_invite_ack:
+            # Callee подтвердил получение invite. Шлём cross-process
+            # уведомление, чтобы разбудить HTTP /calls/start в любом
+            # воркере (где сидит инициатор).
+            call_id = data.get("call_id")
+            if call_id is not None:
+                # 1) разбудить локально (если /calls/start в этом же воркере)
+                self._notify_invite_ack_local(int(call_id))
+                # 2) разбудить в любом другом воркере через PubSub
+                if self._pubsub:
+                    await self._pubsub.publish(
+                        PubSubCommand.CALL_ACK,
+                        {"call_id": int(call_id)},
+                    )
+
+    # ──────────────────────────────────────────────
+    # WebRTC signaling helpers
+    # ──────────────────────────────────────────────
+
+    async def _handle_call_signal(self, from_user_id: int, data: dict) -> None:
+        """
+        Пересылка call.offer / call.answer / call.ice от from_user_id
+        "второму" участнику звонка.
+
+        Второй участник определяется тут же — по call_id читаем ChatMessage,
+        берём chat_id и находим второго chat_member (не автора сообщения).
+        """
+        call_id = data.get("call_id")
+        if call_id is None:
+            return
+
+        # Поздний импорт — избегаем циклов при старте.
+        from backend.base.system.core.enviroment import env
+
+        try:
+            call_msg = await env.models.chat_message.get(int(call_id))
+        except Exception:
+            logger.warning(
+                "call signal: message %s not found (from user %s)",
+                call_id,
+                from_user_id,
+            )
+            return
+
+        # Находим "другого" участника direct-чата.
+        other_user_id = await self._find_other_direct_user(
+            (
+                call_msg.chat_id.id
+                if hasattr(call_msg.chat_id, "id")
+                else call_msg.chat_id
+            ),
+            from_user_id,
+        )
+        if not other_user_id:
+            logger.warning(
+                "call signal: no peer found for call %s (from user %s)",
+                call_id,
+                from_user_id,
+            )
+            return
+
+        # Пересылаем payload как есть, меняя только направление.
+        # Клиент на той стороне узнаёт событие по `type`.
+        await self.send_to_user(other_user_id, data)
+
+    async def _find_other_direct_user(
+        self, chat_id: int, not_user_id: int
+    ) -> int | None:
+        """Найти второго юзера в direct-чате (не равного not_user_id)."""
+        from backend.base.system.core.enviroment import env
+
+        members = await env.models.chat_member.search(
+            filter=[
+                ("chat_id", "=", chat_id),
+                ("is_active", "=", True),
+            ],
+            fields=["user_id"],
+            limit=2,
+        )
+        for m in members:
+            uid = m.user_id.id if hasattr(m.user_id, "id") else m.user_id
+            if uid and uid != not_user_id:
+                return uid
+        return None
+
+    # ──────────────────────────────────────────────
+    # Presence check (ожидание invite_ack)
+    # ──────────────────────────────────────────────
+    # Используется в HTTP /calls/start для проверки, что callee
+    # реально подключён к WebSocket (в т.ч. в другом воркере).
+    #
+    # Flow:
+    #   1. /calls/start публикует `call.invite` через PubSub на callee
+    #   2. Тот же handler регистрирует pending event для call_id
+    #   3. Клиент callee получает invite, тут же шлёт `call.invite_ack`
+    #   4. Тот воркер где сидит callee обрабатывает ack и...
+    #      → публикует cross-process событие `call.invite_ack_cross`
+    #        (чтобы ЛЮБОЙ воркер мог разбудить pending event)
+    #   5. /calls/start просыпается, возвращает успех
+    #
+    # Чтобы не изобретать ещё один PubSub канал, мы пересылаем invite_ack
+    # обратно инициатору через send_to_user (он же ждёт событие).
+
+    def _register_pending_invite(self, call_id: int) -> "asyncio.Event":
+        """
+        Зарегистрировать ожидание ack для call_id.
+        Возвращает Event, который проснётся при получении ack.
+
+        Вызывается из HTTP /calls/start.
+        """
+        if not hasattr(self, "_pending_invites"):
+            self._pending_invites: dict[int, asyncio.Event] = {}
+        ev = asyncio.Event()
+        self._pending_invites[call_id] = ev
+        return ev
+
+    def _notify_invite_ack_local(self, call_id: int) -> None:
+        """Разбудить ожидающий /calls/start (если он в этом же воркере)."""
+        pending = getattr(self, "_pending_invites", {})
+        ev = pending.get(call_id)
+        if ev:
+            ev.set()
+
+    def _cleanup_pending_invite(self, call_id: int) -> None:
+        """Убрать запись из pending после выхода из /calls/start."""
+        pending = getattr(self, "_pending_invites", {})
+        pending.pop(call_id, None)

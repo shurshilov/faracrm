@@ -574,8 +574,13 @@ export function ChatMessages({
                       </Box>
                     )}
 
-                    {/* Текстовое сообщение - отдельный bubble */}
-                    {message.body?.trim() && (
+                    {/* Текстовое сообщение - отдельный bubble.
+                       Для call и email рендерим всегда — у call body пустой
+                       (вся инфа в call_* полях), у email body может быть
+                       пустым при проблемах парсинга. */}
+                    {(message.body?.trim() ||
+                      message.message_type === 'call' ||
+                      message.message_type === 'email') && (
                       <Paper
                         className={`${styles.messageBubble} ${isOwnMessage(message) ? styles.own : styles.other} ${message.message_type === 'email' ? styles.emailBubble : ''}`}
                         onContextMenu={e => handleContextMenu(e, message)}

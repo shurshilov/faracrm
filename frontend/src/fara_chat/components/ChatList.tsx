@@ -39,7 +39,14 @@ function getMessagePreview(
   lastMessage: ChatLastMessage | null | undefined,
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string | null {
-  if (!lastMessage?.body) return null;
+  if (!lastMessage) return null;
+  // Звонок — body пустой, превью собираем по message_type.
+  // Можно дополнительно использовать call_disposition, если его
+  // добавят в ChatLastMessage, но для старта достаточно общего "Звонок".
+  if (lastMessage.message_type === 'call') {
+    return `📞 ${t('call', { defaultValue: 'Звонок' })}`;
+  }
+  if (!lastMessage.body) return null;
   if (lastMessage.message_type === 'email') {
     return stripHtml(lastMessage.body);
   }

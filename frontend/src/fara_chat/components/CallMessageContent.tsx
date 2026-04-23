@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
-import { Box, Text, Group, ThemeIcon, Badge } from '@mantine/core';
+import { Box, Text, Group, ThemeIcon } from '@mantine/core';
 import {
   IconPhone,
   IconPhoneIncoming,
   IconPhoneOutgoing,
   IconPhoneOff,
   IconPhoneCall,
-  IconPlayerPlay,
 } from '@tabler/icons-react';
 import styles from './CallMessageContent.module.css';
 
@@ -22,54 +21,43 @@ interface CallMessageContentProps {
 }
 
 /**
- * Компонент для отображения звонка в чате.
+ * Плашка звонка в чате.
  *
- * Звонок отображается как карточка с:
- * - Иконкой направления (входящий/исходящий)
- * - Статусом (дозвон/разговор/пропущен/отвечен)
- * - Длительностью разговора
- * - Цветовой индикацией (зелёный = отвечен, красный = пропущен)
+ * Layout: одна цветная иконка направления + заголовок + статус + длительность.
+ * Цвет всей плашки зависит от disposition:
+ *   - ringing  → синий (идёт дозвон, с пульсацией)
+ *   - answered → зелёный (успешный разговор)
+ *   - прочее   → красный/серый (пропущен/отменён/ошибка)
  *
- * Аудиозапись рендерится через стандартный AttachmentPreview
- * (вложение с mimetype audio/mpeg) — отдельно от этого компонента.
+ * Аудиозапись (если есть) рендерится отдельно через AttachmentPreview.
  */
 export function CallMessageContent({
-  body,
   callDirection,
   callDisposition,
   callDuration,
   callTalkDuration,
-  callAnswerTime,
-  callEndTime,
   connectorType,
 }: CallMessageContentProps) {
   const isIncoming = callDirection === 'incoming';
   const isAnswered = callDisposition === 'answered';
   const isRinging = callDisposition === 'ringing';
-  const isMissed =
-    callDisposition === 'no_answer' ||
-    callDisposition === 'busy' ||
-    callDisposition === 'failed' ||
-    callDisposition === 'cancelled';
-
-  const directionLabel = isIncoming ? 'Входящий' : 'Исходящий';
 
   const statusInfo = useMemo(() => {
     switch (callDisposition) {
       case 'ringing':
-        return { label: 'Дозвон...', color: 'blue', icon: IconPhoneCall };
+        return { label: 'Дозвон...', color: 'blue', Icon: IconPhoneCall };
       case 'answered':
-        return { label: 'Отвечен', color: 'green', icon: IconPhone };
+        return { label: 'Отвечен', color: 'green', Icon: IconPhone };
       case 'no_answer':
-        return { label: 'Пропущен', color: 'red', icon: IconPhoneOff };
+        return { label: 'Пропущен', color: 'red', Icon: IconPhoneOff };
       case 'busy':
-        return { label: 'Занято', color: 'orange', icon: IconPhoneOff };
+        return { label: 'Занято', color: 'orange', Icon: IconPhoneOff };
       case 'failed':
-        return { label: 'Ошибка', color: 'red', icon: IconPhoneOff };
+        return { label: 'Ошибка', color: 'red', Icon: IconPhoneOff };
       case 'cancelled':
-        return { label: 'Отменён', color: 'gray', icon: IconPhoneOff };
+        return { label: 'Отменён', color: 'gray', Icon: IconPhoneOff };
       default:
-        return { label: 'Звонок', color: 'gray', icon: IconPhone };
+        return { label: 'Звонок', color: 'gray', Icon: IconPhone };
     }
   }, [callDisposition]);
 
@@ -85,52 +73,60 @@ export function CallMessageContent({
     return `${m}:${String(s).padStart(2, '0')}`;
   }, [callDuration, callTalkDuration]);
 
-  const DirectionIcon = isIncoming ? IconPhoneIncoming : IconPhoneOutgoing;
-  const StatusIcon = statusInfo.icon;
+  // Одна иконка направления слева — если отвечен, используем её,
+  // иначе иконку статуса (разные визуально: трубка / перечёркнутая / набор).
+  const MainIcon = isAnswered
+    ? isIncoming
+      ? IconPhoneIncoming
+      : IconPhoneOutgoing
+    : statusInfo.Icon;
+
+  const directionLabel = isIncoming ? 'Входящий звонок' : 'Исходящий звонок';
 
   return (
     <Box className={styles.callContent}>
-      <Group gap="sm" wrap="nowrap" align="center">
-        {/* Иконка статуса */}
+      <Group gap={12} wrap="nowrap" align="center">
         <ThemeIcon
-          size="lg"
+          size={36}
           radius="xl"
           variant="light"
           color={statusInfo.color}
           className={isRinging ? styles.ringingIcon : undefined}>
-          <StatusIcon size={20} />
+          <MainIcon size={20} />
         </ThemeIcon>
 
-        {/* Информация о звонке */}
         <Box style={{ flex: 1, minWidth: 0 }}>
-          <Group gap="xs" wrap="nowrap">
-            <DirectionIcon
-              size={14}
-              color={`var(--mantine-color-${statusInfo.color}-6)`}
-            />
-            <Text size="sm" fw={500}>
-              {directionLabel} звонок
-            </Text>
-            <Badge
+          <Text size="sm" fw={600} className={styles.title}>
+            {directionLabel}
+          </Text>
+          <Group gap={6} wrap="nowrap">
+            <Text
               size="xs"
-              variant="light"
-              color={statusInfo.color}
-              className={isRinging ? styles.ringingBadge : undefined}>
+              className={styles.status}
+              style={{
+                color: `var(--mantine-color-${statusInfo.color}-6)`,
+              }}>
               {statusInfo.label}
-            </Badge>
-          </Group>
-
-          {/* Длительность */}
-          <Group gap="xs" mt={2}>
+            </Text>
             {formattedDuration && (
-              <Text size="xs" c="dimmed">
-                {formattedDuration}
-              </Text>
+              <>
+                <Text size="xs" c="dimmed">
+                  ·
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {formattedDuration}
+                </Text>
+              </>
             )}
             {connectorType && (
-              <Text size="xs" c="dimmed">
-                via {connectorType}
-              </Text>
+              <>
+                <Text size="xs" c="dimmed">
+                  ·
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {connectorType}
+                </Text>
+              </>
             )}
           </Group>
         </Box>

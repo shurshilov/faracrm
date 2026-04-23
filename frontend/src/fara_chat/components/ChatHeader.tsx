@@ -1,4 +1,7 @@
 import { ViewSettingsPopover } from './ViewSettingsPopover';
+import { CallButton } from './CallButton';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@store/store';
 import { Box, Text, Group, Avatar, ActionIcon, Menu } from '@mantine/core';
 import {
   IconDots,
@@ -41,6 +44,20 @@ export function ChatHeader({
   const { t } = useTranslation('chat');
 
   const members = chat.members || [];
+
+  // В direct-чате ищем собеседника (user, не партнёра) — для кнопки звонка.
+  // Звонить можно только юзеру, не партнёру (нет гарантии WebSocket).
+  const currentUserId = useSelector(
+    (s: RootState) => s.auth.session?.user_id?.id ?? 0,
+  );
+  const otherUser =
+    chat.chat_type === 'direct'
+      ? members.find(
+          m =>
+            (m.member_type === 'user' || !m.member_type) &&
+            m.id !== currentUserId,
+        )
+      : null;
 
   const getInitials = (name: string) => {
     return name
@@ -113,6 +130,13 @@ export function ChatHeader({
         </Group>
 
         <Group gap="xs" wrap="nowrap">
+          {/* Call button — только в direct-чате между юзерами */}
+          {otherUser && (
+            <CallButton
+              peer={{ id: otherUser.id, name: otherUser.name }}
+            />
+          )}
+
           {/* Pinned messages */}
           <ActionIcon
             variant="subtle"

@@ -18,6 +18,8 @@ import UserMenu from '@/components/UserMenu';
 import { ChatNotification } from '@/components/ChatNotification';
 import { ActivityNotification } from '@/fara_activity/ActivityNotification';
 import { ChatWebSocketProvider } from '@/fara_chat/context';
+import { CallProvider } from '@/fara_chat/context/CallContext';
+import { CallWidget } from '@/fara_chat/components/CallWidget';
 import { NotificationListener } from '@/components/NotificationToast/NotificationToast';
 import { AppLauncher } from './AppLauncher';
 import { HorizontalMenu } from './HorizontalMenu';
@@ -87,8 +89,9 @@ export function ModernLayout() {
 
   return (
     <ChatWebSocketProvider>
-      <NotificationListener />
-      <AppShell
+      <CallProvider>
+        <NotificationListener />
+        <AppShell
         header={{ height: { base: 48, sm: 60 } }}
         navbar={
           isInChat
@@ -193,6 +196,8 @@ export function ModernLayout() {
           <FaraRouters />
         </AppShell.Main>
       </AppShell>
+      <CallWidget />
+      </CallProvider>
     </ChatWebSocketProvider>
   );
 }

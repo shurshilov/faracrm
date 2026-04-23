@@ -1,12 +1,27 @@
 .callContent {
-  width: 100%;
-  padding: 4px 0;
+  /* Небольшой внутренний отступ, чтобы текст и иконка не прилипали
+     к краям пузыря сообщения. */
+  padding: 2px 0;
+  min-width: 220px;
 }
 
-/* Анимация пульсации для активного звонка */
+.title {
+  line-height: 1.2;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status {
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* Анимация "идёт дозвон" — пульсирующая тень у иконки. */
 @keyframes ringing {
   0% {
-    box-shadow: 0 0 0 0 rgba(34, 139, 230, 0.4);
+    box-shadow: 0 0 0 0 rgba(34, 139, 230, 0.5);
   }
   70% {
     box-shadow: 0 0 0 8px rgba(34, 139, 230, 0);
@@ -20,21 +35,7 @@
   animation: ringing 1.5s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.ringingBadge {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-/* Dark mode */
+/* Dark mode: сохраняем контрастность текста */
 [data-mantine-color-scheme='dark'] .callContent {
   color: var(--mantine-color-dark-0);
 }
