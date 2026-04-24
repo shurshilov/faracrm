@@ -157,7 +157,7 @@ class UserApp(App):
                 "name": "User can only see and edit own profile",
                 "role_id": None,
                 "domain": [["id", "=", "{{user_id}}"]],
-                "perm_create": False,
+                "perm_create": True,
                 "perm_read": True,
                 "perm_update": True,
                 "perm_delete": True,

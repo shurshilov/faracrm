@@ -25,6 +25,7 @@ RUN useradd -m appuser
 # Копируем код и сразу меняем владельца на appuser
 COPY --chown=appuser:appuser backend/ ./backend/
 COPY --chown=appuser:appuser docs/site/ ./docs/site/
+RUN mkdir -p /app/filestore && chown -R appuser:appuser /app/filestore
 
 USER appuser
 

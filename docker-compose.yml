@@ -125,6 +125,8 @@ services:
       - "8000:8000"
     volumes:
       - filestore_docker:/app/filestore
+    security_opt:
+      - no-new-privileges:true
 
   # ─── Frontend (Nginx + React SPA) ─────────────────────
   frontend:
@@ -136,6 +138,8 @@ services:
       - backend
     ports:
       - "7777:80"
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   pgdata:
