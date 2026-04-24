@@ -17,17 +17,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
+COPY backend/ ./backend/
+COPY docs/site/ ./docs/site/
+
 # Создаем не-root пользователя
-RUN useradd -m appuser
-
-# COPY backend/ ./backend/
-# COPY docs/site/ ./docs/site/
+# RUN useradd -m appuser
 # Копируем код и сразу меняем владельца на appuser
-COPY --chown=appuser:appuser backend/ ./backend/
-COPY --chown=appuser:appuser docs/site/ ./docs/site/
-RUN mkdir -p /app/filestore && chown -R appuser:appuser /app/filestore
+# COPY --chown=appuser:appuser backend/ ./backend/
+# COPY --chown=appuser:appuser docs/site/ ./docs/site/
+# RUN mkdir -p /app/filestore && chown -R appuser:appuser /app/filestore
 
-USER appuser
+# USER appuser
 
 EXPOSE 8000
 # В Dockerfile в самом конце

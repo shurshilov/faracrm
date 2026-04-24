@@ -13,18 +13,34 @@ logger = logging.getLogger(__name__)
 router_public = APIRouter(tags=["Chat WebSocket"])
 
 
+# Коды WebSocket закрытия (RFC 6455 + extensions):
+#   1008 = Policy Violation (используем для auth failures)
+#   1011 = Internal Server Error
+_CLOSE_UNAUTHORIZED = 1008
+_CLOSE_INTERNAL = 1011
+
+
 @router_public.websocket("/ws/chat")
 async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint для real-time чата.
 
     Требует авторизации через query параметр token.
+
+    ВАЖНО: по ASGI-спеке если не вызвать accept() ДО возврата, uvicorn
+    выдаёт ошибку "ASGI callable returned without sending handshake".
+    Поэтому на любую ошибку авторизации — accept() + close() с кодом,
+    а не просто return.
     """
-    # 1. Сначала извлекаем токен
     token = websocket.query_params.get("token")
     env: "Environment" = websocket.app.state.env
 
+    # Все auth-failures требуют явного accept+close, не просто return.
+    # Иначе: ASGI handshake never completed → лог ошибки на каждом отказе.
+
     if not token:
+        await websocket.accept()
+        await websocket.close(code=_CLOSE_UNAUTHORIZED, reason="Missing token")
         return
 
     try:
@@ -35,9 +51,15 @@ async def websocket_endpoint(websocket: WebSocket):
         )
     except Exception as e:
         logger.error("WebSocket auth error: %s", e)
+        await websocket.accept()
+        await websocket.close(
+            code=_CLOSE_INTERNAL, reason="Auth lookup failed"
+        )
         return
 
     if not sessions:
+        await websocket.accept()
+        await websocket.close(code=_CLOSE_UNAUTHORIZED, reason="Invalid token")
         return
 
     user_id = sessions[0].user_id.id
@@ -48,7 +70,9 @@ async def websocket_endpoint(websocket: WebSocket):
     connected = await env.apps.chat.chat_manager.connect(websocket, user_id)
     if not connected:
         try:
-            await websocket.close(code=1011, reason="Connect failed")
+            await websocket.close(
+                code=_CLOSE_INTERNAL, reason="Connect failed"
+            )
         except Exception as e:
             logger.warning("Failed to close a websocket: %s", e)
         return
