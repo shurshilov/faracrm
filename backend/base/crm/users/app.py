@@ -125,11 +125,20 @@ class UserApp(App):
             return
         user_model_id = user_model[0]
 
+        system_admin_role = await env.models.role.search(
+            filter=[("code", "=", "system_admin")],
+            fields=["id"],
+            limit=1,
+        )
+        system_admin_role_id = (
+            system_admin_role[0] if system_admin_role else None
+        )
+
         rules = [
-            # Правило 1: Запрет удаления admin и system пользователей
-            # Domain: id NOT IN (1, 2, 3) - можно удалять только если id не 1 и не 2 и не 3
+            # Правило 1: Запрет удаления admin и system пользователей.
             {
                 "name": "Protect admin and system users from deletion",
+                "role_id": None,
                 "domain": [
                     [
                         "id",
@@ -142,16 +151,32 @@ class UserApp(App):
                 "perm_update": False,
                 "perm_delete": True,
             },
-            # Правило 2: Пользователь может редактировать только себя
+            # Правило 2: Пользователь может видеть и редактировать только себя.
+            # Без этого правила рядовой юзер видит/меняет ВСЕХ юзеров
             {
-                "name": "User can only edit own profile",
+                "name": "User can only see and edit own profile",
+                "role_id": None,
                 "domain": [["id", "=", "{{user_id}}"]],
                 "perm_create": False,
-                "perm_read": False,
+                "perm_read": True,
                 "perm_update": True,
                 "perm_delete": True,
             },
         ]
+
+        # Правило 3: system_admin видит всех пользователей.
+        if system_admin_role_id:
+            rules.append(
+                {
+                    "name": "System admin can see and edit all users",
+                    "role_id": system_admin_role_id,
+                    "domain": [],
+                    "perm_create": False,
+                    "perm_read": True,
+                    "perm_update": True,
+                    "perm_delete": False,
+                }
+            )
 
         for rule_data in rules:
             existing = await env.models.rule.search(
@@ -165,7 +190,7 @@ class UserApp(App):
                     name=rule_data["name"],
                     active=True,
                     model_id=user_model_id,
-                    role_id=None,
+                    role_id=rule_data["role_id"],
                     domain=rule_data["domain"],
                     perm_create=rule_data["perm_create"],
                     perm_read=rule_data["perm_read"],
