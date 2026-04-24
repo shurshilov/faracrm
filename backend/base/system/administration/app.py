@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from backend.base.system.core.app import App
 from backend.base.system.core.enviroment import Environment
-from backend.base.crm.security.acl_post_init_mixin import ACL, ACLPerms
+from backend.base.crm.security.acl_post_init_mixin import ACLPerms
 
 
 class AdministrationApp(App):
@@ -21,9 +21,9 @@ class AdministrationApp(App):
         "post_init": True,
     }
 
-    BASE_USER_ACL = {
-        "system_settings": ACL.NO_ACCESS,
-    }
+    # BASE_USER_ACL = {
+    #     "system_settings": ACL.NO_ACCESS,
+    # }
 
     # Для system_admin — read + update, но без create и delete.
     # Идея: админ может сменить значение существующей настройки

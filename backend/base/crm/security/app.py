@@ -42,9 +42,20 @@ class SecurityApp(Service):
         ),
         "model": ACL.READ_ONLY,
         "app": ACL.READ_ONLY,
-        "role": ACLPerms(create=True, read=True, update=True, delete=False),
-        "access_list": ACL.NO_ACCESS,
-        "rule": ACL.NO_ACCESS,
+        "role": ACL.READ_ONLY,
+        # "access_list": ACL.NO_ACCESS,
+        # "rule": ACL.NO_ACCESS,
+    }
+
+    # ACL для роли system_admin — полный контроль системы прав.
+    # В коде role создана в _init_base_role (код "system_admin").
+    # Обычные юзеры этой роли НЕ получают по умолчанию — назначается админом.
+    ROLE_ACL = {
+        "system_admin": {
+            "role": ACL.FULL,
+            "access_list": ACL.FULL,
+            "rule": ACL.FULL,
+        },
     }
 
     def handler_errors(self, app_server: FastAPI):
