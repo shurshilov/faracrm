@@ -23,7 +23,7 @@ services:
       # shared_buffers: главный кеш таблиц/индексов в RAM.
       # Правило: 25% RAM. Для 4GB = 256MB, 8GB = 1GB, 16GB = 4GB.
       - "-c"
-      - "shared_buffers=256MB"               # PG default: 128MB
+      - "shared_buffers=512MB"               # PG default: 128MB
       # effective_cache_size: ПОДСКАЗКА планировщику (память не резервируется),
       # сколько данных помещается в OS page cache + shared_buffers.
       # Правило: 50-75% RAM. Для 4GB = 2GB, 8GB = 4GB, 16GB = 12GB.
@@ -33,7 +33,7 @@ services:
       # Дефолт 4MB безопасен — не взорвёт память при много коннектов.
       # Для 8GB+ RAM можно поднять до 16MB.
       - "-c"
-      - "work_mem=4MB"                       # PG default: 4MB (оставлен)
+      - "work_mem=8MB"                       # PG default: 4MB (оставлен)
       # maintenance_work_mem: RAM для VACUUM / CREATE INDEX.
       # Ускоряет создание индексов и вакуум. Для 8GB+ можно 512MB, 16GB+ — 1GB.
       - "-c"
@@ -60,10 +60,13 @@ services:
       # Логирует ожидания блокировок (lock contention).
       - "-c"
       - "log_lock_waits=on"                  # PG default: off
+      - "-c"
+      - "max_connections=150"               # PG default: 100
 
     # Dev shared memory для параллельных запросов и больших shared_buffers.
     # Дефолт Docker всего 64MB, не хватает даже для умеренного shared_buffers.
-    shm_size: 256mb                          # Docker default: 64MB
+    # равно или чуть больше shared_buffers
+    shm_size: 512MB                          # Docker default: 64MB
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U openpg -d fara"]
@@ -84,6 +87,7 @@ services:
     #   - .env
     environment:
       # DB config (env_nested_delimiter="__")
+
       DOTORM_DATABASES_POSTGRES__FARA__HOST: postgres
       DOTORM_DATABASES_POSTGRES__FARA__PORT: 5432
       DOTORM_DATABASES_POSTGRES__FARA__USER: openpg
@@ -91,6 +95,9 @@ services:
       DOTORM_DATABASES_POSTGRES__FARA__DATABASE: fara
       DOTORM_DATABASES_POSTGRES__FARA__DRIVER: asyncpg
       DOTORM_DATABASES_POSTGRES__FARA__SYNC_DB: "true"
+
+      # Workers count
+      # WEB_WORKERS: 2
 
       # Disable SSL for local Docker postgres
       PGSSLMODE: disable

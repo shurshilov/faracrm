@@ -13,9 +13,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/ ./backend/
-COPY docs/site/ ./docs/site/
+# Запрещаем Python писать .pyc файлы и буферизировать вывод
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Создаем не-root пользователя
+RUN useradd -m appuser
+
+# COPY backend/ ./backend/
+# COPY docs/site/ ./docs/site/
+# Копируем код и сразу меняем владельца на appuser
+COPY --chown=appuser:appuser backend/ ./backend/
+COPY --chown=appuser:appuser docs/site/ ./docs/site/
+
+USER appuser
 
 EXPOSE 8000
+# В Dockerfile в самом конце
+ENV WEB_WORKERS=2
 
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
+# CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "${WEB_WORKERS}"]
+CMD ["sh", "-c", "uvicorn backend.main:app --host 0.0.0.0 --port 8000 --workers ${WEB_WORKERS}"]

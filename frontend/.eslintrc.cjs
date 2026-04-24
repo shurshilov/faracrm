@@ -4,6 +4,8 @@ module.exports = {
     es2021: true,
   },
   ignorePatterns: [
+    'dist',
+    'node_modules',
     'js',
     '*.cjs',
     '*.mjs',
@@ -12,13 +14,14 @@ module.exports = {
     'vite.config.ts',
   ],
   extends: [
-    'mantine',
     'plugin:react/recommended',
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
+    'mantine', // Ставим после реакта, чтобы применить правила Mantine
+    'prettier', // Отключает конфликтующие правила форматирования
   ],
   parserOptions: {
-    project: './frontend/tsconfig.json',
+    project: './tsconfig.json',
   },
   plugins: [
     'react',
@@ -29,6 +32,9 @@ module.exports = {
     'import',
     'prettier',
   ],
+  settings: {
+    react: { version: 'detect' }, // Чтобы ESLint знал версию React
+  },
   rules: {
     // https://eslint.org/docs/latest/rules/curly
     curly: ['error', 'all'],
