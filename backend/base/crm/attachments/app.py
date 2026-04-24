@@ -26,9 +26,17 @@ class AttachmentsApp(App):
 
     BASE_USER_ACL = {
         "attachment": ACL.FULL,
-        "attachment_storage": ACL.FULL,
-        "attachment_route": ACL.FULL,
-        "attachment_cache": ACL.FULL,
+        "attachment_storage": ACL.READ_ONLY,
+        "attachment_route": ACL.READ_ONLY,
+        "attachment_cache": ACL.READ_ONLY,
+    }
+    ROLE_ACL = {
+        "system_admin": {
+            "attachment": ACL.FULL,
+            "attachment_storage": ACL.FULL,
+            "attachment_route": ACL.FULL,
+            "attachment_cache": ACL.FULL,
+        },
     }
 
     async def post_init(self, app: "FastAPI"):

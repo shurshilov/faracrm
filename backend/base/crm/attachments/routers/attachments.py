@@ -79,7 +79,7 @@ async def attachment_content(req: Request, attachment_id: Id):
         limit=1,
         fields=[
             "id",
-            "model",
+            "res_model",
             "res_id",
             "name",
             "storage_file_url",
@@ -129,7 +129,7 @@ async def attachment_preview(
         limit=1,
         fields=[
             "id",
-            "model",
+            "res_model",
             "res_id",
             "name",
             "checksum",
