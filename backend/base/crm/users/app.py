@@ -35,7 +35,7 @@ class UserApp(App):
 
         await self._init_admin_user(env)
         await self._init_system_user(env)
-        await self._init_template_user(env)  # ← новый шаблон
+        await self._init_template_user(env)
         await self._init_user_rules(env)
 
     async def _init_admin_user(self, env: "Environment"):
@@ -75,14 +75,12 @@ class UserApp(App):
         Создаёт шаблонного пользователя (id=3, login='default_internal').
         Используется как прототип при создании
         """
-
         existing = await env.models.user.search(
             filter=[("id", "=", TEMPLATE_USER_ID)], limit=1
         )
         if existing:
             return
 
-        # Назначаем роль base_user шаблону
         base_user_role = await env.models.role.search(
             filter=[("code", "=", "base_user")],
             fields=["id"],
@@ -95,22 +93,27 @@ class UserApp(App):
         )
         if default_user:
             return
-        # Создаём неактивного шаблонного пользователя
-        await env.models.user.create(
+
+        # ВАЖНО: m2m (role_ids) сохраняются ТОЛЬКО через update(),
+        # link_many2many ожидает int id (не объекты).
+        new_user_id = await env.models.user.create(
             payload=User(
                 name="Шаблон: Внутренний пользователь",
                 login="default_internal",
                 is_admin=False,
-                # Пустые хеши — пользователь не может войти в систему
                 password_hash="",
                 password_salt="",
                 home_page="/",
                 layout_theme="modern",
                 notification_popup=True,
                 notification_sound=True,
-                role_ids={"selected": base_user_role},
             ),
         )
+        if base_user_role:
+            new_user = await env.models.user.get(new_user_id)
+            await new_user.update(
+                payload=User(role_ids={"selected": [base_user_role[0].id]})
+            )
 
     async def _init_user_rules(self, env: "Environment"):
         """Создаёт правила безопасности для пользователей."""
@@ -125,6 +128,14 @@ class UserApp(App):
             return
         user_model_id = user_model[0]
 
+        # Резолвим роли которые понадобятся в правилах
+        base_user_role = await env.models.role.search(
+            filter=[("code", "=", "base_user")],
+            fields=["id"],
+            limit=1,
+        )
+        base_user_role_id = base_user_role[0] if base_user_role else None
+
         system_admin_role = await env.models.role.search(
             filter=[("code", "=", "system_admin")],
             fields=["id"],
@@ -135,7 +146,9 @@ class UserApp(App):
         )
 
         rules = [
-            # Правило 1: Запрет удаления admin и system пользователей.
+            # Правило 1: Запрет удаления admin/system/template пользователей.
+            # role_id=None — применяется ко ВСЕМ ролям (даже system_admin
+            # не должен удалять защищённые системные учётки).
             {
                 "name": "Protect admin and system users from deletion",
                 "role_id": None,
@@ -151,20 +164,42 @@ class UserApp(App):
                 "perm_update": False,
                 "perm_delete": True,
             },
-            # Правило 2: Пользователь может видеть и редактировать только себя.
-            # Без этого правила рядовой юзер видит/меняет ВСЕХ юзеров
-            {
-                "name": "User can only see and edit own profile",
-                "role_id": None,
-                "domain": [["id", "=", "{{user_id}}"]],
-                "perm_create": True,
-                "perm_read": True,
-                "perm_update": True,
-                "perm_delete": True,
-            },
         ]
 
-        # Правило 3: system_admin видит всех пользователей.
+        # Правила 2a и 2b — привязаны к роли base_user.
+        # На будущее: external/portal-юзеры НЕ будут иметь base_user
+        # → не получат права на чтение других юзеров.
+        if base_user_role_id:
+            rules.extend(
+                [
+                    # 2a: пользователь может редактировать ТОЛЬКО свой профиль.
+                    # perm_update=True (только update). Для read есть отдельное
+                    # правило 2b (открытое).
+                    {
+                        "name": "User can only edit own profile",
+                        "role_id": base_user_role_id,
+                        "domain": [["id", "=", "{{user_id}}"]],
+                        "perm_create": False,
+                        "perm_read": False,
+                        "perm_update": True,
+                        "perm_delete": False,
+                    },
+                    # 2b: read открыт всем base_user-юзерам.
+                    # Стандартный pattern для CRM — сотрудники видят
+                    # друг друга для упоминаний, назначений, авторства.
+                    {
+                        "name": "Users readable by all authenticated",
+                        "role_id": base_user_role_id,
+                        "domain": [],
+                        "perm_create": False,
+                        "perm_read": True,
+                        "perm_update": False,
+                        "perm_delete": False,
+                    },
+                ]
+            )
+
+        # Правило 3: system_admin видит и редактирует всех пользователей.
         if system_admin_role_id:
             rules.append(
                 {

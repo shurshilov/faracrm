@@ -86,13 +86,22 @@ def dotorm_to_pydantic_nested_one(cls):
     # Используем get_all_fields() чтобы получить поля включая добавленные через @extend
     for field_name, field in cls.get_all_fields().items():
         if isinstance(field, DotField):
+            # private=True — поле скрыто из API-схемы (нельзя запрашивать
+            # через fields=... в GET-запросе, нельзя получить в response)
+            if getattr(field, "private", False):
+                continue
+
             if not isinstance(field, (Many2many, One2many)):
                 fields_store.append(field_name)
 
             else:
                 # если это поле множественной связи m2m или o2m
                 # то это поле будет содержать просто список своих полей
-                allowed_fields = list(field.relation_table.get_all_fields())
+                allowed_fields = [
+                    fname
+                    for fname, fobj in field.relation_table.get_all_fields().items()
+                    if not getattr(fobj, "private", False)
+                ]
                 # TODO: по идее должно быть так
                 # relation_table = field.relation_table
                 # if callable(relation_table):

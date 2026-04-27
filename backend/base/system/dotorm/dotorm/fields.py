@@ -71,6 +71,7 @@ class Field[FieldType]:
     # ORM attributes
     required: bool | None = None
     schema_required: bool | None = None
+    private: bool = False
     sql_type: str
     indexable: bool = True
     store: bool = True
@@ -86,6 +87,8 @@ class Field[FieldType]:
     def __init__(self, **kwargs: Any) -> None:
         # schema_required - переопределяет обязательность в API схеме
         self.schema_required = kwargs.pop("schema_required", None)
+        # private — исключает поле из Pydantic-схем (см. описание в классе)
+        self.private = kwargs.pop("private", False)
 
         # Тонкий контроль того, где применяется default. По умолчанию
         # default_orm=True (как раньше — ORM подставит при INSERT),

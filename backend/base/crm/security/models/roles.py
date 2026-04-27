@@ -40,12 +40,24 @@ class Role(DotModel):
     app_id: App | None = Many2one(relation_table=App)
 
     # Иерархия ролей — эта роль основана на (расширяет) других
+    #
+    # ВАЖНО: column1/column2 переставлены относительно семантики ниже.
+    # Это компенсирует баг/особенность link_many2many() в DotORM:
+    # link_many2many делает INSERT INTO (column2, column1) VALUES (self_id, other_id)
+    # — то есть кладёт self_id в column2.
+    # Чтобы при `crm_user.update(based_role_ids={"selected": [base_user_id]})`
+    # запись получилась корректной (role_id=crm_user, based_role_id=base_user),
+    # column2 должна быть "role_id", а column1 — "based_role_id".
+    #
+    # Семантика в БД остаётся стандартной:
+    #   role_id        = "владелец" связи (роль которая наследует)
+    #   based_role_id  = "родитель" (от кого наследует)
     based_role_ids: list[Self] = Many2many(
         store=False,
         relation_table=lambda: env.models.role,
         many2many_table="role_based_many2many",
-        column1="role_id",
-        column2="based_role_id",
+        column1="based_role_id",  # см. комментарий выше
+        column2="role_id",
         default=[],
     )
 

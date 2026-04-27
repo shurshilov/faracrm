@@ -19,8 +19,10 @@ from backend.base.system.dotorm.dotorm.fields import (
     Selection,
     Text,
 )
-from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.security.polymorphic_parent import (
+    PolymorphicParentMixin,
+)
 
 timezones = [
     (tz, tz)
@@ -31,7 +33,7 @@ timezones = [
 ]
 
 
-class Partner(DotModel):
+class Partner(PolymorphicParentMixin):
     __table__ = "partners"
 
     id: Id = Integer(primary_key=True)

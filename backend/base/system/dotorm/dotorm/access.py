@@ -17,7 +17,10 @@
 
 from contextvars import ContextVar
 from enum import StrEnum
-from typing import TypeVar, Generic
+from typing import TYPE_CHECKING, TypeVar, Generic
+
+if TYPE_CHECKING:
+    from backend.base.crm.security.access_control import SecurityAccessChecker
 
 
 class Operation(StrEnum):
@@ -126,13 +129,13 @@ _access_session: ContextVar = ContextVar("access_session", default=None)
 # ============================================================
 
 
-def set_access_checker(checker: AccessChecker) -> None:
-    """Устанавливает AccessChecker (один раз при старте)."""
+def set_access_checker(checker: "SecurityAccessChecker") -> None:
+    """Устанавливает SecurityAccessChecker (один раз при старте)."""
     _state["checker"] = checker
 
 
-def get_access_checker() -> AccessChecker:
-    """Возвращает текущий AccessChecker."""
+def get_access_checker() -> "SecurityAccessChecker":
+    """Возвращает текущий SecurityAccessChecker."""
     return _state["checker"]
 
 

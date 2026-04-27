@@ -159,6 +159,11 @@ class OrmRelationsMixin(_Base):
             Number of matching records
         """
         cls = self.__class__
+
+        # Access check + apply domain filter — иначе count приходит без
+        # учёта rules и в UI пагинация показывает завышенное число
+        filter = await cls._check_access(Operation.READ, filter=filter)
+
         session = cls._get_db_session(session)
 
         stmt, values = cls._builder.build_search_count(filter)
@@ -187,6 +192,11 @@ class OrmRelationsMixin(_Base):
             True if at least one record exists
         """
         cls = self.__class__
+
+        # Access check + apply domain filter — иначе exists вернёт True
+        # для записей которые юзер не должен видеть
+        filter = await cls._check_access(Operation.READ, filter=filter)
+
         session = cls._get_db_session(session)
 
         stmt, values = cls._builder.build_exists(filter)

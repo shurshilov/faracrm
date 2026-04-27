@@ -67,6 +67,7 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "openpgpwd")
 _tables_created = False
 _pool = None
 _models_instance = None
+_apps_instance = None
 
 # ====================
 # Database lifecycle
@@ -92,7 +93,7 @@ async def _ensure_database():
         )
         if not exists:
             await conn.execute(f'CREATE DATABASE "{TEST_DB_NAME}"')
-            print(f"\n✓ Created test database: {TEST_DB_NAME}")
+            print(f"\n[OK] Created test database: {TEST_DB_NAME}")
     finally:
         await conn.close()
 
@@ -118,7 +119,7 @@ async def _drop_database():
             AND pid <> pg_backend_pid()
         """)
         await conn.execute(f'DROP DATABASE IF EXISTS "{TEST_DB_NAME}"')
-        print(f"\n✓ Dropped test database: {TEST_DB_NAME}")
+        print(f"\n[OK] Dropped test database: {TEST_DB_NAME}")
     finally:
         await conn.close()
 
@@ -130,14 +131,17 @@ async def _drop_database():
 
 @pytest.fixture(scope="session", autouse=True)
 async def manage_test_database():
-    """Create test database at session start, drop at end."""
+    """Create test database at session start, drop at end.
+
+    DIAGNOSTIC: drop отключён — БД остаётся для проверки руками.
+    """
     if asyncpg is None:
         pytest.skip("asyncpg not installed")
         return
 
     await _ensure_database()
     yield
-    await _drop_database()
+    # await _drop_database()  # отключено для диагностики
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
@@ -193,37 +197,166 @@ async def db_pool(manage_test_database) -> AsyncGenerator:
 #                 except asyncpg.exceptions.UndefinedTableError:
 #                     print(f"\nX Error clean table: {table}")
 #                     pass  # Table doesn't exist yet
+# Module state — _apps_instance кэшируется чтобы не пересоздавать каждый раз
+
+
+async def _run_post_init_once():
+    """Однократная инициализация: post_init всех apps. Session-scoped."""
+    from types import SimpleNamespace
+
+    global _apps_instance
+
+    from backend.base.system.core.enviroment import env
+    import backend.project_setup  # noqa: F401
+
+    if _apps_instance is None:
+        _apps_instance = env.apps
+
+    fake_app = SimpleNamespace(state=SimpleNamespace(env=env))
+
+    # Два прохода — для разрешения cross-app зависимостей
+    for pass_num in range(2):
+        for app_obj in _apps_instance.get_list():
+            if app_obj.info.get("post_init"):
+                try:
+                    await app_obj.post_init(fake_app)
+                except Exception as e:
+                    if pass_num == 0:
+                        continue
+                    print(
+                        f"\n⚠ post_init {app_obj.info.get('name')}: "
+                        f"{type(e).__name__}: {e}"
+                    )
+
+
+@pytest_asyncio.fixture(scope="session")
+async def initialize_seed_data(db_pool):
+    """
+    Однократная инициализация seed-данных (роли, ACL, rules).
+    НЕ autouse — ломает старые тесты которые не рассчитаны на security.
+    Подключается ЯВНО только в security тестах через локальный conftest.
+    """
+    # Базовый seed
+    from backend.base.crm.languages.models.language import Language
+    from backend.base.crm.users.models.users import User
+
+    existing_lang = await Language.search(
+        filter=[("code", "=", "en")], limit=1
+    )
+    if not existing_lang:
+        await Language.create(
+            payload=Language(code="en", name="English", flag="us", active=True)
+        )
+
+    existing_admin = await User.search(filter=[("id", "=", 1)], limit=1)
+    if not existing_admin:
+        await User.create(
+            payload=User(
+                name="Administrator",
+                login="admin",
+                is_admin=True,
+                password_hash="",
+                password_salt="",
+            )
+        )
+
+    existing_system = await User.search(filter=[("id", "=", 2)], limit=1)
+    if not existing_system:
+        await User.create(
+            payload=User(
+                name="System",
+                login="system",
+                is_admin=True,
+                password_hash="",
+                password_salt="",
+            )
+        )
+
+    await _run_post_init_once()
+    yield
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def clean_all_tables(db_pool):
-    """Truncate all tables in one fast query."""
+    """
+    Очищает все таблицы и создаёт минимальный seed (admin/system/lang).
+    БЕЗ post_init — старые тесты не рассчитаны на rules/ACL.
+    Security-тесты подключают post_init через локальный conftest.
+    """
     if _models_instance is not None:
         tables = [m.__table__ for m in _models_instance._get_models()]
 
-        if tables:
+        # Дополнительно явно включаем m2m-таблицы и security-таблицы —
+        # на случай если какие-то из них не возвращаются _get_models()
+        # (наблюдалось: после security-тестов roles/rules/acl остаются
+        # в БД хотя должны быть в tables).
+        extra_tables = [
+            "rules",
+            "access_list",
+            "role_based_many2many",
+            "user_role_many2many",
+            "roles",
+        ]
+        all_tables_set = set(tables) | set(extra_tables)
+
+        if all_tables_set:
+            tables_str = ", ".join(all_tables_set)
             try:
-                tables_str = ", ".join(tables)
                 async with db_pool.acquire() as conn:
-                    # Отключаем проверку FK, очищаем, включаем обратно
-                    # await conn.execute(
-                    #     "SET session_replication_role = 'replica'"
-                    # )
+                    # До TRUNCATE
+                    rules_before = 0
+                    acl_before = 0
+                    try:
+                        rules_before = (
+                            await conn.fetchval("SELECT COUNT(*) FROM rules")
+                            or 0
+                        )
+                        acl_before = (
+                            await conn.fetchval(
+                                "SELECT COUNT(*) FROM access_list"
+                            )
+                            or 0
+                        )
+                    except Exception:
+                        pass
+
                     await conn.execute(
                         f"TRUNCATE TABLE {tables_str} RESTART IDENTITY CASCADE"
                     )
-                    # await conn.execute(
-                    #     "SET session_replication_role = 'origin'"
-                    # )
-            except asyncpg.exceptions.UndefinedTableError:
-                print(f"\nX Error clean table: {tables_str}")
-                pass  # Table doesn't exist yet
 
-        # Создаём базовый seed через ORM:
-        # 1. Английский язык — нужен для User.lang_id (NOT NULL).
-        # 2. Admin user (id=1) — занимает первый id в users.
-        # 3. System user (id=2) — на него ссылаются default-функции
-        #    вида `_default_current_user`.
-        # Порядок важен: id системного user'а должен быть равен
-        # SYSTEM_USER_ID=2, поэтому admin создаём первым.
+                    # После TRUNCATE
+                    rules_after = 0
+                    acl_after = 0
+                    try:
+                        rules_after = (
+                            await conn.fetchval("SELECT COUNT(*) FROM rules")
+                            or 0
+                        )
+                        acl_after = (
+                            await conn.fetchval(
+                                "SELECT COUNT(*) FROM access_list"
+                            )
+                            or 0
+                        )
+                    except Exception:
+                        pass
+
+                    import sys
+
+                    sys.stderr.write(
+                        f"\n>>> CLEAN: rules {rules_before}->{rules_after}, "
+                        f"acl {acl_before}->{acl_after}\n"
+                    )
+                    sys.stderr.flush()
+            except Exception as e:
+                import sys
+
+                sys.stderr.write(
+                    f"\n!!! TRUNCATE FAILED: {type(e).__name__}: {e}\n"
+                )
+                sys.stderr.flush()
+
+        # Базовый seed: язык + admin + system. Без post_init.
         from backend.base.crm.languages.models.language import Language
         from backend.base.crm.users.models.users import User
 
@@ -233,7 +366,10 @@ async def clean_all_tables(db_pool):
         if not existing_lang:
             await Language.create(
                 payload=Language(
-                    code="en", name="English", flag="us", active=True
+                    code="en",
+                    name="English",
+                    flag="us",
+                    active=True,
                 )
             )
 
@@ -260,6 +396,40 @@ async def clean_all_tables(db_pool):
                     password_salt="",
                 )
             )
+
+        # Чистим in-memory кэши
+        try:
+            from backend.base.crm.security.rule_operators import (
+                clear_cache as clear_rules_cache,
+            )
+
+            clear_rules_cache()
+        except ImportError:
+            pass
+
+        try:
+            from backend.base.system.core.system_settings import SystemSettings
+
+            if hasattr(SystemSettings, "_cache"):
+                SystemSettings._cache.clear()
+        except ImportError:
+            pass
+
+        # КРИТИЧНО: сбрасываем глобальный access_checker.
+        # SecurityApp.post_init выполняет set_access_checker(SecurityAccessChecker)
+        # который остаётся в module-level state НАВСЕГДА. Если security-тест
+        # запускается раньше старого теста — старый тест начинает проверять
+        # ACL/rules и падает с "No read access".
+        # Возвращаем базовый AccessChecker который разрешает всё.
+        try:
+            from backend.base.system.dotorm.dotorm.access import (
+                AccessChecker,
+                set_access_checker,
+            )
+
+            set_access_checker(AccessChecker())
+        except ImportError:
+            pass
 
 
 async def _create_all_tables(pool):
@@ -331,7 +501,7 @@ async def _create_all_tables(pool):
             #     except asyncpg.exceptions.DuplicateObjectError:
             #         pass
         _tables_created = True
-        print(f"\n✓ Created {len(all_models)} tables")
+        print(f"\n[OK] Created {len(all_models)} tables")
 
 
 # ====================
@@ -576,6 +746,32 @@ async def user_factory(db_pool):
         if email is None:
             email = f"{login}@test.com"
 
+        # M2M поля (role_ids и т.п.) НЕ сохраняются через create() —
+        # обрабатываем их отдельно через update() после создания.
+        # См. dotorm/orm/mixins/primary.py:create — only_store=True пропускает m2m.
+        m2m_kwargs = {}
+        for field_name in list(kwargs.keys()):
+            value = kwargs[field_name]
+            if isinstance(value, dict) and (
+                "selected" in value
+                or "created" in value
+                or "deleted" in value
+                or "unselected" in value
+            ):
+                # m2m link/unlink требует int id (а не объекты).
+                # Конвертируем объекты с .id в int.
+                normalized = {}
+                for op_key, items in value.items():
+                    if isinstance(items, list):
+                        normalized[op_key] = [
+                            item.id if hasattr(item, "id") else item
+                            for item in items
+                        ]
+                    else:
+                        normalized[op_key] = items
+                m2m_kwargs[field_name] = normalized
+                kwargs.pop(field_name)
+
         user = User(
             name=name,
             login=login,
@@ -587,6 +783,11 @@ async def user_factory(db_pool):
         )
         user_id = await User.create(user)
         created_ids.append(user_id)
+
+        # Применяем m2m отдельным update'ом
+        if m2m_kwargs:
+            created_user = await User.get(user_id)
+            await created_user.update(payload=User(**m2m_kwargs))
 
         return await User.get(user_id)
 

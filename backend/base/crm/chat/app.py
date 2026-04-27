@@ -121,7 +121,95 @@ class ChatApp(Service):
         env: "Environment" = app.state.env
 
         # await self._init_chat_rules(env)
+        await self._init_membership_rules(env)
         await self._init_system_settings(env)
+
+    async def _init_membership_rules(self, env: "Environment"):
+        """
+        Создаёт security rules через @-операторы:
+
+        - chat: видят только участники (через chat_member.user_id)
+        - chat_message: видят те, у кого есть доступ к chat
+        - chat_member: видят те, у кого есть доступ к chat
+                       (не нужно смотреть участников чужих чатов)
+        - chat_message_reaction: видят те, у кого есть доступ к message
+
+        Все правила создаются с role_id=None — применяются ко всем
+        ролям. is_admin / SystemSession проскакивают сами на уровне
+        _is_full_access.
+        """
+        from backend.base.crm.security.models.rules import Rule
+
+        # Хелпер для безопасного создания rule
+        async def create_rule_if_missing(name, model_name, domain, perms):
+            model_rec = await env.models.model.search(
+                filter=[("name", "=", model_name)],
+                limit=1,
+            )
+            if not model_rec:
+                logger.warning(
+                    "Model '%s' not found, skipping rule '%s'",
+                    model_name,
+                    name,
+                )
+                return
+            existing = await env.models.rule.search(
+                filter=[("name", "=", name)],
+                limit=1,
+            )
+            if existing:
+                return
+            await env.models.rule.create(
+                payload=Rule(
+                    name=name,
+                    active=True,
+                    model_id=model_rec[0],
+                    role_id=None,
+                    domain=domain,
+                    perm_create=perms.get("create", False),
+                    perm_read=perms.get("read", False),
+                    perm_update=perms.get("update", False),
+                    perm_delete=perms.get("delete", False),
+                ),
+            )
+
+        # Chat — chat.id IN (SELECT chat_id FROM chat_member WHERE user_id=...)
+        await create_rule_if_missing(
+            name="Chat: members can see and update their chats",
+            model_name="chat",
+            domain=[["@is_member", "id", "chat_member", "chat_id"]],
+            perms={"read": True, "update": True},
+        )
+
+        # ChatMember — chat_member.chat_id IN (SELECT chat_id FROM chat_member WHERE user_id=...)
+        # Юзер видит участников только тех чатов где он сам участник
+        await create_rule_if_missing(
+            name="ChatMember: visible if chat is accessible",
+            model_name="chat_member",
+            domain=[["@is_member", "chat_id", "chat_member", "chat_id"]],
+            perms={"read": True, "update": True},
+        )
+
+        # ChatMessage — chat_message.chat_id IN (SELECT chat_id FROM chat_member WHERE user_id=...)
+        await create_rule_if_missing(
+            name="ChatMessage: visible to members of the chat",
+            model_name="chat_message",
+            domain=[["@is_member", "chat_id", "chat_member", "chat_id"]],
+            perms={
+                "read": True,
+                "create": True,
+                "update": True,
+                "delete": True,
+            },
+        )
+
+        # ChatMessageReaction — через has_parent_access на message
+        await create_rule_if_missing(
+            name="ChatMessageReaction: visible if message is accessible",
+            model_name="chat_message_reaction",
+            domain=[["@has_parent_access", "chat_message", "message_id"]],
+            perms={"read": True, "create": True, "delete": True},
+        )
 
     async def _init_system_settings(self, env: "Environment"):
         """Создаёт настройки по умолчанию для модуля chat."""

@@ -33,6 +33,41 @@ SQLOperator = Literal[
 
 FilterTriplet = tuple[str, SQLOperator, Any]
 
+
+class SqlFragment:
+    """
+    Готовый SQL-фрагмент с placeholder'ами и значениями.
+
+    Используется кастомными rule-операторами (@is_member,
+    @has_parent_access, ...) чтобы вернуть SQL с подзапросом
+    напрямую, минуя промежуточный triplet и материализацию
+    id'шников в Python.
+
+    FilterParser распознаёт этот класс в выражении и подставляет
+    sql + values как есть, без перекомпиляции.
+
+    Пример:
+        # Оператор @is_member вернёт:
+        SqlFragment(
+            '"chat_id" IN (SELECT chat_id FROM chat_member '
+            'WHERE user_id = %s AND is_active = TRUE)',
+            [user_id],
+        )
+
+        # Это войдёт в финальный SQL как часть WHERE clause:
+        # WHERE ... AND ("chat_id" IN (SELECT chat_id FROM chat_member ...))
+    """
+
+    __slots__ = ("sql", "values")
+
+    def __init__(self, sql: str, values: list | tuple = ()):
+        self.sql = sql
+        self.values = list(values)
+
+    def __repr__(self):
+        return f"SqlFragment({self.sql!r}, {self.values!r})"
+
+
 # Рекурсивный тип для фильтров
 # FilterExpression - список элементов, где каждый элемент это:
 #   - FilterTriplet: ("field", "=", value) - условие
@@ -90,6 +125,11 @@ class FilterParser:
     def parse(self, filter_expr: FilterExpression) -> tuple[str, tuple]:
         """Recursively parse filter expression."""
         escape = self.dialect.escape
+
+        # SQL-fragment from custom operator (@is_member, @has_parent_access, ...)
+        # Уже скомпилированный SQL — просто подставляем как есть.
+        if isinstance(filter_expr, SqlFragment):
+            return filter_expr.sql, tuple(filter_expr.values)
 
         # NOT expression: ("not", expr)
         if (
@@ -174,7 +214,14 @@ class FilterParser:
             while i < len(filter_expr):
                 item = filter_expr[i]
 
-                if isinstance(item, (list, tuple)):
+                # SqlFragment — готовый SQL, оборачиваем в скобки
+                # для безопасности приоритетов.
+                if isinstance(item, SqlFragment):
+                    parts.append(("EXPR", item.sql, True))
+                    values.extend(item.values)
+                    i += 1
+
+                elif isinstance(item, (list, tuple)):
                     clause, clause_values = self.parse(item)  # type: ignore
                     wrap = not self._is_triplet(item)
                     parts.append(("EXPR", clause, wrap))

@@ -17,11 +17,13 @@ from backend.base.system.dotorm.dotorm.fields import (
     Text,
 )
 from backend.base.system.schemas.base_schema import Id
-from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.security.polymorphic_parent import (
+    PolymorphicParentMixin,
+)
 
 
-class Lead(DotModel):
+class Lead(PolymorphicParentMixin):
     __table__ = "leads"
 
     id: Id = Integer(primary_key=True)

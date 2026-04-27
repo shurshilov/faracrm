@@ -33,7 +33,14 @@ class ActivityApp(App):
 
     BASE_USER_ACL = {
         "activity": ACL.FULL,
-        "activity_type": ACL.FULL,
+        "activity_type": ACL.READ_ONLY,
+    }
+
+    ROLE_ACL = {
+        "system_admin": {
+            "activity": ACL.FULL,
+            "activity_type": ACL.FULL,
+        },
     }
 
     async def post_init(self, app: "FastAPI"):

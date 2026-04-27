@@ -412,9 +412,8 @@ async def get_chat(req: Request, chat_id: int):
 
     session = env.apps.db.get_session()
 
-    # Проверяем членство (бросит исключение если не участник)
-    await ChatMember.check_membership(chat_id, user_id)
-
+    # Проверка членства реализована через rule "@is_member" на модели chat:
+    # chat.get(chat_id) бросит RecordNotFound для не-участников.
     chat = await env.models.chat.get(chat_id)
 
     # Получаем участников отдельным запросом
@@ -843,9 +842,8 @@ async def get_chat_connectors(req: Request, chat_id: int):
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство
-    await ChatMember.check_membership(chat_id, user_id)
-
+    # Проверка членства реализована через rule "@is_member":
+    # chat.get(chat_id) бросит RecordNotFound для не-участников.
     chat = await env.models.chat.get(chat_id, fields=["id", "is_internal"])
 
     connectors = await chat.get_available_connectors()

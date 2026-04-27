@@ -148,17 +148,19 @@ class TasksApp(App):
         if not role_user or not role_manager or not role_admin:
             return
 
-        # Domain для project_user: (manager_id = я) OR (я в member_ids)
+        # Domain для project_user: (manager_id = я) OR (я participant в project_member)
+        # Используем @is_member оператор который генерирует SQL-subquery
+        # вместо обращения к One2many (которое не работает на уровне SQL).
         project_member_domain = [
             ["manager_id", "=", "{{user_id}}"],
             "or",
-            ["member_ids", "in", ["{{user_id}}"]],
+            ["@is_member", "id", "project_member", "project_id"],
         ]
-        # Для тасков — то же через project_id
+        # Для тасков — через FK на project_id, а проверка project'а
+        # делается через @has_parent_access (рекурсивно применит правила
+        # project_id, в т.ч. @is_member выше).
         task_member_domain = [
-            ["project_id.manager_id", "=", "{{user_id}}"],
-            "or",
-            ["project_id.member_ids", "in", ["{{user_id}}"]],
+            ["@has_parent_access", "project", "project_id"],
         ]
         # Широкий domain — «все записи» (для manager/admin)
         all_domain = [["id", "!=", None]]

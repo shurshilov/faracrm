@@ -267,16 +267,23 @@ class SecurityApp(Service):
                 fields=["id"],
                 limit=1,
             )
-            based_roles = [Role(id=base_user[0].id)] if base_user else []
 
-            await env.models.role.create(
+            new_role_id = await env.models.role.create(
                 payload=Role(
                     code="system_admin",
                     name="Администратор настроек",
                     app_id=AppModel(id=app_id),
-                    based_role_ids=based_roles,
                 )
             )
+            # m2m (based_role_ids) сохраняются только через update(),
+            # link_many2many ожидает int id (не объекты).
+            if base_user:
+                new_role = await env.models.role.get(new_role_id)
+                await new_role.update(
+                    payload=Role(
+                        based_role_ids={"selected": [base_user[0].id]}
+                    )
+                )
 
     async def _init_security_rules(self, env: "Environment"):
         """Создаёт правила безопасности для модуля безопасности."""

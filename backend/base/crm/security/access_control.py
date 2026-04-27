@@ -12,6 +12,12 @@ from backend.base.system.dotorm.dotorm.access import (
     Operation,
 )
 from backend.base.crm.security.models.sessions import SystemSession
+from backend.base.system.dotorm.dotorm.components.filter_parser import (
+    SqlFragment,
+)
+from backend.base.crm.security.rule_operators import (
+    resolve_operators,
+)
 
 if TYPE_CHECKING:
     from backend.base.crm.security.models.sessions import Session
@@ -170,8 +176,19 @@ class SecurityAccessChecker(AccessChecker["Session"]):
                 try:
                     domain = json.loads(domain_str)
                     if domain:
-                        # Подставляем переменные
+                        # Подставляем переменные ({{user_id}})
                         domain = self._substitute_variables(domain, user_id)
+                        # Раскрываем кастомные операторы. Может вернуться:
+                        # - SqlFragment (если rule был просто @-оператор)
+                        # - список triplets/SqlFragment'ов
+                        # - обычный domain как был
+
+                        domain = await resolve_operators(
+                            domain,
+                            user_id,
+                            env=self.env,
+                            current_model=model,
+                        )
                         domains.append(domain)
                 except (json.JSONDecodeError, TypeError):
                     continue
@@ -180,9 +197,14 @@ class SecurityAccessChecker(AccessChecker["Session"]):
             return []
 
         if len(domains) == 1:
-            return domains[0]
+            d = domains[0]
+            # SqlFragment нельзя возвращать как domain — он не list.
+            # Оборачиваем в list чтобы FilterParser обработал корректно.
+            if isinstance(d, SqlFragment):
+                return [d]
+            return d
 
-        # Несколько domains — объединяем через OR
+        # Несколько rules — OR-объединение
         combined: list = []
         for i, domain in enumerate(domains):
             if i > 0:

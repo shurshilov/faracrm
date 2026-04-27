@@ -671,9 +671,8 @@ async def get_pinned_messages(req: Request, chat_id: int):
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство
-    await ChatMember.check_membership(chat_id, user_id)
-
+    # Проверка членства реализована через rule "@is_member" на chat_message:
+    # search вернёт пустой список для не-участников.
     messages = await env.models.chat_message.get_pinned_messages(
         chat_id=chat_id
     )
@@ -759,9 +758,8 @@ async def get_reactions(req: Request, chat_id: int, message_id: int):
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство
-    await ChatMember.check_membership(chat_id, user_id)
-
+    # Проверка реализована через rule "@has_parent_access" на chat_message_reaction:
+    # search вернёт пустой список если у юзера нет доступа к сообщению.
     reactions = await get_message_reactions(env, message_id)
     return {"data": reactions}
 

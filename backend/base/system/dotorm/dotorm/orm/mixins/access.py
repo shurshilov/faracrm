@@ -62,6 +62,17 @@ class AccessMixin(_Base):
             )
 
         if domain:
-            return filter + domain if filter else domain
+            if filter:
+                # Объединяем filter и domain через AND.
+                # Domain оборачивается в вложенный list, чтобы FilterParser
+                # обработал его как одно выражение и обернул в скобки.
+                # Иначе при наличии OR в domain получается некорректный SQL:
+                #   filter AND a OR b  →  (filter AND a) OR b  (неправильно!)
+                # А нам нужно:
+                #   filter AND (a OR b)
+                # При вложенном list парсер ставит скобки автоматически
+                # (см. wrap=True в FilterParser._is_triplet)
+                return [*filter, domain]
+            return domain
 
         return filter

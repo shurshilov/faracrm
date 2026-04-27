@@ -1,4 +1,5 @@
 from typing import TYPE_CHECKING
+import logging
 
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
@@ -6,6 +7,8 @@ from backend.base.crm.security.acl_post_init_mixin import ACL
 if TYPE_CHECKING:
     from fastapi import FastAPI
     from backend.base.system.core.enviroment import Environment
+
+logger = logging.getLogger(__name__)
 
 
 class AttachmentsApp(App):
@@ -46,6 +49,79 @@ class AttachmentsApp(App):
         await self._init_system_settings(env)
         await self._init_default_storage(env)
         await self._init_default_routes(env)
+        await self._init_polymorphic_rules(env)
+
+    async def _init_polymorphic_rules(self, env: "Environment"):
+        """
+        Создаёт rules для полиморфного доступа к attachments.
+
+        Используется один универсальный оператор @has_polymorphic_parent_access,
+        который сам определяет какие res_model встречаются в БД и
+        параллельно проверяет доступ к каждой родительской модели через
+        её собственные rules. Это покрывает ВСЕ возможные типы вложений
+        автоматически:
+
+          - vложения чат-сообщений (parent = chat_message → @is_member)
+          - вложения партнёров (parent = partner → нет rules → видны всем)
+          - вложения лидов (parent = lead → ownership rules)
+          - вложения новых типов (без необходимости менять код)
+
+        Дополнительный rule для public=True файлов — видны всем
+        залогиненным независимо от parent.
+        """
+        from backend.base.crm.security.models.rules import Rule
+
+        async def create_rule_if_missing(name, domain, perms):
+            attachment_model = await env.models.model.search(
+                filter=[("name", "=", "attachment")],
+                limit=1,
+            )
+            if not attachment_model:
+                logger.warning("Model 'attachment' not found")
+                return
+            existing = await env.models.rule.search(
+                filter=[("name", "=", name)],
+                limit=1,
+            )
+            if existing:
+                return
+            await env.models.rule.create(
+                payload=Rule(
+                    name=name,
+                    active=True,
+                    model_id=attachment_model[0],
+                    role_id=None,
+                    domain=domain,
+                    perm_create=perms.get("create", False),
+                    perm_read=perms.get("read", False),
+                    perm_update=perms.get("update", False),
+                    perm_delete=perms.get("delete", False),
+                ),
+            )
+
+        # Public-вложения видны всем залогиненным
+        await create_rule_if_missing(
+            name="Attachment: public files visible to everyone",
+            domain=[["public", "=", True]],
+            perms={"read": True},
+        )
+
+        # Универсальный rule: видишь parent — видишь его вложения.
+        # Полиморфный оператор:
+        #   - сам узнаёт какие res_model встречаются (DISTINCT)
+        #   - параллельно через asyncio.gather проверяет доступ
+        #     к каждой родительской модели через её собственные rules
+        #   - возвращает OR-domain покрывающий все типы родителей
+        #
+        # Не нужно явно прописывать rule для chat_message, lead, partner и
+        # каждой будущей res_model. Если у родителя есть rules
+        # (как у chat_message — @is_member) — они применятся. Если нет —
+        # доступ открыт всем у кого есть ACL на родителя (как у partner).
+        await create_rule_if_missing(
+            name="Attachment: visible if parent record is accessible",
+            domain=[["@has_polymorphic_parent_access", "res_model", "res_id"]],
+            perms={"read": True, "update": True},
+        )
 
     async def _init_system_settings(self, env: "Environment"):
         """Создаёт настройки по умолчанию для модуля attachments."""

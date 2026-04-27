@@ -18,7 +18,9 @@ from backend.base.system.dotorm.dotorm.fields import (
     One2many,
     Selection,
 )
-from backend.base.system.dotorm.dotorm.model import DotModel
+from backend.base.crm.security.polymorphic_parent import (
+    PolymorphicParentMixin,
+)
 from backend.base.system.core.enviroment import env
 
 if TYPE_CHECKING:
@@ -65,14 +67,14 @@ async def _default_lang():
     return langs[0] if langs else None
 
 
-class User(DotModel):
+class User(PolymorphicParentMixin):
     __table__ = "users"
 
     id: int = Integer(primary_key=True)
     name: str = Char(max_length=256)
     login: str = Char(max_length=50)
-    password_hash: str = Char(max_length=256, schema_required=False)
-    password_salt: str = Char(max_length=256, schema_required=False)
+    password_hash: str = Char(max_length=256, private=True)
+    password_salt: str = Char(max_length=256, private=True)
 
     # Администратор (полный доступ ко всему)
     is_admin: bool = Boolean(default=False)

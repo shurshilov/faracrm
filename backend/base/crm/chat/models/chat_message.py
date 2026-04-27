@@ -17,7 +17,9 @@ from backend.base.system.dotorm.dotorm.fields import (
     One2many,
     PolymorphicOne2many,
 )
-from backend.base.system.dotorm.dotorm.model import DotModel
+from backend.base.crm.security.polymorphic_parent import (
+    PolymorphicParentMixin,
+)
 from backend.base.system.core.enviroment import env
 
 if TYPE_CHECKING:
@@ -34,7 +36,7 @@ if TYPE_CHECKING:
     )
 
 
-class ChatMessage(DotModel):
+class ChatMessage(PolymorphicParentMixin):
     """
     Модель сообщения чата.
     Паттерн Nullable FKs
@@ -102,13 +104,13 @@ class ChatMessage(DotModel):
     )
 
     # иногда сообщение может быть привязано к записи модели
-    res_model: str | None = Char(
-        description="Модель записи к которой привязано сообщение (lead, task, partner...)",
-    )
+    # res_model: str | None = Char(
+    #     description="Модель записи к которой привязано сообщение (lead, task, partner...)",
+    # )
 
-    res_id: int | None = Integer(
-        description="ID записи к которой привязано сообщение",
-    )
+    # res_id: int | None = Integer(
+    #     description="ID записи к которой привязано сообщение",
+    # )
 
     # Временные метки
     create_date: datetime = Datetime(

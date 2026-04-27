@@ -446,7 +446,14 @@ class SchemaRegistry:
         self, name: str, base: type[BaseModel], model: type
     ) -> type[BaseModel]:
         """Схема для ввода поиска."""
-        allowed_fields = list(model.get_all_fields().keys())
+        # Исключаем private-поля — их нельзя запрашивать через API.
+        # Поле помечается private=True если оно нужно только серверу
+        # (например password_hash, password_salt).
+        allowed_fields = [
+            fname
+            for fname, fobj in model.get_all_fields().items()
+            if not getattr(fobj, "private", False)
+        ]
         # Защита от пустых списков
         if not allowed_fields:
             allowed_fields = ["id"]

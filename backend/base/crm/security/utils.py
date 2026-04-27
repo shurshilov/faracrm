@@ -81,20 +81,29 @@ async def init_module_roles(
             continue
 
         # based_role_ids: наследуем от предыдущей роли
-        based_roles = []
+        based_role_id = None
         found = await env.models.role.search(
             filter=[("code", "=", prev_code)],
             fields=["id"],
             limit=1,
         )
         if found:
-            based_roles.append(Role(id=found[0].id))
+            based_role_id = found[0].id
 
         role_payload = Role(
             code=code,
             name=name,
             app_id=AppModel(id=app_id),
-            based_role_ids=based_roles,
         )
-        await env.models.role.create(payload=role_payload)
+        new_role_id = await env.models.role.create(payload=role_payload)
+
+        # ВАЖНО: m2m (based_role_ids) сохраняются ТОЛЬКО через update(),
+        # а не через create(). И link_many2many ожидает int id, а не объекты.
+        # См. dotorm/orm/mixins/primary.py:create — only_store=True пропускает m2m.
+        if based_role_id is not None:
+            new_role = await env.models.role.get(new_role_id)
+            await new_role.update(
+                payload=Role(based_role_ids={"selected": [based_role_id]})
+            )
+
         prev_code = code
