@@ -21,7 +21,7 @@ export function ViewListExternalMessage() {
       <Field name="external_chat_id" label={t('fields.external_chat_id')} />
       <Field name="connector_id" label={t('fields.connector_id')} />
       <Field name="message_id" label={t('fields.message_id')} />
-      <Field name="create_date" label={t('fields.create_date')} />
+      <Field name="create_datetime" label={t('fields.create_datetime')} />
     </List>
   );
 }
@@ -39,7 +39,7 @@ export function ViewFormExternalMessage(props: ViewFormProps) {
           <Field name="external_id" label={t('fields.external_message_id')} />
           <Field name="external_chat_id" label={t('fields.external_chat_id')} />
         </FormRow>
-        <Field name="create_date" label={t('fields.create_date')} />
+        <Field name="create_datetime" label={t('fields.create_datetime')} />
       </FormSection>
 
       <FormSection

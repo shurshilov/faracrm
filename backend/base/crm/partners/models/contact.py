@@ -1,19 +1,18 @@
 # Copyright 2025 FARA CRM
 # Contact model - contact data for partners and users
 
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
     Char,
     Boolean,
-    Datetime,
     Many2one,
     One2many,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
@@ -24,7 +23,7 @@ if TYPE_CHECKING:
     )
 
 
-class Contact(DotModel):
+class Contact(AuditMixin, DotModel):
     """
     Контакт партнёра или пользователя.
 
@@ -78,12 +77,6 @@ class Contact(DotModel):
         description="Основной контакт данного типа",
     )
     active: bool = Boolean(default=True)
-
-    # Временные метки
-    create_date: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc)
-    )
-    write_date: datetime = Datetime(default=lambda: datetime.now(timezone.utc))
 
     # ==================== Delegated Methods ====================
 

@@ -16,13 +16,14 @@ from backend.base.system.dotorm.dotorm.fields import (
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 if TYPE_CHECKING:
     from backend.base.crm.partners.models.partners import Partner
     from backend.base.crm.company.models.company import Company
 
 
-class Contract(DotModel):
+class Contract(AuditMixin, DotModel):
     """
     Договор с контрагентом.
 

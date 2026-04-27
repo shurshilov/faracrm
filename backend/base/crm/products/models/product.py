@@ -19,9 +19,10 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.schemas.base_schema import Id
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 
-class Product(DotModel):
+class Product(AuditMixin, DotModel):
     __table__ = "products"
 
     id: Id = Integer(primary_key=True)

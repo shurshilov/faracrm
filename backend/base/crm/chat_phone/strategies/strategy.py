@@ -214,7 +214,7 @@ class PhoneStrategyBase(ChatStrategyBase):
                     call_disposition="answered",
                     call_answer_time=answer_time,
                     body=adapter.text or "",
-                    write_date=datetime.now(timezone.utc),
+                    update_datetime=datetime.now(timezone.utc),
                 )
             )
 
@@ -268,7 +268,7 @@ class PhoneStrategyBase(ChatStrategyBase):
                 call_talk_duration=adapter.talk_duration,
                 call_end_time=end_time,
                 body=adapter.text or "",
-                write_date=datetime.now(timezone.utc),
+                update_datetime=datetime.now(timezone.utc),
             )
 
             # Если есть call_answer_time из этого события — обновляем
@@ -567,9 +567,9 @@ class PhoneStrategyBase(ChatStrategyBase):
                     "author": author_data,
                     "author_user_id": author_user_id,
                     "author_partner_id": author_partner_id,
-                    "create_date": (
-                        message.create_date.isoformat()
-                        if message.create_date
+                    "create_datetime": (
+                        message.create_datetime.isoformat()
+                        if message.create_datetime
                         else None
                     ),
                     "connector_type": connector.type,

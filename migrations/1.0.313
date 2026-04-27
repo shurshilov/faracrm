@@ -64,3 +64,5 @@ ORDER BY u.login;
 
 -- 5. Когда уверен что всё OK — удалить backup
 -- DROP TABLE _migration_user_roles_backup;
+
+

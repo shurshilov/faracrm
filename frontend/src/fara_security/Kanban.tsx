@@ -1,8 +1,19 @@
 import { useCallback, useState } from 'react';
-import { Card, Text, Group, Badge, Stack, Box, Tooltip, ThemeIcon, SimpleGrid, Image } from '@mantine/core';
-import { 
-  IconShield, 
-  IconShieldCheck, 
+import {
+  Card,
+  Text,
+  Group,
+  Badge,
+  Stack,
+  Box,
+  Tooltip,
+  ThemeIcon,
+  SimpleGrid,
+  Image,
+} from '@mantine/core';
+import {
+  IconShield,
+  IconShieldCheck,
   IconUser,
   IconClock,
   IconDeviceDesktop,
@@ -48,16 +59,14 @@ function RuleCard({ rule, onClick }: { rule: RuleData; onClick: () => void }) {
       padding="md"
       radius="md"
       withBorder
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Group justify="space-between" mb="xs">
         <Group gap="xs">
-          <ThemeIcon 
-            size="md" 
-            radius="md" 
+          <ThemeIcon
+            size="md"
+            radius="md"
             variant="light"
-            color={rule.active ? 'blue' : 'gray'}
-          >
+            color={rule.active ? 'blue' : 'gray'}>
             <IconShield size={16} />
           </ThemeIcon>
           <Text fw={600} size="sm" lineClamp={1}>
@@ -73,19 +82,25 @@ function RuleCard({ rule, onClick }: { rule: RuleData; onClick: () => void }) {
         {rule.model_id && (
           <Group gap={6}>
             <IconDatabase size={14} color="var(--mantine-color-dimmed)" />
-            <Text size="xs" c="dimmed">{rule.model_id.name}</Text>
+            <Text size="xs" c="dimmed">
+              {rule.model_id.name}
+            </Text>
           </Group>
         )}
-        
+
         {rule.role_id && (
           <Group gap={6}>
             <IconUser size={14} color="var(--mantine-color-dimmed)" />
-            <Text size="xs" c="dimmed">{rule.role_id.name}</Text>
+            <Text size="xs" c="dimmed">
+              {rule.role_id.name}
+            </Text>
           </Group>
         )}
-        
+
         {!rule.role_id && (
-          <Text size="xs" c="dimmed" fs="italic">Для всех ролей</Text>
+          <Text size="xs" c="dimmed" fs="italic">
+            Для всех ролей
+          </Text>
         )}
       </Stack>
 
@@ -96,7 +111,7 @@ function RuleCard({ rule, onClick }: { rule: RuleData; onClick: () => void }) {
           update={rule.perm_update}
           delete={rule.perm_delete}
         />
-        
+
         {rule.domain && (
           <Tooltip label="Есть domain-фильтр">
             <Badge size="xs" variant="outline" color="violet">
@@ -115,20 +130,42 @@ export function ViewKanbanRules() {
 
   const { data } = useSearchQuery({
     model: 'rules',
-    fields: ['id', 'name', 'active', 'model_id', 'role_id', 'perm_create', 'perm_read', 'perm_update', 'perm_delete', 'domain'],
+    fields: [
+      'id',
+      'name',
+      'active',
+      'model_id',
+      'role_id',
+      'perm_create',
+      'perm_read',
+      'perm_update',
+      'perm_delete',
+      'domain',
+    ],
     limit: 100,
     order: 'asc',
     sort: 'name',
     filter: contextFilters,
-  }) as TypedUseQueryHookResult<GetListResult<RuleData>, GetListParams, BaseQueryFn>;
+  }) as TypedUseQueryHookResult<
+    GetListResult<RuleData>,
+    GetListParams,
+    BaseQueryFn
+  >;
 
-  const handleClick = useCallback((id: number) => navigate(`${id}`), [navigate]);
+  const handleClick = useCallback(
+    (id: number) => navigate(`${id}`),
+    [navigate],
+  );
   const rules = data?.data || [];
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="md" p="md">
       {rules.map(rule => (
-        <RuleCard key={rule.id} rule={rule} onClick={() => handleClick(rule.id)} />
+        <RuleCard
+          key={rule.id}
+          rule={rule}
+          onClick={() => handleClick(rule.id)}
+        />
       ))}
     </SimpleGrid>
   );
@@ -145,16 +182,22 @@ interface SessionData {
   ttl?: number;
 }
 
-function SessionCard({ session, onClick }: { session: SessionData; onClick: () => void }) {
+function SessionCard({
+  session,
+  onClick,
+}: {
+  session: SessionData;
+  onClick: () => void;
+}) {
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '—';
     const date = new Date(dateStr);
-    return date.toLocaleString('ru-RU', { 
-      day: '2-digit', 
-      month: '2-digit', 
+    return date.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
       year: '2-digit',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -173,17 +216,19 @@ function SessionCard({ session, onClick }: { session: SessionData; onClick: () =
       padding="md"
       radius="md"
       withBorder
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Group justify="space-between" mb="xs">
         <Group gap="xs">
-          <ThemeIcon 
-            size="md" 
-            radius="md" 
+          <ThemeIcon
+            size="md"
+            radius="md"
             variant="light"
-            color={session.active ? 'green' : 'gray'}
-          >
-            {session.active ? <IconLockOpen size={16} /> : <IconLock size={16} />}
+            color={session.active ? 'green' : 'gray'}>
+            {session.active ? (
+              <IconLockOpen size={16} />
+            ) : (
+              <IconLock size={16} />
+            )}
           </ThemeIcon>
           <Text fw={600} size="sm">
             #{session.id}
@@ -198,19 +243,25 @@ function SessionCard({ session, onClick }: { session: SessionData; onClick: () =
         {session.user_id && (
           <Group gap={6}>
             <IconUser size={14} color="var(--mantine-color-dimmed)" />
-            <Text size="sm" fw={500}>{session.user_id.name}</Text>
+            <Text size="sm" fw={500}>
+              {session.user_id.name}
+            </Text>
           </Group>
         )}
-        
+
         <Group gap={6}>
           <IconClock size={14} color="var(--mantine-color-dimmed)" />
-          <Text size="xs" c="dimmed">{formatDate(session.create_datetime)}</Text>
+          <Text size="xs" c="dimmed">
+            {formatDate(session.create_datetime)}
+          </Text>
         </Group>
 
         {session.ttl && (
           <Group gap={6}>
             <IconDeviceDesktop size={14} color="var(--mantine-color-dimmed)" />
-            <Text size="xs" c="dimmed">TTL: {formatTTL(session.ttl)}</Text>
+            <Text size="xs" c="dimmed">
+              TTL: {formatTTL(session.ttl)}
+            </Text>
           </Group>
         )}
       </Stack>
@@ -237,15 +288,26 @@ export function ViewKanbanSessions() {
     order: 'desc',
     sort: 'id',
     filter: contextFilters,
-  }) as TypedUseQueryHookResult<GetListResult<SessionData>, GetListParams, BaseQueryFn>;
+  }) as TypedUseQueryHookResult<
+    GetListResult<SessionData>,
+    GetListParams,
+    BaseQueryFn
+  >;
 
-  const handleClick = useCallback((id: number) => navigate(`${id}`), [navigate]);
+  const handleClick = useCallback(
+    (id: number) => navigate(`${id}`),
+    [navigate],
+  );
   const sessions = data?.data || [];
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="md" p="md">
       {sessions.map(session => (
-        <SessionCard key={session.id} session={session} onClick={() => handleClick(session.id)} />
+        <SessionCard
+          key={session.id}
+          session={session}
+          onClick={() => handleClick(session.id)}
+        />
       ))}
     </SimpleGrid>
   );
@@ -272,8 +334,7 @@ function AppCard({ app, onClick }: { app: AppData; onClick: () => void }) {
       padding="md"
       radius="md"
       withBorder
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Stack gap="sm">
         {/* Иконка по центру */}
         <Group justify="center">
@@ -288,12 +349,15 @@ function AppCard({ app, onClick }: { app: AppData; onClick: () => void }) {
                 onError={() => setImgError(true)}
               />
             ) : (
-              <ThemeIcon 
-                size={48} 
-                radius="md" 
+              <ThemeIcon
+                size={48}
+                radius="md"
                 variant="gradient"
-                gradient={app.active ? { from: 'blue', to: 'cyan' } : { from: 'gray', to: 'dark' }}
-              >
+                gradient={
+                  app.active
+                    ? { from: 'blue', to: 'cyan' }
+                    : { from: 'gray', to: 'dark' }
+                }>
                 <IconApps size={28} />
               </ThemeIcon>
             )}
@@ -313,12 +377,11 @@ function AppCard({ app, onClick }: { app: AppData; onClick: () => void }) {
         </Box>
 
         {/* Статус */}
-        <Badge 
-          size="sm" 
-          variant="light" 
+        <Badge
+          size="sm"
+          variant="light"
           color={app.active ? 'green' : 'gray'}
-          fullWidth
-        >
+          fullWidth>
           {app.active ? 'Активно' : 'Отключено'}
         </Badge>
       </Stack>
@@ -337,13 +400,23 @@ export function ViewKanbanApps() {
     order: 'asc',
     sort: 'name',
     filter: contextFilters,
-  }) as TypedUseQueryHookResult<GetListResult<AppData>, GetListParams, BaseQueryFn>;
+  }) as TypedUseQueryHookResult<
+    GetListResult<AppData>,
+    GetListParams,
+    BaseQueryFn
+  >;
 
-  const handleClick = useCallback((id: number) => navigate(`${id}`), [navigate]);
+  const handleClick = useCallback(
+    (id: number) => navigate(`${id}`),
+    [navigate],
+  );
   const apps = data?.data || [];
 
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5 }} spacing="md" p="md">
+    <SimpleGrid
+      cols={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
+      spacing="md"
+      p="md">
       {apps.map(app => (
         <AppCard key={app.id} app={app} onClick={() => handleClick(app.id)} />
       ))}
@@ -361,7 +434,7 @@ interface RoleData {
 
 function RoleCard({ role, onClick }: { role: RoleData; onClick: () => void }) {
   const isAdmin = role.name?.toLowerCase().includes('admin');
-  
+
   return (
     <Card
       className={classes.card}
@@ -370,15 +443,13 @@ function RoleCard({ role, onClick }: { role: RoleData; onClick: () => void }) {
       padding="md"
       radius="md"
       withBorder
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Group gap="xs" mb="xs">
-        <ThemeIcon 
-          size="md" 
-          radius="md" 
+        <ThemeIcon
+          size="md"
+          radius="md"
           variant="light"
-          color={isAdmin ? 'violet' : 'blue'}
-        >
+          color={isAdmin ? 'violet' : 'blue'}>
           {isAdmin ? <IconShieldCheck size={16} /> : <IconShield size={16} />}
         </ThemeIcon>
         <Text fw={600} size="sm" lineClamp={1}>
@@ -389,10 +460,12 @@ function RoleCard({ role, onClick }: { role: RoleData; onClick: () => void }) {
       {role.app_id && (
         <Group gap={6}>
           <IconApps size={14} color="var(--mantine-color-dimmed)" />
-          <Text size="xs" c="dimmed">{role.app_id.name}</Text>
+          <Text size="xs" c="dimmed">
+            {role.app_id.name}
+          </Text>
         </Group>
       )}
-      
+
       {isAdmin && (
         <Badge size="xs" variant="light" color="violet" mt="sm">
           Администратор
@@ -413,15 +486,26 @@ export function ViewKanbanRoles() {
     order: 'asc',
     sort: 'name',
     filter: contextFilters,
-  }) as TypedUseQueryHookResult<GetListResult<RoleData>, GetListParams, BaseQueryFn>;
+  }) as TypedUseQueryHookResult<
+    GetListResult<RoleData>,
+    GetListParams,
+    BaseQueryFn
+  >;
 
-  const handleClick = useCallback((id: number) => navigate(`${id}`), [navigate]);
+  const handleClick = useCallback(
+    (id: number) => navigate(`${id}`),
+    [navigate],
+  );
   const roles = data?.data || [];
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="md" p="md">
       {roles.map(role => (
-        <RoleCard key={role.id} role={role} onClick={() => handleClick(role.id)} />
+        <RoleCard
+          key={role.id}
+          role={role}
+          onClick={() => handleClick(role.id)}
+        />
       ))}
     </SimpleGrid>
   );
@@ -440,7 +524,13 @@ interface AccessListData {
   perm_delete: boolean;
 }
 
-function AccessListCard({ acl, onClick }: { acl: AccessListData; onClick: () => void }) {
+function AccessListCard({
+  acl,
+  onClick,
+}: {
+  acl: AccessListData;
+  onClick: () => void;
+}) {
   return (
     <Card
       className={classes.card}
@@ -448,8 +538,7 @@ function AccessListCard({ acl, onClick }: { acl: AccessListData; onClick: () => 
       padding="md"
       radius="md"
       withBorder
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Group justify="space-between" mb="xs">
         <Group gap="xs">
           <ThemeIcon size="md" radius="md" variant="light" color="teal">
@@ -465,14 +554,18 @@ function AccessListCard({ acl, onClick }: { acl: AccessListData; onClick: () => 
         {acl.model_id && (
           <Group gap={6}>
             <IconDatabase size={14} color="var(--mantine-color-dimmed)" />
-            <Text size="xs" c="dimmed">{acl.model_id.name}</Text>
+            <Text size="xs" c="dimmed">
+              {acl.model_id.name}
+            </Text>
           </Group>
         )}
-        
+
         {acl.role_id && (
           <Group gap={6}>
             <IconUser size={14} color="var(--mantine-color-dimmed)" />
-            <Text size="xs" c="dimmed">{acl.role_id.name}</Text>
+            <Text size="xs" c="dimmed">
+              {acl.role_id.name}
+            </Text>
           </Group>
         )}
       </Stack>
@@ -495,20 +588,40 @@ export function ViewKanbanAccessList() {
 
   const { data } = useSearchQuery({
     model: 'access_list',
-    fields: ['id', 'name', 'model_id', 'role_id', 'perm_create', 'perm_read', 'perm_update', 'perm_delete'],
+    fields: [
+      'id',
+      'name',
+      'model_id',
+      'role_id',
+      'perm_create',
+      'perm_read',
+      'perm_update',
+      'perm_delete',
+    ],
     limit: 100,
     order: 'asc',
     sort: 'name',
     filter: contextFilters,
-  }) as TypedUseQueryHookResult<GetListResult<AccessListData>, GetListParams, BaseQueryFn>;
+  }) as TypedUseQueryHookResult<
+    GetListResult<AccessListData>,
+    GetListParams,
+    BaseQueryFn
+  >;
 
-  const handleClick = useCallback((id: number) => navigate(`${id}`), [navigate]);
+  const handleClick = useCallback(
+    (id: number) => navigate(`${id}`),
+    [navigate],
+  );
   const items = data?.data || [];
 
   return (
     <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing="md" p="md">
       {items.map(acl => (
-        <AccessListCard key={acl.id} acl={acl} onClick={() => handleClick(acl.id)} />
+        <AccessListCard
+          key={acl.id}
+          acl={acl}
+          onClick={() => handleClick(acl.id)}
+        />
       ))}
     </SimpleGrid>
   );
@@ -522,7 +635,13 @@ interface ModelData {
   model?: string;
 }
 
-function ModelCard({ model, onClick }: { model: ModelData; onClick: () => void }) {
+function ModelCard({
+  model,
+  onClick,
+}: {
+  model: ModelData;
+  onClick: () => void;
+}) {
   return (
     <Card
       className={classes.card}
@@ -530,8 +649,7 @@ function ModelCard({ model, onClick }: { model: ModelData; onClick: () => void }
       padding="md"
       radius="md"
       withBorder
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Group gap="xs">
         <ThemeIcon size="md" radius="md" variant="light" color="indigo">
           <IconDatabase size={16} />
@@ -562,15 +680,29 @@ export function ViewKanbanModels() {
     order: 'asc',
     sort: 'name',
     filter: contextFilters,
-  }) as TypedUseQueryHookResult<GetListResult<ModelData>, GetListParams, BaseQueryFn>;
+  }) as TypedUseQueryHookResult<
+    GetListResult<ModelData>,
+    GetListParams,
+    BaseQueryFn
+  >;
 
-  const handleClick = useCallback((id: number) => navigate(`${id}`), [navigate]);
+  const handleClick = useCallback(
+    (id: number) => navigate(`${id}`),
+    [navigate],
+  );
   const models = data?.data || [];
 
   return (
-    <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5 }} spacing="md" p="md">
+    <SimpleGrid
+      cols={{ base: 1, sm: 2, md: 3, lg: 4, xl: 5 }}
+      spacing="md"
+      p="md">
       {models.map(model => (
-        <ModelCard key={model.id} model={model} onClick={() => handleClick(model.id)} />
+        <ModelCard
+          key={model.id}
+          model={model}
+          onClick={() => handleClick(model.id)}
+        />
       ))}
     </SimpleGrid>
   );

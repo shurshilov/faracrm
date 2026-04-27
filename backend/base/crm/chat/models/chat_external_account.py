@@ -2,9 +2,9 @@
 # Chat module - external account model
 
 import logging
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from ...users.audit_mixin import AuditMixin
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
@@ -12,7 +12,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     Selection,
     Text,
     Boolean,
-    Datetime,
     Many2one,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
@@ -25,7 +24,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ChatExternalAccount(DotModel):
+class ChatExternalAccount(AuditMixin, DotModel):
     """
     Внешний аккаунт в мессенджере.
 
@@ -86,12 +85,6 @@ class ChatExternalAccount(DotModel):
     # Статистика (вычисляемые поля)
     # rating: int = Integer(store=False, default=0, description="Количество чатов")
     # rating_today: int = Integer(store=False, default=0, description="Количество чатов сегодня")
-
-    # Временные метки
-    create_date: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc)
-    )
-    write_date: datetime = Datetime(default=lambda: datetime.now(timezone.utc))
 
     # Лидогенерация
     # при отвеченном звонке

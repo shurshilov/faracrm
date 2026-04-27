@@ -64,7 +64,7 @@ export function ActivityPanel({ resModel, resId }: ActivityPanelProps) {
       'date_deadline',
       'state',
       'done',
-      'create_date',
+      'create_datetime',
     ],
     filter: [
       ['res_model', '=', resModel],
@@ -325,7 +325,7 @@ function CreateActivityForm({
           state: 'planned',
           done: false,
           active: true,
-          create_date: new Date().toISOString(),
+          create_datetime: new Date().toISOString(),
           notification_sent: false,
         },
       }).unwrap();

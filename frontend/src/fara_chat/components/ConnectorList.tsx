@@ -58,7 +58,7 @@ export function ConnectorList() {
       />
       {/* <Field name="webhook_url" label={t('connector.fields.webhookUrl')} /> */}
       <Field name="connector_url" label={t('connector.fields.connectorUrl')} />
-      <Field name="create_date" label={t('connector.fields.createDate')} />
+      <Field name="create_datetime" label={t('connector.fields.createDate')} />
     </List>
   );
 }

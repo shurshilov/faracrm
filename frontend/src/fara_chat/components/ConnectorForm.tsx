@@ -115,11 +115,11 @@ export function ConnectorForm(props: ViewFormProps) {
           <FormSection title={t('connector.groups.timestamps')}>
             <FormRow cols={2}>
               <Field
-                name="create_date"
+                name="create_datetime"
                 label={t('connector.fields.createDate')}
               />
               <Field
-                name="write_date"
+                name="update_datetime"
                 label={t('connector.fields.writeDate')}
               />
               <Field name="id" />

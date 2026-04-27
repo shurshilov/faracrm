@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 from typing import TYPE_CHECKING
 
-from ...users.audit_mixin import AuditMixin
+from backend.base.crm.users.audit_mixin import AuditMixin
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
     Char,
@@ -107,12 +107,6 @@ class Activity(AuditMixin, DotModel):
     done_datetime: datetime | None = Datetime(description="Когда выполнена")
 
     active: bool = Boolean(default=True)
-
-    # Даты
-    create_date: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc),
-        description="Дата создания",
-    )
 
     # Флаг: было ли уже отправлено уведомление
     notification_sent: bool = Boolean(
@@ -305,9 +299,9 @@ class Activity(AuditMixin, DotModel):
                         "body": body,
                         "res_model": res_model,
                         "res_id": res_id,
-                        "create_date": (
-                            message.create_date.isoformat()
-                            if message.create_date
+                        "create_datetime": (
+                            message.create_datetime.isoformat()
+                            if message.create_datetime
                             else None
                         ),
                     },
@@ -346,8 +340,8 @@ class Activity(AuditMixin, DotModel):
             chat_type="direct",
             active=True,
             is_internal=True,
-            create_date=now,
-            write_date=now,
+            create_datetime=now,
+            update_datetime=now,
         )
         chat.id = await env.models.chat.create(payload=chat)
 

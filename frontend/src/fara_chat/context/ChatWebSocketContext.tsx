@@ -152,9 +152,9 @@ export function ChatWebSocketProvider({
                   id: wsMsg.message.id,
                   body: wsMsg.message.body,
                   author_id: wsMsg.message.author?.id || 0,
-                  create_date: wsMsg.message.create_date,
+                  create_datetime: wsMsg.message.create_datetime,
                 };
-                chat.last_message_date = wsMsg.message.create_date;
+                chat.last_message_date = wsMsg.message.create_datetime;
               }
             }),
           );

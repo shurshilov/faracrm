@@ -298,7 +298,7 @@
     "id": "ID",
     "name": "Name",
     "active": "Active",
-    "create_date": "Created",
+    "create_datetime": "Created",
     "external_id": "External ID",
     "connector_id": "Connector",
     "type": "Type",

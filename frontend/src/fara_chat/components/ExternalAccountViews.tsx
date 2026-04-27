@@ -22,7 +22,7 @@ export function ViewListExternalAccount() {
       <Field name="connector_id" label={t('fields.connector_id')} />
       <Field name="contact_id" label={t('fields.contact_id')} />
       <Field name="active" label={t('fields.active')} />
-      <Field name="create_date" label={t('fields.create_date')} />
+      <Field name="create_datetime" label={t('fields.create_datetime')} />
     </List>
   );
 }
@@ -68,11 +68,11 @@ export function ViewFormExternalAccount(props: ViewFormProps) {
         <Field name="raw" label={t('externalAccount.fields.raw')} />
         <FormRow cols={2}>
           <Field
-            name="create_date"
+            name="create_datetime"
             label={t('externalAccount.fields.createDate')}
           />
           <Field
-            name="write_date"
+            name="update_datetime"
             label={t('externalAccount.fields.writeDate')}
           />
         </FormRow>

@@ -16,9 +16,10 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.schemas.base_schema import Id, PositiveInt0
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 
-class SaleLine(DotModel):
+class SaleLine(AuditMixin, DotModel):
     __table__ = "sale_line"
 
     id: Id = Integer(primary_key=True)

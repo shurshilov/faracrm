@@ -20,7 +20,7 @@ export function ViewListExternalChat() {
       <Field name="external_id" label={t('fields.external_chat_id')} />
       <Field name="connector_id" label={t('fields.connector_id')} />
       <Field name="chat_id" label={t('fields.chat_id')} />
-      <Field name="create_date" label={t('fields.create_date')} />
+      <Field name="create_datetime" label={t('fields.create_datetime')} />
     </List>
   );
 }
@@ -36,7 +36,7 @@ export function ViewFormExternalChat(props: ViewFormProps) {
         icon={<IconMessage size={18} />}>
         <FormRow cols={2}>
           <Field name="external_id" label={t('fields.external_chat_id')} />
-          <Field name="create_date" label={t('fields.create_date')} />
+          <Field name="create_datetime" label={t('fields.create_datetime')} />
         </FormRow>
       </FormSection>
 

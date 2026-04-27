@@ -23,6 +23,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.schemas.base_schema import Id
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 
 def _default_current_user():
@@ -52,7 +53,7 @@ async def _default_name():
     return f"Задача {str(next_id).zfill(7)}"
 
 
-class Task(DotModel):
+class Task(AuditMixin, DotModel):
     """
     Задача (task) — основная сущность модуля.
 

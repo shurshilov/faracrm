@@ -287,7 +287,7 @@ export function ChatList({
                         {chat.name}
                       </Text>
                       <Text size="xs" c="dimmed">
-                        {formatTime(chat.last_message_date || chat.create_date)}
+                        {formatTime(chat.last_message_date || chat.create_datetime)}
                       </Text>
                     </Group>
 

@@ -164,8 +164,8 @@ export function ActivityNotification() {
                   </Text>
                   <Group gap="xs" mt={4}>
                     <Text size="xs" c="dimmed">
-                      {msg.create_date
-                        ? new Date(msg.create_date).toLocaleString()
+                      {msg.create_datetime
+                        ? new Date(msg.create_datetime).toLocaleString()
                         : ''}
                     </Text>
                     {msg.res_model && (

@@ -203,9 +203,9 @@ export function ChatPage({
                     id: wsMsg.message.id,
                     body: wsMsg.message.body,
                     author_id: wsMsg.message.author?.id || 0,
-                    create_date: wsMsg.message.create_date,
+                    create_datetime: wsMsg.message.create_datetime,
                   };
-                  chat.last_message_date = wsMsg.message.create_date;
+                  chat.last_message_date = wsMsg.message.create_datetime;
                 }
               }),
             );
@@ -532,8 +532,8 @@ export function ChatPage({
                 <Paper key={msg.id} p="sm" withBorder>
                   <Text size="xs" c="dimmed" mb={4}>
                     {msg.author?.name} •{' '}
-                    {msg.create_date
-                      ? new Date(msg.create_date).toLocaleString()
+                    {msg.create_datetime
+                      ? new Date(msg.create_datetime).toLocaleString()
                       : ''}
                   </Text>
                   <Text size="sm">{msg.body}</Text>

@@ -20,6 +20,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.schemas.base_schema import Id
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 
 def _default_current_user():
@@ -27,7 +28,7 @@ def _default_current_user():
     return session.user_id if session else None
 
 
-class Project(DotModel):
+class Project(AuditMixin, DotModel):
     """
     Проект — группировка задач.
 

@@ -21,6 +21,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.schemas.base_schema import Id
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 
 async def _default_stage_id():
@@ -45,7 +46,7 @@ async def _default_name():
     return f"Заказ {str(next_id).zfill(7)}"
 
 
-class Sale(DotModel):
+class Sale(AuditMixin, DotModel):
     __table__ = "sales"
 
     id: Id = Integer(primary_key=True)

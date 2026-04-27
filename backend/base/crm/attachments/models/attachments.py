@@ -20,6 +20,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 from backend.base.crm.attachments.strategies import get_strategy, has_strategy
+from backend.base.crm.users.audit_mixin import AuditMixin
 from .attachments_storage import AttachmentStorage
 from .attachments_route import AttachmentRoute
 
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class Attachment(DotModel):
+class Attachment(AuditMixin, DotModel):
     """
     Модель вложений с поддержкой различных стратегий хранения.
 

@@ -4,9 +4,10 @@
 import asyncio
 import logging
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
+from ...users.audit_mixin import AuditMixin
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
     FilterExpression,
 )
@@ -36,7 +37,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ChatConnector(DotModel):
+class ChatConnector(AuditMixin, DotModel):
     """
     Модель коннектора для интеграции с внешними сервисами.
 
@@ -157,12 +158,6 @@ class ChatConnector(DotModel):
 
     # Логирование
     last_response: str | None = Text(description="Последний ответ от API")
-
-    # Временные метки
-    create_date: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc)
-    )
-    write_date: datetime = Datetime(default=lambda: datetime.now(timezone.utc))
 
     # Связанные внешние аккаунты (операторы и клиенты)
     # в основном просто для информации, нигде не используется

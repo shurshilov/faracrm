@@ -130,8 +130,8 @@ export interface ContactRecord extends BaseRecord {
   external_account_ids: RelationRecord[];
   is_primary: boolean;
   active: boolean;
-  create_date: string | null;
-  write_date: string | null;
+  create_datetime: string | null;
+  update_datetime: string | null;
 }
 
 export interface ContactTypeRecord extends BaseRecord {
@@ -259,7 +259,7 @@ export interface ActivityRecord extends BaseRecord {
   done: boolean;
   done_datetime: string | null;
   active: boolean;
-  create_date: string | null;
+  create_datetime: string | null;
   notification_sent: boolean;
 }
 

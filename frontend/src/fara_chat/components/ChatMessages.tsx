@@ -142,8 +142,8 @@ export function ChatMessages({
   const uniqueNewMessages = newMessages.filter(m => !fetchedIds.has(m.id));
   const allMessages = [...fetchedMessages, ...uniqueNewMessages].sort(
     (a, b) => {
-      const dateA = a.create_date ? new Date(a.create_date).getTime() : 0;
-      const dateB = b.create_date ? new Date(b.create_date).getTime() : 0;
+      const dateA = a.create_datetime ? new Date(a.create_datetime).getTime() : 0;
+      const dateB = b.create_datetime ? new Date(b.create_datetime).getTime() : 0;
       return dateA - dateB;
     },
   );
@@ -224,10 +224,10 @@ export function ChatMessages({
   const shouldShowDate = (message: ChatMessage, index: number) => {
     if (index === 0) return true;
     const prevMessage = allMessages[index - 1];
-    if (!message.create_date || !prevMessage.create_date) return false;
+    if (!message.create_datetime || !prevMessage.create_datetime) return false;
     return (
-      new Date(message.create_date).toDateString() !==
-      new Date(prevMessage.create_date).toDateString()
+      new Date(message.create_datetime).toDateString() !==
+      new Date(prevMessage.create_datetime).toDateString()
     );
   };
 
@@ -480,7 +480,7 @@ export function ChatMessages({
                 {shouldShowDate(message, index) && (
                   <Box className={styles.dateSeparator}>
                     <Text size="xs" c="dimmed">
-                      {formatDate(message.create_date)}
+                      {formatDate(message.create_datetime)}
                     </Text>
                   </Box>
                 )}
@@ -678,7 +678,7 @@ export function ChatMessages({
                             <Text
                               size="xs"
                               c={isOwnMessage(message) ? undefined : 'dimmed'}>
-                              {formatTime(message.create_date)}
+                              {formatTime(message.create_datetime)}
                             </Text>
                             {isOwnMessage(message) && (
                               <Tooltip
@@ -747,7 +747,7 @@ export function ChatMessages({
                           )}
                           <Group gap={4}>
                             <Text size="xs" c="dimmed">
-                              {formatTime(message.create_date)}
+                              {formatTime(message.create_datetime)}
                             </Text>
                             {isOwnMessage(message) && (
                               <Tooltip

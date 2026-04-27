@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 import logging
 from typing import TYPE_CHECKING
 
-from ...users.audit_mixin import AuditMixin
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
@@ -18,6 +17,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 logger = logging.getLogger(__name__)
 
@@ -147,14 +147,6 @@ class Chat(AuditMixin, DotModel):
         description="Право удаления чужих сообщений по умолчанию",
     )
 
-    # Временные метки
-    create_date: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc), description="Дата создания"
-    )
-    write_date: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc),
-        description="Дата последнего изменения",
-    )
     last_message_date: datetime | None = Datetime(
         description="Дата последнего сообщения"
     )
@@ -229,8 +221,8 @@ class Chat(AuditMixin, DotModel):
             name=f"{user1.name} - {user2.name}",
             chat_type="direct",
             create_user_id=user1,
-            create_date=now,
-            write_date=now,
+            create_datetime=now,
+            update_datetime=now,
             # Права по умолчанию
             default_can_read=default_perms["can_read"],
             default_can_write=default_perms["can_write"],
@@ -253,7 +245,7 @@ class Chat(AuditMixin, DotModel):
         session = self._get_db_session()
         query = """
             SELECT c.id, c.name, c.chat_type,
-                c.create_user_id, c.create_date, c.write_date,
+                c.create_user_id, c.create_datetime, c.update_datetime,
                 c.default_can_read, c.default_can_write, c.default_can_invite,
                 c.default_can_pin, c.default_can_delete_others
             FROM chat c
@@ -284,8 +276,8 @@ class Chat(AuditMixin, DotModel):
             name=name,
             chat_type="group",
             create_user_id=creator,
-            create_date=now,
-            write_date=now,
+            create_datetime=now,
+            update_datetime=now,
             # Права по умолчанию
             default_can_read=default_perms["can_read"],
             default_can_write=default_perms["can_write"],
@@ -333,8 +325,8 @@ class Chat(AuditMixin, DotModel):
             chat_type="direct",
             is_internal=False,  # Внешний чат с партнёром
             create_user_id=user,
-            create_date=now,
-            write_date=now,
+            create_datetime=now,
+            update_datetime=now,
             default_can_read=default_perms["can_read"],
             default_can_write=default_perms["can_write"],
             default_can_invite=default_perms["can_invite"],
@@ -390,8 +382,8 @@ class Chat(AuditMixin, DotModel):
             chat_type="channel",
             is_public=is_public,
             create_user_id=creator,
-            create_date=now,
-            write_date=now,
+            create_datetime=now,
+            update_datetime=now,
             # В канале по умолчанию только чтение
             default_can_read=default_perms["can_read"],
             default_can_write=default_perms["can_write"],
@@ -467,8 +459,8 @@ class Chat(AuditMixin, DotModel):
                 res_model=res_model,
                 res_id=res_id,
                 create_user_id=user,
-                create_date=now,
-                write_date=now,
+                create_datetime=now,
+                update_datetime=now,
                 default_can_read=default_perms["can_read"],
                 default_can_write=default_perms["can_write"],
                 default_can_invite=default_perms["can_invite"],
@@ -597,7 +589,7 @@ class Chat(AuditMixin, DotModel):
     async def update_last_message_date(self):
         """Обновить дату последнего сообщения."""
         now = datetime.now(timezone.utc)
-        await self.update(Chat(last_message_date=now, write_date=now))
+        await self.update(Chat(last_message_date=now, update_datetime=now))
 
     async def get_available_connectors(self):
         """

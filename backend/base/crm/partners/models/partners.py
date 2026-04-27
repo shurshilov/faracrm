@@ -19,6 +19,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Selection,
     Text,
 )
+from backend.base.crm.users.audit_mixin import AuditMixin
 from backend.base.system.core.enviroment import env
 from backend.base.crm.security.polymorphic_parent import (
     PolymorphicParentMixin,
@@ -33,7 +34,7 @@ timezones = [
 ]
 
 
-class Partner(PolymorphicParentMixin):
+class Partner(AuditMixin, PolymorphicParentMixin):
     __table__ = "partners"
 
     id: Id = Integer(primary_key=True)

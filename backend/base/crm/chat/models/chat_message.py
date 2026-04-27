@@ -11,7 +11,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Text,
     Boolean,
-    Datetime,
     Selection,
     Many2one,
     One2many,
@@ -21,6 +20,7 @@ from backend.base.crm.security.polymorphic_parent import (
     PolymorphicParentMixin,
 )
 from backend.base.system.core.enviroment import env
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
     )
 
 
-class ChatMessage(PolymorphicParentMixin):
+class ChatMessage(AuditMixin, PolymorphicParentMixin):
     """
     Модель сообщения чата.
     Паттерн Nullable FKs
@@ -111,15 +111,6 @@ class ChatMessage(PolymorphicParentMixin):
     # res_id: int | None = Integer(
     #     description="ID записи к которой привязано сообщение",
     # )
-
-    # Временные метки
-    create_date: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc), description="Дата создания"
-    )
-    write_date: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc),
-        description="Дата изменения",
-    )
 
     # Статус
     is_deleted: bool = Boolean(
@@ -197,8 +188,8 @@ class ChatMessage(PolymorphicParentMixin):
         connector_id: int | None = None,
         parent_id: int | None = None,
         # attachment_ids: list[int] | None = None,
-        res_model: str | None = None,
-        res_id: int | None = None,
+        # res_model: str | None = None,
+        # res_id: int | None = None,
     ):
         """
         Создать и отправить сообщение в чат.
@@ -244,10 +235,10 @@ class ChatMessage(PolymorphicParentMixin):
             author_partner_id=author_partner,
             connector_id=connector,
             parent_id=parent,
-            create_date=now,
-            write_date=now,
-            res_model=res_model,
-            res_id=res_id,
+            create_datetime=now,
+            update_datetime=now,
+            # res_model=res_model,
+            # res_id=res_id,
         )
 
         message.id = await self.create(payload=message)
@@ -303,7 +294,7 @@ class ChatMessage(PolymorphicParentMixin):
                 "message_type",
                 "author_user_id",
                 "author_partner_id",
-                "create_date",
+                "create_datetime",
                 "starred",
                 "pinned",
                 "is_edited",
@@ -347,10 +338,10 @@ class ChatMessage(PolymorphicParentMixin):
                 "message_type",
                 "author_user_id",
                 "author_partner_id",
-                "create_date",
+                "create_datetime",
                 # "pinned",
             ],
-            sort="create_date",
+            sort="create_datetime",
             order="DESC",
             limit=50,
         )
@@ -363,7 +354,7 @@ class ChatMessage(PolymorphicParentMixin):
     #     await self.update(
     #         ChatMessage(
     #             is_deleted=True,
-    #             write_date=datetime.now(timezone.utc),
+    #             update_datetime=datetime.now(timezone.utc),
     #         )
     #     )
     #     return True

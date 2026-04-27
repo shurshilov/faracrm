@@ -56,6 +56,6 @@ class ChatMessageReaction(DotModel):
     )
 
     # Временная метка
-    create_date: datetime = Datetime(
+    create_datetime: datetime = Datetime(
         default=lambda: datetime.now(timezone.utc), description="Дата создания"
     )

@@ -298,7 +298,7 @@
     "id": "Ид",
     "name": "Название",
     "active": "Активен",
-    "create_date": "Дата создания",
+    "create_datetime": "Дата создания",
     "external_id": "Внешний ID",
     "connector_id": "Коннектор",
     "type": "Тип",

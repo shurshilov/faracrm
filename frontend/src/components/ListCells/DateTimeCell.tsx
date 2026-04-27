@@ -37,36 +37,44 @@ function getRelativeTime(date: Date, locale: string): string {
   if (diffDay < 7) {
     return isRu ? `${diffDay} дн. назад` : `${diffDay}d ago`;
   }
-  
+
   // Больше недели - показываем дату
-  return date.toLocaleDateString(locale, { 
-    day: 'numeric', 
-    month: 'short' 
+  return date.toLocaleDateString(locale, {
+    day: 'numeric',
+    month: 'short',
   });
 }
 
 /**
  * Компонент для отображения даты/времени в таблице
- * 
+ *
  * @example
  * <DateTimeCell value={create_datetime} />
  * <DateTimeCell value={create_datetime} format="relative" />
  * <DateTimeCell value={create_datetime} format="compact" showIcon />
  */
-export function DateTimeCell({ 
-  value, 
+export function DateTimeCell({
+  value,
   format = 'compact',
   showIcon = false,
   locale = 'ru-RU',
 }: DateTimeCellProps) {
   if (!value) {
-    return <Text size="sm" c="dimmed">—</Text>;
+    return (
+      <Text size="sm" c="dimmed">
+        —
+      </Text>
+    );
   }
 
   const date = typeof value === 'string' ? new Date(value) : value;
-  
+
   if (isNaN(date.getTime())) {
-    return <Text size="sm" c="dimmed">—</Text>;
+    return (
+      <Text size="sm" c="dimmed">
+        —
+      </Text>
+    );
   }
 
   // Полная дата для tooltip
@@ -119,12 +127,7 @@ export function DateTimeCell({
 
   const content = (
     <Group gap={6} wrap="nowrap">
-      {showIcon && (
-        <IconComponent 
-          size={14} 
-          className={classes.dateIcon}
-        />
-      )}
+      {showIcon && <IconComponent size={14} className={classes.dateIcon} />}
       <Text size="sm" className={classes.dateText}>
         {displayText}
       </Text>

@@ -342,9 +342,9 @@ class ChatStrategyBase(ABC):
                     "author": author_data,
                     "author_user_id": author_user_id,
                     "author_partner_id": author_partner_id,
-                    "create_date": (
-                        message.create_date.isoformat()
-                        if message.create_date
+                    "create_datetime": (
+                        message.create_datetime.isoformat()
+                        if message.create_datetime
                         else None
                     ),
                     "connector_type": connector.type,
@@ -391,8 +391,8 @@ class ChatStrategyBase(ABC):
             chat_type="direct",
             is_internal=False,  # Внешний чат
             create_user_id=User(id=operator_id),
-            create_date=now,
-            write_date=now,
+            create_datetime=now,
+            update_datetime=now,
         )
         chat_id = await env.models.chat.create(payload=chat)
 

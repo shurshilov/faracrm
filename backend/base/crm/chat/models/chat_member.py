@@ -10,12 +10,13 @@ from backend.base.system.dotorm.dotorm.fields import (
     Many2one,
 )
 from backend.base.system.membership import MemberMixin
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat import Chat
 
 
-class ChatMember(MemberMixin):
+class ChatMember(AuditMixin, MemberMixin):
     """
     Участник чата.
     Общие поля/методы — из MemberMixin.

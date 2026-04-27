@@ -179,7 +179,7 @@ async def get_chats(
             "name",
             "chat_type",
             "last_message_date",
-            "create_date",
+            "create_datetime",
             "active",
         ],
         limit=limit,
@@ -206,7 +206,7 @@ async def get_chats(
 
     last_messages_query = """
         SELECT DISTINCT ON (chat_id)
-            id, chat_id, body, message_type, author_user_id, author_partner_id, create_date
+            id, chat_id, body, message_type, author_user_id, author_partner_id, create_datetime
         FROM chat_message
         WHERE chat_id = ANY(%s) AND is_deleted = false
         ORDER BY chat_id, id DESC
@@ -357,8 +357,10 @@ async def get_chats(
                 if chat.last_message_date
                 else None
             ),
-            "create_date": (
-                chat.create_date.isoformat() if chat.create_date else None
+            "create_datetime": (
+                chat.create_datetime.isoformat()
+                if chat.create_datetime
+                else None
             ),
             "unread_count": unread_by_chat.get(chat.id, 0),
             "members": members_by_chat.get(chat.id, []),
@@ -382,9 +384,9 @@ async def get_chats(
                 "message_type": last_msg.get("message_type", "comment"),
                 "author_id": author_user_id or author_partner_id,
                 "author_name": author_name,
-                "create_date": (
-                    last_msg["create_date"].isoformat()
-                    if last_msg["create_date"]
+                "create_datetime": (
+                    last_msg["create_datetime"].isoformat()
+                    if last_msg["create_datetime"]
                     else None
                 ),
             }
@@ -395,7 +397,7 @@ async def get_chats(
 
     sorted_list = sorted(
         result,
-        key=lambda x: x.get("last_message_date") or x.get("create_date"),
+        key=lambda x: x.get("last_message_date") or x.get("create_datetime"),
         reverse=True,
     )
     return {"data": sorted_list, "total": len(sorted_list)}
@@ -460,8 +462,10 @@ async def get_chat(req: Request, chat_id: int):
             "description": chat.description,
             "is_internal": chat.is_internal,
             "is_public": chat.is_public,
-            "create_date": (
-                chat.create_date.isoformat() if chat.create_date else None
+            "create_datetime": (
+                chat.create_datetime.isoformat()
+                if chat.create_datetime
+                else None
             ),
             "members": members,
             # Default permissions

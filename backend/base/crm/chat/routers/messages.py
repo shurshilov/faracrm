@@ -163,7 +163,7 @@ async def get_messages(
             "id": msg.id,
             "body": msg.body,
             "message_type": msg.message_type,
-            "create_date": msg.create_date.isoformat(),
+            "create_datetime": msg.create_datetime.isoformat(),
             "starred": msg.starred,
             "pinned": msg.pinned,
             "is_edited": msg.is_edited,
@@ -405,9 +405,9 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                         "name": auth_session.user_id.name,
                         "type": "user",
                     },
-                    "create_date": (
-                        message.create_date.isoformat()
-                        if message.create_date
+                    "create_datetime": (
+                        message.create_datetime.isoformat()
+                        if message.create_datetime
                         else None
                     ),
                     "starred": False,
@@ -441,9 +441,9 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
         "data": {
             "id": message.id,
             "body": message.body,
-            "create_date": (
-                message.create_date.isoformat()
-                if message.create_date
+            "create_datetime": (
+                message.create_datetime.isoformat()
+                if message.create_datetime
                 else None
             ),
             "attachments": attachments_response,
@@ -684,7 +684,7 @@ async def get_pinned_messages(req: Request, chat_id: int):
                 "id": msg.id,
                 "body": msg.body,
                 "message_type": msg.message_type,
-                "create_date": msg.create_date.isoformat(),
+                "create_datetime": msg.create_datetime.isoformat(),
                 "author": format_message_author(msg),
             }
         )
@@ -846,9 +846,9 @@ async def forward_message(
                     "name": auth_session.user_id.name,
                     "type": "user",
                 },
-                "create_date": (
-                    new_message.create_date.isoformat()
-                    if new_message.create_date
+                "create_datetime": (
+                    new_message.create_datetime.isoformat()
+                    if new_message.create_datetime
                     else None
                 ),
                 "starred": False,

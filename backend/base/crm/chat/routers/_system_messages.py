@@ -64,7 +64,7 @@ async def post_system_message(
                         "name": None,
                         "type": "user",
                     },
-                    "create_date": message.create_date.isoformat(),
+                    "create_datetime": message.create_datetime.isoformat(),
                     "starred": False,
                     "pinned": False,
                     "is_edited": False,

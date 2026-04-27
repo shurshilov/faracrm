@@ -62,7 +62,7 @@ class ChatExternalMessage(DotModel):
     )
 
     # Временные метки
-    create_date: datetime = Datetime(
+    create_datetime: datetime = Datetime(
         default=lambda: datetime.now(timezone.utc)
     )
 

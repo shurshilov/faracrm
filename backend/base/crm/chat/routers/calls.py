@@ -143,8 +143,8 @@ def _serialize_call_message(msg, author_name: str | None = None) -> dict:
         "body": msg.body or "",
         "message_type": "call",
         "author": author,
-        "create_date": (
-            msg.create_date.isoformat() if msg.create_date else None
+        "create_datetime": (
+            msg.create_datetime.isoformat() if msg.create_datetime else None
         ),
         "starred": bool(msg.starred),
         "pinned": bool(msg.pinned),
@@ -236,8 +236,8 @@ async def start_call(req: Request, payload: CallStartPayload):
         author_user_id=auth_session.user_id,
         call_direction="outgoing",
         call_disposition="ringing",
-        create_date=now,
-        write_date=now,
+        create_datetime=now,
+        update_datetime=now,
     )
     msg.id = await env.models.chat_message.create(payload=msg)
 
@@ -285,7 +285,7 @@ async def start_call(req: Request, payload: CallStartPayload):
                 env.models.chat_message(
                     call_disposition="failed",
                     call_end_time=now2,
-                    write_date=now2,
+                    update_datetime=now2,
                 )
             )
             raise HTTPException(HTTP_409_CONFLICT, "Callee is offline")
@@ -327,7 +327,7 @@ async def accept_call(req: Request, call_id: int):
         env.models.chat_message(
             call_disposition="answered",
             call_answer_time=now,
-            write_date=now,
+            update_datetime=now,
         )
     )
 
@@ -367,7 +367,7 @@ async def reject_call(req: Request, call_id: int):
         env.models.chat_message(
             call_disposition="cancelled" if is_caller else "no_answer",
             call_end_time=now,
-            write_date=now,
+            update_datetime=now,
         )
     )
 
@@ -404,7 +404,7 @@ async def end_call(req: Request, call_id: int, payload: CallEndPayload):
     now = datetime.now(timezone.utc)
 
     # Считаем длительность
-    call_duration = int((now - msg.create_date).total_seconds())
+    call_duration = int((now - msg.create_datetime).total_seconds())
     call_talk_duration = None
     if msg.call_answer_time:
         call_talk_duration = int((now - msg.call_answer_time).total_seconds())
@@ -425,7 +425,7 @@ async def end_call(req: Request, call_id: int, payload: CallEndPayload):
             call_end_time=now,
             call_duration=call_duration,
             call_talk_duration=call_talk_duration,
-            write_date=now,
+            update_datetime=now,
         )
     )
 

@@ -65,7 +65,7 @@ const chatApi = api.injectEndpoints({
       //       members: [],
       //       unread_count: 0,
       //       connectors: [],
-      //       create_date: new Date().toISOString(),
+      //       create_datetime: new Date().toISOString(),
       //     };
 
       //     // Добавляем в кэш getChats (без фильтров)
@@ -241,7 +241,7 @@ const chatApi = api.injectEndpoints({
           id: tempId,
           body,
           message_type: 'comment',
-          create_date: createDate,
+          create_datetime: createDate,
           author: currentUserId
             ? { id: currentUserId, name: currentUserName, type: 'user' }
             : undefined,
@@ -285,7 +285,7 @@ const chatApi = api.injectEndpoints({
                   id: tempId,
                   body,
                   author_id: currentUserId || 0,
-                  create_date: createDate,
+                  create_datetime: createDate,
                 };
                 chat.last_message_date = createDate;
               }
@@ -308,8 +308,8 @@ const chatApi = api.injectEndpoints({
                   draft.data[index] = {
                     ...optimisticMessage,
                     id: data.data.id,
-                    create_date:
-                      data.data.create_date || optimisticMessage.create_date,
+                    create_datetime:
+                      data.data.create_datetime || optimisticMessage.create_datetime,
                     attachments: data.data.attachments,
                   };
                 }
@@ -322,9 +322,9 @@ const chatApi = api.injectEndpoints({
               const chat = draft.data.find(c => c.id === chatId);
               if (chat && chat.last_message?.id === tempId) {
                 chat.last_message.id = data.data.id;
-                if (data.data.create_date) {
-                  chat.last_message.create_date = data.data.create_date;
-                  chat.last_message_date = data.data.create_date;
+                if (data.data.create_datetime) {
+                  chat.last_message.create_datetime = data.data.create_datetime;
+                  chat.last_message_date = data.data.create_datetime;
                 }
               }
             }),
@@ -578,7 +578,7 @@ export interface ConnectorInfo {
   webhook_state: string;
   webhook_url?: string;
   connector_url?: string;
-  create_date?: string;
+  create_datetime?: string;
 }
 
 export interface ConnectorDetails extends ConnectorInfo {
@@ -617,7 +617,7 @@ export interface ChatLastMessage {
   id: number;
   body?: string;
   author_id: number;
-  create_date?: string;
+  create_datetime?: string;
   message_type: 'comment' | 'notification' | 'system' | 'email' | 'call';
 }
 
@@ -640,7 +640,7 @@ export interface Chat {
   is_internal: boolean;
   active?: boolean;
   description?: string;
-  create_date?: string;
+  create_datetime?: string;
   last_message_date?: string;
   members: ChatMember[];
   last_message?: ChatLastMessage;
@@ -675,7 +675,7 @@ export interface ChatMessage {
   id: number;
   body?: string;
   message_type: string;
-  create_date?: string;
+  create_datetime?: string;
   author?: MessageAuthor;
   starred: boolean;
   connector_type?: string;
@@ -777,7 +777,7 @@ export interface SendMessageResponse {
   data: {
     id: number;
     body: string;
-    create_date?: string;
+    create_datetime?: string;
     attachments?: MessageAttachment[];
   };
 }
