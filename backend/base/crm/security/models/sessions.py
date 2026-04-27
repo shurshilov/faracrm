@@ -15,6 +15,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.crm.security.exceptions import AuthException
+from backend.base.crm.users.audit_mixin import AuditMixin
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class SystemSession:
         )
 
 
-class Session(DotModel):
+class Session(AuditMixin, DotModel):
     __table__ = "sessions"
 
     def get_lang(self) -> str:
@@ -85,15 +86,6 @@ class Session(DotModel):
     )
     ttl: int = Integer()
     expired_datetime: datetime | None = Datetime()
-
-    create_datetime: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc)
-    )
-    create_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
-    update_datetime: datetime = Datetime(
-        default=lambda: datetime.now(timezone.utc)
-    )
-    update_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
 
     # Последняя активность пользователя (обновляется через WS ping).
     # Пользователь считается онлайн если last_activity > now() - 120 секунд.

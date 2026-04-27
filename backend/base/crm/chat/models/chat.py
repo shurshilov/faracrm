@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import logging
 from typing import TYPE_CHECKING
 
+from ...users.audit_mixin import AuditMixin
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
@@ -13,7 +14,6 @@ from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Datetime,
     Selection,
-    Many2one,
     One2many,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
@@ -22,7 +22,6 @@ from backend.base.system.core.enviroment import env
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from backend.base.crm.users.models.users import User
     from backend.base.crm.chat.models.chat_message import ChatMessage
     from backend.base.crm.chat.models.chat_member import ChatMember
     from backend.base.crm.chat.models.chat_external_chat import (
@@ -81,7 +80,7 @@ CREATOR_PERMISSIONS = {
 }
 
 
-class Chat(DotModel):
+class Chat(AuditMixin, DotModel):
     """
     Chat model
 
@@ -158,11 +157,6 @@ class Chat(DotModel):
     )
     last_message_date: datetime | None = Datetime(
         description="Дата последнего сообщения"
-    )
-
-    # Создатель чата
-    create_user_id: "User" = Many2one(
-        relation_table=lambda: env.models.user, description="Создатель чата"
     )
 
     # Участники чата (one2many к ChatMember)

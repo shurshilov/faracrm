@@ -2,6 +2,7 @@ from datetime import datetime, timezone, timedelta
 import logging
 from typing import TYPE_CHECKING
 
+from ...users.audit_mixin import AuditMixin
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
     Char,
@@ -31,7 +32,7 @@ def _default_current_user():
     return session.user_id if session else None
 
 
-class Activity(DotModel):
+class Activity(AuditMixin, DotModel):
     """
     Запланированная активность привязанная к записи.
 
@@ -86,11 +87,6 @@ class Activity(DotModel):
         # default=lambda: (
         #     s.user_id.json() if (s := get_access_session()) else None
         # ),
-    )
-    create_user_id: "User | None" = Many2one(
-        relation_table=lambda: env.models.user,
-        default=_default_current_user,
-        description="Кто создал",
     )
 
     # Состояние

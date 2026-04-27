@@ -1,5 +1,6 @@
 from typing import Type
 
+# from backend.base.crm.users.audit_mixin import AuditMixin
 from backend.base.system.dotorm.dotorm.model import DotModel
 
 
@@ -19,6 +20,13 @@ class ModelsCore:
             if isinstance(model_cls, type) and hasattr(model_cls, "__table__"):
                 self._table_to_model_name[model_cls.__table__] = model_name
                 self._table_to_model_class[model_cls.__table__] = model_cls
+
+                # Встраиваем AuditMixin in-place — все импорты
+                # `from .models import Partner` остаются валидными.
+                # if AuditMixin not in model_cls.__mro__:
+                #     model_cls.__bases__ = (AuditMixin,) + model_cls.__bases__
+                #     model_cls._build_field_cache()
+
         return self
 
     def _get_model_name_by_table(self, model: str):
