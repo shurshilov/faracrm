@@ -316,6 +316,13 @@ class CRUDRouterGenerator(APIRouter):
             default_values = await Model.get_default_values(
                 fields_client_nested
             )
+            # Фильтруем default_values — оставляем только поля
+            # запрошенные клиентом. Иначе клиент получит лишние
+            # поля (audit и пр.) которые потом отправит обратно
+            # в payload Create и схема упадёт с 422.
+            default_values = {
+                k: v for k, v in default_values.items() if k in fields_client
+            }
             fields_info = Model.get_fields_info_form(fields_client)
             fields_info = {f["name"]: f for f in fields_info}
 

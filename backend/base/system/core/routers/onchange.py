@@ -161,31 +161,11 @@ async def execute_onchange(req: Request, body: OnchangeRequest):
     # Выполняем onchange
     onchange_result = await instance.execute_onchange(body.trigger_field)
 
-    # Собираем default values для новых полей
-    # (которых нет в текущих values и нет в onchange result)
-    defaults = {}
-    for name, field in model_class.get_fields().items():
-        if name not in body.values and name not in onchange_result:
-            if field.default is not None:
-                if callable(field.default):
-                    try:
-                        defaults[name] = field.default()
-                    except:
-                        pass
-                else:
-                    defaults[name] = field.default
-
-    # Мержим: defaults < onchange_result (onchange имеет приоритет)
-    result_values = {**defaults, **onchange_result}
-
-    # Собираем информацию о полях
-    fields_info = {}
-    for name, field in model_class.get_fields().items():
-        fields_info[name] = {
-            "name": name,
-            "type": field.__class__.__name__,
-            "options": field.options or [],
-            "required": field.required or False,
-        }
-
-    return {"values": result_values}
+    # Onchange возвращает ТОЛЬКО то что изменил handler.
+    # Раньше здесь собирались default'ы для всех полей которых нет
+    # в форме, но это приводило к утечке системных/audit-полей
+    # на клиент: фронт получал их → отправлял обратно при Create
+    # → Pydantic валидация падала на VirtualId-объектах.
+    # Onchange по семантике — это реакция на изменение конкретного
+    # поля, не место для раздачи default'ов всей модели.
+    return {"values": onchange_result}
