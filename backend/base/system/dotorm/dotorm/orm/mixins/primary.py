@@ -150,7 +150,7 @@ class OrmPrimaryMixin(_Base):
         payload_dict = payload.json(
             include=set(fields),
             exclude_unset=True,
-            exclude_none=True,
+            # exclude_none=True,
             only_store=True,
             mode=JsonMode.UPDATE,
         )
