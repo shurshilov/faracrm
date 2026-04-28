@@ -157,8 +157,8 @@ class DotormDatabasesPostgresService(Service):
             assert isinstance(exc, RecordNotFound)
             return JSONResponse(
                 content={
-                    "error": "#NOT_FOUND",
-                    "message": str(exc),
+                    "content": "#NOT_FOUND",
+                    "detail": str(exc),
                     "model": exc.model,
                     "id": exc.id,
                 },
@@ -168,7 +168,7 @@ class DotormDatabasesPostgresService(Service):
         async def access_denied_handler(request: Request, exc: Exception):
             assert isinstance(exc, AccessDenied)
             return JSONResponse(
-                content={"error": "#ACCESS_DENIED", "message": exc.message},
+                content={"content": "#ACCESS_DENIED", "detail": exc.message},
                 status_code=403,
             )
 
