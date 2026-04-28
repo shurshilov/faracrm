@@ -5,7 +5,9 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Request
+from backend.base.crm.auth_token.app import AuthTokenApp
+
+from fastapi import Depends, APIRouter, Request
 from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 
 if TYPE_CHECKING:
@@ -23,6 +25,7 @@ SCOPES = [
 router_public = APIRouter(
     tags=["Attachments Google OAuth"],
     prefix="/google",
+    dependencies=[Depends(AuthTokenApp.use_system_session)],
 )
 
 

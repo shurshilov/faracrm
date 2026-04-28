@@ -1,4 +1,14 @@
-const Logo = () => (
+import {
+  useGetPublicConfigQuery,
+  brandingFileUrl,
+} from '@/services/config/config';
+
+/**
+ * Логотип в шапке CRM.
+ * Если в Company задан logo_id — выводится этот файл.
+ * Иначе — встроенный SVG fallback (FARA).
+ */
+const Logo = ({ variant }: { variant?: 'default' | 'login' } = {}) => {
   // <svg
   //   viewBox="6.8 6 618.2 117.7"
   //   xmlns="http://www.w3.org/2000/svg"
@@ -206,58 +216,95 @@ const Logo = () => (
   //     </g>
   //   </g>
   // </svg>
-  <svg
-    width="300"
-    height="60"
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 300 120"
-    preserveAspectRatio="xMidYMid"
-    style={{ maxWidth: '260px', height: 'auto', display: 'block' }}>
-    <defs>
-      <linearGradient
-        id="editing-gradow-gradient"
-        x1="0"
-        x2="1"
-        y1="0.5"
-        y2="0.5">
-        <stop offset="0" stopColor="#009982" />
-        <stop offset="1" stopColor="#009982" />
-      </linearGradient>
-      <filter
-        id="editing-gradow-filter"
-        x="-100%"
-        y="-100%"
-        width="300%"
-        height="300%">
-        <feFlood floodColor="rgba(253,253,253,0)" result="flood" />
-        <feComposite
-          operator="in"
-          in2="SourceAlpha"
-          in="flood"
-          result="shadow"
-        />
-        <feOffset dx="-4" dy="-4" in="SourceGraphic" result="offset-1" />
-        <feOffset dx="4" dy="4" in="shadow" result="offset-2" />
-        <feMerge>
-          <feMergeNode in="offset-2" />
-          <feMergeNode in="offset-1" />
-        </feMerge>
-      </filter>
-    </defs>
-    <g filter="url(#editing-gradow-filter)">
-      <text
-        x="50%"
-        y="50%"
-        dominantBaseline="central"
-        textAnchor="middle"
-        fontWeight="900"
-        fontFamily="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
-        fontSize="62px"
-        fill="url(#editing-gradow-gradient)">
-        FARA
-      </text>
-    </g>
-  </svg>
-);
+  const { data: publicConfig } = useGetPublicConfigQuery();
+  const branding = publicConfig?.branding;
+
+  // Какое поле смотреть в зависимости от варианта.
+  // На login-странице используем login_logo_id с fallback на logo_id.
+  let url: string | null = null;
+  if (variant === 'login') {
+    if (branding?.has_login_logo) {
+      url = brandingFileUrl('login_logo_id');
+    } else if (branding?.has_logo) {
+      url = brandingFileUrl('logo_id');
+    }
+  } else {
+    if (branding?.has_logo) {
+      url = brandingFileUrl('logo_id');
+    }
+  }
+
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt="Logo"
+        style={{
+          maxWidth: '260px',
+          maxHeight: '60px',
+          height: 'auto',
+          display: 'block',
+          margin: '0 auto',
+        }}
+      />
+    );
+  }
+
+  // Fallback — встроенный SVG "FARA"
+  return (
+    <svg
+      width="300"
+      height="60"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 300 120"
+      preserveAspectRatio="xMidYMid"
+      style={{ maxWidth: '260px', height: 'auto', display: 'block' }}>
+      <defs>
+        <linearGradient
+          id="editing-gradow-gradient"
+          x1="0"
+          x2="1"
+          y1="0.5"
+          y2="0.5">
+          <stop offset="0" stopColor="#009982" />
+          <stop offset="1" stopColor="#009982" />
+        </linearGradient>
+        <filter
+          id="editing-gradow-filter"
+          x="-100%"
+          y="-100%"
+          width="300%"
+          height="300%">
+          <feFlood floodColor="rgba(253,253,253,0)" result="flood" />
+          <feComposite
+            operator="in"
+            in2="SourceAlpha"
+            in="flood"
+            result="shadow"
+          />
+          <feOffset dx="-4" dy="-4" in="SourceGraphic" result="offset-1" />
+          <feOffset dx="4" dy="4" in="shadow" result="offset-2" />
+          <feMerge>
+            <feMergeNode in="offset-2" />
+            <feMergeNode in="offset-1" />
+          </feMerge>
+        </filter>
+      </defs>
+      <g filter="url(#editing-gradow-filter)">
+        <text
+          x="50%"
+          y="50%"
+          dominantBaseline="central"
+          textAnchor="middle"
+          fontWeight="900"
+          fontFamily="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+          fontSize="62px"
+          fill="url(#editing-gradow-gradient)">
+          FARA
+        </text>
+      </g>
+    </svg>
+  );
+};
 
 export default Logo;

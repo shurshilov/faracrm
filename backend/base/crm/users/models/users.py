@@ -5,9 +5,9 @@ import secrets
 from typing import TYPE_CHECKING
 
 from backend.base.crm.attachments.models.attachments import Attachment
-from ...auth_token.app import AuthTokenApp
-from ....system.dotorm.dotorm.components.filter_parser import FilterExpression
-from ...security.routers.sessions import TerminationMode
+from backend.base.system.dotorm.dotorm.components.filter_parser import (
+    FilterExpression,
+)
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Char,
@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from backend.base.crm.security.models.roles import Role
     from backend.base.crm.languages.models.language import Language
     from backend.base.crm.partners.models.contact import Contact
+    from backend.base.crm.security.routers.sessions import TerminationMode
 from backend.base.crm.security.models.sessions import Session
 
 # Зарезервированные ID пользователей
@@ -353,7 +354,7 @@ class User(PolymorphicParentMixin):
     async def terminate_sessions(
         self,
         exclude_session_id: int | None = None,
-        mode: TerminationMode = TerminationMode.MY,
+        mode: "TerminationMode | str" = "MY",
     ) -> int:
         """
         Завершить все активные сессии пользователя.
@@ -365,6 +366,15 @@ class User(PolymorphicParentMixin):
         Returns:
             Количество завершённых сессий
         """
+        # Lazy импорт чтобы избежать цикла на верхнем уровне:
+        # users.py ↔ security.routers.sessions
+        from backend.base.crm.security.routers.sessions import TerminationMode
+
+        # Принимаем как Enum, так и строку (default = "MY" чтобы не
+        # тянуть Enum в default-значение сигнатуры)
+        if isinstance(mode, str):
+            mode = TerminationMode(mode)
+
         filter: FilterExpression = [("active", "=", True)]
         if mode == TerminationMode.MY:
             filter.append(("user_id", "=", self.id))
@@ -392,7 +402,7 @@ class User(PolymorphicParentMixin):
         )
 
         # Инвалидируем кэш на всех воркерах через pg_notify
-        if AuthTokenApp.session_cache_enabled:
+        if env.apps.auth.session_cache_enabled:
             await Session.publish_revoked(ids_to_terminate)
 
         return len(ids_to_terminate)

@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 router_public = APIRouter(
     tags=["User"],
+    dependencies=[Depends(AuthTokenApp.use_system_session)],
 )
 
 router_private = APIRouter(

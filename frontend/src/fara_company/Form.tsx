@@ -8,9 +8,12 @@ import {
   FormTabs,
   FormTab,
 } from '@/components/Form/Layout';
-import { IconBuilding, IconUsers } from '@tabler/icons-react';
-
-// Тип для Company
+import {
+  IconBuilding,
+  IconUsers,
+  IconPhoto,
+  IconTextCaption,
+} from '@tabler/icons-react';
 
 /**
  * Форма компании
@@ -33,7 +36,37 @@ export function ViewFormCompany(props: ViewFormProps) {
       </FormSection>
 
       {/* Вкладки */}
-      <FormTabs defaultTab="children">
+      <FormTabs defaultTab="branding">
+        <FormTab
+          name="branding"
+          label="Брендинг"
+          icon={<IconPhoto size={16} />}>
+          <FormSection title="Логотипы и фон">
+            <FormRow cols={3}>
+              <Field name="logo_id" label="Логотип CRM" />
+              <Field name="login_logo_id" label="Логотип входа" />
+              <Field name="login_background_id" label="Фон страницы входа" />
+            </FormRow>
+          </FormSection>
+
+          <FormSection
+            title="Тексты страницы входа"
+            icon={<IconTextCaption size={18} />}>
+            <FormRow cols={1}>
+              <Field
+                name="login_title"
+                label="Заголовок"
+                placeholder="Вход в систему"
+              />
+              <Field
+                name="login_subtitle"
+                label="Подзаголовок"
+                placeholder="Платформа для управления бизнесом"
+              />
+            </FormRow>
+          </FormSection>
+        </FormTab>
+
         <FormTab
           name="children"
           label="Дочерние компании"

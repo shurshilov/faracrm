@@ -38,6 +38,7 @@ import {
 import { flags } from '@/assets/flags';
 import { useLayoutTheme } from '@/components/ModernTheme';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useGetPublicConfigQuery } from '@/services/config/config';
 import classes from './UserMenu.module.css';
 
 const getFlag = (code: string): string => {
@@ -66,6 +67,8 @@ function UserMenu() {
   const navigate = useNavigate();
   const session = useSelector(selectCurrentSession);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+
+  const { data: publicConfig } = useGetPublicConfigQuery();
 
   // Тема layout
   const { layoutTheme, setLayoutTheme } = useLayoutTheme();
@@ -454,6 +457,16 @@ function UserMenu() {
           onClick={handleLogout}>
           {t('common:logout', 'Выход')}
         </Menu.Item>
+
+        {/* Footer — то же что на странице входа */}
+        <Box
+          ta="center"
+          py={6}
+          style={{ borderTop: '1px solid var(--mantine-color-gray-3)' }}>
+          <Text size="xs" c="dimmed">
+            FARA CRM v{publicConfig?.version}
+          </Text>
+        </Box>
       </Menu.Dropdown>
     </Menu>
   );

@@ -33,22 +33,20 @@ class AccessMixin(_Base):
         filter: list | None = None,
     ) -> list | None:
         """
-        Единый метод проверки доступа.
-
-        Args:
-            operation: Operation.READ / CREATE / UPDATE / DELETE
-            record_ids: ID записей (для get/update/delete)
-            filter: пользовательский фильтр (для search)
-
-        Returns:
-            Модифицированный filter с domain (для search)
-
         Raises:
-            AccessDenied: если доступ запрещён
+            AccessDenied: если сессия не установлена либо доступ запрещён
         """
         session = get_access_session()
         if session is None:
-            return filter
+            # Default deny: отсутствие сессии — это явная ошибка
+            # конфигурации, не разрешение. Защищает от случайных утечек
+            # через забытые `Depends(verify_access)` или
+            # неинициализированный context в фоновых задачах.
+            raise AccessDenied(
+                f"No session in DotORM context for {operation.value} on "
+                f"{cls.__table__}. Public routes must set AnonymousSession "
+                f"explicitly via Depends(AuthTokenApp.use_anonymous_session)."
+            )
 
         checker = get_access_checker()
 

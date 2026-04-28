@@ -9,10 +9,16 @@
 """
 
 import os
-from fastapi import APIRouter, HTTPException
+from backend.base.crm.auth_token.app import AuthTokenApp
+
+from fastapi import Depends, APIRouter, HTTPException
 from fastapi.responses import FileResponse, Response
 
-router_public = APIRouter(prefix="/static/app-icons", tags=["static"])
+router_public = APIRouter(
+    prefix="/static/app-icons",
+    tags=["static"],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session([]))],
+)
 
 # Словарь путей к иконкам приложений (заполняется при старте)
 _app_icons: dict[str, str] = {}

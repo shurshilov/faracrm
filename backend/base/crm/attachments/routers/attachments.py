@@ -15,9 +15,6 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
-router_public = APIRouter(
-    tags=["Attachment"],
-)
 router_private = APIRouter(
     tags=["Attachment"],
     dependencies=[Depends(AuthTokenApp.verify_access)],

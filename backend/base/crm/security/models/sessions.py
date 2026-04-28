@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 import logging
 from typing import TYPE_CHECKING
 
-from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.crm.auth_token.session_cache import CachedSession
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
@@ -56,6 +55,43 @@ class SystemSession:
             password_hash="",
             password_salt="",
         )
+
+
+class AnonymousSession:
+    """
+    Анонимная сессия для публичных эндпоинтов (без авторизации).
+
+    Используется в public-роутах вместо None, чтобы DotORM применял
+    security-правила вместо тихого допуска ко всему.
+
+    Доступ ограничен READ к таблицам, явно перечисленным в
+    `allowed_tables`. Список задаётся при создании сессии в
+    public-роутере (через AuthTokenApp.use_anonymous_session) — каждый
+    роутер декларирует ровно те таблицы которые ему нужны
+    (принцип минимальных привилегий).
+
+    Не имеет реальной записи в БД — только in-memory объект для
+    прохождения по коду security-проверок.
+    """
+
+    def __init__(self, allowed_tables: frozenset[str] = frozenset()):
+        """
+        Args:
+            allowed_tables: имена таблиц (__table__) к которым
+                разрешён READ. WRITE для anonymous полностью запрещён
+                независимо от этого списка.
+        """
+        from backend.base.crm.users.models.users import User
+
+        self.user_id = User(
+            id=0,
+            is_admin=False,
+            name="Anonymous",
+            login="anonymous",
+            password_hash="",
+            password_salt="",
+        )
+        self.allowed_tables: frozenset[str] = allowed_tables
 
 
 class Session(DotModel):
@@ -179,7 +215,7 @@ class Session(DotModel):
         ids = row.get("ids") or []
 
         # Инвалидируем SessionCache на всех воркерах если что-то деактивировали
-        if deactivated > 0 and ids and AuthTokenApp.session_cache_enabled:
+        if deactivated > 0 and ids and env.apps.auth.session_cache_enabled:
             await cls.publish_revoked(list(ids))
 
         return deactivated
@@ -215,7 +251,7 @@ class Session(DotModel):
         cnt = int(row.get("cnt") or 0)
         ids = row.get("ids") or []
 
-        if ids and AuthTokenApp.session_cache_enabled:
+        if ids and env.apps.auth.session_cache_enabled:
             await cls.publish_revoked(list(ids))
 
         return {"deactivated": cnt}
@@ -357,7 +393,7 @@ class Session(DotModel):
     # ================================================================
     # CACHED-ВЕРСИИ: параллельные реализации проверки через SessionCache.
     # Оригинальные session_check / session_check_by_cookie оставлены выше
-    # без изменений. Выбор между версиями делается на уровне AuthTokenApp
+    # без изменений. Выбор между версиями делается на уровне env.apps.auth
     # через флаг auth.session_cache_enabled (читается при старте).
     # ================================================================
 
@@ -369,7 +405,7 @@ class Session(DotModel):
         Cached-версия session_check: сначала смотрит в SessionCache,
         при cache miss — идёт в БД и кладёт результат в кэш.
         """
-        cache: "SessionCache" = AuthTokenApp.session_cache
+        cache: "SessionCache" = env.apps.auth.session_cache
         cached = await cache.get_by_token(token)
 
         if cached is None:
@@ -421,7 +457,7 @@ class Session(DotModel):
         Cached-версия session_check_by_cookie.
         """
 
-        cache = AuthTokenApp.session_cache
+        cache = env.apps.auth.session_cache
         cached = await cache.get_by_cookie(cookie_token)
 
         if cached is None:
@@ -561,7 +597,7 @@ class Session(DotModel):
             # Нет pubsub (тесты без chat-app) — инвалидируем локально
             try:
                 for sid in session_ids:
-                    await AuthTokenApp.session_cache.revoke(sid)
+                    await env.apps.auth.session_cache.revoke(sid)
             except Exception as e:
                 logger.warning("Failed to revoke session: %s", e)
             return

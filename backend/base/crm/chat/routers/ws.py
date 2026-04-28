@@ -3,14 +3,19 @@
 
 import logging
 from typing import TYPE_CHECKING
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from backend.base.crm.auth_token.app import AuthTokenApp
+
+from fastapi import Depends, APIRouter, WebSocket, WebSocketDisconnect
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
 logger = logging.getLogger(__name__)
 
-router_public = APIRouter(tags=["Chat WebSocket"])
+router_public = APIRouter(
+    tags=["Chat WebSocket"],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session(["sessions"]))],
+)
 
 
 # Коды WebSocket закрытия (RFC 6455 + extensions):

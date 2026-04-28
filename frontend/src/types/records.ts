@@ -188,6 +188,12 @@ export interface CompanyRecord extends BaseRecord {
   sequence: number;
   parent_id: RelationRecord | null;
   child_ids: RelationRecord[];
+  // Branding
+  logo_id: RelationRecord | null;
+  login_logo_id: RelationRecord | null;
+  login_background_id: RelationRecord | null;
+  login_title: string | null;
+  login_subtitle: string | null;
 }
 
 // ============================================================

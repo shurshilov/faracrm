@@ -6,6 +6,11 @@ from backend.base.system.auth.strategy_abstract import AuthStrategyAbstract
 from backend.base.system.core.app import App
 from backend.base.system.core.enviroment import Environment
 from backend.base.system.dotorm.dotorm.access import set_access_session
+from backend.base.crm.security.models.sessions import (
+    SystemSession,
+    AnonymousSession,
+)
+from backend.base.crm.users.models.users import SYSTEM_USER_ID
 from backend.base.crm.security.exceptions.AuthException import (
     SessionErrorFormat,
     SessionExpired,
@@ -170,6 +175,58 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         set_access_session(session)
 
         return session
+
+    @staticmethod
+    def use_anonymous_session(allowed_tables: list[str]):
+        """
+        Factory: возвращает FastAPI dependency для public-эндпоинтов.
+
+        Каждый public-роутер декларирует список таблиц к которым
+        разрешён READ для анонимного пользователя — принцип
+        минимальных привилегий. WRITE запрещён всегда.
+
+        Применение:
+            router_public = APIRouter(
+                dependencies=[
+                    Depends(AuthTokenApp.use_anonymous_session(
+                        ["company", "attachments"]
+                    )),
+                ],
+            )
+
+        Args:
+            allowed_tables: список имён таблиц (__table__) к которым
+                разрешён READ. Передаются в AnonymousSession и
+                проверяются в SecurityAccessChecker.
+
+        Returns:
+            async dependency-функцию которую FastAPI вызовет на каждом
+            запросе к этому роутеру.
+        """
+        # Замораживаем список для безопасности (frozenset не мутабелен).
+        tables = frozenset(allowed_tables)
+
+        async def _dep():
+            # Создаём сессию заново на каждый запрос — её allowed_tables
+            # связан с конкретным роутером, а не глобален.
+            set_access_session(AnonymousSession(allowed_tables=tables))
+
+        return _dep
+
+    @staticmethod
+    async def use_system_session():
+        """
+        Dependency для public-эндпоинтов которые **доверены** и нуждаются
+        в полном доступе: webhook'и (от телефонии), OAuth callbacks (от
+        Google), signin (создаёт сессию пользователю).
+
+        Использовать ТОЛЬКО когда:
+        1. Эндпоинт принимает данные от доверенного источника (или
+           подтверждает подпись/токен внутри handler);
+        2. Логика handler'а сама проверяет права (например, signin
+           проверяет пароль перед созданием session).
+        """
+        set_access_session(SystemSession(user_id=SYSTEM_USER_ID))
 
     def handler_errors(self, app_server: FastAPI):
         async def catch_exception_handler_auth(

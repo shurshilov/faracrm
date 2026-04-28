@@ -24,6 +24,12 @@ from backend.base.system.dotorm.dotorm.fields import (
     Selection,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
+from backend.base.system.dotorm.dotorm.access import (
+    set_access_session,
+    clear_access_session,
+)
+from backend.base.crm.security.models.sessions import SystemSession
+from backend.base.crm.users.models.users import SYSTEM_USER_ID
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -199,14 +205,23 @@ class CronJob(DotModel):
     # ==================== Выполнение ====================
 
     async def execute(self, env: "Environment") -> Any:
-        """Выполняет задачу."""
-        if self.code:
-            return await self._execute_code(env)
-        if self.model_name and self.method_name:
-            return await self._execute_method(env)
-        raise ValueError(
-            "Either 'code' or 'model_name'+'method_name' must be specified"
-        )
+        """Выполняет задачу.
+
+        Cron работает в фоновой таске без HTTP-сессии — устанавливаем
+        SystemSession для прохождения security-проверок DotORM.
+        """
+        set_access_session(SystemSession(user_id=SYSTEM_USER_ID))
+        try:
+            if self.code:
+                return await self._execute_code(env)
+            if self.model_name and self.method_name:
+                return await self._execute_method(env)
+            raise ValueError(
+                "Either 'code' or 'model_name'+'method_name' must be "
+                "specified"
+            )
+        finally:
+            clear_access_session()
 
     async def _execute_code(self, env: "Environment") -> Any:
         """Выполняет Python код."""

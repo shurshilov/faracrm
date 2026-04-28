@@ -25,7 +25,10 @@ import classes from './SignIn.module.css';
 import { useEffect, useState } from 'react';
 import { UserInput } from '@/services/auth/types';
 import { useLoginMutation } from '@/services/auth/auth';
-import { useGetPublicConfigQuery } from '@/services/config/config';
+import {
+  useGetPublicConfigQuery,
+  brandingFileUrl,
+} from '@/services/config/config';
 import { storeSession } from '@/slices/authSlice';
 import Logo from '@/components/Logo';
 import AnimatedBackground from './AnimatedBackground';
@@ -175,9 +178,9 @@ export default function SignIn() {
           <Stack gap="xl" className={classes.formInner}>
             {/* Лого */}
             <div className={classes.logoBlock}>
-              <Logo />
+              <Logo variant="login" />
               <Text size="sm" c="dimmed" mt={8}>
-                {t('auth.subtitle')}
+                {publicConfig?.branding?.login_subtitle || t('auth.subtitle')}
               </Text>
             </div>
 
@@ -185,7 +188,7 @@ export default function SignIn() {
             <div>
               <Text className={classes.title}>{t('auth.title')}</Text>
               <Text size="sm" c="dimmed" mt={4}>
-                {t('auth.description')}
+                {publicConfig?.branding?.login_title || t('auth.description')}
               </Text>
             </div>
 
@@ -263,9 +266,22 @@ export default function SignIn() {
         </form>
       </Paper>
 
-      {/* Правая часть — анимированный фон */}
-      <div className={classes.background}>
-        <AnimatedBackground />
+      {/* Правая часть — кастомный фон от branding или анимированный */}
+      <div
+        className={classes.background}
+        style={
+          publicConfig?.branding?.has_login_background
+            ? {
+                backgroundImage: `url("${brandingFileUrl('login_background_id')}")`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+              }
+            : undefined
+        }>
+        {!publicConfig?.branding?.has_login_background && (
+          <AnimatedBackground />
+        )}
       </div>
     </div>
   );

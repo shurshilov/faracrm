@@ -11,7 +11,10 @@ from backend.base.system.dotorm.dotorm.access import (
     AccessChecker,
     Operation,
 )
-from backend.base.crm.security.models.sessions import SystemSession
+from backend.base.crm.security.models.sessions import (
+    SystemSession,
+    AnonymousSession,
+)
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
     SqlFragment,
 )
@@ -66,6 +69,16 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         """
         if self._is_full_access(session):
             return True, []
+
+        # AnonymousSession: разрешён только READ к таблицам, явно
+        # перечисленным в session.allowed_tables — список передаётся
+        # из public-роутера (см. AuthTokenApp.use_anonymous_session).
+        # Принцип минимальных привилегий: каждый роутер декларирует
+        # ровно те таблицы которые ему нужны.
+        if isinstance(session, AnonymousSession):
+            if operation == Operation.READ and model in session.allowed_tables:
+                return True, []
+            return False, []
 
         # Конвертируем имя таблицы в имя модели: "users" → "user"
         model = self.env.models._get_model_name_by_table(model)

@@ -8,7 +8,9 @@ import json
 import logging
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Request
+from backend.base.crm.auth_token.app import AuthTokenApp
+
+from fastapi import Depends, APIRouter, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 from starlette.status import (
     HTTP_200_OK,
@@ -22,7 +24,10 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-router_public = APIRouter(tags=["Chat Webhook"])
+router_public = APIRouter(
+    tags=["Chat Webhook"],
+    dependencies=[Depends(AuthTokenApp.use_system_session)],
+)
 
 
 @router_public.api_route(
