@@ -28,7 +28,7 @@ router_private = APIRouter(
 )
 
 
-@router_private.get("/api/apps/", response_model=dict)
+@router_private.get("/apps/", response_model=dict)
 def apps():
     apps = {}
     for app in env.apps.get_list():
@@ -36,7 +36,7 @@ def apps():
     return apps
 
 
-@router_public.get("/api/version/", response_model=str)
+@router_public.get("/version/", response_model=str)
 def version():
     return VERSION
 
@@ -84,7 +84,7 @@ async def _get_first_company():
     return companies[0] if companies else None
 
 
-@router_public.get("/api/public/config/", response_model=PublicConfig)
+@router_public.get("/public/config/", response_model=PublicConfig)
 async def public_config():
     """Конфиг для фронта (страница логина и т.п.)."""
     demo = await env.models.system_settings.get_value(
@@ -107,7 +107,7 @@ async def public_config():
     )
 
 
-@router_public.get("/api/public/branding/{field}")
+@router_public.get("/public/branding/{field}")
 async def branding_file(
     field: Literal["logo_id", "login_logo_id", "login_background_id"],
 ):

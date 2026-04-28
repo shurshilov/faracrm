@@ -28,26 +28,17 @@ export type BrandingFileField =
   | 'login_logo_id'
   | 'login_background_id';
 
-/**
- * URL для публичной branding-картинки. Нормализует префикс /api,
- * чтобы поддержать оба варианта VITE_API_URL — с /api и без.
- */
 export function brandingFileUrl(field: BrandingFileField): string {
-  const base = API_BASE_URL.replace(/\/$/, '');
-  const apiPrefix = base.endsWith('/api') ? '' : '/api';
-  return `${base}${apiPrefix}/public/branding/${field}`;
+  return `${API_BASE_URL}/public/branding/${field}`;
 }
 
-/**
- * Публичная конфигурация сервера (доступна без авторизации).
- */
 export const configApi = createApi({
   reducerPath: 'configApi',
   baseQuery,
   endpoints: builder => ({
     getPublicConfig: builder.query<PublicConfig, void>({
       query: () => ({
-        url: '/api/public/config/',
+        url: `${API_BASE_URL}/public/config/`,
         method: 'GET',
       }),
     }),
