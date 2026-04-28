@@ -65,8 +65,10 @@ async def get_messages(
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство (can_read по умолчанию true) и получаем member
-    current_member = await ChatMember.check_membership(chat_id, user_id)
+    # Получаем member: если юзер админ без членства — стаб (БД не меняется)
+    current_member, _ = await ChatMember.get_or_stub_admin(
+        chat_id, user_id, auth_session.user_id.is_admin
+    )
 
     # Soft-delete: показывать удалённые только админам
     _is_admin = auth_session.user_id.is_admin or current_member.is_admin
@@ -804,8 +806,10 @@ async def forward_message(
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем доступ к исходному чату
-    await ChatMember.check_membership(chat_id, user_id)
+    # Источник forward — READ: admin без членства тоже может читать
+    await ChatMember.get_or_stub_admin(
+        chat_id, user_id, auth_session.user_id.is_admin
+    )
 
     # Проверяем право писать в целевой чат
     await ChatMember.check_can_write(body.target_chat_id, user_id)

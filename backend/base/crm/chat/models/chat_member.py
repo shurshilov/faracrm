@@ -2,12 +2,16 @@
 # Chat module - chat member model (many2many link table)
 
 from typing import TYPE_CHECKING
+from starlette.status import HTTP_403_FORBIDDEN
 
 from backend.base.system.core.enviroment import env
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Integer,
     Many2one,
+)
+from backend.base.system.core.exceptions.environment import (
+    FaraException,
 )
 from backend.base.system.membership import MemberMixin
 from backend.base.crm.users.audit_mixin import AuditMixin
@@ -86,3 +90,92 @@ class ChatMember(AuditMixin, MemberMixin):
         return await cls.check_permission(
             chat_id, user_id, "can_delete_others"
         )
+
+    # ============================================================
+    # Admin override: позволяет суперюзеру (User.is_admin=True)
+    # читать чужие чаты без членства.
+    # ============================================================
+
+    @classmethod
+    async def get_or_stub_admin(
+        cls,
+        chat_id: int,
+        user_id: int,
+        is_admin: bool,
+    ) -> tuple["ChatMember", bool]:
+        """
+        Для **read**-эндпоинтов: вернуть члена чата, но если это
+        суперюзер без членства — отдать в памяти стаб (БД не меняется).
+
+        Returns:
+            (member, was_stubbed)
+            - member: реальная запись из БД либо стаб
+            - was_stubbed: True если вернули стаб (юзер админ без членства)
+
+        Raises:
+            FaraException: если юзер не член и не админ
+        """
+        member = await cls.get_membership(chat_id, user_id)
+        if member:
+            return member, False
+        if not is_admin:
+            raise FaraException(
+                {
+                    "content": "ACCESS_DENIED",
+                    "status_code": HTTP_403_FORBIDDEN,
+                }
+            )
+        # Стаб для admin — НЕ сохраняется в БД, только для прохода
+        # по коду (доступ к last_read_message_id и т.п.)
+        stub = cls(
+            chat_id=chat_id,
+            user_id=user_id,
+            is_admin=True,
+            is_active=True,
+            last_read_message_id=0,
+            can_read=True,
+            can_write=True,
+            can_invite=True,
+            can_pin=True,
+            can_delete_others=True,
+        )
+        return stub, True
+
+    # @classmethod
+    # async def ensure_admin_member(
+    #     cls,
+    #     chat_id: int,
+    #     user_id: int,
+    #     is_admin: bool,
+    # ) -> "ChatMember":
+    #     """
+    #     Для **write**-эндпоинтов: гарантировать что юзер — реальный
+    #     член чата. Если это admin без членства — создать запись в БД.
+
+    #     После этого admin становится полноценным членом (виден другим
+    #     участникам, получает realtime-обновления).
+
+    #     Returns:
+    #         ChatMember (всегда сохранённая запись)
+
+    #     Raises:
+    #         FaraException: если юзер не член и не админ
+    #     """
+    #     member, was_stub = await cls.get_or_stub_admin(
+    #         chat_id, user_id, is_admin
+    #     )
+    #     if not was_stub:
+    #         return member
+    #     # admin был стабом — создаём реальную запись
+    #     payload = cls(
+    #         chat_id=chat_id,
+    #         user_id=user_id,
+    #         is_admin=True,
+    #         is_active=True,
+    #         can_read=True,
+    #         can_write=True,
+    #         can_invite=True,
+    #         can_pin=True,
+    #         can_delete_others=True,
+    #     )
+    #     return await cls.create(payload=payload)
