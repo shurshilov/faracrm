@@ -36,6 +36,11 @@ ADMIN_USER_ID = 1
 SYSTEM_USER_ID = 2
 # Шаблон внутреннего пользователя (default_internal)
 TEMPLATE_USER_ID = 3
+# Anonymous-пользователь для public-эндпоинтов. Не используется для
+# реального входа (login невозможен — пустой password_hash). Существует
+# в БД чтобы AnonymousSession ссылалась на настоящую запись и можно
+# было привязывать к нему ACL/Rules через UI в будущем.
+ANONYMOUS_USER_ID = 4
 
 
 async def _default_roles():

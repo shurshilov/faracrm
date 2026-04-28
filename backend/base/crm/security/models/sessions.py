@@ -64,14 +64,13 @@ class AnonymousSession:
     Используется в public-роутах вместо None, чтобы DotORM применял
     security-правила вместо тихого допуска ко всему.
 
-    Доступ ограничен READ к таблицам, явно перечисленным в
-    `allowed_tables`. Список задаётся при создании сессии в
-    public-роутере (через AuthTokenApp.use_anonymous_session) — каждый
-    роутер декларирует ровно те таблицы которые ему нужны
-    (принцип минимальных привилегий).
-
-    Не имеет реальной записи в БД — только in-memory объект для
-    прохождения по коду security-проверок.
+    user_id ссылается на реальную запись в БД (id=4, login="anonymous"),
+    которую UserApp.post_init создаёт при инициализации. Это позволит
+    в будущем настраивать ACL/Rules для anonymous через UI как для
+    обычной роли. Сейчас доступ ограничен whitelist'ом таблиц,
+    передаваемым через allowed_tables — каждый public-роутер
+    декларирует ровно те таблицы которые ему нужны
+    (принцип минимальных привилегий). WRITE запрещён всегда.
     """
 
     def __init__(self, allowed_tables: frozenset[str] = frozenset()):
@@ -81,10 +80,13 @@ class AnonymousSession:
                 разрешён READ. WRITE для anonymous полностью запрещён
                 независимо от этого списка.
         """
-        from backend.base.crm.users.models.users import User
+        from backend.base.crm.users.models.users import (
+            User,
+            ANONYMOUS_USER_ID,
+        )
 
         self.user_id = User(
-            id=0,
+            id=ANONYMOUS_USER_ID,
             is_admin=False,
             name="Anonymous",
             login="anonymous",

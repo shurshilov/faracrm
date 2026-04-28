@@ -6,7 +6,13 @@ if TYPE_CHECKING:
 
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
-from .models.users import User, ADMIN_USER_ID, SYSTEM_USER_ID, TEMPLATE_USER_ID
+from .models.users import (
+    User,
+    ADMIN_USER_ID,
+    ANONYMOUS_USER_ID,
+    SYSTEM_USER_ID,
+    TEMPLATE_USER_ID,
+)
 
 
 class UserApp(App):
@@ -35,6 +41,7 @@ class UserApp(App):
 
         await self._init_admin_user(env)
         await self._init_system_user(env)
+        await self._init_anonymous_user(env)
         await self._init_template_user(env)
         await self._init_user_rules(env)
 
@@ -65,6 +72,27 @@ class UserApp(App):
                     name="System",
                     login="system",
                     is_admin=True,
+                    password_hash="",
+                    password_salt="",
+                ),
+            )
+
+    async def _init_anonymous_user(self, env: "Environment"):
+        """Создаёт anonymous-пользователя (id=4) для public-эндпоинтов.
+
+        Используется как identity для AnonymousSession. Login невозможен
+        (пустой password_hash), is_admin=False. Никаких ролей не имеет
+        — доступ ограничен whitelist'ом таблиц в use_anonymous_session.
+        """
+        user_anon = await env.models.user.search(
+            filter=[("id", "=", ANONYMOUS_USER_ID)], limit=1
+        )
+        if not user_anon:
+            await env.models.user.create(
+                payload=User(
+                    name="Anonymous",
+                    login="anonymous",
+                    is_admin=False,
                     password_hash="",
                     password_salt="",
                 ),
@@ -146,9 +174,10 @@ class UserApp(App):
         )
 
         rules = [
-            # Правило 1: Запрет удаления admin/system/template пользователей.
-            # role_id=None — применяется ко ВСЕМ ролям (даже system_admin
-            # не должен удалять защищённые системные учётки).
+            # Правило 1: Запрет удаления admin/system/anonymous/template
+            # пользователей. role_id=None — применяется ко ВСЕМ ролям
+            # (даже system_admin не должен удалять защищённые системные
+            # учётки).
             {
                 "name": "Protect admin and system users from deletion",
                 "role_id": None,
@@ -156,7 +185,12 @@ class UserApp(App):
                     [
                         "id",
                         "not in",
-                        [ADMIN_USER_ID, SYSTEM_USER_ID, TEMPLATE_USER_ID],
+                        [
+                            ADMIN_USER_ID,
+                            SYSTEM_USER_ID,
+                            ANONYMOUS_USER_ID,
+                            TEMPLATE_USER_ID,
+                        ],
                     ]
                 ],
                 "perm_create": False,
