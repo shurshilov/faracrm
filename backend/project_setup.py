@@ -38,6 +38,9 @@ from backend.base.crm.security.models.sessions import Session
 from backend.base.crm.attachments_google.mixins import (
     AttachmentStorageGoogleMixin,
 )
+from backend.base.crm.attachments_yandex.mixins import (
+    AttachmentStorageYandexMixin,
+)
 from backend.base.crm.attachments.models.attachments import Attachment
 from backend.base.crm.attachments.models.attachments_route import (
     AttachmentRoute,
@@ -128,6 +131,7 @@ if TYPE_CHECKING:
 
     class AttachmentStorage(
         AttachmentStorageGoogleMixin,
+        AttachmentStorageYandexMixin,
         AttachmentStorageBase,
     ): ...
 
@@ -168,6 +172,7 @@ from backend.base.crm.users.app import UserApp
 from backend.base.crm.security.app import SecurityApp
 from backend.base.crm.attachments.app import AttachmentsApp
 from backend.base.crm.attachments_google.app import AttachmentsGoogleApp
+from backend.base.crm.attachments_yandex.app import AttachmentsYandexApp
 from backend.base.crm.leads.app import LeadsApp
 from backend.base.crm.partners.app import PartnersApp
 from backend.base.crm.sales.app import SalesApp
@@ -285,6 +290,7 @@ class Apps(AppsCore):
     security = SecurityApp()
     attachments = AttachmentsApp()
     attachments_google = AttachmentsGoogleApp()
+    attachments_yandex = AttachmentsYandexApp()
     leads = LeadsApp()
     partners = PartnersApp()
     sales = SalesApp()

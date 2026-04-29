@@ -283,7 +283,10 @@ export const modelsConfig: Record<string, ModelConfig> = {
         default: m.ViewKanbanAttachmentsStorage,
       })),
     // Модули расширяющие форму хранилища
-    extensions: [() => import('@/fara_attachments_google')],
+    extensions: [
+      () => import('@/fara_attachments_google'),
+      () => import('@/fara_attachments_yandex'),
+    ],
   },
   attachments_route: {
     menu: MenuGroups.files,
