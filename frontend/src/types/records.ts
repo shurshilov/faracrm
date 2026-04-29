@@ -196,6 +196,13 @@ export interface CompanyRecord extends BaseRecord {
   login_subtitle: string | null;
   login_button_color: string | null;
   login_card_style: 'elevated' | 'flat';
+  // Соцсети на странице входа — 3 плоские пары полей.
+  login_social1_type: string | null;
+  login_social1_url: string | null;
+  login_social2_type: string | null;
+  login_social2_url: string | null;
+  login_social3_type: string | null;
+  login_social3_url: string | null;
 }
 
 // ============================================================

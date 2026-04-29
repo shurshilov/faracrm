@@ -11,6 +11,26 @@ from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 from backend.base.crm.attachments.models.attachments import Attachment
 
+# Доступные типы соцсетей для странички логина.
+# Список расширяемый — добавил новый, и сразу появился в Selection.
+# label на фронте берётся из SOCIAL_TYPE_META (см. SignIn.tsx),
+# здесь label нужен только для админки.
+_SOCIAL_OPTIONS: list[tuple[str, str]] = [
+    ("telegram", "Telegram"),
+    ("github", "GitHub"),
+    ("rutube", "RuTube"),
+    ("youtube", "YouTube"),
+    ("vk", "ВКонтакте"),
+    ("whatsapp", "WhatsApp"),
+    ("linkedin", "LinkedIn"),
+    ("x", "X (Twitter)"),
+    ("facebook", "Facebook"),
+    ("instagram", "Instagram"),
+    ("discord", "Discord"),
+    ("email", "Email"),
+    ("website", "Website"),
+]
+
 
 class Company(DotModel):
     __table__ = "company"
@@ -69,4 +89,36 @@ class Company(DotModel):
             ("flat", "Flat (плоский)"),
         ],
         default="elevated",
+    )
+
+    # Соцсети на странице входа. До 3 штук.
+    # Если type или url пусты — ссылка не выводится. Если все 3 пусты —
+    # показываются дефолтные ссылки FARA (Telegram/GitHub/RuTube).
+    # Label генерируется по type на фронте (см. SOCIAL_TYPE_META).
+    login_social1_type: str | None = Selection(
+        string="Login social #1 type",
+        description="Тип первой соцсети на странице входа",
+        options=_SOCIAL_OPTIONS,
+    )
+    login_social1_url: str | None = Char(
+        string="Login social #1 URL",
+        description="Ссылка для первой соцсети",
+    )
+    login_social2_type: str | None = Selection(
+        string="Login social #2 type",
+        description="Тип второй соцсети на странице входа",
+        options=_SOCIAL_OPTIONS,
+    )
+    login_social2_url: str | None = Char(
+        string="Login social #2 URL",
+        description="Ссылка для второй соцсети",
+    )
+    login_social3_type: str | None = Selection(
+        string="Login social #3 type",
+        description="Тип третьей соцсети на странице входа",
+        options=_SOCIAL_OPTIONS,
+    )
+    login_social3_url: str | None = Char(
+        string="Login social #3 URL",
+        description="Ссылка для третьей соцсети",
     )

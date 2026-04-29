@@ -13,6 +13,7 @@ import {
   IconUsers,
   IconPhoto,
   IconTextCaption,
+  IconShare,
 } from '@tabler/icons-react';
 
 /**
@@ -72,6 +73,38 @@ export function ViewFormCompany(props: ViewFormProps) {
               <Field
                 name="login_card_style"
                 label="Стиль карточки логина"
+              />
+            </FormRow>
+          </FormSection>
+
+          <FormSection
+            title="Соцсети на странице входа"
+            icon={<IconShare size={18} />}>
+            {/* До 3 ссылок: пустые пары (без типа или без URL) не выводятся.
+                Если все 3 пусты — на странице входа показываются дефолтные
+                ссылки FARA (Telegram/GitHub/RuTube). */}
+            <FormRow cols={2}>
+              <Field name="login_social1_type" label="Тип №1" />
+              <Field
+                name="login_social1_url"
+                label="Ссылка №1"
+                placeholder="https://..."
+              />
+            </FormRow>
+            <FormRow cols={2}>
+              <Field name="login_social2_type" label="Тип №2" />
+              <Field
+                name="login_social2_url"
+                label="Ссылка №2"
+                placeholder="https://..."
+              />
+            </FormRow>
+            <FormRow cols={2}>
+              <Field name="login_social3_type" label="Тип №3" />
+              <Field
+                name="login_social3_url"
+                label="Ссылка №3"
+                placeholder="https://..."
               />
             </FormRow>
           </FormSection>

@@ -1,6 +1,11 @@
 import { baseQuery, API_BASE_URL } from '@services/baseQueryWithReauth';
 import { createApi } from '@reduxjs/toolkit/query/react';
 
+export interface SocialLink {
+  type: string;
+  url: string;
+}
+
 /**
  * Branding-настройки текущей компании.
  */
@@ -19,6 +24,8 @@ export interface BrandingConfig {
   login_button_color: string | null;
   /** Стиль карточки на странице входа: elevated (объёмный) или flat (плоский) */
   login_card_style: 'elevated' | 'flat';
+  /** Соцсети на странице входа. Пустой массив → фронт показывает дефолтные FARA-ссылки. */
+  login_socials: SocialLink[];
 }
 
 export interface PublicConfig {

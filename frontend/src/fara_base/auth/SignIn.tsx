@@ -18,6 +18,16 @@ import { useTranslation } from 'react-i18next';
 import {
   IconBrandTelegram,
   IconBrandGithub,
+  IconBrandYoutube,
+  IconBrandVk,
+  IconBrandWhatsapp,
+  IconBrandLinkedin,
+  IconBrandX,
+  IconBrandFacebook,
+  IconBrandInstagram,
+  IconBrandDiscord,
+  IconMail,
+  IconWorld,
   IconLanguage,
   IconCheck,
 } from '@tabler/icons-react';
@@ -39,6 +49,37 @@ const IconRuTube = ({ size = 20 }: { size?: number }) => (
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" />
   </svg>
 );
+
+/**
+ * Таблица типов соцсетей: icon + label + color.
+ * Используется как для дефолтных ссылок FARA, так и для пользовательских
+ * из branding (Company.login_socialN_type → ключ этой таблицы).
+ *
+ * Чтобы добавить новый тип:
+ * 1. Добавь option в _SOCIAL_OPTIONS в backend/.../company.py
+ * 2. Добавь запись здесь.
+ */
+type SocialMeta = {
+  icon: React.ComponentType<{ size?: number }>;
+  label: string;
+  color: string;
+};
+
+const SOCIAL_TYPE_META: Record<string, SocialMeta> = {
+  telegram: { icon: IconBrandTelegram, label: 'Telegram', color: '#2AABEE' },
+  github: { icon: IconBrandGithub, label: 'GitHub', color: '#333' },
+  rutube: { icon: IconRuTube, label: 'RuTube', color: '#1B1F3B' },
+  youtube: { icon: IconBrandYoutube, label: 'YouTube', color: '#FF0000' },
+  vk: { icon: IconBrandVk, label: 'ВКонтакте', color: '#0077FF' },
+  whatsapp: { icon: IconBrandWhatsapp, label: 'WhatsApp', color: '#25D366' },
+  linkedin: { icon: IconBrandLinkedin, label: 'LinkedIn', color: '#0A66C2' },
+  x: { icon: IconBrandX, label: 'X', color: '#000' },
+  facebook: { icon: IconBrandFacebook, label: 'Facebook', color: '#1877F2' },
+  instagram: { icon: IconBrandInstagram, label: 'Instagram', color: '#E4405F' },
+  discord: { icon: IconBrandDiscord, label: 'Discord', color: '#5865F2' },
+  email: { icon: IconMail, label: 'Email', color: '#666' },
+  website: { icon: IconWorld, label: 'Website', color: '#444' },
+};
 
 const LANGUAGES = [
   { code: 'ru', label: 'Русский' },
@@ -66,31 +107,15 @@ const FlagEn = () => (
 
 const FLAG_ICONS: Record<string, React.FC> = { ru: FlagRu, en: FlagEn };
 
-const SOCIAL_LINKS = [
-  {
-    icon: IconBrandTelegram,
-    label: 'Telegram',
-    href: 'https://t.me/faracrm',
-    color: '#2AABEE',
-  },
-  {
-    icon: IconBrandGithub,
-    label: 'GitHub',
-    href: 'https://github.com/shurshilov/faracrm',
-    color: '#333',
-  },
-  // {
-  //   icon: IconBrandYoutube,
-  //   label: 'YouTube',
-  //   href: 'https://youtube.com/@fara_crm',
-  //   color: '#FF0000',
-  // },
-  {
-    icon: IconRuTube,
-    label: 'RuTube',
-    href: 'https://rutube.ru/channel/75678685',
-    color: '#1B1F3B',
-  },
+/**
+ * Дефолтные ссылки FARA — показываются если в branding не настроена
+ * ни одна соцсеть. Формат тот же что у пользовательских (type + url),
+ * чтобы рендеринг был единообразный.
+ */
+const DEFAULT_SOCIAL_LINKS: { type: string; url: string }[] = [
+  { type: 'telegram', url: 'https://t.me/faracrm' },
+  { type: 'github', url: 'https://github.com/shurshilov/faracrm' },
+  { type: 'rutube', url: 'https://rutube.ru/channel/75678685' },
 ];
 
 export default function SignIn() {
@@ -145,6 +170,19 @@ export default function SignIn() {
     cardStyle === 'flat'
       ? `${classes.form} ${classes.formFlat}`
       : `${classes.form} ${classes.formElevated}`;
+
+  // Соцсети для отрисовки. Источник:
+  // 1. branding.login_socials если непустой — пользовательские из Company
+  // 2. иначе DEFAULT_SOCIAL_LINKS (FARA Telegram/GitHub/RuTube)
+  // Дополнительно отфильтровываем неизвестные типы — на случай если
+  // в БД лежит type, для которого нет записи в SOCIAL_TYPE_META
+  // (например, после downgrade'а фронта).
+  const brandingSocials = publicConfig?.branding?.login_socials;
+  const socialLinks = (
+    brandingSocials && brandingSocials.length > 0
+      ? brandingSocials
+      : DEFAULT_SOCIAL_LINKS
+  ).filter(link => link.type in SOCIAL_TYPE_META);
 
   return (
     <div className={classes.wrapper}>
@@ -245,35 +283,48 @@ export default function SignIn() {
               </Text>
             )}
 
-            {/* Соцсети */}
-            <Divider
-              label={
-                <Text size="xs" c="dimmed">
-                  {t('auth.community')}
-                </Text>
-              }
-              labelPosition="center"
-            />
+            {/* Соцсети — если есть что показать */}
+            {socialLinks.length > 0 && (
+              <>
+                <Divider
+                  label={
+                    <Text size="xs" c="dimmed">
+                      {t('auth.community')}
+                    </Text>
+                  }
+                  labelPosition="center"
+                />
 
-            <Group justify="center" gap="lg">
-              {SOCIAL_LINKS.map(link => (
-                <Tooltip key={link.label} label={link.label} withArrow>
-                  <ActionIcon
-                    component="a"
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="subtle"
-                    size="lg"
-                    className={classes.socialIcon}
-                    style={
-                      { '--social-color': link.color } as React.CSSProperties
-                    }>
-                    <link.icon size={22} />
-                  </ActionIcon>
-                </Tooltip>
-              ))}
-            </Group>
+                <Group justify="center" gap="lg">
+                  {socialLinks.map((link, idx) => {
+                    const meta = SOCIAL_TYPE_META[link.type];
+                    const Icon = meta.icon;
+                    return (
+                      <Tooltip
+                        key={`${link.type}-${idx}`}
+                        label={meta.label}
+                        withArrow>
+                        <ActionIcon
+                          component="a"
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          variant="subtle"
+                          size="lg"
+                          className={classes.socialIcon}
+                          style={
+                            {
+                              '--social-color': meta.color,
+                            } as React.CSSProperties
+                          }>
+                          <Icon size={22} />
+                        </ActionIcon>
+                      </Tooltip>
+                    );
+                  })}
+                </Group>
+              </>
+            )}
 
             <Text ta="center" size="xs" c="dimmed" className={classes.version}>
               FARA CRM v{publicConfig?.version}

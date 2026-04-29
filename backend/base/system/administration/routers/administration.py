@@ -41,6 +41,13 @@ def version():
     return VERSION
 
 
+class SocialLink(BaseModel):
+    """Соцсеть на странице логина — пара (тип, ссылка)."""
+
+    type: str
+    url: str
+
+
 class BrandingConfig(BaseModel):
     """Настройки бренда. URL-ы фронт строит сам через
     `${API_BASE_URL}/api/public/branding/<field>`."""
@@ -52,6 +59,10 @@ class BrandingConfig(BaseModel):
     login_subtitle: str | None = None
     login_button_color: str | None = None
     login_card_style: str = "elevated"
+    # Список соцсетей. Пустой список → фронт показывает дефолтные FARA-ссылки.
+    # На бэке — 3 плоские пары полей login_socialN_type/url, в API
+    # склеиваем в массив (без пустых) для удобства фронта.
+    login_socials: list[SocialLink] = []
 
 
 class PublicConfig(BaseModel):
@@ -78,6 +89,12 @@ async def _get_first_company():
             "login_subtitle",
             "login_button_color",
             "login_card_style",
+            "login_social1_type",
+            "login_social1_url",
+            "login_social2_type",
+            "login_social2_url",
+            "login_social3_type",
+            "login_social3_url",
         ],
         fields_nested={
             "logo_id": ["id"],
@@ -86,6 +103,21 @@ async def _get_first_company():
         },
     )
     return companies[0] if companies else None
+
+
+def _collect_social_links(company) -> list[SocialLink]:
+    """Собирает массив непустых соцсетей из плоских полей компании.
+
+    Пропускаем пары где type или url пустые — на фронте такие ссылки
+    всё равно не отрисовать.
+    """
+    result: list[SocialLink] = []
+    for i in (1, 2, 3):
+        type_ = getattr(company, f"login_social{i}_type", None)
+        url = getattr(company, f"login_social{i}_url", None)
+        if type_ and url:
+            result.append(SocialLink(type=type_, url=url))
+    return result
 
 
 @router_public.get("/public/config/", response_model=PublicConfig)
@@ -106,6 +138,7 @@ async def public_config():
             login_subtitle=company.login_subtitle or None,
             login_button_color=company.login_button_color or None,
             login_card_style=company.login_card_style or "elevated",
+            login_socials=_collect_social_links(company),
         )
     )
     return PublicConfig(

@@ -1,5 +1,5 @@
 import { Combobox, InputBase, ScrollArea, useCombobox } from '@mantine/core';
-import { IconChevronDown } from '@tabler/icons-react';
+import { IconChevronDown, IconX } from '@tabler/icons-react';
 import { ReactElement, useContext, useEffect, useState } from 'react';
 import { FormFieldsContext, useFormContext } from '../FormContext';
 import { FaraRecord } from '@/services/api/crudTypes';
@@ -77,6 +77,20 @@ export const FieldSelection = <RecordType extends FaraRecord>({
     },
   });
 
+  // Очистка значения (доступна только для необязательных полей)
+  const handleClear = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (hasOnchange && handleFieldChange) {
+      handleFieldChange(name, null);
+    } else {
+      form.setValues({ [name]: null });
+    }
+    combobox.closeDropdown();
+  };
+
+  const currentValue = form.getValues()?.[name];
+  const canClear = !required && currentValue != null && currentValue !== '';
+
   return (
     <>
       {form.getValues() && (
@@ -119,20 +133,29 @@ export const FieldSelection = <RecordType extends FaraRecord>({
                 type="button"
                 pointer
                 rightSection={
-                  <IconChevronDown
-                    size={16}
-                    style={{
-                      transition: 'transform 150ms ease',
-                      transform: combobox.dropdownOpened
-                        ? 'rotate(180deg)'
-                        : 'rotate(0deg)',
-                    }}
-                  />
+                  canClear ? (
+                    <IconX
+                      size={16}
+                      style={{ cursor: 'pointer' }}
+                      onMouseDown={e => e.stopPropagation()}
+                      onClick={handleClear}
+                      aria-label="Очистить"
+                    />
+                  ) : (
+                    <IconChevronDown
+                      size={16}
+                      style={{
+                        transition: 'transform 150ms ease',
+                        transform: combobox.dropdownOpened
+                          ? 'rotate(180deg)'
+                          : 'rotate(0deg)',
+                      }}
+                    />
+                  )
                 }
-                rightSectionPointerEvents="none"
+                rightSectionPointerEvents={canClear ? 'all' : 'none'}
                 onClick={() => combobox.toggleDropdown()}>
                 {(() => {
-                  const currentValue = form.getValues()[name];
                   if (!currentValue)
                     return (
                       <span
