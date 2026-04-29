@@ -63,6 +63,16 @@ export function ViewFormCompany(props: ViewFormProps) {
                 label="Подзаголовок"
                 placeholder="Платформа для управления бизнесом"
               />
+              <Field
+                name="login_button_color"
+                widget="color"
+                label="Цвет кнопки входа"
+                placeholder="#009982"
+              />
+              <Field
+                name="login_card_style"
+                label="Стиль карточки логина"
+              />
             </FormRow>
           </FormSection>
         </FormTab>

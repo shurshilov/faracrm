@@ -6,46 +6,103 @@
   display: flex;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+
+  @mixin light {
+    background: var(--mantine-color-gray-0);
+  }
+
+  @mixin dark {
+    background: var(--mantine-color-dark-8);
+  }
 }
 
-/* ── Форма (левая часть) ───────────────────────────────────────────────── */
+/* ── Форма (левая часть) — общие стили для обоих вариантов ─────────────── */
 .form {
   display: flex;
   flex-direction: column;
   justify-content: center;
   position: relative;
-  height: 100vh;
   overflow: hidden;
   width: rem(520px);
   flex-shrink: 0;
-  z-index: 1;
+  z-index: 2;
 
   @mixin light {
-    border-right: rem(1px) solid var(--mantine-color-gray-2);
     background: rgba(255, 255, 255, 0.98);
   }
 
   @mixin dark {
-    border-right: rem(1px) solid var(--mantine-color-dark-5);
     background: rgba(26, 27, 30, 0.98);
   }
 
   @media (max-width: $mantine-breakpoint-sm) {
     width: 100%;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+  }
+}
+
+/* ── Вариант "elevated" — современный объёмный ─────────────────────────── */
+/* Плашка с тенью, скруглёнными углами справа, отступом от краёв экрана.
+   Это default-вариант (см. login_card_style по умолчанию = "elevated"). */
+.formElevated {
+  /* Плашка на всю высоту экрана — никаких отступов сверху/снизу,
+     чтобы контент гарантированно помещался без скролла */
+  height: calc(100vh - rem(16px));
+  margin-left: rem(24px);
+  margin-top: rem(8px);
+  /* Скругляем только правый край — слева плашка прилеплена к экрану */
+  border-radius: rem(20px);
+
+  @mixin light {
+    /* Объём: мягкая глубокая тень + лёгкая отбивка по краю */
+    box-shadow:
+      0 rem(20px) rem(60px) rgba(15, 23, 42, 0.18),
+      0 rem(8px) rem(20px) rgba(15, 23, 42, 0.08),
+      0 0 0 rem(1px) rgba(15, 23, 42, 0.04);
+  }
+
+  @mixin dark {
+    box-shadow:
+      0 rem(20px) rem(60px) rgba(0, 0, 0, 0.55),
+      0 rem(8px) rem(20px) rgba(0, 0, 0, 0.35),
+      0 0 0 rem(1px) rgba(255, 255, 255, 0.04);
+  }
+}
+
+/* ── Вариант "flat" — классический плоский ─────────────────────────────── */
+/* На всю высоту, без тени, с тонкой границей справа — как было до v1. */
+.formFlat {
+  height: 100vh;
+
+  @mixin light {
+    border-right: rem(1px) solid var(--mantine-color-gray-2);
+  }
+
+  @mixin dark {
+    border-right: rem(1px) solid var(--mantine-color-dark-5);
   }
 }
 
 .formInner {
-  padding: rem(48px);
+  /* Плотнее по вертикали: умещаем логотип, заголовок, поля,
+     кнопку, соцсети и версию без скролла */
+  padding: rem(24px) rem(48px);
   max-width: rem(420px);
   margin: 0 auto;
   width: 100%;
+  /* Уменьшаем расстояние между секциями (было gap="xl" = ~32px) */
+  gap: rem(20px) !important;
 }
 
 /* ── Анимированный фон (правая часть) ──────────────────────────────────── */
 .background {
-  flex: 1;
-  position: relative;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   overflow: hidden;
 
   @media (max-width: $mantine-breakpoint-sm) {
@@ -109,11 +166,16 @@
 
 /* ── Кнопка входа ──────────────────────────────────────────────────────── */
 .submitBtn {
-  background: #009982;
-  transition: background 150ms ease;
+  /* --login-btn-color прокидывается из SignIn.tsx через style,
+     если в branding задан login_button_color. Иначе используется дефолт. */
+  background: var(--login-btn-color, #009982);
+  transition: filter 150ms ease, background 150ms ease;
 
   &:hover {
-    background: #00806d;
+    /* hover работает и для дефолтного цвета, и для кастомного:
+       чуть притемняем через filter, не теряя выбранный оттенок */
+    background: var(--login-btn-color, #00806d);
+    filter: brightness(0.92);
   }
 }
 

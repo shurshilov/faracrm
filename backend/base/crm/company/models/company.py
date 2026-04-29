@@ -5,6 +5,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Many2one,
     One2many,
     PolymorphicMany2one,
+    Selection,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
@@ -48,4 +49,24 @@ class Company(DotModel):
     login_subtitle: str | None = Char(
         string="Login subtitle",
         description="Подзаголовок (под логотипом) на странице входа",
+    )
+    # Цвет кнопки "Войти" на странице входа (HEX, например "#009982").
+    # Если пусто — используется дефолтный цвет из CSS.
+    login_button_color: str | None = Char(
+        string="Login button color",
+        description="Цвет кнопки входа в формате HEX (#RRGGBB)",
+    )
+
+    # Стиль карточки на странице входа.
+    # - elevated: современный объёмный (тень, скругление, отступ от краёв)
+    # - flat:     классический плоский (на всю высоту, без тени)
+    # Список расширяемый — в будущем можно добавить glass, outlined и пр.
+    login_card_style: str = Selection(
+        string="Login card style",
+        description="Стиль карточки на странице входа",
+        options=[
+            ("elevated", "Elevated (объёмный)"),
+            ("flat", "Flat (плоский)"),
+        ],
+        default="elevated",
     )

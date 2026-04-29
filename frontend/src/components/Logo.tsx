@@ -235,19 +235,32 @@ const Logo = ({ variant }: { variant?: 'default' | 'login' } = {}) => {
   }
 
   if (url) {
-    return (
-      <img
-        src={url}
-        alt="Logo"
-        style={{
-          maxWidth: '260px',
-          maxHeight: '60px',
-          height: 'auto',
-          display: 'block',
-          margin: '0 auto',
-        }}
-      />
-    );
+    // Размеры логотипа подбираются под место использования:
+    // - login: вертикальный логотип/эмблема, помещается в formInner (~324px),
+    //   высоты до 96px достаточно чтобы не «обрезался»
+    // - default (шапка CRM): помещаем в navbar высотой ~56px,
+    //   ограничение по высоте (40px) — главное, чтобы не выпирал
+    const imgStyle: React.CSSProperties =
+      variant === 'login'
+        ? {
+            maxWidth: '240px',
+            maxHeight: '120px',
+            width: 'auto',
+            height: 'auto',
+            display: 'block',
+            margin: '0 auto',
+            objectFit: 'contain',
+          }
+        : {
+            maxWidth: '140px',
+            maxHeight: '40px',
+            width: 'auto',
+            height: 'auto',
+            display: 'block',
+            objectFit: 'contain',
+          };
+
+    return <img src={url} alt="Logo" style={imgStyle} />;
   }
 
   // Fallback — встроенный SVG "FARA"
@@ -258,7 +271,7 @@ const Logo = ({ variant }: { variant?: 'default' | 'login' } = {}) => {
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 300 120"
       preserveAspectRatio="xMidYMid"
-      style={{ maxWidth: '260px', height: 'auto', display: 'block' }}>
+      style={{ maxWidth: '300px', height: 'auto', display: 'block' }}>
       <defs>
         <linearGradient
           id="editing-gradow-gradient"

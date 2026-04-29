@@ -50,6 +50,8 @@ class BrandingConfig(BaseModel):
     has_login_background: bool = False
     login_title: str | None = None
     login_subtitle: str | None = None
+    login_button_color: str | None = None
+    login_card_style: str = "elevated"
 
 
 class PublicConfig(BaseModel):
@@ -74,6 +76,8 @@ async def _get_first_company():
             "login_background_id",
             "login_title",
             "login_subtitle",
+            "login_button_color",
+            "login_card_style",
         ],
         fields_nested={
             "logo_id": ["id"],
@@ -100,6 +104,8 @@ async def public_config():
             has_login_background=bool(company.login_background_id),
             login_title=company.login_title or None,
             login_subtitle=company.login_subtitle or None,
+            login_button_color=company.login_button_color or None,
+            login_card_style=company.login_card_style or "elevated",
         )
     )
     return PublicConfig(

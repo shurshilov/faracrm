@@ -131,17 +131,18 @@ async def _drop_database():
 
 @pytest.fixture(scope="session", autouse=True)
 async def manage_test_database():
-    """Create test database at session start, drop at end.
-
-    DIAGNOSTIC: drop отключён — БД остаётся для проверки руками.
-    """
+    """Create test database at session start, drop at end."""
     if asyncpg is None:
         pytest.skip("asyncpg not installed")
         return
 
+    # Дропаем БД ДО создания — на случай если осталась с прошлого прогона
+    # с битым состоянием (например, кросс-тестовые FK или старая схема
+    # после правок моделей).
+    await _drop_database()
     await _ensure_database()
     yield
-    # await _drop_database()  # отключено для диагностики
+    await _drop_database()
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

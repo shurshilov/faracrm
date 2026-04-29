@@ -194,6 +194,8 @@ export interface CompanyRecord extends BaseRecord {
   login_background_id: RelationRecord | null;
   login_title: string | null;
   login_subtitle: string | null;
+  login_button_color: string | null;
+  login_card_style: 'elevated' | 'flat';
 }
 
 // ============================================================

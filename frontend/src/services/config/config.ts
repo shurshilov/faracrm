@@ -15,6 +15,10 @@ export interface BrandingConfig {
   login_title: string | null;
   /** Подзаголовок (под логотипом) на странице входа */
   login_subtitle: string | null;
+  /** Цвет кнопки "Войти" в формате HEX (#RRGGBB), если задан в Company */
+  login_button_color: string | null;
+  /** Стиль карточки на странице входа: elevated (объёмный) или flat (плоский) */
+  login_card_style: 'elevated' | 'flat';
 }
 
 export interface PublicConfig {

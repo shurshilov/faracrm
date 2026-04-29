@@ -353,7 +353,7 @@ class CRUDRouterGenerator(APIRouter):
 
             await record.update(model_instance, fields_names)
 
-            return payload_dict
+            return _strip_bytes(payload_dict)
 
         return route
 
@@ -533,3 +533,20 @@ async def _wrap_relations_for_ui(
             "fields": rel_fields_info,
             "total": totals[i],
         }
+
+
+def _strip_bytes(value: Any) -> Any:
+    """
+    Рекурсивно удаляет bytes-значения из dict/list.
+
+    Используется в ответах PUT-роутов, чтобы Pydantic при сериализации в JSON
+    не падал на сырых байтах изображений (которые попадают в payload_dict
+    при апдейте полей PolymorphicMany2one с base64-контентом).
+    """
+    if isinstance(value, dict):
+        return {
+            k: _strip_bytes(v)
+            for k, v in value.items()
+            if not isinstance(v, bytes)
+        }
+    return value

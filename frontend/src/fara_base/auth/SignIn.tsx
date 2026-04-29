@@ -138,10 +138,18 @@ export default function SignIn() {
 
   const currentLang = i18n.language?.substring(0, 2) || 'ru';
 
+  // Стиль карточки логина: elevated (объёмный, default) или flat (плоский).
+  // Берём из branding, фолбэк на elevated.
+  const cardStyle = publicConfig?.branding?.login_card_style || 'elevated';
+  const formClassName =
+    cardStyle === 'flat'
+      ? `${classes.form} ${classes.formFlat}`
+      : `${classes.form} ${classes.formElevated}`;
+
   return (
     <div className={classes.wrapper}>
       {/* Левая часть — форма */}
-      <Paper className={classes.form} radius={0}>
+      <Paper className={formClassName} radius={0}>
         {/* Переключатель языка — правый верхний угол */}
         <div className={classes.langSwitcher}>
           <Menu shadow="sm" width={160} position="bottom-end">
@@ -218,7 +226,15 @@ export default function SignIn() {
               type="submit"
               fullWidth
               size="md"
-              className={classes.submitBtn}>
+              className={classes.submitBtn}
+              style={
+                publicConfig?.branding?.login_button_color
+                  ? ({
+                      '--login-btn-color':
+                        publicConfig.branding.login_button_color,
+                    } as React.CSSProperties)
+                  : undefined
+              }>
               {t('auth.signIn')}
             </Button>
 
