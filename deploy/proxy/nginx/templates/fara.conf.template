@@ -57,6 +57,29 @@ server {
     proxy_hide_header Content-Security-Policy;
     proxy_hide_header Referrer-Policy;
 
+    # ── /ws/* → backend (WebSocket для чата) ───────────────────────
+    # Backend публикует WebSocket на /ws/chat (без /api префикса).
+    # Фронт ходит на wss://домен/ws/chat?token=... — путь идёт напрямую.
+    location ~ ^/ws(/|$) {
+        # Хост в переменной — runtime-resolver требует этого, см. resolver наверху.
+        set $backend_ws_upstream "backend:8000";
+        proxy_pass http://$backend_ws_upstream;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # WebSocket долгоживущий — таймауты на чтение нужны большие,
+        # иначе nginx будет рвать idle-соединение через proxy_read_timeout.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
     # ── /api/* → backend (со снятием префикса) ─────────────────────
     # FastAPI публикует роуты без /api префикса (/signin, /sessions/, ...).
     # Фронт клеит /api/ через baseQuery.baseUrl — здесь его снимаем.
