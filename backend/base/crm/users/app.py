@@ -50,8 +50,14 @@ class UserApp(App):
 
         await self._init_admin_user(env)
         await self._init_system_user(env)
-        await self._init_anonymous_user(env)
+        # Порядок важен: template ДО anonymous. PostgreSQL serial sequence
+        # выдаёт id по порядку создания, а константы рассчитаны на:
+        #   1 admin, 2 system, 3 template, 4 anonymous.
+        # Если поменять местами — id поедут (template станет 4, anonymous 3),
+        # и при следующем рестарте _init_*_user создаст дубли,
+        # потому что ищут по фиксированному id.
         await self._init_template_user(env)
+        await self._init_anonymous_user(env)
         await self._init_user_rules(env)
 
     async def _init_admin_user(self, env: "Environment"):
