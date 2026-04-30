@@ -29,6 +29,9 @@ export const FieldColor = ({
       <ColorInput
         {...props}
         {...form.getInputProps(name)}
+        // Mantine ColorInput внутри делает value.trim() и падает на null.
+        // Перебиваем value после спреда: null/undefined → ''.
+        value={form.getValues()?.[name] ?? ''}
         key={form.key(name)}
         required={required}
         // Опционально: формат вывода (hex, rgb, rgba)

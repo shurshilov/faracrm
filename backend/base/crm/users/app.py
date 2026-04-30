@@ -29,6 +29,15 @@ class UserApp(App):
         "license": "FARA CRM License v1.0",
         "post_init": True,
         "depends": ["security", "languages"],
+        # sequence=3 — стартует после security (sequence=1) и languages
+        # (sequence=2), но ДО всех бизнес-модулей (default sequence=10).
+        # Причина: бизнес-модули в своём post_init создают записи
+        # (демо-данные, начальные значения), и ORM проставляет
+        # create_user_id = SYSTEM_USER_ID (id=2). Если этот юзер
+        # ещё не создан — получается FK violation. _init_system_user
+        # должен отработать раньше. Также users.create() требует
+        # созданный язык по умолчанию — отсюда зависимость от languages.
+        "sequence": 3,
     }
 
     BASE_USER_ACL = {

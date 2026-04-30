@@ -1,0 +1,40 @@
+services:
+
+  # ─── Reverse Proxy ─────────────────────────────────────
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: fara-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    networks:
+      - proxy
+      - crm
+    # Раз в 6 часов перечитываем конфиг — чтобы подхватить продлённый сертификат
+    # без рестарта контейнера.
+    command: >
+      sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+
+  # ─── Certbot (SSL renew loop) ─────────────────────────
+  certbot:
+    image: certbot/certbot
+    container_name: fara-certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;'"
+
+networks:
+  proxy:
+    driver: bridge
+  crm:
+    # Имя сети берётся из .env (переменная FARA_NETWORK).
+    # Compose автоматически читает .env из этой папки.
+    external: true
+    name: ${FARA_NETWORK}

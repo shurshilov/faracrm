@@ -1,6 +1,10 @@
 import { baseQuery, API_BASE_URL } from '@services/baseQueryWithReauth';
 import { createApi } from '@reduxjs/toolkit/query/react';
 
+/**
+ * Одна соцсеть на странице логина — пара (тип, ссылка).
+ * Тип маппится в иконку и подпись через SOCIAL_TYPE_META на фронте.
+ */
 export interface SocialLink {
   type: string;
   url: string;
@@ -49,7 +53,8 @@ export const configApi = createApi({
   endpoints: builder => ({
     getPublicConfig: builder.query<PublicConfig, void>({
       query: () => ({
-        url: `${API_BASE_URL}/public/config/`,
+        // baseQuery уже клеит API_BASE_URL ('/api/'), здесь только относительный путь.
+        url: '/public/config/',
         method: 'GET',
       }),
     }),
