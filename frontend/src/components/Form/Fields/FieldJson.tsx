@@ -115,7 +115,7 @@ export const FieldJson = ({
         <JsonInput
           description={description}
           {...props}
-          value={displayValue}
+          defaultValue={displayValue}
           onChange={handleChange}
           error={form.errors?.[name]}
           key={form.key(name)}
@@ -172,7 +172,7 @@ export const FieldJson = ({
         <JsonInput
           {...props}
           autosize
-          value={displayValue}
+          defaultValue={displayValue}
           onChange={handleChange}
           error={form.errors?.[name]}
           styles={{ input: { fontFamily: 'monospace', fontSize: '13px' } }}
