@@ -284,8 +284,8 @@ class Activity(AuditMixin, DotModel):
             chat_id=system_chat_id,
             body=body,
             message_type="notification",
-            res_model=res_model,
-            res_id=res_id,
+            # res_model=res_model,
+            # res_id=res_id,
         )
 
         # Отправляем через WebSocket
