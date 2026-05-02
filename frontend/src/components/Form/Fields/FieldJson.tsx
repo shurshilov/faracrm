@@ -118,7 +118,6 @@ export const FieldJson = ({
           defaultValue={displayValue}
           onChange={handleChange}
           error={form.errors?.[name]}
-          key={form.key(name)}
           autosize
           styles={{ input: { fontFamily: 'monospace', fontSize: '13px' } }}
         />
