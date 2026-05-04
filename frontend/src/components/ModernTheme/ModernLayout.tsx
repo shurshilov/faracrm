@@ -23,6 +23,7 @@ import { CallWidget } from '@/fara_chat/components/CallWidget';
 import { NotificationListener } from '@/components/NotificationToast/NotificationToast';
 import { AppLauncher } from './AppLauncher';
 import { HorizontalMenu } from './HorizontalMenu';
+import { MobileSubmenuDrawer } from './MobileSubmenuDrawer';
 import { ChatSidebar } from './ChatSidebar';
 import classes from './ModernLayout.module.css';
 import { useSelector } from 'react-redux';
@@ -150,6 +151,11 @@ export function ModernLayout() {
               px={{ base: 'xs', sm: 'md' }}
               gap={{ base: 4, sm: 'sm' }}
               style={{ flexShrink: 0 }}>
+              {/* Кнопка подменю активной группы — только мобила
+                  (на десктопе подменю показывается в HorizontalMenu) */}
+              <Box hiddenFrom="md">
+                <MobileSubmenuDrawer activeGroup={activeGroup} />
+              </Box>
               <Box visibleFrom="sm">
                 <ThemeToggle />
               </Box>
