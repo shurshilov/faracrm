@@ -2576,12 +2576,12 @@
 </span></code></pre></div>
 <p>При повторных запусках спрашивает: «Existing data found. Continue and replace existing certificate? (y/N)». Обычно нужно ответить <strong>N</strong> или ввести <code>1</code> (Keep cert) — иначе можно нарваться на rate limit Let's Encrypt (50 сертификатов на домен в неделю).</p>
 <h2 id="punycode">Punycode для кириллических доменов<a class="headerlink" href="#punycode" title="Permanent link">&para;</a></h2>
-<p>FARA использует домен <code>диалог-подольск.рф</code>. В nginx нельзя писать кириллицу напрямую — нужно сконвертировать в <strong>punycode</strong>:</p>
-<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="s2">&quot;диалог-подольск.рф&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;idna&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
-</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="s1">&#39;xn----7sbjcdused0acbk6a6m.xn--p1ai&#39;</span>
+<p>FARA может использовать puny домены <code>мой-домен.рф</code>. В nginx нельзя писать кириллицу напрямую — нужно сконвертировать в <strong>punycode</strong>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="o">&gt;&gt;&gt;</span> <span class="s2">&quot;мой-домен.рф&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;idna&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="s1">&#39;xn----htbdnodicd.xn--p1ai&#39;</span>
 </span></code></pre></div>
 <p>В <code>.env</code>:</p>
-<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nv">DOMAIN</span><span class="o">=</span>xn----7sbjcdused0acbk6a6m.xn--p1ai
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nv">DOMAIN</span><span class="o">=</span>xn----htbdnodicd.xn--p1ai<span class="err">&#39;</span>
 </span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="nv">EMAIL</span><span class="o">=</span>admin@example.com
 </span></code></pre></div>
 <p>В nginx-конфиге используется <code>${DOMAIN}</code> — envsubst подставляет значение при старте контейнера.</p>

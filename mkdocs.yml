@@ -1,7 +1,8 @@
 site_name: FARA CRM Documentation
 site_description: Внутренняя документация FARA CRM
 site_url: https://docs.fara.dev
-docs_dir: docs
+docs_dir: docs/dist
+site_dir: docs/site
 
 theme:
   name: material

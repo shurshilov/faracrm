@@ -36,7 +36,6 @@ docker compose up --build
 ```bash
 # F5 если используете VS code
 # или:
-cd backend
 pip install -r requirements.txt
 cp .env.example .env
 uvicorn backend.main:app --host 0.0.0.0 --port 8090
