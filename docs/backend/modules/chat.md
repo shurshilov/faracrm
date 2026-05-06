@@ -172,7 +172,7 @@ class Chat(DotModel):
 
     name: str = Char(max_length=255, required=True)
     chat_type: str = Selection(
-        selection=[
+        options=[
             ("direct", "Личный"), ("group", "Группа"),
             ("channel", "Канал"), ("record", "Чат записи"),
         ],
@@ -188,15 +188,15 @@ class Chat(DotModel):
 class ChatMember(DotModel):
     __table__ = "chat_members"
 
-    chat_id = Many2one["Chat"](relation_table="chats", required=True)
-    user_id = Many2one["User"](relation_table="users", required=True)
-    is_active = Boolean(default=True)
-    is_admin = Boolean(default=False)
-    can_read = Boolean(default=True)
-    can_write = Boolean(default=True)
-    can_pin = Boolean(default=False)
-    can_invite = Boolean(default=False)
-    can_delete_others = Boolean(default=False)
+    chat_id: "Chat" = Many2one["Chat"](relation_table="chats", required=True)
+    user_id: "User" = Many2one["User"](relation_table="users", required=True)
+    is_active: bool = Boolean(default=True)
+    is_admin: bool = Boolean(default=False)
+    can_read: bool = Boolean(default=True)
+    can_write: bool = Boolean(default=True)
+    can_pin: bool = Boolean(default=False)
+    can_invite: bool = Boolean(default=False)
+    can_delete_others: bool = Boolean(default=False)
 ```
 
 ### Проверка прав

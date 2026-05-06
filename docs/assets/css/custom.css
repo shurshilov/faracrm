@@ -1,28 +1,677 @@
-/* Custom styles for FARA CRM docs */
+/* ============================================================
+   FARA CRM Documentation — custom.css
+   ============================================================ */
 
-/* Wider content area */
+/* ── Layout: чуть шире и комфортнее ────────────────────────── */
 .md-grid {
   max-width: 1440px;
 }
 
-/* Code block styling */
+.md-typeset {
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.6em;
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+  padding-bottom: 0.3em;
+  margin-top: 2em;
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+  margin-top: 1.6em;
+}
+
+/* Inline code */
+.md-typeset code {
+  background: var(--md-code-bg-color);
+  padding: 0.15em 0.45em;
+  border-radius: 3px;
+  font-size: 0.86em;
+  border: 1px solid var(--md-default-fg-color--lightest);
+}
+
+/* Кодовые блоки */
 .highlight code {
   font-size: 0.85em;
 }
+.highlight pre > code {
+  border: none;
+}
 
-/* API method badges */
-.method-get, .method-post, .method-patch, .method-delete {
+/* ============================================================
+   API: бейджи методов в стиле Swagger / FastAPI
+   ============================================================ */
+
+.method-get,
+.method-post,
+.method-put,
+.method-patch,
+.method-delete,
+.method-ws {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 4px;
   font-weight: 700;
-  font-size: 0.75em;
+  font-size: 0.74em;
   font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.02em;
   color: white;
-  margin-right: 6px;
+  margin-right: 8px;
   vertical-align: middle;
+  text-transform: uppercase;
 }
 .method-get    { background: #61affe; }
 .method-post   { background: #49cc90; }
-.method-patch  { background: #fca130; }
+.method-put    { background: #fca130; }
+.method-patch  { background: #50e3c2; }
 .method-delete { background: #f93e3e; }
+.method-ws     { background: #9012fe; }
+
+/* ============================================================
+   Endpoint card — блок endpoint'а в стиле FastAPI / Swagger
+   Использование:
+     <div class="endpoint endpoint-post" markdown>
+       <div class="endpoint-head" markdown>
+         <span class="method-post">POST</span>
+         `/calls/start`
+         <span class="endpoint-summary">Начать звонок</span>
+       </div>
+       <div class="endpoint-body" markdown>
+         Тело endpoint-описания...
+       </div>
+     </div>
+   ============================================================ */
+
+.endpoint {
+  margin: 1.5em 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  transition: box-shadow 0.15s ease;
+}
+.endpoint:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.endpoint-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--md-code-bg-color);
+  font-family: 'JetBrains Mono', monospace;
+}
+.endpoint-head code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.92em;
+  flex-shrink: 0;
+}
+.endpoint-head .endpoint-summary {
+  margin-left: auto;
+  font-family: 'Inter', sans-serif;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.86em;
+  font-weight: 500;
+}
+
+.endpoint-body {
+  padding: 14px 16px;
+  background: var(--md-default-bg-color);
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+.endpoint-body > p:first-child {
+  margin-top: 0;
+}
+.endpoint-body > p:last-child {
+  margin-bottom: 0;
+}
+
+/* Цветная левая полоса для метода */
+.endpoint-get    { border-left: 4px solid #61affe; }
+.endpoint-post   { border-left: 4px solid #49cc90; }
+.endpoint-put    { border-left: 4px solid #fca130; }
+.endpoint-patch  { border-left: 4px solid #50e3c2; }
+.endpoint-delete { border-left: 4px solid #f93e3e; }
+.endpoint-ws     { border-left: 4px solid #9012fe; }
+
+/* ============================================================
+   Apple device frames для скриншотов
+   Использование:
+     <figure class="device device-iphone" markdown>
+       ![Скриншот](path/to/screenshot.png)
+       <figcaption>Подпись под устройством</figcaption>
+     </figure>
+   ============================================================ */
+
+.device {
+  position: relative;
+  margin: 2em auto;
+  display: block;
+}
+
+.device img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: inherit;
+}
+
+.device figcaption {
+  text-align: center;
+  font-size: 0.82em;
+  color: var(--md-default-fg-color--light);
+  margin-top: 0.6em;
+  font-style: italic;
+}
+
+/* ── iPhone 14 Pro (с Dynamic Island) ──────────────────────── */
+.device-iphone {
+  max-width: 320px;
+  padding: 12px;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-radius: 44px;
+  box-shadow:
+    0 0 0 2px #3a3a3a,
+    0 25px 50px rgba(0, 0, 0, 0.25),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+}
+
+.device-iphone::before {
+  /* Dynamic Island */
+  content: "";
+  position: absolute;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 26px;
+  background: #000;
+  border-radius: 16px;
+  z-index: 2;
+}
+
+.device-iphone img {
+  border-radius: 32px;
+  background: white;
+  aspect-ratio: 9 / 19.5;
+  object-fit: cover;
+}
+
+/* ── iPad ──────────────────────────────────────────────────── */
+.device-ipad {
+  max-width: 540px;
+  padding: 18px;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-radius: 28px;
+  box-shadow:
+    0 0 0 2px #3a3a3a,
+    0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+.device-ipad img {
+  border-radius: 14px;
+  background: white;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+/* ── MacBook ───────────────────────────────────────────────── */
+.device-macbook {
+  max-width: 720px;
+  padding: 14px 14px 0 14px;
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  border-radius: 16px 16px 4px 4px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+.device-macbook::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 5px;
+  background: #444;
+  border-radius: 50%;
+}
+
+.device-macbook img {
+  border-radius: 6px 6px 0 0;
+  background: white;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  display: block;
+}
+
+.device-macbook::after {
+  content: "";
+  display: block;
+  height: 14px;
+  margin: 0 -28px;
+  background: linear-gradient(180deg, #c8c8c8 0%, #888 100%);
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Тёмная тема: чуть мягче рамки */
+[data-md-color-scheme="slate"] .device-iphone,
+[data-md-color-scheme="slate"] .device-ipad,
+[data-md-color-scheme="slate"] .device-macbook {
+  background: linear-gradient(135deg, #3a3a3a 0%, #2a2a2a 100%);
+  box-shadow:
+    0 0 0 1px #555,
+    0 25px 50px rgba(0, 0, 0, 0.4);
+}
+
+/* Сетка устройств — для side-by-side скринов */
+.device-row {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 2em 0;
+}
+.device-row > .device {
+  margin: 0;
+  flex: 0 1 auto;
+}
+
+/* ============================================================
+   Tag-pill — мелкие лейблы рядом с заголовками
+     <span class="tag tag-new">NEW</span>
+   ============================================================ */
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 0.68em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  font-family: 'JetBrains Mono', monospace;
+}
+.tag-new        { background: #d1f7c4; color: #2c6c1c; }
+.tag-beta       { background: #fde6c4; color: #8b4f1c; }
+.tag-deprecated { background: #f8d3d3; color: #8b1c1c; }
+.tag-async      { background: #c4dffd; color: #1c4a8b; }
+.tag-internal   { background: #e0e0e0; color: #555; }
+
+/* ============================================================
+   Grid cards — яркие карточки навигации на главной
+   Использование (Material standard):
+     <div class="grid cards" markdown>
+     -   :material-server:{ .lg .middle } **Backend**
+         ---
+         Описание...
+         [:octicons-arrow-right-24: Backend](backend/index.md)
+     </div>
+   ============================================================ */
+
+.md-typeset .grid.cards {
+  margin: 1.5em 0;
+}
+
+.md-typeset .grid.cards > ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.md-typeset .grid.cards > ul > li {
+  position: relative;
+  margin: 0;
+  padding: 1.4rem 1.4rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  background: var(--md-default-bg-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Цветная градиентная полоса сверху — визуальный акцент */
+.md-typeset .grid.cards > ul > li::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    var(--md-primary-fg-color) 0%,
+    var(--md-accent-fg-color) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.md-typeset .grid.cards > ul > li:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.10);
+  border-color: var(--md-primary-fg-color--light);
+}
+
+.md-typeset .grid.cards > ul > li:hover::before {
+  opacity: 1;
+}
+
+/* Заголовок карточки — крупнее, иконка приподнята */
+.md-typeset .grid.cards > ul > li > p:first-child {
+  margin: 0 0 0.8rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+/* Иконка в заголовке — кружок с приглушённым фоном */
+.md-typeset .grid.cards > ul > li > p:first-child > .twemoji,
+.md-typeset .grid.cards > ul > li > p:first-child > .lg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(135deg,
+    var(--md-primary-fg-color--light) 0%,
+    var(--md-primary-fg-color) 100%);
+  color: white;
+  flex-shrink: 0;
+}
+
+.md-typeset .grid.cards > ul > li > p:first-child > .twemoji svg,
+.md-typeset .grid.cards > ul > li > p:first-child > .lg svg {
+  width: 20px;
+  height: 20px;
+  fill: white;
+}
+
+/* Иконка-стрелка в ссылке — наоборот, без фона */
+.md-typeset .grid.cards > ul > li > p:last-child .twemoji svg {
+  fill: currentColor;
+}
+
+/* Разделительная линия между заголовком и описанием — мягче */
+.md-typeset .grid.cards > ul > li > hr {
+  display: none;
+}
+
+/* Описание */
+.md-typeset .grid.cards > ul > li > p:not(:first-child):not(:last-child) {
+  color: var(--md-default-fg-color--light);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+  flex-grow: 1;
+}
+
+/* Ссылка-стрелка снизу */
+.md-typeset .grid.cards > ul > li > p:last-child {
+  margin: 0;
+}
+
+.md-typeset .grid.cards > ul > li > p:last-child > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--md-primary-fg-color);
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: gap 0.2s ease;
+}
+
+.md-typeset .grid.cards > ul > li > p:last-child > a:hover {
+  gap: 8px;
+}
+
+/* Тёмная тема — чуть приподнять контраст */
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li:hover {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================================
+   "Field Box" — описание поля модели
+     <div class="field" markdown>
+       `user_id` <span class="field-type">Many2one[User]</span>
+       <span class="field-flag">required</span>
+
+       Описание поля...
+     </div>
+   ============================================================ */
+
+.field {
+  border-left: 3px solid var(--md-primary-fg-color);
+  padding: 8px 14px;
+  margin: 0.6em 0;
+  background: var(--md-code-bg-color);
+  border-radius: 0 4px 4px 0;
+}
+.field .field-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82em;
+  color: var(--md-default-fg-color--light);
+  margin-right: 8px;
+}
+.field .field-flag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--md-primary-fg-color);
+  color: white;
+  padding: 1px 6px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* ============================================================
+   Таблицы — чуть аккуратнее
+   ============================================================ */
+
+.md-typeset table:not([class]) {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--md-code-bg-color);
+  font-weight: 600;
+}
+
+/* ============================================================
+   Mermaid — центрировать
+   ============================================================ */
+
+.mermaid {
+  text-align: center;
+  margin: 1.5em 0;
+}
+
+/* ============================================================
+   Terminal frame — macOS-style окно для bash-блоков
+
+   Все ``` ```bash ``` блоки автоматически получают шапку
+   с кружками close/minimize/maximize и тёмный фон, как у FastAPI.
+
+   Селектор:
+     - .highlight — обёртка Material вокруг каждого код-блока
+     - :has(code.language-bash) — содержит блок с языком bash
+       (так же сработает для language-shell и language-sh)
+   ============================================================ */
+
+.md-typeset .highlight.language-bash,
+.md-typeset .highlight.language-shell,
+.md-typeset .highlight.language-sh,
+.md-typeset .highlight.language-console {
+  position: relative;
+  border-radius: 10px;
+  background: #2b2b2b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  padding-top: 32px;
+  margin: 1.5em 0;
+  overflow: hidden;
+}
+
+/* Три кружка close / minimize / maximize */
+.md-typeset .highlight.language-bash::before,
+.md-typeset .highlight.language-shell::before,
+.md-typeset .highlight.language-sh::before,
+.md-typeset .highlight.language-console::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow:
+    20px 0 0 #ffbd2e,
+    40px 0 0 #28c840;
+  z-index: 1;
+}
+
+/* Лейбл "bash" по центру шапки */
+.md-typeset .highlight.language-bash::after,
+.md-typeset .highlight.language-shell::after,
+.md-typeset .highlight.language-sh::after,
+.md-typeset .highlight.language-console::after {
+  content: "bash";
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+/* Внутри shell-блока — тёмный фон и светлый текст */
+.md-typeset .highlight.language-bash pre,
+.md-typeset .highlight.language-shell pre,
+.md-typeset .highlight.language-sh pre,
+.md-typeset .highlight.language-console pre {
+  background: transparent;
+  margin: 0;
+}
+
+.md-typeset .highlight.language-bash pre code,
+.md-typeset .highlight.language-shell pre code,
+.md-typeset .highlight.language-sh pre code,
+.md-typeset .highlight.language-console pre code {
+  background: transparent;
+  border: none;
+  color: #e6e6e6;
+  font-family: 'JetBrains Mono', 'Menlo', monospace;
+  display: block;
+  padding: 12px 16px 16px 16px;
+}
+
+/* Подсветка комментариев bash — приглушённый зелёный */
+.md-typeset .highlight.language-bash .c,
+.md-typeset .highlight.language-bash .c1,
+.md-typeset .highlight.language-shell .c,
+.md-typeset .highlight.language-shell .c1 {
+  color: #6a9955;
+  font-style: italic;
+}
+
+/* Кнопка "копировать" Material — скрываем фон, оставляем иконку видимой */
+.md-typeset .highlight.language-bash .md-clipboard,
+.md-typeset .highlight.language-shell .md-clipboard,
+.md-typeset .highlight.language-sh .md-clipboard,
+.md-typeset .highlight.language-console .md-clipboard {
+  color: rgba(255, 255, 255, 0.4);
+  top: 6px;
+  z-index: 2;
+}
+.md-typeset .highlight.language-bash .md-clipboard:hover,
+.md-typeset .highlight.language-shell .md-clipboard:hover,
+.md-typeset .highlight.language-sh .md-clipboard:hover,
+.md-typeset .highlight.language-console .md-clipboard:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* title="..." из Material — переопределяем как лейбл шапки */
+.md-typeset .highlight.language-bash .filename {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  right: 0;
+  background: transparent;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  border: none;
+  padding: 0;
+  z-index: 1;
+}
+
+/* Если title есть, наш дефолтный ::after-лейбл "bash" не нужен */
+.md-typeset .highlight.language-bash:has(.filename)::after,
+.md-typeset .highlight.language-shell:has(.filename)::after,
+.md-typeset .highlight.language-sh:has(.filename)::after {
+  content: none;
+}
+
+/* В тёмной теме — чуть светлее основной фон, чтобы терминал выделялся */
+[data-md-color-scheme="slate"] .md-typeset .highlight.language-bash,
+[data-md-color-scheme="slate"] .md-typeset .highlight.language-shell,
+[data-md-color-scheme="slate"] .md-typeset .highlight.language-sh,
+[data-md-color-scheme="slate"] .md-typeset .highlight.language-console {
+  background: #1e1e1e;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ============================================================
+   Logo в шапке — чуть крупнее дефолтных 24px
+   F-марка имеет свой зелёный фон, поэтому фильтры не нужны
+   ============================================================ */
+
+.md-header__button.md-logo {
+  padding: 0;
+  margin: 0 8px 0 0;
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  width: 36px !important;
+  height: 36px !important;
+}

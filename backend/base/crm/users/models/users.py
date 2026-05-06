@@ -79,8 +79,8 @@ class User(PolymorphicParentMixin):
     id: int = Integer(primary_key=True)
     name: str = Char(max_length=256)
     login: str = Char(max_length=50)
-    password_hash: str = Char(max_length=256, private=True)
-    password_salt: str = Char(max_length=256, private=True)
+    password_hash: str = Char(max_length=256, private=True, required=False)
+    password_salt: str = Char(max_length=256, private=True, required=False)
 
     # Администратор (полный доступ ко всему)
     is_admin: bool = Boolean(default=False)

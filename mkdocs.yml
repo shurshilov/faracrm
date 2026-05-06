@@ -1,137 +1,190 @@
-site_name: FARA CRM — Developer Documentation
-site_description: Internal documentation for FARA CRM backend and frontend developers
+site_name: FARA CRM Documentation
+site_description: Внутренняя документация FARA CRM
 site_url: https://docs.fara.dev
-
-repo_name: fara-crm
-repo_url: https://github.com/example/fara-crm
+docs_dir: docs
 
 theme:
   name: material
   language: ru
-  palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: indigo
-      accent: amber
-      toggle:
-        icon: material/brightness-7
-        name: Тёмная тема
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: indigo
-      accent: amber
-      toggle:
-        icon: material/brightness-4
-        name: Светлая тема
-  font:
-    text: Inter
-    code: JetBrains Mono
+  logo: assets/logo-mark.svg
+  favicon: assets/logo-mark.svg
   features:
-    - navigation.instant
-    - navigation.tracking
     - navigation.tabs
     - navigation.tabs.sticky
     - navigation.sections
     - navigation.expand
     - navigation.indexes
     - navigation.top
-    - search.suggest
+    - navigation.tracking
+    - toc.follow
     - search.highlight
+    - search.suggest
+    - search.share
     - content.code.copy
     - content.code.annotate
     - content.tabs.link
-    - toc.follow
-  logo: assets/logo.svg
-  favicon: assets/logo.svg
+    - content.tooltips
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Тёмная тема
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Светлая тема
+  font:
+    text: Inter
+    code: JetBrains Mono
   icon:
-    repo: fontawesome/brands/github
+    repo: fontawesome/brands/git-alt
+
+extra_css:
+  - assets/css/custom.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
 
 plugins:
   - search:
       lang:
         - ru
         - en
-  - tags
-
-markdown_extensions:
-  # Code blocks
-  - pymdownx.highlight:
-      anchor_linenums: true
-      line_spans: __span
-      pygments_lang_class: true
-  - pymdownx.inlinehilite
-  - pymdownx.snippets:
-      base_path: .
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
-  # Tabs
-  - pymdownx.tabbed:
-      alternate_style: true
-  # Admonitions
-  - admonition
-  - pymdownx.details
-  # Lists & formatting
-  - pymdownx.tasklist:
-      custom_checkbox: true
-  - pymdownx.mark
-  - pymdownx.keys
-  - attr_list
-  - md_in_html
-  - pymdownx.emoji:
-      emoji_index: !!python/name:material.extensions.emoji.twemoji
-      emoji_generator: !!python/name:material.extensions.emoji.to_svg
-  - def_list
-  - footnotes
-  - tables
-  - toc:
-      permalink: true
-
-extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/example/fara-crm
-  generator: false
-
-extra_css:
-  - assets/css/custom.css
+  - i18n:
+      docs_structure: suffix
+      languages:
+        - locale: ru
+          default: true
+          name: Русский
+          build: true
+        - locale: en
+          name: English
+          build: true
+          nav_translations:
+            Главная: Home
+            Backend: Backend
+            Архитектура: Architecture
+            Service — базовый класс модулей: Service — base class for modules
+            DotORM: DotORM
+            Модели: Models
+            Поля (Fields): Fields
+            Запросы: Queries
+            Связи (Relations): Relations
+            CRUD Auto — автогенерация REST API: CRUD Auto — REST API auto-generation
+            Безопасность и доступы: Security and access
+            Security Module: Security Module
+            Роли и правила: Roles and rules
+            Иерархия пользователей: User hierarchy
+            Чат и звонки: Chat and calls
+            Chat Module: Chat Module
+            Архитектура чата: Chat architecture
+            Звонки и push-wake: Calls and push-wake
+            Вложения: Attachments
+            Обзор: Overview
+            Локальное хранилище: Local storage
+            Google Drive: Google Drive
+            Яндекс.Диск: Yandex Disk
+            Системные сервисы: System services
+            "Cron — фоновые задачи": "Cron — background tasks"
+            "Activity — задачи и дедлайны": "Activity — tasks and deadlines"
+            Тестирование: Testing
+            Integration Tests: Integration Tests
+            Frontend: Frontend
+            State Management: State Management
+            Модули: Modules
+            Сервисы: Services
+            CRUD API Service: CRUD API Service
+            Гайды: Guides
+            Создание нового модуля: Creating a new module
+            "WebSocket — real-time события": "WebSocket — real-time events"
+            Деплой и proxy: Deployment and proxy
+            Environment: Environment
 
 nav:
   - Главная: index.md
 
   - Backend:
-    - backend/index.md
-    - Архитектура:
-      - backend/architecture/overview.md
-      - backend/architecture/services.md
-      - backend/architecture/environment.md
-    - DotORM:
-      - backend/dotorm/index.md
-      - backend/dotorm/models.md
-      - backend/dotorm/fields.md
-      - backend/dotorm/queries.md
-      - backend/dotorm/relations.md
-      - backend/dotorm/crud-auto.md
-    - Модули:
-      - backend/modules/chat.md
-      - backend/modules/security.md
-    - Тестирование:
-      - backend/testing/index.md
-      - backend/testing/integration.md
+      - backend/index.md
+      - Архитектура:
+          - Обзор: backend/architecture/overview.md
+          - Service — базовый класс модулей: backend/architecture/services.md
+          - Environment: backend/architecture/environment.md
+      - DotORM:
+          - backend/dotorm/index.md
+          - Модели: backend/dotorm/models.md
+          - Поля (Fields): backend/dotorm/fields.md
+          - Запросы: backend/dotorm/queries.md
+          - Связи (Relations): backend/dotorm/relations.md
+          - CRUD Auto — автогенерация REST API: backend/dotorm/crud-auto.md
+      - Безопасность и доступы:
+          - Security Module: backend/modules/security.md
+          - Роли и правила: backend/security/roles-and-rules.md
+          - Иерархия пользователей: backend/security/hierarchy.md
+      - Чат и звонки:
+          - Chat Module: backend/modules/chat.md
+          - Архитектура чата: backend/modules/chat-architecture.md
+          - Звонки и push-wake: backend/modules/calls.md
+      - Вложения:
+          - Обзор: backend/attachments/index.md
+          - Локальное хранилище: backend/attachments/filestore.md
+          - Google Drive: backend/attachments/google.md
+          - Яндекс.Диск: backend/attachments/yandex.md
+      - Системные сервисы:
+          - Cron — фоновые задачи: backend/system/cron.md
+          - Activity — задачи и дедлайны: backend/system/activity.md
+      - Тестирование:
+          - backend/testing/index.md
+          - Integration Tests: backend/testing/integration.md
 
   - Frontend:
-    - frontend/index.md
-    - Архитектура:
-      - frontend/architecture/overview.md
-      - frontend/architecture/state.md
-    - Модули:
-      - frontend/modules/chat.md
-    - API-сервисы:
-      - frontend/services/crud-api.md
+      - frontend/index.md
+      - Архитектура:
+          - Обзор: frontend/architecture/overview.md
+          - State Management: frontend/architecture/state.md
+      - Модули:
+          - Chat Module: frontend/modules/chat.md
+      - Сервисы:
+          - CRUD API Service: frontend/services/crud-api.md
 
   - Гайды:
-    - guides/index.md
-    - guides/new-module.md
-    - guides/websocket.md
+      - guides/index.md
+      - Создание нового модуля: guides/new-module.md
+      - WebSocket — real-time события: guides/websocket.md
+      - Деплой и proxy: guides/deploy.md

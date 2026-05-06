@@ -91,7 +91,7 @@ class Chat(DotModel):
     __table__ = "chats"
 
     chat_type: str = Selection(
-        selection=[
+        options=[
             ("direct", "Личный"),
             ("group", "Группа"),
             ("channel", "Канал"),

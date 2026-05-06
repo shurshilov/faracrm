@@ -1,95 +1,479 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
     <url>
-         <loc>https://docs.fara.dev/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/architecture/environment/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/architecture/environment/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/architecture/environment/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/architecture/environment/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/architecture/overview/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/architecture/overview/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/architecture/overview/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/architecture/overview/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/architecture/services/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/architecture/services/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/architecture/services/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/architecture/services/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/dotorm/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/attachments/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/attachments/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/attachments/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/dotorm/crud-auto/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/attachments/filestore/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/attachments/filestore/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/attachments/filestore/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/dotorm/fields/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/attachments/google/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/attachments/google/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/attachments/google/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/dotorm/models/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/attachments/yandex/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/attachments/yandex/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/attachments/yandex/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/dotorm/queries/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/dotorm/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/dotorm/relations/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/dotorm/crud-auto/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/crud-auto/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/crud-auto/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/modules/chat/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/dotorm/fields/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/fields/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/fields/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/modules/security/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/dotorm/models/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/models/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/models/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/testing/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/dotorm/queries/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/queries/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/queries/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/backend/testing/integration/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/dotorm/relations/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/relations/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/relations/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/frontend/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/modules/calls/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/modules/calls/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/modules/calls/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/frontend/architecture/overview/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/modules/chat-architecture/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/modules/chat-architecture/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/modules/chat-architecture/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/frontend/architecture/state/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/modules/chat/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/modules/chat/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/modules/chat/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/frontend/modules/chat/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/modules/security/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/modules/security/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/modules/security/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/frontend/services/crud-api/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/security/hierarchy/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/security/hierarchy/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/security/hierarchy/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/guides/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/security/roles-and-rules/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/security/roles-and-rules/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/security/roles-and-rules/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/guides/new-module/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/system/activity/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/system/activity/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/system/activity/"/>
     </url>
     <url>
-         <loc>https://docs.fara.dev/guides/websocket/</loc>
-         <lastmod>2026-02-11</lastmod>
+        <loc>https://docs.fara.dev/backend/system/cron/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/system/cron/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/system/cron/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/backend/testing/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/testing/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/testing/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/backend/testing/integration/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/testing/integration/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/testing/integration/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/frontend/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/frontend/architecture/overview/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/architecture/overview/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/architecture/overview/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/frontend/architecture/state/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/architecture/state/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/architecture/state/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/frontend/modules/chat/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/modules/chat/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/modules/chat/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/frontend/services/crud-api/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/services/crud-api/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/services/crud-api/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/guides/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/guides/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/guides/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/guides/deploy/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/guides/deploy/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/guides/deploy/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/guides/new-module/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/guides/new-module/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/guides/new-module/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/guides/websocket/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/guides/websocket/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/guides/websocket/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/architecture/environment/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/architecture/environment/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/architecture/environment/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/architecture/overview/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/architecture/overview/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/architecture/overview/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/architecture/services/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/architecture/services/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/architecture/services/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/attachments/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/attachments/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/attachments/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/attachments/filestore/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/attachments/filestore/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/attachments/filestore/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/attachments/google/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/attachments/google/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/attachments/google/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/attachments/yandex/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/attachments/yandex/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/attachments/yandex/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/dotorm/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/dotorm/crud-auto/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/crud-auto/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/crud-auto/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/dotorm/fields/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/fields/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/fields/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/dotorm/models/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/models/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/models/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/dotorm/queries/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/queries/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/queries/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/dotorm/relations/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/dotorm/relations/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/dotorm/relations/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/modules/calls/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/modules/calls/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/modules/calls/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/modules/chat-architecture/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/modules/chat-architecture/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/modules/chat-architecture/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/modules/chat/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/modules/chat/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/modules/chat/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/modules/security/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/modules/security/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/modules/security/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/security/hierarchy/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/security/hierarchy/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/security/hierarchy/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/security/roles-and-rules/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/security/roles-and-rules/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/security/roles-and-rules/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/system/activity/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/system/activity/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/system/activity/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/system/cron/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/system/cron/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/system/cron/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/testing/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/testing/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/testing/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/backend/testing/integration/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/backend/testing/integration/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/backend/testing/integration/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/frontend/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/frontend/architecture/overview/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/architecture/overview/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/architecture/overview/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/frontend/architecture/state/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/architecture/state/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/architecture/state/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/frontend/modules/chat/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/modules/chat/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/modules/chat/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/frontend/services/crud-api/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/frontend/services/crud-api/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/frontend/services/crud-api/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/guides/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/guides/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/guides/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/guides/deploy/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/guides/deploy/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/guides/deploy/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/guides/new-module/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/guides/new-module/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/guides/new-module/"/>
+    </url>
+    <url>
+        <loc>https://docs.fara.dev/en/guides/websocket/</loc>
+        <lastmod>2026-05-06</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://docs.fara.dev/en/guides/websocket/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="https://docs.fara.dev/guides/websocket/"/>
     </url>
 </urlset>

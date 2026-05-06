@@ -15,20 +15,20 @@ class ChatMessage(DotModel):
     __table__ = "chat_messages"       # (1)!
     __route__ = "chat_messages"       # (2)!
 
-    chat_id = Many2one["Chat"](       # (3)!
+    chat_id: "Chat" = Many2one["Chat"](    # (3)!
         relation_table="chats",
         required=True,
     )
-    author_user_id = Many2one["User"](
+    author_user_id: "User" = Many2one["User"](
         relation_table="users",
         required=True,
     )
-    body = Text()
-    is_edited = Boolean(default=False)
-    is_deleted = Boolean(default=False)
-    pinned = Boolean(default=False)
-    is_read = Boolean(default=True)
-    reply_to_id = Many2one["ChatMessage"](
+    body: str = Text()
+    is_edited: bool = Boolean(default=False)
+    is_deleted: bool = Boolean(default=False)
+    pinned: bool = Boolean(default=False)
+    is_read: bool = Boolean(default=True)
+    reply_to_id: "ChatMessage | None" = Many2one["ChatMessage"](
         relation_table="chat_messages",
     )
 ```
@@ -51,7 +51,7 @@ class ChatMessage(DotModel):
 
 ```python
 class DotModel:
-    id = Integer(primary_key=True)  # AUTO INCREMENT
+    id: int = Integer(primary_key=True)  # AUTO INCREMENT
 ```
 
 !!! note "id всегда есть"

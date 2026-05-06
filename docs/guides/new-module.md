@@ -20,7 +20,7 @@ class Ticket(DotModel):
     title: str = Char(max_length=255, required=True)
     descriptione: str = Text()
     statuse: str = Selection(
-        selection=[
+        options=[
             ("open", "Открыт"),
             ("in_progress", "В работе"),
             ("resolved", "Решён"),
@@ -29,7 +29,7 @@ class Ticket(DotModel):
         default="open",
     )
     priority: str = Selection(
-        selection=[
+        options=[
             ("low", "Низкий"),
             ("medium", "Средний"),
             ("high", "Высокий"),
