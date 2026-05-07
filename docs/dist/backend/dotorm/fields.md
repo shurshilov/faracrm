@@ -48,6 +48,7 @@ is_deleted: bool = Boolean(default=False)
 ### Datetime / Date / Time
 
 ```python
+from datetime import datetime, timezone
 from backend.base.system.dotorm.dotorm.fields import Datetime, Date, Time
 
 class Task(DotModel):
@@ -55,8 +56,10 @@ class Task(DotModel):
 
     due_date: date = Date()                              # DATE
     reminder_time: time = Time()                         # TIME
-    created_at: datetime = Datetime(default="now")           # TIMESTAMPTZ DEFAULT now()
-    updated_at: datetime = Datetime(default="now")
+    # default — callable, который вернёт значение во время сохранения.
+    # Строка "now" не сработает — нужен именно lambda с datetime.now().
+    created_at: datetime = Datetime(default=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Datetime(default=lambda: datetime.now(timezone.utc))
 ```
 
 ### Float / Decimal

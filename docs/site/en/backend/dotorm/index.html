@@ -1425,7 +1425,7 @@
   <span class="md-ellipsis">
     
   
-    Cron — background tasks
+    Cron — task scheduler
   
 
     
@@ -1486,6 +1486,14 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1556,6 +1564,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../testing/unit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unit tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../testing/integration/" class="md-nav__link">
         
   
@@ -1563,7 +1599,91 @@
   <span class="md-ellipsis">
     
   
-    Integration Tests
+    Integration tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/e2e/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E (Playwright)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
   
 
     
@@ -1769,7 +1889,7 @@
   <span class="md-ellipsis">
     
   
-    State Management
+    State management
   
 
     
@@ -1957,7 +2077,7 @@
   <span class="md-ellipsis">
     
   
-    CRUD API Service
+    CRUD API service
   
 
     
@@ -2172,6 +2292,47 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#why-a-custom-orm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why a custom ORM?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sections
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2188,13 +2349,74 @@
 
 
 <h1 id="dotorm">DotORM<a class="headerlink" href="#dotorm" title="Permanent link">&para;</a></h1>
-<div class="admonition info">
-<p class="admonition-title">Translation pending</p>
-<p>The English version of this page is not yet available.
-Please refer to the <a href="./">Russian version</a> for now.</p>
-<p>Translation contributions are welcome — open a PR with a parallel
-<code>&lt;filename&gt;.en.md</code> file alongside the original.</p>
-</div>
+<p>Async ORM for PostgreSQL, MySQL, Clickhouse, developed specifically for FARA CRM.</p>
+<h2 id="why-a-custom-orm">Why a custom ORM?<a class="headerlink" href="#why-a-custom-orm" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Fully async</strong> — native asyncpg support, no sync wrappers</li>
+<li><strong>Auto-generated CRUD API</strong> — model → REST API with zero code</li>
+<li><strong>Declarative relations</strong> — Many2one, One2many, Many2many with automatic JOIN</li>
+<li><strong>Auto-generated DDL</strong> — <code>CREATE TABLE</code> from model definition</li>
+<li><strong>Access Control</strong> — built-in permission checks at the ORM level</li>
+</ul>
+<h2 id="quick-example">Quick example<a class="headerlink" href="#quick-example" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">backend.base.system.dotorm.dotorm.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">DotModel</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">backend.base.system.dotorm.dotorm.fields</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>    <span class="n">Char</span><span class="p">,</span> <span class="n">Text</span><span class="p">,</span> <span class="n">Boolean</span><span class="p">,</span> <span class="n">Many2one</span><span class="p">,</span> <span class="n">One2many</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="p">)</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="k">class</span><span class="w"> </span><span class="nc">Chat</span><span class="p">(</span><span class="n">DotModel</span><span class="p">):</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">__table__</span> <span class="o">=</span> <span class="s2">&quot;chats&quot;</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Char</span><span class="p">(</span><span class="n">max_length</span><span class="o">=</span><span class="mi">255</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Text</span><span class="p">()</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="n">is_archived</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Boolean</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="n">creator_id</span><span class="p">:</span> <span class="s2">&quot;User&quot;</span> <span class="o">=</span> <span class="n">Many2one</span><span class="p">[</span><span class="s2">&quot;User&quot;</span><span class="p">](</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        <span class="n">relation_table</span><span class="o">=</span><span class="s2">&quot;users&quot;</span><span class="p">,</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="p">)</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="s2">&quot;ChatMessage&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">One2many</span><span class="p">[</span><span class="s2">&quot;ChatMessage&quot;</span><span class="p">](</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>        <span class="n">relation_table</span><span class="o">=</span><span class="s2">&quot;chat_messages&quot;</span><span class="p">,</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>        <span class="n">relation_table_field</span><span class="o">=</span><span class="s2">&quot;chat_id&quot;</span><span class="p">,</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="p">)</span>
+</span></code></pre></div>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Create</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">chat_id</span> <span class="o">=</span> <span class="k">await</span> <span class="n">Chat</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">Chat</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;General&quot;</span><span class="p">,</span> <span class="n">creator_id</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># or better</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">chat_id</span> <span class="o">=</span> <span class="k">await</span> <span class="n">Chat</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="n">Chat</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;General&quot;</span><span class="p">,</span> <span class="n">creator_id</span><span class="o">=</span><span class="n">User</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">)))</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1"># Read</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">chat</span> <span class="o">=</span> <span class="k">await</span> <span class="n">Chat</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">chat_id</span><span class="p">)</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="n">chat</span> <span class="o">=</span> <span class="k">await</span> <span class="n">Chat</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">chat_id</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;is_archived&quot;</span><span class="p">])</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="c1"># or if you need nested fields in one query</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="n">chat</span> <span class="o">=</span> <span class="k">await</span> <span class="n">Chat</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">chat_id</span><span class="p">,</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>    <span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;is_archived&quot;</span><span class="p">],</span>
+</span><span id="__span-1-12"><a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>    <span class="n">nested_fields</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;creator_id&quot;</span><span class="p">:</span> <span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">]},</span>
+</span><span id="__span-1-13"><a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="p">)</span>
+</span><span id="__span-1-14"><a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+</span><span id="__span-1-15"><a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># Search</span>
+</span><span id="__span-1-16"><a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a><span class="n">chats</span> <span class="o">=</span> <span class="k">await</span> <span class="n">Chat</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
+</span><span id="__span-1-17"><a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a>    <span class="nb">filter</span><span class="o">=</span><span class="p">[(</span><span class="s2">&quot;is_archived&quot;</span><span class="p">,</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)],</span>
+</span><span id="__span-1-18"><a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a>    <span class="n">fields</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">],</span>
+</span><span id="__span-1-19"><a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a>    <span class="n">order</span><span class="o">=</span><span class="s2">&quot;id&quot;</span><span class="p">,</span>
+</span><span id="__span-1-20"><a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a>    <span class="n">sort</span><span class="o">=</span><span class="s2">&quot;desc&quot;</span><span class="p">,</span>
+</span><span id="__span-1-21"><a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a>    <span class="n">limit</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span>
+</span><span id="__span-1-22"><a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a><span class="p">)</span>
+</span><span id="__span-1-23"><a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a>
+</span><span id="__span-1-24"><a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="c1"># Update</span>
+</span><span id="__span-1-25"><a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="k">await</span> <span class="n">chat</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">Chat</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;New Name&quot;</span><span class="p">))</span>
+</span><span id="__span-1-26"><a id="__codelineno-1-26" name="__codelineno-1-26" href="#__codelineno-1-26"></a>
+</span><span id="__span-1-27"><a id="__codelineno-1-27" name="__codelineno-1-27" href="#__codelineno-1-27"></a><span class="c1"># Delete</span>
+</span><span id="__span-1-28"><a id="__codelineno-1-28" name="__codelineno-1-28" href="#__codelineno-1-28"></a><span class="k">await</span> <span class="n">chat</span><span class="o">.</span><span class="n">delete</span><span class="p">()</span>
+</span></code></pre></div>
+<h2 id="sections">Sections<a class="headerlink" href="#sections" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="models/">Models</a> — defining models, <code>DotModel</code>, <code>__table__</code></li>
+<li><a href="fields/">Fields</a> — field types, parameters, defaults</li>
+<li><a href="queries/">Queries</a> — <code>search</code>, <code>get</code>, <code>create</code>, <code>update</code>, <code>delete</code></li>
+<li><a href="relations/">Relations</a> — Many2one, One2many, Many2many</li>
+<li><a href="crud-auto/">CRUD Auto</a> — REST API auto-generation</li>
+</ul>
 
 
 

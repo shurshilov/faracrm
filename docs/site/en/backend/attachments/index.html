@@ -84,7 +84,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#_1" class="md-skip">
+        <a href="#attachments-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -1425,7 +1425,7 @@
   <span class="md-ellipsis">
     
   
-    Cron — background tasks
+    Cron — task scheduler
   
 
     
@@ -1486,6 +1486,14 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1556,6 +1564,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../testing/unit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unit tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../testing/integration/" class="md-nav__link">
         
   
@@ -1563,7 +1599,91 @@
   <span class="md-ellipsis">
     
   
-    Integration Tests
+    Integration tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/e2e/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E (Playwright)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testing/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
   
 
     
@@ -1769,7 +1889,7 @@
   <span class="md-ellipsis">
     
   
-    State Management
+    State management
   
 
     
@@ -1957,7 +2077,7 @@
   <span class="md-ellipsis">
     
   
-    CRUD API Service
+    CRUD API service
   
 
     
@@ -2172,6 +2292,58 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#strategy-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy pattern
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#polymorphic-link" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Polymorphic link
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#whats-next" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What's next
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2187,14 +2359,118 @@
 
 
 
-<h1 id="_1">Вложения — обзор<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
-<div class="admonition info">
-<p class="admonition-title">Translation pending</p>
-<p>The English version of this page is not yet available.
-Please refer to the <a href="./">Russian version</a> for now.</p>
-<p>Translation contributions are welcome — open a PR with a parallel
-<code>&lt;filename&gt;.en.md</code> file alongside the original.</p>
-</div>
+<h1 id="attachments-overview">Attachments — overview<a class="headerlink" href="#attachments-overview" title="Permanent link">&para;</a></h1>
+<p>The <code>attachments</code> module manages files across all of FARA. Supports multiple storage providers (local disk, Google Drive, Yandex.Disk) through the Strategy pattern. Only one storage can be active — it accepts new files.</p>
+<h2 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h2>
+<p>Four related entities:</p>
+<pre class="mermaid"><code>graph TB
+    A[Attachment&lt;br/&gt;file with metadata]
+    S[AttachmentStorage&lt;br/&gt;configured storage]
+    R[AttachmentRoute&lt;br/&gt;placement rule]
+    C[AttachmentCache&lt;br/&gt;cloud folder ID cache]
+    ST[Strategy&lt;br/&gt;provider]
+
+    A --&gt;|storage_id| S
+    A --&gt;|res_model + res_id| Record[Any CRM record]
+    S --&gt;|type| ST
+    R --&gt;|storage_id| S
+    R --&gt;|model| Record
+    C --&gt;|storage_id + route_id| S
+
+    style A fill:#dde7ff,stroke:#5170c4
+    style ST fill:#d1f7c4,stroke:#2c6c1c</code></pre>
+<table>
+<thead>
+<tr>
+<th>Class</th>
+<th>Stores</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Attachment</code></td>
+<td>File + polymorphic link</td>
+<td><code>name="contract.pdf", res_model="sale", res_id=42</code></td>
+</tr>
+<tr>
+<td><code>AttachmentStorage</code></td>
+<td>Provider configuration</td>
+<td>"Office's Google Drive" — type=google, active=true</td>
+</tr>
+<tr>
+<td><code>AttachmentRoute</code></td>
+<td>Folder template</td>
+<td>"sale → Sales Orders/SO-{id}-{name}"</td>
+</tr>
+<tr>
+<td><code>AttachmentCache</code></td>
+<td>Cloud folder IDs</td>
+<td>"storage=2 + sale#42 → folder_id=abc123"</td>
+</tr>
+<tr>
+<td><code>Strategy</code></td>
+<td>Provider work logic</td>
+<td><code>FileStoreStrategy</code>, <code>GoogleDriveStrategy</code>, <code>YandexDiskStrategy</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="strategy-pattern">Strategy pattern<a class="headerlink" href="#strategy-pattern" title="Permanent link">&para;</a></h2>
+<p><code>StorageStrategyBase</code> (in <code>attachments/strategies/strategy.py</code>) is the base class. Each provider implements its own subclass:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">StorageStrategyBase</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>    <span class="n">strategy_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>    <span class="nd">@abstractmethod</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">,</span> <span class="n">attachment</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="nd">@abstractmethod</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">read_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">,</span> <span class="n">attachment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bytes</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="nd">@abstractmethod</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">,</span> <span class="n">attachment</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="nd">@abstractmethod</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">,</span> <span class="n">attachment</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="c1"># Optional — for cloud storage</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">create_folder</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">,</span> <span class="n">folder_name</span><span class="p">,</span> <span class="n">parent_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_folder_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">,</span> <span class="n">res_model</span><span class="p">,</span> <span class="n">res_id</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_credentials</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">):</span> <span class="o">...</span>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">validate_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">storage</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span> <span class="o">...</span>
+</span></code></pre></div>
+<p>Registration:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">backend.base.crm.attachments.strategies</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_strategy</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">class</span><span class="w"> </span><span class="nc">GoogleDriveStrategy</span><span class="p">(</span><span class="n">StorageStrategyBase</span><span class="p">):</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">strategy_type</span> <span class="o">=</span> <span class="s2">&quot;google&quot;</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="o">...</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">register_strategy</span><span class="p">(</span><span class="n">GoogleDriveStrategy</span><span class="p">)</span>
+</span></code></pre></div>
+<p>After registration, <code>AttachmentStorage(type="google")</code> will automatically work through this strategy.</p>
+<h2 id="polymorphic-link">Polymorphic link<a class="headerlink" href="#polymorphic-link" title="Permanent link">&para;</a></h2>
+<p>Like <code>Activity</code>, <code>Attachment</code> links to any record via <code>res_model</code> + <code>res_id</code>:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Attach a file to a lead</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">await</span> <span class="n">Attachment</span><span class="o">.</span><span class="n">create_file</span><span class="p">(</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>    <span class="n">res_model</span><span class="o">=</span><span class="s2">&quot;lead&quot;</span><span class="p">,</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="n">res_id</span><span class="o">=</span><span class="n">lead</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Contract.pdf&quot;</span><span class="p">,</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>    <span class="n">content</span><span class="o">=</span><span class="n">file_bytes</span><span class="p">,</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>    <span class="n">mimetype</span><span class="o">=</span><span class="s2">&quot;application/pdf&quot;</span><span class="p">,</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">)</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1"># Get all files of a lead</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="n">attachments</span> <span class="o">=</span> <span class="k">await</span> <span class="n">Attachment</span><span class="o">.</span><span class="n">search</span><span class="p">(</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>    <span class="nb">filter</span><span class="o">=</span><span class="p">[(</span><span class="s2">&quot;res_model&quot;</span><span class="p">,</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="s2">&quot;lead&quot;</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;res_id&quot;</span><span class="p">,</span> <span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="n">lead</span><span class="o">.</span><span class="n">id</span><span class="p">)],</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="p">)</span>
+</span></code></pre></div>
+<p>This is cheaper than having an FK on each table. Downside — no cascade on deletion (see below).</p>
+<h2 id="whats-next">What's next<a class="headerlink" href="#whats-next" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="filestore/">Local storage</a> — <code>FileStoreStrategy</code>, simple disk write</li>
+<li><a href="google/">Google Drive</a> — OAuth, Shared Drives, API specifics</li>
+<li><a href="yandex/">Yandex.Disk</a> — REST API, redirect quirks</li>
+</ul>
 
 
 

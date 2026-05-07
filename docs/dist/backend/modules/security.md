@@ -12,21 +12,36 @@ Authorization: Bearer <token>
 
 ### Цепочка аутентификации
 
+Доступ к защищённым endpoint-ам охраняется **FastAPI-зависимостью** (`Depends(AuthTokenApp.verify_access)`) — не middleware. Это даёт точечный контроль: на одни роуты depend ставится, на другие — нет, и при этом каждый защищённый endpoint автоматически получает разобранную сессию в `request.state`.
+
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant MW as AuthToken Middleware
+    participant D as Depends(verify_access)
     participant DB as PostgreSQL
     participant CV as ContextVar
 
-    C->>MW: Request + Bearer token
-    MW->>DB: SELECT session + user WHERE token = ?
-    DB-->>MW: session_data
-    MW->>MW: Check expired_datetime > now()
-    MW->>CV: set_access_session(session)
-    MW->>MW: request.state.session = session
-    MW-->>C: Continue to router
+    C->>D: Request + Bearer token
+    D->>DB: SELECT session + user WHERE token = ?
+    DB-->>D: session_data
+    D->>D: Check expired_datetime > now()
+    D->>CV: set_access_session(session)
+    D->>D: request.state.session = session
+    D-->>C: Continue to router
 ```
+
+Подключение к роутеру:
+
+```python
+from fastapi import APIRouter, Depends
+from backend.base.crm.security.app_security import AuthTokenApp
+
+router = APIRouter(
+    dependencies=[Depends(AuthTokenApp.verify_access)],
+)
+```
+
+После этого все handler'ы внутри `router` автоматически защищены — токен проверяется, сессия записывается в `request.state.session`.
 
 ### Session
 
@@ -47,9 +62,9 @@ await Session.create(session)
 ```python
 @router.get("/me")
 async def get_current_user(req: Request):
-    session = req.state.session        # установлен middleware
-    user_id = session.user_id.id       # session.user_id — объект User
-    is_admin = session.user_id.is_admin
+    auth_session: "Session" = req.state.session   # установлен Depends(verify_access)
+    user_id = auth_session.user_id.id             # session.user_id — объект User
+    is_admin = auth_session.user_id.is_admin
 
     return {"user_id": user_id, "is_admin": is_admin}
 ```
@@ -64,7 +79,7 @@ from backend.base.system.dotorm.dotorm.access import (
     get_access_session,
 )
 
-# Устанавливается middleware автоматически
+# Устанавливается зависимостью verify_access автоматически
 set_access_session(session)
 
 # ORM проверяет при каждой операции:

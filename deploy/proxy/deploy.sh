@@ -1,10 +1,13 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────
-# Первый запуск: получение TLS-сертификата от Let's Encrypt и
-# рендеринг nginx-конфига из шаблона на основе .env.
+# Полный деплой proxy-стека (nginx + certbot + SSL).
+
 #
-# Запускать ОДИН раз на чистом сервере. Дальше certbot обновляет
-# сертификат сам в фоне.
+# Полный деплой proxy-стека на чистом сервере: получает SSL-сертификат,
+# рендерит финальный nginx-конфиг и поднимает certbot для авто-renew.
+#
+# При повторном запуске сертификат не перезапрашивается, обновляется
+# только nginx-конфиг — безопасно после правок шаблона или .env.
 #
 # Запускать из папки deploy/proxy/.
 # ─────────────────────────────────────────────────────────────────
@@ -109,19 +112,30 @@ docker compose up -d nginx-proxy
 sleep 3
 
 # ─── 5. Запрашиваем сертификат через webroot ───────────────────
-echo "→ Запрашиваю сертификат у Let's Encrypt…"
-STAGING_FLAG=""
-if [ "$STAGING" = "1" ]; then
-  STAGING_FLAG="--staging"
-  echo "   (используется staging — сертификат будет невалидным в браузере)"
-fi
+# Если сертификат для этого домена уже выпущен и валиден — пропускаем
+# запрос. Это даёт идемпотентность: можно перезапустить ./deploy.sh
+# после правок шаблона или .env, не сжигая лимит Let's Encrypt
+# (50 сертификатов на домен в неделю).
+CERT_PATH="./certbot/conf/live/$DOMAIN/fullchain.pem"
+if [ -f "$CERT_PATH" ]; then
+  echo "→ Сертификат для $DOMAIN уже существует — пропускаю запрос."
+  echo "   Если хочешь принудительно перевыпустить:"
+  echo "       rm -rf ./certbot/conf/live/$DOMAIN && ./deploy.sh"
+else
+  echo "→ Запрашиваю сертификат у Let's Encrypt…"
+  STAGING_FLAG=""
+  if [ "$STAGING" = "1" ]; then
+    STAGING_FLAG="--staging"
+    echo "   (используется staging — сертификат будет невалидным в браузере)"
+  fi
 
-docker compose run --rm --entrypoint "\
-  certbot certonly --webroot -w /var/www/certbot \
-    $STAGING_FLAG \
-    --email $EMAIL \
-    --agree-tos --no-eff-email \
-    $CERTBOT_DOMAINS_ARG" certbot
+  docker compose run --rm --entrypoint "\
+    certbot certonly --webroot -w /var/www/certbot \
+      $STAGING_FLAG \
+      --email $EMAIL \
+      --agree-tos --no-eff-email \
+      $CERTBOT_DOMAINS_ARG" certbot
+fi
 
 # ─── 6. Рендерим боевой конфиг из шаблона ──────────────────────
 echo "→ Рендерю боевой nginx-конфиг из шаблона…"

@@ -9,13 +9,13 @@ Reverse-proxy + Let's Encrypt для FARA CRM.
 ```bash
 cp .env.example .env
 nano .env                  # домен, email, имя сети
-./init-letsencrypt.sh
+./deploy.sh
 ```
 
 После правок `.env` или `nginx/templates/fara.conf.template` — заново:
 
 ```bash
-./init-letsencrypt.sh
+./deploy.sh
 ```
 
 Скрипт идемпотентен: если сертификат уже есть и срок не подошёл — Let's Encrypt

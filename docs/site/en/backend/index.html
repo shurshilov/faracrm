@@ -1425,7 +1425,7 @@
   <span class="md-ellipsis">
     
   
-    Cron — background tasks
+    Cron — task scheduler
   
 
     
@@ -1486,6 +1486,14 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1556,6 +1564,34 @@
   
   
     <li class="md-nav__item">
+      <a href="testing/unit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unit tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="testing/integration/" class="md-nav__link">
         
   
@@ -1563,7 +1599,91 @@
   <span class="md-ellipsis">
     
   
-    Integration Tests
+    Integration tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="testing/e2e/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E (Playwright)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="testing/performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="testing/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
   
 
     
@@ -1769,7 +1889,7 @@
   <span class="md-ellipsis">
     
   
-    State Management
+    State management
   
 
     
@@ -1957,7 +2077,7 @@
   <span class="md-ellipsis">
     
   
-    CRUD API Service
+    CRUD API service
   
 
     
@@ -2172,6 +2292,47 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#key-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key concepts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#entry-points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entry Points
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sections
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2188,13 +2349,60 @@
 
 
 <h1 id="backend">Backend<a class="headerlink" href="#backend" title="Permanent link">&para;</a></h1>
-<div class="admonition info">
-<p class="admonition-title">Translation pending</p>
-<p>The English version of this page is not yet available.
-Please refer to the <a href="./">Russian version</a> for now.</p>
-<p>Translation contributions are welcome — open a PR with a parallel
-<code>&lt;filename&gt;.en.md</code> file alongside the original.</p>
-</div>
+<p>FastAPI application with a modular architecture, custom ORM, and auto-generated CRUD API.</p>
+<h2 id="key-concepts">Key concepts<a class="headerlink" href="#key-concepts" title="Permanent link">&para;</a></h2>
+<p><strong>Environment</strong> — the central application object. Contains <code>models</code>, <code>apps</code>, <code>settings</code> and manages service lifecycle.</p>
+<p><strong>Service</strong> — base class for modules. Each module (chat, security, users...) is a <code>Service</code> with <code>startup()</code>, <code>shutdown()</code>, <code>post_init()</code> methods.</p>
+<p><strong>DotORM</strong> — async ORM with declarative models, auto-generated DDL, and CRUD API.</p>
+<h2 id="entry-points">Entry Points<a class="headerlink" href="#entry-points" title="Permanent link">&para;</a></h2>
+<div class="language-python highlight"><span class="filename">backend/main.py</span><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nd">@asynccontextmanager</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">application</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;Application lifecycle — start and stop services.&quot;&quot;&quot;</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    <span class="n">env</span> <span class="o">=</span> <span class="n">Environment</span><span class="p">(</span><span class="n">Settings</span><span class="p">,</span> <span class="n">Models</span><span class="p">,</span> <span class="n">Apps</span><span class="p">)</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    <span class="n">application</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">env</span> <span class="o">=</span> <span class="n">env</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>    <span class="k">await</span> <span class="n">env</span><span class="o">.</span><span class="n">setup_services</span><span class="p">()</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>    <span class="k">await</span> <span class="n">env</span><span class="o">.</span><span class="n">start_services_before</span><span class="p">(</span><span class="n">application</span><span class="p">)</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>    <span class="k">await</span> <span class="n">env</span><span class="o">.</span><span class="n">load_routers</span><span class="p">(</span><span class="n">application</span><span class="p">)</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>    <span class="k">await</span> <span class="n">env</span><span class="o">.</span><span class="n">start_services_after</span><span class="p">(</span><span class="n">application</span><span class="p">)</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>    <span class="k">await</span> <span class="n">env</span><span class="o">.</span><span class="n">start_post_init</span><span class="p">(</span><span class="n">application</span><span class="p">)</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>    <span class="k">yield</span>
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>    <span class="k">await</span> <span class="n">env</span><span class="o">.</span><span class="n">stop_services</span><span class="p">(</span><span class="n">application</span><span class="p">)</span>
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a><span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+</span></code></pre></div>
+<h2 id="sections">Sections<a class="headerlink" href="#sections" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="architecture/overview/">Architecture</a></td>
+<td>Environment, Service, lifecycle</td>
+</tr>
+<tr>
+<td><a href="dotorm/">DotORM</a></td>
+<td>Models, fields, queries, relations</td>
+</tr>
+<tr>
+<td><a href="modules/chat/">Modules</a></td>
+<td>Chat, Security, and other CRM modules</td>
+</tr>
+<tr>
+<td><a href="testing/">Testing</a></td>
+<td>pytest, fixtures, integration tests</td>
+</tr>
+</tbody>
+</table>
 
 
 

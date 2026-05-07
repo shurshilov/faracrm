@@ -13,7 +13,7 @@ deploy/
     ├── README.md
     ├── docker-compose.yml
     ├── .env.example                         ← шаблон конфига; копируется в .env
-    ├── init-letsencrypt.sh                  ← первый запуск + рендеринг конфига
+    ├── deploy.sh                  ← первый запуск + рендеринг конфига
     ├── nginx/
     │   ├── templates/fara.conf.template     ← шаблон (в git)
     │   └── conf.d/                          ← сгенерированный конфиг (НЕ в git)
@@ -119,7 +119,7 @@ STAGING=0                    # 1 для отладочных запусков
 ### 6. Получить сертификат и поднять прокси
 
 ```bash
-./init-letsencrypt.sh
+./deploy.sh
 ```
 
 Скрипт сам:
@@ -159,8 +159,8 @@ https://твой-домен/yandex/callback
 ```bash
 cd deploy/proxy
 nano .env
-chmod +x init-letsencrypt.sh
-./init-letsencrypt.sh
+chmod +x deploy.sh
+./deploy.sh
 ```
 
 При смене домена скрипт выпишет новый сертификат. Старые останутся в
@@ -176,7 +176,7 @@ cd deploy/proxy
 nano nginx/templates/fara.conf.template
 
 # Перерендерить и применить:
-./init-letsencrypt.sh
+./deploy.sh
 # (он не перевыпустит сертификат — просто использует существующий)
 ```
 
@@ -200,7 +200,7 @@ docker compose exec certbot certbot renew --dry-run
 
 После 1–2 недель стабильной работы раскомментируй строку
 `Strict-Transport-Security` в `nginx/templates/fara.conf.template` и
-запусти `./init-letsencrypt.sh` (он перерендерит конфиг).
+запусти `./deploy.sh` (он перерендерит конфиг).
 
 > **Не делай этого раньше.** Если в HSTS-режиме случится ошибка с TLS,
 > браузер запомнит и не пустит на сайт месяцами.

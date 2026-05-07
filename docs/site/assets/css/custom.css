@@ -675,3 +675,89 @@
   width: 36px !important;
   height: 36px !important;
 }
+
+/* Внутри терминала — все элементы Pygments должны быть светлыми.
+   По умолчанию Material подсвечивает имена переменных бордовым,
+   операторы — серым, на тёмном фоне это плохо читается. */
+.md-typeset .highlight.language-bash .nv,
+.md-typeset .highlight.language-bash .na,
+.md-typeset .highlight.language-bash .n,
+.md-typeset .highlight.language-bash .nb,
+.md-typeset .highlight.language-bash .nf,
+.md-typeset .highlight.language-shell .nv,
+.md-typeset .highlight.language-shell .na,
+.md-typeset .highlight.language-shell .n,
+.md-typeset .highlight.language-shell .nb,
+.md-typeset .highlight.language-shell .nf,
+.md-typeset .highlight.language-sh .nv,
+.md-typeset .highlight.language-sh .na,
+.md-typeset .highlight.language-sh .n,
+.md-typeset .highlight.language-sh .nb,
+.md-typeset .highlight.language-sh .nf,
+.md-typeset .highlight.language-console .nv,
+.md-typeset .highlight.language-console .na,
+.md-typeset .highlight.language-console .n,
+.md-typeset .highlight.language-console .nb,
+.md-typeset .highlight.language-console .nf {
+  color: #e6e6e6;
+}
+
+/* Операторы (=, |, &) и пунктуация — приглушённый серый */
+.md-typeset .highlight.language-bash .o,
+.md-typeset .highlight.language-bash .p,
+.md-typeset .highlight.language-shell .o,
+.md-typeset .highlight.language-shell .p,
+.md-typeset .highlight.language-sh .o,
+.md-typeset .highlight.language-sh .p,
+.md-typeset .highlight.language-console .o,
+.md-typeset .highlight.language-console .p {
+  color: #b0b0b0;
+}
+
+/* Числа — мягкий оранжево-жёлтый */
+.md-typeset .highlight.language-bash .m,
+.md-typeset .highlight.language-bash .mi,
+.md-typeset .highlight.language-bash .mf,
+.md-typeset .highlight.language-shell .m,
+.md-typeset .highlight.language-shell .mi,
+.md-typeset .highlight.language-shell .mf,
+.md-typeset .highlight.language-sh .m,
+.md-typeset .highlight.language-sh .mi,
+.md-typeset .highlight.language-sh .mf,
+.md-typeset .highlight.language-console .m,
+.md-typeset .highlight.language-console .mi,
+.md-typeset .highlight.language-console .mf {
+  color: #d4a86a;
+}
+
+/* Строки в кавычках — мягкий пастельный жёлтый */
+.md-typeset .highlight.language-bash .s,
+.md-typeset .highlight.language-bash .s1,
+.md-typeset .highlight.language-bash .s2,
+.md-typeset .highlight.language-shell .s,
+.md-typeset .highlight.language-shell .s1,
+.md-typeset .highlight.language-shell .s2,
+.md-typeset .highlight.language-sh .s,
+.md-typeset .highlight.language-sh .s1,
+.md-typeset .highlight.language-sh .s2,
+.md-typeset .highlight.language-console .s,
+.md-typeset .highlight.language-console .s1,
+.md-typeset .highlight.language-console .s2 {
+  color: #ce9178;
+}
+
+/* Ключевые слова bash (if, then, for) — мягкий синий */
+.md-typeset .highlight.language-bash .k,
+.md-typeset .highlight.language-bash .kn,
+.md-typeset .highlight.language-bash .kd,
+.md-typeset .highlight.language-shell .k,
+.md-typeset .highlight.language-shell .kn,
+.md-typeset .highlight.language-shell .kd,
+.md-typeset .highlight.language-sh .k,
+.md-typeset .highlight.language-sh .kn,
+.md-typeset .highlight.language-sh .kd,
+.md-typeset .highlight.language-console .k,
+.md-typeset .highlight.language-console .kn,
+.md-typeset .highlight.language-console .kd {
+  color: #569cd6;
+}

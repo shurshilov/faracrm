@@ -16,7 +16,7 @@
         <link rel="prev" href="../system/activity/">
       
       
-        <link rel="next" href="integration/">
+        <link rel="next" href="unit/">
       
       
         
@@ -31,7 +31,7 @@
     
     
       
-        <title>Тестирование - FARA CRM Documentation</title>
+        <title>Testing - FARA CRM Documentation</title>
       
     
     
@@ -84,7 +84,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#_1" class="md-skip">
+        <a href="#testing" class="md-skip">
           Skip to content
         </a>
       
@@ -119,7 +119,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Тестирование
+              Testing
             
           </span>
         </div>
@@ -1425,7 +1425,7 @@
   <span class="md-ellipsis">
     
   
-    Cron — background tasks
+    Cron — task scheduler
   
 
     
@@ -1488,6 +1488,14 @@
       
         
           
+        
+      
+        
+      
+        
+      
+        
+      
         
       
         
@@ -1556,6 +1564,34 @@
   
   
     <li class="md-nav__item">
+      <a href="unit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unit tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="integration/" class="md-nav__link">
         
   
@@ -1563,7 +1599,91 @@
   <span class="md-ellipsis">
     
   
-    Integration Tests
+    Integration tests
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="e2e/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    E2E (Playwright)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security
   
 
     
@@ -1769,7 +1889,7 @@
   <span class="md-ellipsis">
     
   
-    State Management
+    State management
   
 
     
@@ -1957,7 +2077,7 @@
   <span class="md-ellipsis">
     
   
-    CRUD API Service
+    CRUD API service
   
 
     
@@ -2172,6 +2292,108 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#five-types-of-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Five types of tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-the-separation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the separation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Why the separation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-pyramid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test pyramid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-each-type-catches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What each type catches
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#when-to-write-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When to write each
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-all-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running all tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#folder-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Folder structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2187,14 +2409,142 @@
 
 
 
-<h1 id="_1">Тестирование<a class="headerlink" href="#_1" title="Permanent link">&para;</a></h1>
-<div class="admonition info">
-<p class="admonition-title">Translation pending</p>
-<p>The English version of this page is not yet available.
-Please refer to the <a href="./">Russian version</a> for now.</p>
-<p>Translation contributions are welcome — open a PR with a parallel
-<code>&lt;filename&gt;.en.md</code> file alongside the original.</p>
+<h1 id="testing">Testing<a class="headerlink" href="#testing" title="Permanent link">&para;</a></h1>
+<p>FARA uses <strong>five distinct levels of testing</strong>, each responsible for a different aspect of quality. This separation isn't accidental — each level solves a problem that others can't solve well or at all.</p>
+<h2 id="five-types-of-tests">Five types of tests<a class="headerlink" href="#five-types-of-tests" title="Permanent link">&para;</a></h2>
+<div class="grid cards">
+<ul>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M15 3v4.59L7.59 15H3v6h6v-4.58L16.42 9H21V3m-4 2h2v2h-2M5 17h2v2H5"/></svg></span> <strong>Unit tests (Python)</strong></p>
+<hr />
+<p>Isolated checks of individual functions and classes — no DB, no network. The fastest. Runs in seconds.</p>
+<p><a href="unit/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Details</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 12v1.5a4 4 0 0 1 4 4c0 .82-.25 1.58-.67 2.21l-1.09-1.09c.17-.34.26-.72.26-1.12A2.5 2.5 0 0 0 19 15v1.5l-2.25-2.25zm0 11v-1.5a4 4 0 0 1-4-4c0-.82.25-1.58.67-2.21l1.09 1.09c-.17.34-.26.72-.26 1.12A2.5 2.5 0 0 0 19 20v-1.5l2.25 2.25zM12 3c4.42 0 8 1.79 8 4s-3.58 4-8 4-8-1.79-8-4 3.58-4 8-4M4 9c0 2.21 3.58 4 8 4 1.11 0 2.17-.11 3.14-.32-.95.86-1.64 1.99-1.96 3.28L12 16c-4.42 0-8-1.79-8-4zm16 0v2h-.5l-.6.03c.7-.6 1.1-1.29 1.1-2.03M4 14c0 2.21 3.58 4 8 4l1-.03c.09 1.06.42 2.03.95 2.91L12 21c-4.42 0-8-1.79-8-4z"/></svg></span> <strong>Integration tests (Python)</strong></p>
+<hr />
+<p>Verify how modules interact with real PostgreSQL and FastAPI TestClient. Cover CRUD, permissions, business logic.</p>
+<p><a href="integration/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Details</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M23 11h-5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1m0 9h-5v-7h5zM20 2H2C.89 2 0 2.89 0 4v12a2 2 0 0 0 2 2h7v2H7v2h8v-2h-2v-2h2v-2H2V4h18v5h2V4a2 2 0 0 0-2-2"/></svg></span> <strong>E2E (Playwright)</strong></p>
+<hr />
+<p>Browser tests of the UI: Chromium runs real user scenarios — login, lead creation, sending a message.</p>
+<p><a href="e2e/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Details</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 16a3 3 0 0 1-3-3c0-1.12.61-2.1 1.5-2.61l9.71-5.62-5.53 9.58c-.5.98-1.51 1.65-2.68 1.65m0-13c1.81 0 3.5.5 4.97 1.32l-2.1 1.21C14 5.19 13 5 12 5a8 8 0 0 0-8 8c0 2.21.89 4.21 2.34 5.65h.01c.39.39.39 1.02 0 1.41s-1.03.39-1.42.01A9.97 9.97 0 0 1 2 13 10 10 0 0 1 12 3m10 10c0 2.76-1.12 5.26-2.93 7.07-.39.38-1.02.38-1.41-.01a.996.996 0 0 1 0-1.41A7.95 7.95 0 0 0 20 13c0-1-.19-2-.54-2.9L20.67 8C21.5 9.5 22 11.18 22 13"/></svg></span> <strong>Performance</strong></p>
+<hr />
+<p>Measure ORM, API, search, serialization speed under load. Benchmarks and load testing.</p>
+<p><a href="performance/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Details</a></p>
+</li>
+<li>
+<p><span class="twemoji lg middle"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5zm0 6c1.4 0 2.8 1.1 2.8 2.5V11c.6 0 1.2.6 1.2 1.3v3.5c0 .6-.6 1.2-1.3 1.2H9.2c-.6 0-1.2-.6-1.2-1.3v-3.5c0-.6.6-1.2 1.2-1.2V9.5C9.2 8.1 10.6 7 12 7m0 1.2c-.8 0-1.5.5-1.5 1.3V11h3V9.5c0-.8-.7-1.3-1.5-1.3"/></svg></span> <strong>Security</strong></p>
+<hr />
+<p>Verify ACL, Rules, permission bypass, injections, authentication. That one user can't see another's data.</p>
+<p><a href="security/"><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13.22 19.03a.75.75 0 0 1 0-1.06L18.19 13H3.75a.75.75 0 0 1 0-1.5h14.44l-4.97-4.97a.749.749 0 0 1 .326-1.275.75.75 0 0 1 .734.215l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0"/></svg></span> Details</a></p>
+</li>
+</ul>
 </div>
+<h2 id="why-the-separation">Why the separation<a class="headerlink" href="#why-the-separation" title="Permanent link">&para;</a></h2>
+<p>This isn't just different folders and tools — each level has <strong>its own goal and trade-offs</strong>.</p>
+<h3 id="test-pyramid">Test pyramid<a class="headerlink" href="#test-pyramid" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    E2E[E2E — Playwright&lt;br/&gt;~5% of tests, slowest]
+    PERF[Performance&lt;br/&gt;~5%, separate category]
+    SEC[Security&lt;br/&gt;~5%, separate category]
+    INT[Integration — pytest + httpx&lt;br/&gt;~30% of tests, medium]
+    UNIT[Unit — pytest&lt;br/&gt;~55% of tests, fastest]
+
+    E2E --&gt; INT
+    INT --&gt; UNIT
+
+    style UNIT fill:#d1f7c4,stroke:#2c6c1c
+    style INT fill:#fde6c4,stroke:#8b4f1c
+    style E2E fill:#f8d3d3,stroke:#8b1c1c
+    style PERF fill:#dde7ff,stroke:#5170c4
+    style SEC fill:#e0d4ff,stroke:#5b1c8b</code></pre>
+<p>The higher the level — the more expensive tests are to maintain and the slower they run. So <strong>the majority</strong> should be unit tests, <strong>the minority</strong> — e2e. Not the other way around.</p>
+<h3 id="what-each-type-catches">What each type catches<a class="headerlink" href="#what-each-type-catches" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Catches</th>
+<th>Doesn't catch</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Unit</strong></td>
+<td>Logic inside a function — math, validation, parsing, edge cases</td>
+<td>Whether modules actually work together</td>
+</tr>
+<tr>
+<td><strong>Integration</strong></td>
+<td>DB correctness, JSON serialization, ORM-level ACL, call chains</td>
+<td>UI regressions, autoplay-policy, real clicks</td>
+</tr>
+<tr>
+<td><strong>E2E</strong></td>
+<td>That a user can actually do a task: login → create lead → assign manager</td>
+<td>Performance leaks, race conditions in code</td>
+</tr>
+<tr>
+<td><strong>Performance</strong></td>
+<td>Speed regressions — was 50ms, now 300ms, search 5x slower</td>
+<td>Data correctness</td>
+</tr>
+<tr>
+<td><strong>Security</strong></td>
+<td>Whether user A can read user B's data, rate-limit bypass, input validation</td>
+<td>Business bugs</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-to-write-each">When to write each<a class="headerlink" href="#when-to-write-each" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Changed a parser/formatter/mapper</strong> → unit test for new cases.</li>
+<li><strong>Added a new endpoint</strong> → integration test for CRUD + ACL.</li>
+<li><strong>New UI page</strong> → e2e for the key user path.</li>
+<li><strong>Rewrote a hot method (search, render, etc.)</strong> → performance test with measurement.</li>
+<li><strong>Added a role / new permission</strong> → security test for role isolation.</li>
+</ul>
+<p>You don't need to cover each change with all five levels. Each changed piece of code requires <strong>at least one</strong> level — the one where it would regress.</p>
+<h2 id="running-all-tests">Running all tests<a class="headerlink" href="#running-all-tests" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Python unit + integration</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pytest<span class="w"> </span>tests/unit<span class="w"> </span>tests/integration<span class="w"> </span>-v
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># Performance — separate command, slow</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>pytest<span class="w"> </span>tests/performance<span class="w"> </span>-v<span class="w"> </span>-m<span class="w"> </span>performance
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Security</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>pytest<span class="w"> </span>tests/security<span class="w"> </span>-v<span class="w"> </span>-m<span class="w"> </span>security
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># E2E — separate process</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="nb">cd</span><span class="w"> </span>e2e<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npx<span class="w"> </span>playwright<span class="w"> </span><span class="nb">test</span>
+</span></code></pre></div>
+<h2 id="folder-structure">Folder structure<a class="headerlink" href="#folder-structure" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>tests/
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>├── conftest.py              ← shared fixtures (db_pool, env, client)
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>├── unit/                    ← fast, isolated tests
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>├── integration/             ← with real DB
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>├── performance/
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>└── security/
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>e2e/                         ← Playwright (separate project)
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>├── playwright.config.ts
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>├── tests/
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>└── package.json
+</span></code></pre></div>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="unit/">Unit tests</a></li>
+<li><a href="integration/">Integration tests</a></li>
+<li><a href="e2e/">E2E with Playwright</a></li>
+<li><a href="performance/">Performance tests</a></li>
+<li><a href="security/">Security tests</a></li>
+</ul>
 
 
 

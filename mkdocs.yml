@@ -100,66 +100,70 @@ plugins:
           build: true
           nav_translations:
             Главная: Home
-            Backend: Backend
+            Бэкенд: Backend
             Архитектура: Architecture
-            Service — базовый класс модулей: Service — base class for modules
+            "Сервис — базовый класс модулей": "Service — base class for modules"
+            "Окружение (Environment)": "Environment"
             DotORM: DotORM
             Модели: Models
-            Поля (Fields): Fields
+            Поля: Fields
             Запросы: Queries
-            Связи (Relations): Relations
-            CRUD Auto — автогенерация REST API: CRUD Auto — REST API auto-generation
-            Безопасность и доступы: Security and access
-            Security Module: Security Module
-            Роли и правила: Roles and rules
-            Иерархия пользователей: User hierarchy
-            Чат и звонки: Chat and calls
-            Chat Module: Chat Module
-            Архитектура чата: Chat architecture
-            Звонки и push-wake: Calls and push-wake
+            Связи: Relations
+            "CRUD Auto — автогенерация REST API": "CRUD Auto — REST API auto-generation"
+            Безопасность и доступы: "Security and access"
+            Модуль безопасности: "Security Module"
+            Роли и правила: "Roles and rules"
+            Иерархия пользователей: "User hierarchy"
+            Чат и звонки: "Chat and calls"
+            Модуль чата: "Chat Module"
+            Архитектура чата: "Chat architecture"
+            "Звонки и push-wake": "Calls and push-wake"
             Вложения: Attachments
             Обзор: Overview
-            Локальное хранилище: Local storage
-            Google Drive: Google Drive
-            Яндекс.Диск: Yandex Disk
-            Системные сервисы: System services
-            "Cron — фоновые задачи": "Cron — background tasks"
-            "Activity — задачи и дедлайны": "Activity — tasks and deadlines"
+            Локальное хранилище: "Local storage"
+            Google Drive: "Google Drive"
+            Яндекс.Диск: "Yandex Disk"
+            Системные сервисы: "System services"
+            "Планировщик задач (Cron)": "Cron — task scheduler"
+            "Активности (Activity)": "Activity — tasks and deadlines"
             Тестирование: Testing
-            Integration Tests: Integration Tests
-            Frontend: Frontend
-            State Management: State Management
+            Юнит-тесты: "Unit tests"
+            Интеграционные тесты: "Integration tests"
+            "E2E (Playwright)": "E2E (Playwright)"
+            Производительность: Performance
+            Безопасность: Security
+            Фронтенд: Frontend
+            Управление состоянием: "State management"
             Модули: Modules
             Сервисы: Services
-            CRUD API Service: CRUD API Service
+            "CRUD API сервис": "CRUD API service"
             Гайды: Guides
-            Создание нового модуля: Creating a new module
-            "WebSocket — real-time события": "WebSocket — real-time events"
-            Деплой и proxy: Deployment and proxy
-            Environment: Environment
+            "Создание нового модуля": "Creating a new module"
+            "WebSocket — события в реальном времени": "WebSocket — real-time events"
+            "Деплой и proxy": "Deployment and proxy"
 
 nav:
   - Главная: index.md
 
-  - Backend:
+  - Бэкенд:
       - backend/index.md
       - Архитектура:
           - Обзор: backend/architecture/overview.md
-          - Service — базовый класс модулей: backend/architecture/services.md
-          - Environment: backend/architecture/environment.md
+          - Сервис — базовый класс модулей: backend/architecture/services.md
+          - Окружение (Environment): backend/architecture/environment.md
       - DotORM:
           - backend/dotorm/index.md
           - Модели: backend/dotorm/models.md
-          - Поля (Fields): backend/dotorm/fields.md
+          - Поля: backend/dotorm/fields.md
           - Запросы: backend/dotorm/queries.md
-          - Связи (Relations): backend/dotorm/relations.md
+          - Связи: backend/dotorm/relations.md
           - CRUD Auto — автогенерация REST API: backend/dotorm/crud-auto.md
       - Безопасность и доступы:
-          - Security Module: backend/modules/security.md
+          - Модуль безопасности: backend/modules/security.md
           - Роли и правила: backend/security/roles-and-rules.md
           - Иерархия пользователей: backend/security/hierarchy.md
       - Чат и звонки:
-          - Chat Module: backend/modules/chat.md
+          - Модуль чата: backend/modules/chat.md
           - Архитектура чата: backend/modules/chat-architecture.md
           - Звонки и push-wake: backend/modules/calls.md
       - Вложения:
@@ -168,24 +172,28 @@ nav:
           - Google Drive: backend/attachments/google.md
           - Яндекс.Диск: backend/attachments/yandex.md
       - Системные сервисы:
-          - Cron — фоновые задачи: backend/system/cron.md
-          - Activity — задачи и дедлайны: backend/system/activity.md
+          - Планировщик задач (Cron): backend/system/cron.md
+          - Активности (Activity): backend/system/activity.md
       - Тестирование:
           - backend/testing/index.md
-          - Integration Tests: backend/testing/integration.md
+          - Юнит-тесты: backend/testing/unit.md
+          - Интеграционные тесты: backend/testing/integration.md
+          - E2E (Playwright): backend/testing/e2e.md
+          - Производительность: backend/testing/performance.md
+          - Безопасность: backend/testing/security.md
 
-  - Frontend:
+  - Фронтенд:
       - frontend/index.md
       - Архитектура:
           - Обзор: frontend/architecture/overview.md
-          - State Management: frontend/architecture/state.md
+          - Управление состоянием: frontend/architecture/state.md
       - Модули:
-          - Chat Module: frontend/modules/chat.md
+          - Модуль чата: frontend/modules/chat.md
       - Сервисы:
-          - CRUD API Service: frontend/services/crud-api.md
+          - CRUD API сервис: frontend/services/crud-api.md
 
   - Гайды:
       - guides/index.md
       - Создание нового модуля: guides/new-module.md
-      - WebSocket — real-time события: guides/websocket.md
+      - WebSocket — события в реальном времени: guides/websocket.md
       - Деплой и proxy: guides/deploy.md

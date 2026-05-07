@@ -1,8 +1,9 @@
-# Гайды
+# Guides
 
-!!! info "Translation pending"
-    The English version of this page is not yet available.
-    Please refer to the [Russian version](index.md) for now.
+Step-by-step instructions for typical development tasks.
 
-    Translation contributions are welcome — open a PR with a parallel
-    `<filename>.en.md` file alongside the original.
+| Guide | Description |
+|-------|-------------|
+| [New module](new-module.md) | Creating a CRM module from scratch: model → API → UI |
+| [WebSocket](websocket.md) | Adding real-time events to a module |
+| [Deployment and proxy](deploy.md) | Production deployment with HTTPS |

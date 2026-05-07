@@ -164,59 +164,123 @@ export const ticketApi = crudApi.injectEndpoints({
 export const { useAssignTicketMutation, useCloseTicketMutation } = ticketApi;
 ```
 
-## Шаг 6: Frontend — компонент
+## Шаг 6: Frontend — List и Form
 
-```tsx title="frontend/src/fara_tickets/components/TicketList.tsx"
+Стандартный подход — использовать готовые компоненты `<List>` и `<Form>` FARA. Они сами берут поля из бэкенда (имена, типы, валидацию), сами рисуют таблицу/форму, сами вызывают CRUD API.
+
+### List
+
+```tsx title="frontend/src/fara_tickets/List.tsx"
+import type { TicketRecord } from '@/types/records';
+import { Badge } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
+import { Field } from '@/components/List/Field';
+import { List } from '@/components/List/List';
+
+export function ViewListTickets() {
+  const { t } = useTranslation('tickets');
+
+  return (
+    <List<TicketRecord> model="tickets" order="desc" sort="id">
+      <Field name="id" label={t('fields.id')} />
+      <Field name="title" label={t('fields.title')} />
+      <Field
+        name="status"
+        label={t('fields.status')}
+        render={value => {
+          const colors: Record<string, string> = {
+            open: 'blue',
+            in_progress: 'yellow',
+            resolved: 'green',
+            closed: 'gray',
+          };
+          return (
+            <Badge size="sm" variant="light" color={colors[value]}>
+              {value}
+            </Badge>
+          );
+        }}
+      />
+      <Field name="priority" label={t('fields.priority')} />
+      <Field name="assigned_to" label={t('fields.assigned_to')} />
+    </List>
+  );
+}
+```
+
+`<List model="...">` сам делает запрос к `/api/crud-auto/tickets/search`, рисует пагинацию, сортировку, фильтры, чекбоксы для bulk-операций. Тебе остаётся только перечислить поля и опционально дать им свой `render`.
+
+### Form
+
+```tsx title="frontend/src/fara_tickets/Form.tsx"
+import type { TicketRecord } from '@/types/records';
+import { useTranslation } from 'react-i18next';
+import { Form } from '@/components/Form/Form';
+import { Field } from '@/components/List/Field';
+import { ViewFormProps } from '@/route/type';
+import { FormRow, FormSection } from '@/components/Form/Layout';
+
+export function ViewFormTickets(props: ViewFormProps) {
+  const { t } = useTranslation('tickets');
+
+  return (
+    <Form<TicketRecord> model="tickets" {...props}>
+      <FormSection title={t('sections.main')}>
+        <FormRow cols={2}>
+          <Field name="title" />
+          <Field name="status" />
+        </FormRow>
+        <Field name="description" />
+        <FormRow cols={2}>
+          <Field name="priority" />
+          <Field name="assigned_to" />
+        </FormRow>
+      </FormSection>
+    </Form>
+  );
+}
+```
+
+`<Form model="...">` сам:
+
+- На открытии — делает GET к API и подставляет значения.
+- На submit — POST для создания, PATCH для обновления.
+- Валидирует обязательные поля по схеме с бэкенда.
+- Показывает toast об успехе/ошибке.
+
+Для большинства CRM-моделей этого достаточно — модуль работает без единой строчки императивного кода.
+
+### Кастомный список <span class="tag tag-internal">advanced</span>
+
+Если стандартного `<List>` мало (нестандартный layout, kanban, диаграмма Ганта, гриппировки) — пишется кастомный компонент через `crudApi` напрямую. Пример:
+
+```tsx title="frontend/src/fara_tickets/CustomKanban.tsx — для нестандартных случаев"
 import { crudApi } from '@services/api/crudApi';
-import { DataTable } from 'mantine-datatable';
 
-function TicketList() {
+function TicketKanban() {
     const { data, isLoading } = crudApi.useSearchQuery({
         model: 'tickets',
         filter: [['is_archived', '=', false]],
-        fields: ['id', 'title', 'status', 'priority', 'assigned_to'],
+        fields: ['id', 'title', 'status', 'priority'],
         order: 'id',
         sort: 'desc',
         limit: 50,
     });
 
-    const statusColors: Record<string, string> = {
-        open: 'blue',
-        in_progress: 'yellow',
-        resolved: 'green',
-        closed: 'gray',
-    };
-
-    return (
-        <DataTable
-            records={data?.data ?? []}
-            fetching={isLoading}
-            columns={[
-                { accessor: 'id', width: 80 },
-                { accessor: 'title', title: 'Тема' },
-                {
-                    accessor: 'status',
-                    title: 'Статус',
-                    render: (r) => (
-                        <Badge color={statusColors[r.status]}>
-                            {r.status}
-                        </Badge>
-                    ),
-                },
-                { accessor: 'priority', title: 'Приоритет' },
-            ]}
-        />
-    );
+    // Свой layout — группировка по статусам, drag-and-drop карточек и т.п.
+    return <YourCustomLayout tickets={data?.data ?? []} loading={isLoading} />;
 }
 ```
+
+Это путь для случаев, когда таблица или форма принципиально не подходят. Подавляющее большинство модулей использует `<List>` + `<Form>` без кастомизации.
 
 ## Чеклист
 
 - [x] Модель в `models/`
 - [x] Service в `app.py`
 - [x] Регистрация в `project_setup.py` (Models + Apps.installed)
-- [ ] Кастомные роутеры (если нужны)
-- [ ] Frontend API service
-- [ ] Frontend компоненты
+- [x] Кастомные роутеры (если нужны)
+- [x] Frontend API service
+- [x] Frontend компоненты
 - [ ] Локализация (`locales/ru.json`, `locales/en.json`)
 - [ ] Тесты
