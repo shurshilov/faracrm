@@ -24,8 +24,8 @@
                 "--reload",
                 "--reload-exclude",
                 "'filestore/*'",
-                // "--http",
-                // "httptools",
+                "--http",
+                "httptools",
                 "--workers",
                 "1"
             ],

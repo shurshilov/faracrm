@@ -188,7 +188,13 @@ export function ButtonCreate({
 
             form.reset();
             navigate(`/${model}/${data?.id}`);
-          } else navigate(`/${model}`);
+          }
+          // НЕ переходим на список при ошибке. RTK Query вернул { error }
+          // (например, бэк отдал 400 при нарушении бизнес-инварианта —
+          // дубликат login и подобное). Глобальный обработчик в
+          // baseQueryWithReauth уже показал ApiErrorModal — здесь нам
+          // важно сохранить состояние формы, чтобы пользователь
+          // подправил поле и нажал «Создать» ещё раз без потери ввода.
         }
       }}>
       {parentFieldName && parentForm ? t('add') : t('create')}

@@ -2,12 +2,13 @@ import binascii
 import hashlib
 import re
 import secrets
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from backend.base.crm.attachments.models.attachments import Attachment
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
     FilterExpression,
 )
+from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Char,
@@ -22,6 +23,7 @@ from backend.base.crm.security.polymorphic_parent import (
     PolymorphicParentMixin,
 )
 from backend.base.system.core.enviroment import env
+from backend.base.system.core.exceptions.environment import FaraException
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -250,6 +252,32 @@ class User(PolymorphicParentMixin):
     #         )
     #     )
     #     return user_id
+
+    @hybridmethod
+    async def create(self, payload: Self, session=None) -> int:
+        """
+        Создание пользователя с проверкой уникальности login.
+
+        TODO: симметричную проверку стоит добавить и в update — иначе
+        login можно сменить на занятый. Сейчас не делаю, чтобы не
+        расширять scope правки за пределы создания.
+        """
+        if payload.login:
+            existing = await env.models.user.search(
+                filter=[("login", "=", payload.login)],
+                limit=1,
+                fields=["id"],
+            )
+            if existing:
+                raise FaraException(
+                    {
+                        "content": "USER_LOGIN_EXISTS",
+                        "detail": "User with this login already exists",
+                        "status_code": 400,
+                    }
+                )
+
+        return await super().create(payload=payload, session=session)
 
     def generate_password_hash_salt_old(self, password: str):
         return self.generate_password_hash(password, self.password_salt)

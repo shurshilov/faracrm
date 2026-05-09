@@ -8,6 +8,7 @@ aiosmtplib==5.1.0
 asyncpg==0.31.0
 docxtpl==0.20.2
 fastapi==0.136.0
+httptools==0.7.1
 httpx==0.28.1
 Pillow==12.1.0
 pydantic==2.13.2
@@ -19,3 +20,4 @@ PyYAML==6.0.1
 uvicorn==0.40.0
 uvloop==0.22.1; sys_platform != 'win32'
 websockets==16.0
+

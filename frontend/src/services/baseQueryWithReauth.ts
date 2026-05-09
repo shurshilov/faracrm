@@ -125,6 +125,14 @@ export const baseQueryWithReauth: BaseQueryFn<
         status_code: 422,
       });
     }
+
+    // 400 - доменная ошибка (FaraException на бэке).
+    if (status === 400) {
+      const apiError = parseApiError(data, status as number);
+      if (apiError) {
+        apiErrorEmitter.emit(apiError);
+      }
+    }
   }
 
   return result;

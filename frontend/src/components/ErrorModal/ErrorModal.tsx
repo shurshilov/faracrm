@@ -63,6 +63,10 @@ const TRANSLATIONS: Record<
       title: 'Пустое сообщение',
       description: 'Введите текст сообщения или прикрепите файл.',
     },
+    USER_LOGIN_EXISTS: {
+      title: 'Логин уже занят',
+      description: 'Пользователь с таким логином уже существует. Выберите другой.',
+    },
     VALIDATION_ERROR: {
       title: 'Ошибка валидации',
       description: 'Проверьте правильность заполнения полей:',
@@ -112,6 +116,10 @@ const TRANSLATIONS: Record<
     EMPTY_MESSAGE: {
       title: 'Empty Message',
       description: 'Please enter a message or attach a file.',
+    },
+    USER_LOGIN_EXISTS: {
+      title: 'Login already taken',
+      description: 'A user with this login already exists. Please choose another.',
     },
     VALIDATION_ERROR: {
       title: 'Validation Error',
