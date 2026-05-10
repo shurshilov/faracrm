@@ -1,26 +1,32 @@
+<div align="center">
+  <img src="docs/dist/assets/logo-mark.svg" alt="FARA CRM" width="96" height="96" />
+
+  [English](README.md) · [Русский](README.ru.md)
+</div>
+
 # FARA CRM
 
-**Модульная CRM-система на FastAPI + React с кастомным ORM (DotORM), real-time чатом через WebSocket и интеграцией с внешними мессенджерами.**
+**Modular CRM system built on FastAPI + React with a custom ORM (DotORM), real-time chat via WebSocket, and integrations with external messengers.**
 
-**Официальный сайт:** [faracrm.com](https://faracrm.com)
-**Демо версия:** [demo.faracrm.com](https://demo.faracrm.com)
-📖 **Полная документация:** [docs.faracrm.com](https://docs.faracrm.com)
+**Official site:** [faracrm.com](https://faracrm.com)
+**Demo:** [demo.faracrm.com](https://demo.faracrm.com)
+📖 **Full documentation:** [docs.faracrm.com](https://docs.faracrm.com)
 
 ---
 
-## Стек
+## Stack
 
-| Слой | Технологии |
+| Layer | Technologies |
 |------|-----------|
 | **Backend** | Python 3.12+, FastAPI, asyncpg, PostgreSQL |
-| **ORM** | DotORM (собственный async ORM) |
+| **ORM** | DotORM (in-house async ORM) |
 | **Frontend** | React 18, TypeScript, Mantine UI v8, Redux Toolkit |
 | **Real-time** | WebSocket + PostgreSQL LISTEN/NOTIFY (redis optional) |
-| **Интеграции** | Telegram, WhatsApp, Avito, Email (IMAP/SMTP) |
+| **Integrations** | Telegram, WhatsApp, Avito, Email (IMAP/SMTP) |
 
-## Быстрый старт
+## Quick start
 
-### Docker (рекомендуется)
+### Docker (recommended)
 
 ```bash
 docker compose up --build
@@ -30,12 +36,12 @@ docker compose up --build
 - Backend API: http://127.0.0.1:7777/api/
 - Backend direct: http://127.0.0.1:8000
 
-### Локально для разработки
+### Local development
 
 **Backend:**
 ```bash
-# F5 если используете VS code
-# или:
+# F5 if you use VS Code
+# or:
 pip install -r requirements.txt
 cp .env.example .env
 uvicorn backend.main:app --host 0.0.0.0 --port 8090
@@ -48,23 +54,23 @@ yarn install
 yarn dev
 ```
 
-## Структура проекта
+## Project layout
 
 ```
 fara/
 ├── backend/
 │   ├── main.py                  # FastAPI entry point
-│   ├── main_cron.py             # Cron-задачи
+│   ├── main_cron.py             # Cron jobs
 │   ├── project_setup.py         # Models, Apps, Settings
 │   └── base/
-│       ├── system/              # Ядро: ORM, auth, services
+│       ├── system/              # Core: ORM, auth, services
 │       │   ├── dotorm/          # DotORM — async ORM
-│       │   ├── dotorm_crud_auto/# Авто-генерация CRUD API
+│       │   ├── dotorm_crud_auto/# Auto-generated CRUD API
 │       │   ├── core/            # Environment, Service
 │       │   └── schemas/
-│       └── crm/                 # Бизнес-модули
-│           ├── chat/            # Чат + WebSocket
-│           ├── security/        # ACL, сессии, роли
+│       └── crm/                 # Business modules
+│           ├── chat/            # Chat + WebSocket
+│           ├── security/        # ACL, sessions, roles
 │           ├── users/
 │           ├── leads/
 │           ├── sales/
@@ -75,27 +81,27 @@ fara/
 │   └── src/
 │       ├── services/api/        # RTK Query API
 │       ├── store/               # Redux store
-│       ├── fara_chat/           # Модуль чата
+│       ├── fara_chat/           # Chat module
 │       └── ...
 ├── tests/
-├── docs/                        # MkDocs документация
+├── docs/                        # MkDocs documentation
 └── docker-compose.yml
 ```
 
-## Документация
+## Documentation
 
-Документация написана в `docs/` и собирается через [MkDocs Material](https://squidfunk.github.io/mkdocs-material/).
+The documentation lives in `docs/` and is built with [MkDocs Material](https://squidfunk.github.io/mkdocs-material/).
 
-| Раздел | Описание |
+| Section | Description |
 |--------|----------|
-| [Backend](docs/backend/index.md) | Архитектура, DotORM, модули, API |
-| [Frontend](docs/frontend/index.md) | React-приложение, state management |
-| [Гайды](docs/guides/index.md) | Новый модуль, WebSocket, тесты |
+| [Backend](docs/backend/index.md) | Architecture, DotORM, modules, API |
+| [Frontend](docs/frontend/index.md) | React app, state management |
+| [Guides](docs/guides/index.md) | New module, WebSocket, tests |
 
-## Демо
+## Demo
 
 🌐 [demo.faracrm.com](https://demo.faracrm.com)
 
-## Лицензия
+## License
 
 FARA CRM License v1.0
