@@ -168,6 +168,7 @@ from backend.base.system.cron.app import CronApp
 from backend.base.crm.languages.app import LanguageApp
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.administration.app import AdministrationApp
+from backend.base.system.saved_filters.app import SavedFiltersApp
 from backend.base.crm.users.app import UserApp
 from backend.base.crm.security.app import SecurityApp
 from backend.base.crm.attachments.app import AttachmentsApp
@@ -288,6 +289,7 @@ class Apps(AppsCore):
     languages = LanguageApp()
     users = UserApp()
     security = SecurityApp()
+    saved_filters = SavedFiltersApp()
     attachments = AttachmentsApp()
     attachments_google = AttachmentsGoogleApp()
     attachments_yandex = AttachmentsYandexApp()

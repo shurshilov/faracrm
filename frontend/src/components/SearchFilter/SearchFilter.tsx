@@ -79,10 +79,12 @@ export function SearchFilter({
   // Хук управления фильтрами
   const {
     activeFilters,
+    appliedSavedFilters,
     hasFilters,
     addFilter,
     addFilters,
     removeFilter,
+    removeAppliedSavedFilter,
     clearFilters,
     setCombineMode,
     recentFilters,
@@ -174,10 +176,36 @@ export function SearchFilter({
             minHeight: 34,
             backgroundColor: 'var(--mantine-color-body)',
           }}>
-          {/* Теги активных фильтров */}
+          {/* Чипсы применённых saved-фильтров: одна чипса = один
+              сохранённый фильтр (label = его имя). Удаление крестиком
+              убирает весь фильтр сразу (не разворачивая на триплеты). */}
+          {appliedSavedFilters.map(sf => (
+            <Badge
+              key={`saved-${sf.id}`}
+              variant="light"
+              color="blue"
+              size="sm"
+              radius="sm"
+              pr={3}
+              rightSection={
+                <ActionIcon
+                  size="xs"
+                  color="blue"
+                  radius="xl"
+                  variant="transparent"
+                  onClick={() => removeAppliedSavedFilter(sf.id)}>
+                  <IconX size={10} />
+                </ActionIcon>
+              }>
+              {sf.name}
+            </Badge>
+          ))}
+
+          {/* Чипсы одиночных триплетов (добавленных через билдер).
+              И/ИЛИ показывается между ними; для самого первого триплета
+              в цепочке combineWithPrev уже undefined (см. removeFilter). */}
           {activeFilters.map((filter, index) => (
             <Group key={filter.id} gap={4} wrap="nowrap">
-              {/* Показываем И/ИЛИ между фильтрами */}
               {index > 0 && filter.combineWithPrev && (
                 <Badge
                   variant="outline"

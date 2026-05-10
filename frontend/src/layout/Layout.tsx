@@ -3,6 +3,7 @@ import LoadingScreen from '@components/LoadingScreen/LoadingScreen';
 import { useSelector } from 'react-redux';
 import ProtectedLayout from './ProtectedLayout/ProtectedLayout';
 import { selectIsLoggedIn } from '@/slices/authSlice';
+import { SavedFiltersPreloader } from '@/components/SearchFilter';
 import {
   LayoutThemeProvider,
   useLayoutTheme,
@@ -14,10 +15,20 @@ function ThemedLayout() {
   const { layoutTheme } = useLayoutTheme();
 
   if (layoutTheme === 'modern') {
-    return <ModernLayout />;
+    return (
+      <>
+        <SavedFiltersPreloader />
+        <ModernLayout />
+      </>
+    );
   }
 
-  return <ProtectedLayout />;
+  return (
+    <>
+      <SavedFiltersPreloader />
+      <ProtectedLayout />
+    </>
+  );
 }
 
 export function Layout() {

@@ -15,6 +15,7 @@ import {
   PresetFilter,
   FilterContext,
 } from '@/components/SearchFilter';
+import { useGetSavedFiltersQuery } from '@/components/SearchFilter/savedFiltersApi';
 import { useLazySearchQuery } from '@/services/api/crudApi';
 import { FilterExpression } from '@/services/api/crudTypes';
 import classes from './ViewWrapper.module.css';
@@ -45,6 +46,52 @@ export function ViewWrapper({
 
   // Состояние открытия поиска
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Читаем saved_filters из общего RTK-кеша, прогретого
+  // <SavedFiltersPreloader> при старте приложения. После первой загрузки
+  // данные приходят синхронно — никакой задержки на этом запросе.
+  const { data: allSavedFilters, isSuccess: savedFiltersReady } =
+    useGetSavedFiltersQuery(undefined, { skip: hideSearch });
+
+  // Есть ли у модели default-фильтр (используется только в первичном
+  // эффекте: открыть поиск + дождаться применения).
+  const hasDefaultForModel = useMemo(
+    () =>
+      !!allSavedFilters?.some(f => f.model_name === model && f.is_default),
+    [allSavedFilters, model],
+  );
+
+  // Если есть default — открываем панель поиска при первом её обнаружении.
+  // Это смонтирует <SearchFilter>, и его useSearchFilter сам применит
+  // дефолт через свой автоприменяющий эффект.
+  useEffect(() => {
+    if (hasDefaultForModel) setIsSearchOpen(true);
+  }, [hasDefaultForModel]);
+
+  // Готовы ли фильтры к первичному рендеру списка.
+  //
+  // Это ОДНОРАЗОВЫЙ флаг: ставим в true и больше не сбрасываем.
+  // Логика установки — устранить мигание ровно при первом заходе:
+  //   - hideSearch: фильтры не актуальны → resolved сразу.
+  //   - нет дефолта: показывать список без фильтра можно сразу.
+  //   - есть дефолт: ждём пока он применится (filters непустой).
+  //
+  // Без одноразовости получали баг: пользователь снял дефолт крестиком
+  // → filters снова пуст → resolved=false → бесконечный лоадер.
+  // Теперь после первого resolved=true дальнейшие изменения filters
+  // (включая снятие до пустоты) не возвращают его в false.
+  const [filtersResolved, setFiltersResolved] = useState(false);
+  useEffect(() => {
+    if (filtersResolved) return;
+    if (hideSearch) {
+      setFiltersResolved(true);
+      return;
+    }
+    if (!savedFiltersReady) return;
+    if (!hasDefaultForModel || filters.length > 0) {
+      setFiltersResolved(true);
+    }
+  }, [filtersResolved, hideSearch, savedFiltersReady, hasDefaultForModel, filters.length]);
 
   // Обработчик изменения фильтров
   const handleFiltersChange = useCallback((newFilters: FilterExpression) => {
@@ -126,6 +173,13 @@ export function ViewWrapper({
       </Center>
     );
 
+    // Не рендерим список/канбан/гантт пока фильтры по умолчанию не
+    // подтверждены и (если они есть) не применены к state. Это
+    // убирает мигание «полный список → отфильтрованный».
+    if (!filtersResolved) {
+      return fallback;
+    }
+
     switch (viewType) {
       case 'kanban':
         return KanbanComponent ? (
@@ -146,7 +200,13 @@ export function ViewWrapper({
           </Suspense>
         );
     }
-  }, [viewType, ListComponent, KanbanComponent, GanttComponent]);
+  }, [
+    viewType,
+    ListComponent,
+    KanbanComponent,
+    GanttComponent,
+    filtersResolved,
+  ]);
 
   // Мемоизируем value контекста чтобы List не перерисовывался при каждом рендере ViewWrapper
   const filterContextValue = useMemo(() => ({ filters }), [filters]);
@@ -156,7 +216,6 @@ export function ViewWrapper({
       <div className={classes.container}>
         <div className={classes.header}>
           <Group justify="space-between" gap="xs" p="xs" wrap="wrap">
-            {/* Левая часть - поиск (показывается при клике) */}
             <Box style={{ flex: 1, minWidth: 0 }}>
               {!hideSearch && isSearchOpen && (
                 <SearchFilter

@@ -5,6 +5,7 @@ export { SearchFilter } from './SearchFilter';
 export { FilterBuilder } from './FilterBuilder';
 export { ActiveFilters } from './ActiveFilters';
 export { SavedFiltersMenu } from './SavedFiltersMenu';
+export { SavedFiltersPreloader } from './SavedFiltersPreloader';
 export { useSearchFilter } from './useSearchFilter';
 export { useGetFieldsQuery } from '@/services/api/crudApi';
 export { FilterContext, useFilters } from './FilterContext';

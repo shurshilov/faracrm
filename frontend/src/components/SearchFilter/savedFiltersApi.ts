@@ -34,10 +34,10 @@ export interface UpdateSavedFilterDTO {
 // Расширяем crudApi для saved_filters
 const savedFiltersApi = crudApi.injectEndpoints({
   endpoints: build => ({
-    // Получить фильтры для модели (свои + глобальные)
-    getSavedFilters: build.query<SavedFilterDTO[], string>({
+    // Получить сохранённые фильтры для модели (свои + глобальные)
+    getSavedFilters: build.query<SavedFilterDTO[], string | undefined>({
       query: modelName => ({
-        url: '/saved_filters/search',
+        url: '/auto/saved_filters/search',
         method: 'POST',
         body: {
           fields: [
@@ -50,7 +50,7 @@ const savedFiltersApi = crudApi.injectEndpoints({
             'use_count',
             'last_used_at',
           ],
-          filter: [['model_name', '=', modelName]],
+          ...(modelName ? { filter: [['model_name', '=', modelName]] } : {}),
           sort: 'use_count',
           order: 'desc',
           limit: 100,
@@ -59,7 +59,7 @@ const savedFiltersApi = crudApi.injectEndpoints({
       transformResponse: (response: { data: SavedFilterDTO[] }) =>
         response.data,
       providesTags: (result, error, modelName) => [
-        { type: 'SavedFilters', id: modelName },
+        { type: 'SavedFilters', id: modelName ?? 'ALL' },
         { type: 'SavedFilters', id: 'LIST' },
       ],
     }),
@@ -67,7 +67,7 @@ const savedFiltersApi = crudApi.injectEndpoints({
     // Создать сохранённый фильтр
     createSavedFilter: build.mutation<{ id: number }, CreateSavedFilterDTO>({
       query: data => ({
-        url: '/saved_filters',
+        url: '/auto/saved_filters',
         method: 'POST',
         body: data,
       }),
@@ -83,7 +83,7 @@ const savedFiltersApi = crudApi.injectEndpoints({
       { id: number; data: UpdateSavedFilterDTO }
     >({
       query: ({ id, data }) => ({
-        url: `/saved_filters/${id}`,
+        url: `/auto/saved_filters/${id}`,
         method: 'PUT',
         body: data,
       }),
@@ -93,7 +93,7 @@ const savedFiltersApi = crudApi.injectEndpoints({
     // Удалить фильтр
     deleteSavedFilter: build.mutation<void, number>({
       query: id => ({
-        url: `/saved_filters/${id}`,
+        url: `/auto/saved_filters/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: [{ type: 'SavedFilters', id: 'LIST' }],
@@ -102,7 +102,7 @@ const savedFiltersApi = crudApi.injectEndpoints({
     // Отметить использование фильтра (увеличить счётчик)
     useSavedFilter: build.mutation<void, number>({
       query: id => ({
-        url: `/saved_filters/${id}`,
+        url: `/auto/saved_filters/${id}`,
         method: 'PUT',
         body: {
           use_count: 1, // Backend should increment

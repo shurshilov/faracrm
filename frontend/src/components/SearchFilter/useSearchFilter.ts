@@ -2,6 +2,7 @@
  * Хук для управления фильтрами поиска
  */
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useSelector } from 'react-redux';
 import {
   FilterTriplet,
   ActiveFilter,
@@ -17,9 +18,26 @@ import {
   useDeleteSavedFilterMutation,
   SavedFilterDTO,
 } from './savedFiltersApi';
+import type { RootState } from '@/store/store';
 
 const MAX_RECENT_FILTERS = 10;
 const STORAGE_KEY_PREFIX = 'searchFilters_recent_';
+
+/**
+ * Плейсхолдер «текущий пользователь» в filter_data сохранённых фильтров
+ * с бэка. Синтаксис согласован с security rules.
+ * Резолвер: literal-замена при чтении DTO (см. dtoToSavedFilter).
+ */
+const PLACEHOLDER_USER_ID = '{{user_id}}';
+
+/**
+ * Подмена плейсхолдера в значении одного триплета. Шаблоны в field/operator
+ * не поддерживаются — там только literal-имена и literal-операторы.
+ */
+function resolvePlaceholder(value: any, userId: number | undefined): any {
+  if (value !== PLACEHOLDER_USER_ID) return value;
+  return userId ?? value; // нет сессии — оставляем как есть, увидим в UI
+}
 
 interface UseSearchFilterOptions {
   model: string;
@@ -28,12 +46,26 @@ interface UseSearchFilterOptions {
   onFiltersChange: (filters: FilterExpression) => void;
 }
 
-// Конвертация DTO в локальный формат
-function dtoToSavedFilter(dto: SavedFilterDTO): SavedFilter {
+/**
+ * Парсит filter_data из БД. Формат: массив кортежей [field, operator, value],
+ * как и тот что бэк ест в /search-эндпоинте — это удобно для ручного ввода
+ * в init-данных и совпадает с провод-форматом. Если value — плейсхолдер,
+ * подменяем на runtime-значение.
+ */
+function dtoToSavedFilter(
+  dto: SavedFilterDTO,
+  userId: number | undefined,
+): SavedFilter {
+  const tuples: Array<[string, string, any]> = JSON.parse(dto.filter_data);
+  const filters: FilterTriplet[] = tuples.map(([field, operator, value]) => ({
+    field,
+    operator: operator as any,
+    value: resolvePlaceholder(value, userId),
+  }));
   return {
     id: String(dto.id),
     name: dto.name,
-    filters: JSON.parse(dto.filter_data),
+    filters,
     createdAt: dto.created_at ? new Date(dto.created_at).getTime() : Date.now(),
     isGlobal: dto.is_global,
     isDefault: dto.is_default,
@@ -46,7 +78,7 @@ export function useSearchFilter({
   initialFilters = [],
   onFiltersChange,
 }: UseSearchFilterOptions) {
-  // Активные фильтры
+  // Активные фильтры (одиночные триплеты, добавленные через билдер).
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>(() => {
     return initialFilters.map((f, index) => ({
       ...f,
@@ -56,16 +88,36 @@ export function useSearchFilter({
     }));
   });
 
-  // API для сохранённых фильтров
-  const { data: savedFiltersData } = useGetSavedFiltersQuery(model);
+  // Применённые сохранённые фильтры. Хранятся отдельно от activeFilters,
+  // чтобы в UI каждый показывался ОДНОЙ чипсой с именем (не разворачиваясь
+  // на составные триплеты), а удаление крестиком сразу убирало весь
+  // saved-фильтр. Для бэка обе очереди склеиваются через AND
+  // (см. buildFilterExpression).
+  const [appliedSavedFilters, setAppliedSavedFilters] = useState<SavedFilter[]>(
+    [],
+  );
+
+  // API для сохранённых фильтров. Запрашиваем БЕЗ параметра, чтобы
+  // попасть в общий кеш, прогретый <SavedFiltersPreloader> при старте
+  // приложения. Фильтрацию по текущей модели делаем локально ниже.
+  const { data: allSavedFiltersData } = useGetSavedFiltersQuery(undefined);
+  const savedFiltersData = useMemo(
+    () => allSavedFiltersData?.filter(f => f.model_name === model),
+    [allSavedFiltersData, model],
+  );
   const [createFilter] = useCreateSavedFilterMutation();
   const [deleteFilter] = useDeleteSavedFilterMutation();
 
-  // Конвертируем данные из API
+  // Текущий пользователь — для подстановки {{user_id}} в filter_data.
+  const currentUserId = useSelector(
+    (state: RootState) => state.auth.session?.user_id?.id,
+  );
+
+  // Конвертируем DTO → SavedFilter (с подстановкой плейсхолдеров).
   const savedFilters: SavedFilter[] = useMemo(() => {
     if (!savedFiltersData) return [];
-    return savedFiltersData.map(dtoToSavedFilter);
-  }, [savedFiltersData]);
+    return savedFiltersData.map(dto => dtoToSavedFilter(dto, currentUserId));
+  }, [savedFiltersData, currentUserId]);
 
   // Недавние фильтры (из localStorage)
   const [recentFilters, setRecentFilters] = useState<SavedFilter[]>(() => {
@@ -75,14 +127,6 @@ export function useSearchFilter({
     } catch {
       return [];
     }
-  });
-
-  // Debug
-  console.log('useSearchFilter:', {
-    model,
-    fieldsCount: fields.length,
-    activeFilters,
-    savedFilters: savedFilters.length,
   });
 
   // Обновляем label при изменении fields
@@ -97,18 +141,50 @@ export function useSearchFilter({
     }
   }, [fields]);
 
-  // Конвертируем activeFilters в FilterExpression для API
-  const buildFilterExpression = useCallback(
-    (filters: ActiveFilter[]): FilterExpression => {
-      const result: FilterExpression = [];
+  // Автоприменение is_default. Каждый default-фильтр кладётся в
+  // appliedSavedFilters (одна чипса = один saved-фильтр). Сравниваем
+  // с тем, что уже применено, по id, чтобы не реагировать на повторные
+  // рендеры savedFilters (RTK кеш отдаёт новый массив при инвалидации).
+  // Если пользователь сам убрал default крестиком — он остался
+  // в БД с is_default, но НЕ в applied; чтобы не возвращать его сразу,
+  // запоминаем «отменённые» по id (живёт только до перезагрузки страницы —
+  // как в Odoo).
+  const [dismissedDefaults, setDismissedDefaults] = useState<Set<string>>(
+    () => new Set(),
+  );
+  useEffect(() => {
+    const defaults = savedFilters.filter(
+      f => f.isDefault && !dismissedDefaults.has(f.id),
+    );
+    if (defaults.length === 0) return;
 
-      filters.forEach((f, index) => {
-        if (index > 0 && f.combineWithPrev) {
-          result.push(f.combineWithPrev);
+    setAppliedSavedFilters(prev => {
+      const existingIds = new Set(prev.map(f => f.id));
+      const toAdd = defaults.filter(f => !existingIds.has(f.id));
+      if (toAdd.length === 0) return prev;
+      return [...prev, ...toAdd];
+    });
+  }, [savedFilters, dismissedDefaults]);
+
+  // Сборка FilterExpression: сначала все триплеты из applied saved-фильтров,
+  // потом одиночные. Все соединяются через AND.
+  const buildFilterExpression = useCallback(
+    (
+      saved: SavedFilter[],
+      singles: ActiveFilter[],
+    ): FilterExpression => {
+      const result: FilterExpression = [];
+      const pushTriplet = (t: { field: string; operator: any; value: any }) => {
+        if (result.length > 0) result.push('and');
+        result.push([t.field, t.operator, t.value] as Triplet);
+      };
+      saved.forEach(sf => sf.filters.forEach(pushTriplet));
+      singles.forEach((f, index) => {
+        if (result.length > 0) {
+          result.push(index === 0 ? 'and' : (f.combineWithPrev ?? 'and'));
         }
         result.push([f.field, f.operator, f.value] as Triplet);
       });
-
       return result;
     },
     [],
@@ -116,11 +192,9 @@ export function useSearchFilter({
 
   // Уведомляем об изменении фильтров
   useEffect(() => {
-    const expression = buildFilterExpression(activeFilters);
-    console.log('useSearchFilter: calling onFiltersChange with:', expression);
-    onFiltersChange(expression);
+    onFiltersChange(buildFilterExpression(appliedSavedFilters, activeFilters));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilters, buildFilterExpression]);
+  }, [activeFilters, appliedSavedFilters, buildFilterExpression]);
 
   // Добавить фильтр
   const addFilter = useCallback(
@@ -173,39 +247,50 @@ export function useSearchFilter({
     );
   }, []);
 
-  // Удалить фильтр по id
+  // Удалить одиночный триплет
   const removeFilter = useCallback((filterId: string) => {
     setActiveFilters(prev => {
-      const index = prev.findIndex(f => f.id === filterId);
-      if (index === -1) return prev;
-
       const newFilters = prev.filter(f => f.id !== filterId);
-
-      if (index === 0 && newFilters.length > 0) {
+      // Первый оставшийся триплет не должен иметь combineWithPrev.
+      if (newFilters.length > 0 && newFilters[0].combineWithPrev) {
         newFilters[0] = { ...newFilters[0], combineWithPrev: undefined };
       }
-
       return newFilters;
     });
   }, []);
 
-  // Очистить все фильтры
+  // Снять применённый saved-фильтр. Если у него был is_default —
+  // запоминаем, чтобы автоприменение не вернуло его обратно.
+  const removeAppliedSavedFilter = useCallback(
+    (savedFilterId: string) => {
+      setAppliedSavedFilters(prev => prev.filter(f => f.id !== savedFilterId));
+      const sf = savedFilters.find(f => f.id === savedFilterId);
+      if (sf?.isDefault) {
+        setDismissedDefaults(prev => {
+          if (prev.has(savedFilterId)) return prev;
+          const next = new Set(prev);
+          next.add(savedFilterId);
+          return next;
+        });
+      }
+    },
+    [savedFilters],
+  );
+
+  // Очистить все фильтры (и одиночные, и применённые saved).
   const clearFilters = useCallback(() => {
     setActiveFilters([]);
+    setAppliedSavedFilters([]);
   }, []);
 
-  // Применить набор фильтров (из сохранённых/недавних)
+  // Применить saved-фильтр из меню — добавляет его в applied
+  // (показывается одной чипсой), не разворачивает на триплеты.
   const applyFilterSet = useCallback(
     (savedFilter: SavedFilter) => {
-      const newFilters: ActiveFilter[] = savedFilter.filters.map(
-        (f, index) => ({
-          ...f,
-          id: generateFilterId(),
-          label: formatFilterLabel(f, fields),
-          combineWithPrev: index === 0 ? undefined : 'and',
-        }),
-      );
-      setActiveFilters(newFilters);
+      setAppliedSavedFilters(prev => {
+        if (prev.some(f => f.id === savedFilter.id)) return prev;
+        return [...prev, savedFilter];
+      });
 
       // Добавляем в недавние
       setRecentFilters(prev => {
@@ -218,27 +303,23 @@ export function useSearchFilter({
         return updated;
       });
     },
-    [fields, model],
+    [model],
   );
 
-  // Сохранить текущие фильтры в БД
+  // Сохранить текущие активные триплеты в БД (формат — кортежи).
   const saveCurrentFilters = useCallback(
     async (name: string) => {
       if (activeFilters.length === 0) return;
 
-      const triplets: FilterTriplet[] = activeFilters.map(
-        ({ field, operator, value }) => ({
-          field,
-          operator,
-          value,
-        }),
+      const tuples: Array<[string, string, any]> = activeFilters.map(
+        ({ field, operator, value }) => [field, operator, value],
       );
 
       try {
         await createFilter({
           name,
           model_name: model,
-          filter_data: JSON.stringify(triplets),
+          filter_data: JSON.stringify(tuples),
           is_global: false,
           is_default: false,
         }).unwrap();
@@ -301,16 +382,21 @@ export function useSearchFilter({
   );
 
   // Есть ли активные фильтры
-  const hasFilters = useMemo(() => activeFilters.length > 0, [activeFilters]);
+  const hasFilters = useMemo(
+    () => activeFilters.length > 0 || appliedSavedFilters.length > 0,
+    [activeFilters, appliedSavedFilters],
+  );
 
   return {
     activeFilters,
+    appliedSavedFilters,
     recentFilters,
     savedFilters,
     hasFilters,
     addFilter,
     addFilters,
     removeFilter,
+    removeAppliedSavedFilter,
     clearFilters,
     setCombineMode,
     applyFilterSet,

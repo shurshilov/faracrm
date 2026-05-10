@@ -50,6 +50,62 @@ class AttachmentsApp(App):
         await self._init_default_storage(env)
         await self._init_default_routes(env)
         await self._init_polymorphic_rules(env)
+        await self._init_default_saved_filters(env)
+
+    async def _init_default_saved_filters(self, env: "Environment"):
+        """
+        Создаёт дефолтные сохранённые фильтры для модели attachments.
+
+        Фильтр «Мои файлы» применяется при первой загрузке списка
+        /attachments — пользователь видит только записи где он автор
+        (create_user_id == текущий пользователь). Это чисто визуальная
+        фильтрация поверх ACL: фильтр снимается крестиком в панели
+        поиска, и пользователь увидит все доступные ему файлы.
+
+        Подстановка {{user_id}} происходит на фронте при применении
+        savedFilter (см. useSearchFilter), а не на бэке: filter_data
+        хранится как шаблон-строка и одинаковая запись в БД работает
+        для всех пользователей.
+        """
+        import json
+        from backend.base.system.saved_filters.models.saved_filter import (
+            SavedFilter,
+        )
+
+        FILTER_NAME = "Мои файлы"
+        MODEL_NAME = "attachments"
+        FILTER_DATA = [
+            ["create_user_id", "=", "{{user_id}}"],
+        ]
+
+        existing = await env.models.saved_filter.search(
+            filter=[
+                ("model_name", "=", MODEL_NAME),
+                ("name", "=", FILTER_NAME),
+                ("is_global", "=", True),
+            ],
+            limit=1,
+        )
+
+        expected_filter_data = json.dumps(FILTER_DATA)
+
+        if existing:
+            current = existing[0]
+            if current.filter_data == expected_filter_data:
+                # Формат совпадает — ничего не делаем.
+                return
+            await current.delete()
+
+        await env.models.saved_filter.create(
+            payload=SavedFilter(
+                name=FILTER_NAME,
+                model_name=MODEL_NAME,
+                filter_data=expected_filter_data,
+                user_id=None,
+                is_global=True,
+                is_default=True,
+            ),
+        )
 
     async def _init_polymorphic_rules(self, env: "Environment"):
         """
