@@ -406,6 +406,68 @@ class AvitoStrategy(ChatStrategyBase):
 
             return response.content
 
+    async def _get_chat_info(
+        self,
+        connector: "ChatConnector",
+        user_id: str,
+        chat_id: str | None = None,
+    ) -> str | None:
+        """
+        Получить имя клиента из чата.
+
+        API: GET /v2/accounts/{user_id}/chats/{chat_id}
+        """
+        if not chat_id:
+            return None
+
+        url = (
+            f"{connector.connector_url or self.MESSENGER_URL}"
+            f"v2/accounts/{user_id}/chats/{chat_id}"
+        )
+
+        token = await self.get_or_generate_token(connector)
+        headers = {"Authorization": token}
+
+        async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
+            response = await client.get(url, headers=headers)
+
+            if response.status_code == 200:
+                result = response.json()
+                return result
+            return None
+
+    async def get_item_title(
+        self, connector: "ChatConnector", user_id, item_id, chat_id=None
+    ):
+        """Получение заголовка объявления.
+
+        В вебхуке Avito заголовка нет — поэтому идём за ним через
+        v2/accounts/{user_id}/chats/{chat_id}, который возвращает
+        context.value.title (см. swagger).
+        """
+        if not chat_id or not user_id:
+            return ""
+        info = await self._get_chat_info(connector, user_id, chat_id) or {}
+        ctx_value = (info.get("context") or {}).get("value") or {}
+        return ctx_value.get("title") or ""
+
+    async def get_item_info(
+        self, connector: "ChatConnector", user_id, item_id, chat_id=None
+    ):
+        """Один HTTP-вызов — получаем и заголовок, и url объявления.
+
+        В Avito эндпоинт чата возвращает оба поля сразу
+        (context.value.title и context.value.url), что экономит запросы.
+        """
+        if not chat_id or not user_id:
+            return {"title": "", "url": ""}
+        info = await self._get_chat_info(connector, user_id, chat_id) or {}
+        ctx_value = (info.get("context") or {}).get("value") or {}
+        return {
+            "title": ctx_value.get("title") or "",
+            "url": ctx_value.get("url") or "",
+        }
+
     async def get_partner_name(
         self,
         connector: "ChatConnector",

@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     )
     from backend.base.crm.users.models.users import User
     from backend.base.crm.partners.models.contact_type import ContactType
+    from backend.base.crm.leads.models.lead_stage import LeadStage
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,26 @@ class ChatConnector(AuditMixin, DotModel):
 
     # Логирование
     last_response: str | None = Text(description="Последний ответ от API")
+    lead_stage_id: "LeadStage | None" = Many2one(
+        relation_table=lambda: env.models.lead_stage, string="Lead Stage"
+    )
+    outbox_account_id: "ChatExternalAccount | None" = Many2one(
+        relation_table=lambda: env.models.chat_external_account,
+        string="Outbox account",
+        help="Запись chat.external.account, через которую идет интеграция",
+    )
+    # routing_rule_ids = One2many(
+    #     store=False,
+    #     comodel_name="chat.routing.rule",
+    #     inverse_name="connector_id",
+    #     string="Routing rules",
+    #     help=(
+    #         "Правила для автоматического назначения менеджера на лида. "
+    #         "Срабатывают по порядку sequence: первое подходящее правило "
+    #         "становится ответственным за лид. Глобальные правила (без "
+    #         "указанного коннектора) тоже применяются."
+    #     ),
+    # )
 
     # Связанные внешние аккаунты (операторы и клиенты)
     # в основном просто для информации, нигде не используется

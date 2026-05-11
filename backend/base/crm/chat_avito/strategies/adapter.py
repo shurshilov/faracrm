@@ -37,7 +37,7 @@ class AvitoMessageAdapter(ChatMessageAdapter):
 
     @property
     def _payload(self) -> dict:
-        """Получить объект payload.value из сообщения."""
+        """Шорткат получить объект payload.value из сообщения."""
         return self.raw.get("payload", {}).get("value", {})
 
     @property
@@ -60,18 +60,23 @@ class AvitoMessageAdapter(ChatMessageAdapter):
         """ID отправителя сообщения."""
         return str(self._payload.get("author_id", ""))
 
-    @property
-    def user_id(self) -> str:
+    def user_id(self):
         """
         ID пользователя-получателя (владелец webhook).
         Это аккаунт на который зарегистрирован webhook.
         """
-        return str(self._payload.get("user_id", ""))
+        # external_account_id настроен на коннекторе — это надёжнее, чем
+        # тащить значение из payload.
+        return self.connector.external_account_id
+        # return str(self._payload.get("user_id", ""))
 
-    @property
-    def text(self) -> str | None:
-        """Текст сообщения."""
-        return self._content.get("text")
+    # @property
+    # def type(self) -> str:
+    #     """Тип сообщения
+    #     Enum: "text" "image" "system" "item" "call" "link"
+    #     "location" "deleted" "appCall" "file" "video" "voice"
+    #     """
+    #     return self._payload.get("type")
 
     @property
     def message_type(self) -> str:
@@ -98,10 +103,33 @@ class AvitoMessageAdapter(ChatMessageAdapter):
         """ID объявления (только для чатов типа u2i)."""
         return self._payload.get("item_id")
 
+    # @property
+    # def created(self) -> datetime | None:
+    #     """Unix-timestamp времени отправки сообщения.
+
+    #     BUGFIX: ``datetime.fromtimestamp(None)`` валится с TypeError —
+    #     раньше из-за этого падал каждый webhook без таймстампа.
+    #     """
+    #     timestamp = self._payload.get("created")
+    #     if not timestamp:
+    #         return None
+    #     try:
+    #         return datetime.fromtimestamp(int(timestamp))
+    #     except (TypeError, ValueError, OSError) as exc:
+    #         _logger.warning(
+    #             "Avito message: bad created timestamp %r: %s", timestamp, exc
+    #         )
+    #         return None
+
     @property
     def created_at(self) -> int:
         """Unix timestamp создания сообщения."""
         return self._payload.get("created", 0)
+
+    # @property
+    # def id(self) -> str:
+    #     """Уникальный идентификатор сообщения"""
+    #     return self._payload.get("id")
 
     @property
     def author_name(self) -> str | None:
@@ -114,25 +142,45 @@ class AvitoMessageAdapter(ChatMessageAdapter):
         return None
 
     @property
-    def images(self) -> list[str]:
+    def text(self):
+        """Для сообщений типов "appCall" "file" "video"
+        возвращается empty object (данные типы не поддерживаются).
+        """
+        content = self._content
+        if "text" in content:
+            return content.get("text")
+        # Для сообщений типа item Avito не присылает text, но в content
+        # есть item.title — отдадим его как текст, чтобы лента не была
+        # пустой.
+        item = content.get("item") or {}
+        if item.get("title"):
+            return item.get("title")
+        return None
+
+    @property
+    def images(self):
         """
         Список URL изображений.
 
         Avito присылает несколько размеров, выбираем 1280x960.
+
+        Для сообщений типов "appCall" "file" "video"
+        возвращается empty object (данные типы не поддерживаются).
         """
-        image_data = self._content.get("image", {})
-        if not image_data:
-            return []
-
-        sizes = image_data.get("sizes", {})
-        # Предпочитаем размер 1280x960, иначе берём любой доступный
-        url = (
-            sizes.get("1280x960")
-            or sizes.get("640x480")
-            or next(iter(sizes.values()), None)
-        )
-
-        return [url] if url else []
+        content = self._content
+        if "image" not in content:
+            return None
+        image = content.get("image") or {}
+        sizes = image.get("sizes") or {}
+        # пытаемся отдать самый большой доступный размер
+        for size in ("1280x960", "640x480", "140x105", "32x32"):
+            url = sizes.get(size)
+            if url:
+                # в авито в сообщении может быть только одно фото,
+                # но в других интеграциях может быть много →
+                # оборачиваем в список для совместимости с базой
+                return [url]
+        return None
 
     @property
     def files(self) -> list[dict]:
@@ -151,15 +199,24 @@ class AvitoMessageAdapter(ChatMessageAdapter):
 
     @property
     def should_skip(self) -> bool:
-        """
-        Определить нужно ли пропустить обработку сообщения.
+        """Пропускаем сообщения, которые не имеют смысла обрабатывать.
 
-        Пропускаем:
-        - Системные сообщения
-        - Удалённые сообщения
-        - Сообщения типов appCall (не поддерживаются)
+        Раньше базовый ChatMessageAdapter.__init__ просто кидал
+        ValidationError если text и image оба пустые — webhook падал 500
+        и Avito ретраил его до бесконечности.
+        Теперь скип-и для типов вроде appCall/file/video/system/deleted/voice/call/location.
         """
-        skip_types = {"system", "deleted", "appCall"}
+        skip_types = {
+            "appCall",
+            "file",
+            "video",
+            "voice",
+            "call",
+            "system",
+            "deleted",
+            "location",
+            "link",
+        }
         return self.message_type in skip_types
 
     @property
