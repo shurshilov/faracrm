@@ -9,6 +9,7 @@ from .models import (
     ChatExternalAccount,
     ChatExternalChat,
     ChatExternalMessage,
+    ChatRoutingRule,
 )
 from .strategies import (
     ChatStrategyBase,
@@ -38,6 +39,7 @@ __all__ = [
     "ChatExternalAccount",
     "ChatExternalChat",
     "ChatExternalMessage",
+    "ChatRoutingRule",
     # Strategies
     "ChatStrategyBase",
     "ChatMessageAdapter",

@@ -254,7 +254,8 @@ class ChatStrategyBase(ABC):
         3. Создать сообщение
         4. Создать связь с внешним сообщением
         5. Обработать вложения
-        6. Отправить через WebSocket
+        6. Создать/обновить лид по правилам (lead generation)
+        7. Отправить через WebSocket
         """
 
         # 1. Найти или создать ExternalAccount + Contact
@@ -286,6 +287,14 @@ class ChatStrategyBase(ABC):
             )
             if chat_id is None:
                 return
+            # Перечитываем external_chat после создания, чтобы получить
+            # обновлённые поля item_title/item_url для лидогенерации.
+            external_chat = (
+                await env.models.chat_external_chat.find_by_external_id(
+                    external_id=adapter.chat_id,
+                    connector_id=connector.id,
+                )
+            )
 
         # 3. Определяем автора сообщения через contact
         # Если это оператор (есть user_id) - автор user
@@ -324,7 +333,28 @@ class ChatStrategyBase(ABC):
         # 6. Обрабатываем изображения
         await self._process_attachments(connector, adapter, message)
 
-        # 7. Отправляем уведомление через WebSocket
+        # 7. Лидогенерация — только для сообщений от клиента (не операторов)
+        if connector.lead_generation:
+            try:
+                if author_partner_id:
+                    await self._get_or_create_lead(
+                        env=env,
+                        connector=connector,
+                        adapter=adapter,
+                        contact=contact,
+                        external_chat=external_chat,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                # Лидогенерация не должна валить обработку сообщения целиком.
+                logger.warning(
+                    "[%s] Lead generation failed for message %s: %s",
+                    self.strategy_type,
+                    adapter.message_id,
+                    exc,
+                    exc_info=True,
+                )
+
+        # 8. Отправляем уведомление через WebSocket
         author_data = {
             "id": author_user_id or author_partner_id,
             "name": adapter.author_name,
@@ -415,11 +445,18 @@ class ChatStrategyBase(ABC):
             )
             await env.models.chat_member.create(payload=partner_member)
 
+        # Сразу получаем item_title/item_url у стратегии, чтобы записать
+        # их в cache на chat_external_chat (использует и лидогенерация,
+        # и UI). Безопасно: если стратегия не умеет — вернёт пустые.
+        item_title, item_url = await self._fetch_item_info(connector, adapter)
+
         # Создаём связь с внешним чатом и сам внешний чат
         await env.models.chat_external_chat.create_link(
             external_id=adapter.chat_id,
             connector_id=connector.id,
             chat_id=chat_id,
+            item_title=item_title,
+            item_url=item_url,
         )
 
         logger.info(
@@ -468,6 +505,219 @@ class ChatStrategyBase(ABC):
                 logger.error(
                     "[%s] Error downloading file: %s", self.strategy_type, e
                 )
+
+    # Лидогенерация
+    async def _fetch_item_info(
+        self,
+        connector: "ChatConnector",
+        adapter: "ChatMessageAdapter",
+    ) -> tuple[str, str]:
+        """Получить (item_title, item_url) у стратегии.
+
+        Не все коннекторы поддерживают объявления/контекст; такие
+        вернут пустые строки. Avito-стратегия переопределяет
+        `get_item_info` и возвращает реальные данные.
+        """
+        item_title = ""
+        item_url = ""
+        try:
+            user_id = getattr(adapter, "user_id", None)
+            item_id = getattr(adapter, "item_id", None)
+            chat_id = getattr(adapter, "chat_id", None)
+            # user_id может быть методом — это известно для Avito-адаптера
+            # if callable(user_id):
+            #     user_id = user_id()
+            get_item_info = getattr(self, "get_item_info", None)
+            if get_item_info is not None and chat_id:
+                info = (
+                    await get_item_info(
+                        connector, user_id, item_id, chat_id=chat_id
+                    )
+                    or {}
+                )
+                item_title = info.get("title") or ""
+                item_url = info.get("url") or ""
+            else:
+                # Fallback на отдельный get_item_url, если стратегия даёт только его.
+                if item_id:
+                    item_url = (
+                        await self.get_item_url(connector, user_id, item_id)
+                        or ""
+                    )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[%s] Cannot fetch item info: %s",
+                self.strategy_type,
+                exc,
+            )
+        return item_title, item_url
+
+    def _build_routing_payload(
+        self,
+        adapter: "ChatMessageAdapter",
+        contact: "Contact",
+        item_title: str,
+        item_url: str,
+        partner_name: str = "",
+    ) -> dict:
+        """Сформировать словарь для проверки правил маршрутизации.
+
+        Структура (item_title, message_text, item_url,
+        partner_name) — это позволяет администратору применять одни и
+        те же правила между системами.
+        """
+        if not partner_name and contact and contact.partner_id:
+            # Может быть stub — name не загружен; не страшно, fallback ниже.
+            partner_name = getattr(contact.partner_id, "name", None) or ""
+        if not partner_name:
+            partner_name = getattr(adapter, "author_name", None) or ""
+        return {
+            "item_title": item_title or "",
+            "message_text": adapter.text or "",
+            "item_url": item_url or "",
+            "partner_name": partner_name,
+        }
+
+    async def _get_or_create_lead(
+        self,
+        env: "Environment",
+        connector: "ChatConnector",
+        adapter: "ChatMessageAdapter",
+        contact: "Contact",
+        external_chat,
+    ):
+        """Создать или найти существующий лид для входящего сообщения.
+
+        Логика:
+        - имя лида = item_title (заголовок объявления) или partner.name;
+        - ищем существующий лид по (parent_id, connector_id);
+        - если у найденного лида другой website (item_url) — создаём новый
+          (клиент пишет по другому объявлению — это другой лид);
+        - применяем правила chat_routing_rule если включено
+          `connector.lead_distribution`.
+        """
+        partner = contact.partner_id if contact else None
+        if not partner:
+            # Без партнёра-клиента создавать лид бессмысленно.
+            return None
+
+        # partner здесь может быть "stub" (только id, без полей) — дочерние
+        # поля типа .name не подгружаются автоматически. Поэтому если name
+        # пустое — догружаем явно из БД (один лёгкий запрос).
+        partner_name = partner.name
+        # partner_name = getattr(partner, "name", None)
+        # if not partner_name:
+        #     loaded_partners = await env.models.partner.search(
+        #         filter=[("id", "=", partner.id)],
+        #         fields=["id", "name"],
+        #         limit=1,
+        #     )
+        #     if loaded_partners:
+        #         partner_name = loaded_partners[0].name or ""
+        #     else:
+        #         partner_name = ""
+
+        # item_title / item_url — из кеша chat_external_chat
+        item_title = ""
+        item_url = ""
+        if external_chat:
+            item_title = (external_chat.item_title or "").strip()
+            item_url = (external_chat.item_url or "").strip()
+
+        # Ищем существующий лид по (parent_id, connector_id) — берём свежий
+        existing_leads = await env.models.lead.search(
+            filter=[
+                ("parent_id", "=", partner.id),
+                ("connector_id", "=", connector.id),
+            ],
+            fields=["id", "website", "name"],
+            sort="id",
+            order="DESC",
+            limit=1,
+        )
+        existing_lead = existing_leads[0] if existing_leads else None
+
+        # Если у найденного лида другой website — этот клиент пишет по
+        # другому объявлению, создаём новый лид.
+        if (
+            existing_lead
+            and item_url
+            and existing_lead.website
+            and existing_lead.website != item_url
+        ):
+            existing_lead = None
+
+        if existing_lead:
+            # Обновим website если он появился позже
+            if item_url and existing_lead.website != item_url:
+                await existing_lead.update(env.models.lead(website=item_url))
+            return existing_lead
+
+        # Имя лида: заголовок объявления или имя партнёра.
+        fallback_name = (
+            partner_name
+            or getattr(adapter, "author_name", None)
+            or f"Lead {connector.name or connector.type}"
+        )
+        lead_name = item_title or fallback_name
+
+        # Правила маршрутизации
+        assigned_user = None
+        assigned_team = None
+        if connector.lead_distribution:
+            try:
+                rule_user, rule = (
+                    await env.models.chat_routing_rule.find_user_for(
+                        connector.id,
+                        self._build_routing_payload(
+                            adapter,
+                            contact,
+                            item_title,
+                            item_url,
+                            partner_name=partner_name,
+                        ),
+                    )
+                )
+                if rule_user:
+                    assigned_user = rule_user
+                    if rule and rule.team_id:
+                        assigned_team = rule.team_id
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "[%s] Routing rule evaluation failed: %s",
+                    self.strategy_type,
+                    exc,
+                )
+
+        # Собираем payload для нового лида
+        lead_payload = {
+            "name": lead_name,
+            "type": connector.lead_type or "opportunity",
+            "parent_id": partner,
+            "connector_id": env.models.chat_connector(id=connector.id),
+            "website": item_url or None,
+            "notes": (
+                f"Создан из сообщения {adapter.message_id} ({connector.name})"
+            ),
+        }
+        if assigned_user:
+            lead_payload["user_id"] = assigned_user
+        if assigned_team:
+            lead_payload["team_id"] = assigned_team
+        if connector.lead_stage_id:
+            lead_payload["stage_id"] = connector.lead_stage_id
+
+        new_lead = env.models.lead(**lead_payload)
+        new_lead.id = await env.models.lead.create(payload=new_lead)
+        logger.info(
+            "[%s] Created lead %s (name=%r) for partner %s via connector %s",
+            self.strategy_type,
+            new_lead.id,
+            lead_name,
+            partner.id,
+            connector.id,
+        )
+        return new_lead
 
     # ========================================================================
     # Дополнительные методы

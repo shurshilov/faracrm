@@ -148,7 +148,11 @@
       "leadType": "Тип лида",
       "lastResponse": "Последний ответ",
       "createDate": "Дата создания",
-      "writeDate": "Дата изменения"
+      "writeDate": "Дата изменения",
+      "leadGenerationDistribution": "Распределение лидов",
+      "leadGeneration": "Генерация лидов",
+      "leadStage": "Начальная стадия для лидов",
+      "routingRules": "Правила распределения лидов"
     },
     "tabs": {
       "connection": "Подключение",
@@ -158,6 +162,7 @@
       "logs": "Логи"
     },
     "groups": {
+      "routingRules": "Роутинг лидов",
       "api": "Настройки API",
       "webhook": "Webhook",
       "webhookSettings": "Настройки Webhook",

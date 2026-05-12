@@ -4,6 +4,7 @@ if TYPE_CHECKING:
     from backend.base.crm.company.models.company import Company
     from backend.base.crm.users.models.users import User
     from backend.base.crm.partners.models.partners import Partner
+    from backend.base.crm.chat.models.chat_connector import ChatConnector
     from .lead_stage import LeadStage
 
 from ...partners.models.contact import Contact
@@ -60,10 +61,19 @@ class Lead(AuditMixin, PolymorphicParentMixin):
         default="lead",
         string="Type",
     )
-    # website: str = Char(string="Website URL")
-    # email: str = Char(string="Email")
-    # phone: str = Char(string="phone")
-    # mobile: str = Char(string="mobile")
+
+    connector_id: "ChatConnector | None" = Many2one(
+        relation_table=lambda: env.models.chat_connector,
+        string="Connector",
+        ondelete="set null",
+        description="Коннектор, через который создан лид",
+    )
+
+    website: str | None = Char(
+        max_length=500,
+        string="Website URL",
+        description="URL объявления / контекста лида",
+    )
 
     # Контакты (телефоны, email, telegram и т.д.)
     # Внешние аккаунты доступны через contact_ids.external_account_ids

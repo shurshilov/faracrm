@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat_external_account import (
         ChatExternalAccount,
     )
+    from backend.base.crm.chat.models.chat_routing_rule import ChatRoutingRule
     from backend.base.crm.users.models.users import User
     from backend.base.crm.partners.models.contact_type import ContactType
     from backend.base.crm.leads.models.lead_stage import LeadStage
@@ -157,28 +158,46 @@ class ChatConnector(AuditMixin, DotModel):
         description="Тип создаваемых лидов",
     )
 
+    lead_stage_id: "LeadStage | None" = Many2one(
+        relation_table=lambda: env.models.lead_stage,
+        ondelete="set null",
+        description="Стадия по умолчанию для создаваемых лидов",
+    )
+
+    lead_generation: bool = Boolean(
+        default=True,
+        description=("Включить лидогенерацию"),
+    )
+
+    lead_distribution: bool = Boolean(
+        default=True,
+        description=(
+            "Применять правила маршрутизации (chat_routing_rule) при "
+            "создании лида для автоматического назначения ответственного."
+        ),
+    )
+
+    # пока не используется
+    lead_set_date_deadline: bool = Boolean(
+        default=False,
+        description=(
+            "Если включено, при создании лида проставляется ожидаемая "
+            "дата закрытия (дата сообщения)."
+        ),
+    )
+
     # Логирование
     last_response: str | None = Text(description="Последний ответ от API")
-    lead_stage_id: "LeadStage | None" = Many2one(
-        relation_table=lambda: env.models.lead_stage, string="Lead Stage"
-    )
+
     outbox_account_id: "ChatExternalAccount | None" = Many2one(
         relation_table=lambda: env.models.chat_external_account,
-        string="Outbox account",
-        help="Запись chat.external.account, через которую идет интеграция",
+        ondelete="set null",
+        description=(
+            "Запись chat_external_account, через которую идёт интеграция "
+            "(outbox-аккаунт магазина/бота). Создаётся автоматически при "
+            "заполнении external_account_id."
+        ),
     )
-    # routing_rule_ids = One2many(
-    #     store=False,
-    #     comodel_name="chat.routing.rule",
-    #     inverse_name="connector_id",
-    #     string="Routing rules",
-    #     help=(
-    #         "Правила для автоматического назначения менеджера на лида. "
-    #         "Срабатывают по порядку sequence: первое подходящее правило "
-    #         "становится ответственным за лид. Глобальные правила (без "
-    #         "указанного коннектора) тоже применяются."
-    #     ),
-    # )
 
     # Связанные внешние аккаунты (операторы и клиенты)
     # в основном просто для информации, нигде не используется
@@ -187,6 +206,18 @@ class ChatConnector(AuditMixin, DotModel):
         relation_table=lambda: env.models.chat_external_account,
         relation_table_field="connector_id",
         description="Аккаунты в этом коннекторе",
+    )
+
+    # Правила маршрутизации лидов (lead -> user) для этого коннектора.
+    routing_rule_ids: list["ChatRoutingRule"] = One2many(
+        store=False,
+        relation_table=lambda: env.models.chat_routing_rule,
+        relation_table_field="connector_id",
+        description=(
+            "Правила автоматического назначения менеджера на лида. "
+            "Срабатывают по порядку sequence: первое подходящее правило "
+            "становится ответственным за лид."
+        ),
     )
 
     # Операторы коннектора (Many2many с User)
@@ -217,7 +248,7 @@ class ChatConnector(AuditMixin, DotModel):
     async def create(self, payload: Self, session=None) -> int:
         """
         Создание коннектора с автоматическим созданием ChatExternalAccount
-        для назначенных операторов.
+        для назначенных операторов и outbox-аккаунта коннектора.
         """
         # Создаём коннектор (Many2many operator_ids заполнится автоматически)
         self.id = await super().create(payload=payload, session=session)
@@ -229,15 +260,22 @@ class ChatConnector(AuditMixin, DotModel):
         if new_operator_ids:
             await self._sync_operators(self.id, [], new_operator_ids)
 
+        # Создаём outbox-аккаунт (обязательно, если задан external_account_id)
+        await self._ensure_outbox_account()
+
         return self.id
 
     @hybridmethod
     async def update(self, payload, fields=None, session=None):
         """
-        Обновление коннектора с синхронизацией Contact для операторов.
+        Обновление коннектора с синхронизацией Contact для операторов
+        и outbox-аккаунта.
         """
         # Проверяем, изменяются ли операторы
         has_operator_changes = fields and "operator_ids" in fields
+        has_external_account_change = (
+            fields and "external_account_id" in fields
+        )
 
         old_operator_ids = []
         if has_operator_changes:
@@ -254,6 +292,10 @@ class ChatConnector(AuditMixin, DotModel):
                     self.id, old_operator_ids, new_operator_ids
                 )
 
+        # Если поменялся external_account_id — синхронизируем outbox-аккаунт.
+        if has_external_account_change:
+            await self._ensure_outbox_account()
+
         return result
 
     async def _get_current_operator_ids(self) -> list[int]:
@@ -265,6 +307,68 @@ class ChatConnector(AuditMixin, DotModel):
         session = env.apps.db.get_session()
         result = await session.execute(query, [self.id], cursor="fetch")
         return [row["user_id"] for row in result]
+
+    async def _ensure_outbox_account(self) -> None:
+        """Создать (или найти) outbox-аккаунт коннектора и привязать в outbox_account_id.
+
+        Идемпотентно. Если external_account_id пустой — outbox не создаётся.
+        Если уже существует запись chat_external_account с таким external_id
+        и connector_id — используем её. Иначе создаём новую.
+        """
+
+        if not self.external_account_id:
+            return
+
+        # Ищем существующий
+        existing_accounts = await env.models.chat_external_account.search(
+            filter=[
+                ("connector_id", "=", self.id),
+                ("external_id", "=", self.external_account_id),
+            ],
+            fields=["id"],
+            limit=1,
+        )
+
+        if existing_accounts:
+            outbox_id = existing_accounts[0].id
+        else:
+            # Создаём новую запись chat_external_account для outbox.
+            # contact_id остаётся пустым — outbox не привязан к конкретному
+            # контакту/пользователю, через него пишут все сотрудники.
+            new_account = env.models.chat_external_account(
+                name=f"Outbox: {self.name or self.type or 'connector'}",
+                external_id=self.external_account_id,
+                connector_id=env.models.chat_connector(id=self.id),
+                active=True,
+            )
+            outbox_id = await env.models.chat_external_account.create(
+                payload=new_account
+            )
+            logger.info(
+                "Created outbox account %s for connector %s",
+                outbox_id,
+                self.id,
+            )
+
+        # Привязываем к коннектору. Идём через super().update чтобы не
+        # запустить рекурсивный _ensure_outbox_account.
+        current = await self.search(
+            filter=[("id", "=", self.id)],
+            fields=["id", "outbox_account_id"],
+            limit=1,
+        )
+        if current and (
+            not current[0].outbox_account_id
+            or current[0].outbox_account_id.id != outbox_id
+        ):
+            await super(ChatConnector, current[0]).update(
+                ChatConnector(
+                    outbox_account_id=env.models.chat_external_account(
+                        id=outbox_id
+                    )
+                ),
+                fields=["outbox_account_id"],
+            )
 
     async def _sync_operators(
         self, connector_id: int, old_ids: list[int], new_ids: list[int]

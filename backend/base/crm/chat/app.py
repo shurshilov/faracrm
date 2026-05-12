@@ -36,7 +36,7 @@ class ChatApp(Service):
         "license": "FARA CRM License v1.0",
         "post_init": True,
         "service": True,
-        "depends": ["security", "users", "attachments", "db"],
+        "depends": ["security", "users", "attachments", "db", "leads"],
         "sequence": 90,
     }
 
@@ -51,6 +51,7 @@ class ChatApp(Service):
         "chat_external_account": ACL.FULL,
         "chat_external_chat": ACL.FULL,
         "chat_external_message": ACL.FULL,
+        "chat_routing_rule": ACL.FULL,
     }
 
     async def startup(self, app: "FastAPI"):

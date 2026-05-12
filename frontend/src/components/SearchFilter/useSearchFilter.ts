@@ -147,8 +147,7 @@ export function useSearchFilter({
   // рендеры savedFilters (RTK кеш отдаёт новый массив при инвалидации).
   // Если пользователь сам убрал default крестиком — он остался
   // в БД с is_default, но НЕ в applied; чтобы не возвращать его сразу,
-  // запоминаем «отменённые» по id (живёт только до перезагрузки страницы —
-  // как в Odoo).
+  // запоминаем «отменённые» по id (живёт только до перезагрузки страницы
   const [dismissedDefaults, setDismissedDefaults] = useState<Set<string>>(
     () => new Set(),
   );
@@ -169,10 +168,7 @@ export function useSearchFilter({
   // Сборка FilterExpression: сначала все триплеты из applied saved-фильтров,
   // потом одиночные. Все соединяются через AND.
   const buildFilterExpression = useCallback(
-    (
-      saved: SavedFilter[],
-      singles: ActiveFilter[],
-    ): FilterExpression => {
+    (saved: SavedFilter[], singles: ActiveFilter[]): FilterExpression => {
       const result: FilterExpression = [];
       const pushTriplet = (t: { field: string; operator: any; value: any }) => {
         if (result.length > 0) result.push('and');

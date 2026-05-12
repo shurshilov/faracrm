@@ -148,7 +148,11 @@
       "leadType": "Lead Type",
       "lastResponse": "Last Response",
       "createDate": "Created",
-      "writeDate": "Modified"
+      "writeDate": "Modified",
+      "leadGenerationDistribution": "Lead distribution",
+      "leadGeneration": "Lead generation",
+      "leadStage": "Lead stage",
+      "routingRules": "Routing rules"
     },
     "tabs": {
       "connection": "Connection",
@@ -158,6 +162,7 @@
       "logs": "Logs"
     },
     "groups": {
+      "routingRules": "Lead routing rules",
       "api": "API Settings",
       "webhook": "Webhook",
       "webhookSettings": "Webhook Settings",

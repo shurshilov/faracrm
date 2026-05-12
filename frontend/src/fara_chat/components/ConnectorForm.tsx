@@ -15,6 +15,7 @@ import {
   IconLink,
   IconWebhook,
   IconUsers,
+  IconFilter,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 
@@ -22,7 +23,8 @@ import { useTranslation } from 'react-i18next';
  * Базовая форма коннектора чата.
  *
  * Содержит только общие поля для всех типов коннекторов.
- * Специфичные поля (Telegram, Email и т.д.) добавляются через расширения.
+ * Специфичные поля (Telegram, Avito, Email и т.д.) добавляются через
+ * расширения (registerExtension в соответствующем fara_chat_<type>).
  * WebhookSection добавляется через расширение в таб webhooks.
  */
 export function ConnectorForm(props: ViewFormProps) {
@@ -43,6 +45,17 @@ export function ConnectorForm(props: ViewFormProps) {
             label={t('connector.fields.contactType')}
           />
           <Field name="category" label={t('connector.fields.category')} />
+        </FormRow>
+        <FormRow cols={1}>
+          {/* Outbox-аккаунт: запись chat_external_account, через которую
+              идёт интеграция. Создаётся автоматически в backend.create()
+              при заполнении external_account_id; здесь показываем "куда
+              привязан коннектор" — read-only, не computed. */}
+          <Field
+            name="outbox_account_id"
+            label={t('connector.fields.outboxAccount', 'Outbox account')}
+            readOnly
+          />
         </FormRow>
       </FormSheet>
 
@@ -86,15 +99,64 @@ export function ConnectorForm(props: ViewFormProps) {
           {/* Контент добавляется через расширения */}
         </FormTab>
 
-        {/* Настройки */}
+        {/* Настройки CRM / лидогенерация */}
         <FormTab
           name="crm"
           label={t('connector.tabs.crm')}
           icon={<IconSettings size={16} />}>
           <FormSection title={t('connector.groups.leadSettings')}>
-            <FormRow cols={1}>
+            <FormRow cols={2}>
               <Field name="lead_type" label={t('connector.fields.leadType')} />
+              <Field
+                name="lead_stage_id"
+                label={t('connector.fields.leadStage', 'Lead Stage (default)')}
+              />
             </FormRow>
+            <FormRow cols={2}>
+              <Field
+                name="lead_generation"
+                label={t(
+                  'connector.fields.leadGeneration',
+                  'Enable lead generation',
+                )}
+              />
+              <Field
+                name="lead_distribution"
+                label={t(
+                  'connector.fields.leadGenerationDistribution',
+                  'Apply routing rules',
+                )}
+              />
+              {/* <Field
+                name="lead_set_date_deadline"
+                label={t(
+                  'connector.fields.leadSetDateDeadline',
+                  'Set expected closing date',
+                )}
+              /> */}
+            </FormRow>
+          </FormSection>
+        </FormTab>
+
+        {/* Правила маршрутизации лидов */}
+        <FormTab
+          name="routing"
+          label={t('connector.tabs.routing', 'Routing rules')}
+          icon={<IconFilter size={16} />}>
+          <FormSection
+            title={t('connector.groups.routingRules', 'Lead routing rules')}>
+            <Field
+              name="routing_rule_ids"
+              label={t('connector.fields.routingRules', 'Routing rules')}>
+              <Field name="sequence" />
+              <Field name="name" />
+              <Field name="field_name" />
+              <Field name="condition" />
+              <Field name="value" />
+              <Field name="user_id" />
+              <Field name="team_id" />
+              <Field name="active" />
+            </Field>
           </FormSection>
         </FormTab>
 

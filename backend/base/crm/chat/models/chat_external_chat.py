@@ -54,6 +54,16 @@ class ChatExternalChat(DotModel):
         description="Внутренний чат FARA CRM",
     )
 
+    # Кеш для Avito и подобных площадок
+    item_title: str | None = Char(
+        max_length=500,
+        description="Заголовок объявления/контекста (для Avito и т.п.)",
+    )
+    item_url: str | None = Char(
+        max_length=500,
+        description="URL объявления/контекста (для Avito и т.п.)",
+    )
+
     # Временные метки
     create_datetime: datetime = Datetime(
         default=lambda: datetime.now(timezone.utc)
@@ -69,7 +79,7 @@ class ChatExternalChat(DotModel):
                 ("external_id", "=", external_id),
                 ("connector_id", "=", connector_id),
             ],
-            fields=["chat_id"],
+            fields=["chat_id", "item_title", "item_url"],
             limit=1,
         )
 
@@ -77,7 +87,12 @@ class ChatExternalChat(DotModel):
 
     @hybridmethod
     async def create_link(
-        self, external_id: str, connector_id: int, chat_id: int
+        self,
+        external_id: str,
+        connector_id: int,
+        chat_id: int,
+        item_title: str | None = None,
+        item_url: str | None = None,
     ):
         """
         Создать связь между внешним и внутренним чатом.
@@ -86,6 +101,8 @@ class ChatExternalChat(DotModel):
             external_id=external_id,
             connector_id=env.models.chat_connector(id=connector_id),
             chat_id=env.models.chat(id=chat_id),
+            item_title=item_title,
+            item_url=item_url,
         )
 
         link.id = await self.create(payload=link)

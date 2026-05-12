@@ -143,6 +143,7 @@ export const modelsConfig: Record<string, ModelConfig> = {
     // Модули расширяющие форму коннектора
     extensions: [
       () => import('@/fara_chat_telegram'),
+      () => import('@/fara_chat_avito'),
       () => import('@/fara_chat_email'),
     ],
   },
@@ -178,6 +179,23 @@ export const modelsConfig: Record<string, ModelConfig> = {
       import('@/fara_chat/components/ExternalMessageViews').then(m => ({
         default: m.ViewFormExternalMessage,
       })),
+  },
+  // Generic-конфиг — формы рендерятся через стандартный Generic компонент,
+  // отдельная страница не обязательна, правила в основном редактируются
+  // через таб "Routing rules" внутри chat_connector.
+  chat_routing_rule: {
+    menu: MenuGroups.communication,
+    fields: [
+      'sequence',
+      'name',
+      'connector_id',
+      'field_name',
+      'condition',
+      'value',
+      'user_id',
+      'team_id',
+      'active',
+    ],
   },
   lead_stage: {
     menu: MenuGroups.crm,
