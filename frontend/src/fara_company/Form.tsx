@@ -14,6 +14,7 @@ import {
   IconPhoto,
   IconTextCaption,
   IconShare,
+  IconWindowMaximize,
 } from '@tabler/icons-react';
 
 /**
@@ -47,6 +48,27 @@ export function ViewFormCompany(props: ViewFormProps) {
               <Field name="logo_id" label="Логотип CRM" />
               <Field name="login_logo_id" label="Логотип входа" />
               <Field name="login_background_id" label="Фон страницы входа" />
+            </FormRow>
+          </FormSection>
+
+          <FormSection
+            title="Вкладка браузера и PWA"
+            icon={<IconWindowMaximize size={18} />}>
+            {/* favicon_id — иконка во вкладке браузера и в PWA-манифесте.
+                Рекомендуется PNG/SVG, квадратный (например 512×512), прозрачный фон.
+                app_title — заголовок вкладки и name/short_name PWA.
+                Если поля пусты — берётся значение из index.html (F.A.R.A.).
+
+                ⚠️ Уже установленные PWA не обновят иконку/имя автоматически —
+                ОС кеширует их при установке. Меняется только то, что видно
+                в открытой вкладке браузера и при свежей установке PWA. */}
+            <FormRow cols={2}>
+              <Field name="favicon_id" label="Фавикон (иконка вкладки/PWA)" />
+              <Field
+                name="app_title"
+                label="Название во вкладке/PWA"
+                placeholder="F.A.R.A."
+              />
             </FormRow>
           </FormSection>
 

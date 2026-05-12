@@ -20,6 +20,11 @@ export interface BrandingConfig {
   has_login_logo: boolean;
   /** Загружен ли фон для login-страницы */
   has_login_background: boolean;
+  /** Загружен ли кастомный фавикон (иконка вкладки + PWA) */
+  has_favicon: boolean;
+  /** Кастомный <title> приложения и name/short_name в PWA-манифесте.
+   *  null → используется значение из index.html. */
+  app_title: string | null;
   /** Заголовок на странице входа (если задан в Company) */
   login_title: string | null;
   /** Подзаголовок (под логотипом) на странице входа */
@@ -41,7 +46,8 @@ export interface PublicConfig {
 export type BrandingFileField =
   | 'logo_id'
   | 'login_logo_id'
-  | 'login_background_id';
+  | 'login_background_id'
+  | 'favicon_id';
 
 export function brandingFileUrl(field: BrandingFileField): string {
   return `${API_BASE_URL}/public/branding/${field}`;

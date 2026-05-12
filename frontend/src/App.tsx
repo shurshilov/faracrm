@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Layout } from '@/layout/Layout';
 import { theme } from './theme';
 import { ApiErrorModal } from './components/ErrorModal/ErrorModal';
+import { BrandingHead } from './components/BrandingHead';
 // import { ApiErrorModal } from './components/ErrorModal';
 
 export default function App() {
@@ -20,6 +21,10 @@ export default function App() {
       <DatesProvider settings={{ locale: datesLocale, firstDayOfWeek: 1 }}>
         <Notifications position="bottom-right" zIndex={1000} />
         <Provider store={store}>
+          {/* Подменяет favicon, <title> и PWA-манифест в рантайме под
+              настройки текущей компании (Company.favicon_id / Company.app_title).
+              Должен жить внутри <Provider>, т.к. использует RTK Query. */}
+          <BrandingHead />
           <BrowserRouter>
             <Layout />
             <ApiErrorModal />

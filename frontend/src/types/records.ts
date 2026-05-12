@@ -192,6 +192,10 @@ export interface CompanyRecord extends BaseRecord {
   logo_id: RelationRecord | null;
   login_logo_id: RelationRecord | null;
   login_background_id: RelationRecord | null;
+  // Кастомный фавикон (вкладка браузера + иконка PWA).
+  favicon_id: RelationRecord | null;
+  // Кастомный <title> приложения и name/short_name PWA-манифеста.
+  app_title: string | null;
   login_title: string | null;
   login_subtitle: string | null;
   login_button_color: string | null;

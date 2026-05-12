@@ -60,6 +60,21 @@ class Company(DotModel):
     login_background_id: "Attachment | None" = PolymorphicMany2one(
         relation_table=Attachment,
     )
+    # Кастомный фавикон вкладки браузера и иконка PWA. Если пусто —
+    # используется встроенный /logo-mark.svg / /icon-512.png из public/.
+    favicon_id: "Attachment | None" = PolymorphicMany2one(
+        relation_table=Attachment,
+    )
+
+    # Кастомный <title> приложения и name/short_name в PWA-манифесте.
+    # Если пусто — используется значение из index.html ("F.A.R.A.").
+    app_title: str | None = Char(
+        string="App title",
+        help=(
+            "Заголовок вкладки браузера и имя PWA. "
+            "Если пусто — используется значение из index.html."
+        ),
+    )
 
     # Тексты на странице входа
     login_title: str | None = Char(

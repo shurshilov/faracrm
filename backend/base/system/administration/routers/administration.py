@@ -55,6 +55,11 @@ class BrandingConfig(BaseModel):
     has_logo: bool = False
     has_login_logo: bool = False
     has_login_background: bool = False
+    # Кастомный фавикон для вкладки браузера и иконки PWA.
+    has_favicon: bool = False
+    # Кастомный <title> приложения и name/short_name PWA-манифеста.
+    # None → фронт оставляет значение из index.html.
+    app_title: str | None = None
     login_title: str | None = None
     login_subtitle: str | None = None
     login_button_color: str | None = None
@@ -85,6 +90,8 @@ async def _get_first_company():
             "logo_id",
             "login_logo_id",
             "login_background_id",
+            "favicon_id",
+            "app_title",
             "login_title",
             "login_subtitle",
             "login_button_color",
@@ -100,6 +107,7 @@ async def _get_first_company():
             "logo_id": ["id"],
             "login_logo_id": ["id"],
             "login_background_id": ["id"],
+            "favicon_id": ["id"],
         },
     )
     return companies[0] if companies else None
@@ -134,6 +142,8 @@ async def public_config():
             has_logo=bool(company.logo_id),
             has_login_logo=bool(company.login_logo_id),
             has_login_background=bool(company.login_background_id),
+            has_favicon=bool(company.favicon_id),
+            app_title=company.app_title or None,
             login_title=company.login_title or None,
             login_subtitle=company.login_subtitle or None,
             login_button_color=company.login_button_color or None,
@@ -148,7 +158,9 @@ async def public_config():
 
 @router_public.get("/public/branding/{field}")
 async def branding_file(
-    field: Literal["logo_id", "login_logo_id", "login_background_id"],
+    field: Literal[
+        "logo_id", "login_logo_id", "login_background_id", "favicon_id"
+    ],
 ):
     """Публичная отдача файла из Company.<field>.
 
