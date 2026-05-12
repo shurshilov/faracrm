@@ -549,6 +549,14 @@ const chatApi = api.injectEndpoints({
       query: ({ connectorId }) => `/connectors/${connectorId}/webhook/info`,
     }),
 
+    // Get self account info from external provider (e.g. Avito)
+    getConnectorSelfAccount: build.query<
+      { data: Record<string, unknown> },
+      { connectorId: number }
+    >({
+      query: ({ connectorId }) => `/connectors/${connectorId}/account/self`,
+    }),
+
     // Delete connector
     deleteConnector: build.mutation<
       { success: boolean },
@@ -924,6 +932,7 @@ export const {
   useSetConnectorWebhookMutation,
   useUnsetConnectorWebhookMutation,
   useLazyGetConnectorWebhookInfoQuery,
+  useLazyGetConnectorSelfAccountQuery,
 } = chatApi;
 
 export const {

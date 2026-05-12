@@ -418,7 +418,10 @@ export function ChatPage({
   return (
     <Box
       className={styles.container}
-      style={{ height: 'calc(100vh - 50px - 2 * var(--mantine-spacing-md))' }}>
+      // height: 100% — наследуем от AppShell.Main (height: 100dvh, padding-bottom: 0).
+      // Раньше было calc(100vh - 50px - 2*md): на мобильном 100vh > 100dvh пока
+      // видна адресная строка, и нижняя часть с input уезжала за viewport.
+      style={{ height: '100%' }}>
       {/* Chat list sidebar */}
       <Box
         className={`${styles.sidebar} ${isMobile && !showSidebar ? styles.hidden : ''}`}>

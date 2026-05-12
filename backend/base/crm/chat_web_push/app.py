@@ -122,6 +122,8 @@ class ChatWebPushApp(App):
                 category="notification",
                 active=True,
                 notify=True,
+                lead_generation=False,
+                lead_distribution=False,
                 contact_type_id=ct[0] if ct else None,
                 client_app_id=public_b64,  # VAPID public key
                 access_token=private_b64,  # VAPID private key (raw base64url)

@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ChatRoutingRule(DotModel):
+class ChatRoutingRuleLead(DotModel):
     """Правила автоматического назначения менеджера по лиду.
 
     Когда приходит сообщение и формируется лид, система проходит по
@@ -37,7 +37,7 @@ class ChatRoutingRule(DotModel):
         Если в тексте сообщения есть "касса" — назначать на user Y.
     """
 
-    __table__ = "chat_routing_rule"
+    __table__ = "chat_routing_rule_lead"
 
     id: int = Integer(primary_key=True)
     name: str = Char(
@@ -130,7 +130,7 @@ class ChatRoutingRule(DotModel):
     @hybridmethod
     async def find_user_for(
         self, connector_id: int | None, payload: dict
-    ) -> tuple["User | None", "ChatRoutingRule | None"]:
+    ) -> tuple["User | None", "ChatRoutingRuleLead | None"]:
         """Найти ответственного менеджера для лида по правилам.
 
         Args:

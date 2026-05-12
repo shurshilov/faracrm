@@ -51,7 +51,7 @@ class ChatApp(Service):
         "chat_external_account": ACL.FULL,
         "chat_external_chat": ACL.FULL,
         "chat_external_message": ACL.FULL,
-        "chat_routing_rule": ACL.FULL,
+        "chat_routing_rule_lead": ACL.FULL,
     }
 
     async def startup(self, app: "FastAPI"):

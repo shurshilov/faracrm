@@ -3,6 +3,22 @@
   height: 100%;
   width: 100%;
   overflow: hidden;
+  /*
+   * КРИТИЧНО: создаём containing block для .sidebar (position: absolute на мобиле).
+   *
+   * Без этого .sidebar ищет ближайшего positioned-предка и не находит его
+   * (.main, AppShell-root и .container — все position: static), поэтому
+   * фолбэчится на initial containing block = viewport. В результате:
+   *   - top: 0 уезжает под AppShell.Header → шапка ChatList (поиск, заголовок)
+   *     скрывается за глобальной шапкой;
+   *   - bottom: 0 = низ viewport, а 100vh > 100dvh на iOS пока виден address bar,
+   *     поэтому хвост списка уходит за видимую область, а .main с
+   *     overflow: hidden его клипает (визуально — «нет пагинации»).
+   *
+   * С position: relative .sidebar занимает ровно высоту .container,
+   * а .container уже сидит внутри контентной области .main (под шапкой).
+   */
+  position: relative;
 }
 
 .sidebar {

@@ -593,7 +593,7 @@ class ChatStrategyBase(ABC):
         - ищем существующий лид по (parent_id, connector_id);
         - если у найденного лида другой website (item_url) — создаём новый
           (клиент пишет по другому объявлению — это другой лид);
-        - применяем правила chat_routing_rule если включено
+        - применяем правила chat_routing_rule_lead если включено
           `connector.lead_distribution`.
         """
         partner = contact.partner_id if contact else None
@@ -667,7 +667,7 @@ class ChatStrategyBase(ABC):
         if connector.lead_distribution:
             try:
                 rule_user, rule = (
-                    await env.models.chat_routing_rule.find_user_for(
+                    await env.models.chat_routing_rule_lead.find_user_for(
                         connector.id,
                         self._build_routing_payload(
                             adapter,
@@ -734,6 +734,22 @@ class ChatStrategyBase(ABC):
             Словарь с информацией о webhook
         """
         return {}
+
+    async def get_self_account_id(self, connector: "ChatConnector") -> dict:
+        """
+        Получить информацию об аккаунте от внешнего сервиса.
+
+        Конкретные стратегии (Avito) переопределяют — возвращают данные
+        текущего аккаунта (id, name, email, phone, profile_url и т.п.),
+        чтобы пользователь мог скопировать `external_account_id` при
+        настройке коннектора.
+
+        Returns:
+            Словарь с данными аккаунта от провайдера.
+        """
+        raise NotImplementedError(
+            f"get_self_account_id not supported for {self.strategy_type}"
+        )
 
     async def chat_send_message_binary(
         self,

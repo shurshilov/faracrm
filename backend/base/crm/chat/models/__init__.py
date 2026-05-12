@@ -9,7 +9,7 @@ from .chat_connector import ChatConnector
 from .chat_external_account import ChatExternalAccount
 from .chat_external_chat import ChatExternalChat
 from .chat_external_message import ChatExternalMessage
-from .chat_routing_rule import ChatRoutingRule
+from .chat_routing_rule_lead import ChatRoutingRuleLead
 
 __all__ = [
     "Chat",
@@ -20,5 +20,5 @@ __all__ = [
     "ChatExternalAccount",
     "ChatExternalChat",
     "ChatExternalMessage",
-    "ChatRoutingRule",
+    "ChatRoutingRuleLead",
 ]

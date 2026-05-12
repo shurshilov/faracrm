@@ -31,7 +31,9 @@ if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat_external_account import (
         ChatExternalAccount,
     )
-    from backend.base.crm.chat.models.chat_routing_rule import ChatRoutingRule
+    from backend.base.crm.chat.models.chat_routing_rule_lead import (
+        ChatRoutingRuleLead,
+    )
     from backend.base.crm.users.models.users import User
     from backend.base.crm.partners.models.contact_type import ContactType
     from backend.base.crm.leads.models.lead_stage import LeadStage
@@ -172,7 +174,7 @@ class ChatConnector(AuditMixin, DotModel):
     lead_distribution: bool = Boolean(
         default=True,
         description=(
-            "Применять правила маршрутизации (chat_routing_rule) при "
+            "Применять правила маршрутизации (chat_routing_rule_lead) при "
             "создании лида для автоматического назначения ответственного."
         ),
     )
@@ -209,9 +211,9 @@ class ChatConnector(AuditMixin, DotModel):
     )
 
     # Правила маршрутизации лидов (lead -> user) для этого коннектора.
-    routing_rule_ids: list["ChatRoutingRule"] = One2many(
+    routing_rule_ids: list["ChatRoutingRuleLead"] = One2many(
         store=False,
-        relation_table=lambda: env.models.chat_routing_rule,
+        relation_table=lambda: env.models.chat_routing_rule_lead,
         relation_table_field="connector_id",
         description=(
             "Правила автоматического назначения менеджера на лида. "

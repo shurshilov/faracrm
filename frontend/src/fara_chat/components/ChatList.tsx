@@ -11,9 +11,20 @@ import {
   ScrollArea,
   Skeleton,
   Paper,
+  Menu,
+  Switch,
+  Divider,
 } from '@mantine/core';
-import { IconSearch, IconPlus, IconMessage } from '@tabler/icons-react';
-import { ViewSettingsPopover } from './ViewSettingsPopover';
+import { useMediaQuery } from '@mantine/hooks';
+import { useSelector } from 'react-redux';
+import {
+  IconSearch,
+  IconPlus,
+  IconMessage,
+  IconDotsVertical,
+  IconAdjustments,
+} from '@tabler/icons-react';
+import { ViewSettingsPopover, ViewSettingsOption } from './ViewSettingsPopover';
 import { useTranslation } from 'react-i18next';
 import DOMPurify from 'dompurify';
 import { useGetChatsQuery, Chat, ChatLastMessage } from '@/services/api/chat';
@@ -92,6 +103,7 @@ export function ChatList({
 }: ChatListProps) {
   const { t } = useTranslation('chat');
   const [search, setSearch] = useState('');
+  const isMobile = useMediaQuery('(max-width: 768px)');
 
   // Доп. фильтры видимости. Не персистятся между сессиями — намеренно
   // (защита от «забыл выключить»).
@@ -101,6 +113,43 @@ export function ChatList({
   const [showDeletedChats, setShowDeletedChats] = useState(false);
   const [showRecordChats, setShowRecordChats] = useState(false);
   const [showForeignChats, setShowForeignChats] = useState(false);
+
+  // Для фильтрации админских опций в мобильном меню — на десктопе
+  // ViewSettingsPopover делает это сам.
+  const session = useSelector((s: any) => s.auth?.session);
+  const isAdmin = !!session?.user_id?.is_admin;
+
+  // Один источник правды для опций — используется и десктопным
+  // ViewSettingsPopover, и мобильным Menu.
+  const viewOptions: ViewSettingsOption[] = useMemo(
+    () => [
+      {
+        key: 'showDeletedChats',
+        label: t('showDeletedChats', 'Показывать удалённые чаты'),
+        checked: showDeletedChats,
+        onChange: setShowDeletedChats,
+      },
+      {
+        key: 'showRecordChats',
+        label: t('showRecordChats', 'Показывать record-чаты'),
+        checked: showRecordChats,
+        onChange: setShowRecordChats,
+      },
+      {
+        key: 'showForeignChats',
+        label: t('showForeignChats', 'Показывать чужие чаты'),
+        checked: showForeignChats,
+        onChange: setShowForeignChats,
+        adminOnly: true,
+      },
+    ],
+    [t, showDeletedChats, showRecordChats, showForeignChats],
+  );
+
+  // Опции, видимые текущему пользователю (с учётом adminOnly).
+  // Нужны для мобильного Menu — там фильтруем сами.
+  const mobileVisibleOptions = viewOptions.filter(o => !o.adminOnly || isAdmin);
+  const anyMobileOptionActive = mobileVisibleOptions.some(o => o.checked);
 
   // Формируем аргументы запроса, исключая undefined значения
   const queryArgs = useMemo(() => {
@@ -206,50 +255,92 @@ export function ChatList({
     <Box className={styles.container}>
       {/* Header */}
       <Box className={styles.header}>
-        <Group justify="space-between" mb="sm">
-          <Text fw={600} size="lg">
-            {t('chats')}
-          </Text>
-          <Group gap="xs" wrap="nowrap">
-            <ActionIcon variant="light" onClick={onNewChat} title={t('newChat')}>
-              <IconPlus size={18} />
-            </ActionIcon>
-            <ViewSettingsPopover
-              size="md"
-              variant="light"
-              title={t('listSettings', 'Настройки списка')}
-              options={[
-                {
-                  key: 'showDeletedChats',
-                  label: t('showDeletedChats', 'Показывать удалённые чаты'),
-                  checked: showDeletedChats,
-                  onChange: setShowDeletedChats,
-                },
-                {
-                  key: 'showRecordChats',
-                  label: t('showRecordChats', 'Показывать record-чаты'),
-                  checked: showRecordChats,
-                  onChange: setShowRecordChats,
-                },
-                {
-                  key: 'showForeignChats',
-                  label: t('showForeignChats', 'Показывать чужие чаты'),
-                  checked: showForeignChats,
-                  onChange: setShowForeignChats,
-                  adminOnly: true,
-                },
-              ]}
-            />
+        {/* Заголовок + кнопки — только десктоп.
+            На мобильном заголовок-ряд выпиливаем: ModernLayout сверху и так
+            занимает место (AppLauncher / submenu / chat notif / avatar),
+            повторять "Чаты" + кнопки отдельным рядом — избыточно.
+            Меню переезжает на одну строку с поиском (см. ниже). */}
+        {!isMobile && (
+          <Group justify="space-between" mb="sm">
+            <Text fw={600} size="lg">
+              {t('chats')}
+            </Text>
+            <Group gap="xs" wrap="nowrap">
+              <ActionIcon
+                variant="light"
+                onClick={onNewChat}
+                title={t('newChat')}>
+                <IconPlus size={18} />
+              </ActionIcon>
+              <ViewSettingsPopover
+                size="md"
+                variant="light"
+                title={t('listSettings', 'Настройки списка')}
+                options={viewOptions}
+              />
+            </Group>
           </Group>
-        </Group>
+        )}
 
-        <TextInput
-          placeholder={t('searchChats')}
-          leftSection={<IconSearch size={16} />}
-          value={search}
-          onChange={e => setSearch(e.currentTarget.value)}
-          size="sm"
-        />
+        {/* Строка поиска. На мобильном справа от инпута — единая кнопка-меню
+            (Новый чат + view-фильтры). */}
+        <Group gap="xs" wrap="nowrap">
+          <TextInput
+            placeholder={t('searchChats')}
+            leftSection={<IconSearch size={16} />}
+            value={search}
+            onChange={e => setSearch(e.currentTarget.value)}
+            size="sm"
+            style={{ flex: 1 }}
+          />
+
+          {isMobile && (
+            <Menu position="bottom-end" withArrow shadow="md">
+              <Menu.Target>
+                <ActionIcon
+                  variant="light"
+                  size="lg"
+                  title={t('listMenu', 'Меню')}
+                  color={anyMobileOptionActive ? 'orange' : undefined}>
+                  <IconDotsVertical size={18} />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconPlus size={16} />}
+                  onClick={onNewChat}>
+                  {t('newChat')}
+                </Menu.Item>
+
+                {mobileVisibleOptions.length > 0 && (
+                  <>
+                    <Divider my={4} />
+                    <Menu.Label>
+                      <Group gap={6} wrap="nowrap">
+                        <IconAdjustments size={14} />
+                        <span>{t('listSettings', 'Настройки списка')}</span>
+                      </Group>
+                    </Menu.Label>
+                    <Stack gap={6} px="sm" py={4}>
+                      {mobileVisibleOptions.map(opt => (
+                        <Switch
+                          key={opt.key}
+                          checked={opt.checked}
+                          onChange={e =>
+                            opt.onChange(e.currentTarget.checked)
+                          }
+                          label={opt.label}
+                          disabled={opt.disabled}
+                          size="sm"
+                        />
+                      ))}
+                    </Stack>
+                  </>
+                )}
+              </Menu.Dropdown>
+            </Menu>
+          )}
+        </Group>
       </Box>
 
       {/* Chat List */}

@@ -162,7 +162,9 @@ from backend.base.crm.chat.models.chat_external_message import (
 from backend.base.crm.chat.models.chat_message_reaction import (
     ChatMessageReaction,
 )
-from backend.base.crm.chat.models.chat_routing_rule import ChatRoutingRule
+from backend.base.crm.chat.models.chat_routing_rule_lead import (
+    ChatRoutingRuleLead,
+)
 
 # apps
 from backend.base.system.cron.app import CronApp
@@ -268,7 +270,7 @@ class Models(ModelsCore, ExtensibleMixin):
     chat_external_chat = ChatExternalChat
     chat_external_message = ChatExternalMessage
     chat_message_reaction = ChatMessageReaction
-    chat_routing_rule = ChatRoutingRule
+    chat_routing_rule_lead = ChatRoutingRuleLead
     # project and task
     task = Task
     task_tag = TaskTag

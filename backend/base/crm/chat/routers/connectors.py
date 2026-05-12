@@ -87,6 +87,24 @@ async def get_connector_webhook_info(req: Request, connector_id: int):
     return {"data": info}
 
 
+@router_private.get("/connectors/{connector_id}/account/self")
+async def get_connector_self_account(req: Request, connector_id: int):
+    """
+    Получить информацию об аккаунте от внешнего сервиса.
+
+    Используется в форме настройки коннектора, чтобы вытащить
+    `external_account_id` из API провайдера (например, Avito возвращает
+    {id, name, email, phone, profile_url}).
+    """
+
+    env: "Environment" = req.app.state.env
+
+    connector = await env.models.chat_connector.get(connector_id)
+
+    info = await connector.strategy.get_self_account_id(connector)
+    return {"data": info}
+
+
 # ============================================================================
 # Мои коннекторы (для sidebar)
 # ============================================================================

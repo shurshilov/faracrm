@@ -183,7 +183,7 @@ export const modelsConfig: Record<string, ModelConfig> = {
   // Generic-конфиг — формы рендерятся через стандартный Generic компонент,
   // отдельная страница не обязательна, правила в основном редактируются
   // через таб "Routing rules" внутри chat_connector.
-  chat_routing_rule: {
+  chat_routing_rule_lead: {
     menu: MenuGroups.communication,
     fields: [
       'sequence',
