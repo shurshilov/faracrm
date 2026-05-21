@@ -1033,21 +1033,29 @@ class DotModel(
         """
         Получить список полей у которых есть onchange обработчики.
 
-        Используется фронтендом для определения за какими полями следить.
+        Возвращает объединение:
+          - полей с явным @onchange-декоратором;
+          - полей-триггеров из @depends (через _cache_compute_by_dep.keys()).
+            Фронт должен следить и за ними, чтобы при изменении price_unit
+            автоматически шёл /onchange и приходили пересчитанные
+            price_subtotal / price_tax / price_total и т.д.
 
-        Returns:
-            Список имён полей с onchange обработчиками
+        Используется фронтендом для определения за какими полями следить.
         """
         fields_with_onchange = set()
 
         for attr_name in dir(cls):
-            # Пропускаем dunder методы
             if attr_name.startswith("__"):
                 continue
             attr = getattr(cls, attr_name, None)
             if attr and callable(attr) and hasattr(attr, "_is_onchange"):
                 onchange_fields = getattr(attr, "_onchange_fields", ())
                 fields_with_onchange.update(onchange_fields)
+
+        # Поля-триггеры всех @depends-методов модели — фронту нужно
+        # дёрнуть /onchange при их изменении, чтобы получить свежие
+        # значения computed-полей (price_subtotal и т.д.).
+        fields_with_onchange.update(cls._cache_compute_by_dep.keys())
 
         return list(fields_with_onchange)
 
@@ -1078,25 +1086,45 @@ class DotModel(
 
     async def execute_onchange(self, field_name: str) -> dict:
         """
-        Выполнить все onchange обработчики для указанного поля.
+        Выполнить onchange обработчики для указанного поля.
+
+        Делает ДВА прохода:
+          1. Явные @onchange-handlers — для пользовательской логики
+             ("при выборе product подставить product_uom_id").
+          2. Recompute @depends-методов, чьи триггеры содержат field_name —
+             через тот же движок, что и в CRUD-пути. Compute читает
+             self.tax_id.amount / self.order_line_ids и т.п. через
+             _ensure_prefetch_for_method.
 
         Перед вызовом self должен быть заполнен текущими значениями формы.
 
-        Args:
-            field_name: Имя изменённого поля
-
         Returns:
-            Объединённый dict со значениями для обновления формы
+            Объединённый dict со значениями для обновления формы.
+            Включает и поля изменённые @onchange-handler'ами, и
+            пересчитанные @depends computed-поля (price_subtotal и т.п.).
         """
-        result = {}
-        handlers = self._get_onchange_handlers(field_name)
+        result: dict = {}
 
-        for handler_name in handlers:
+        # 1. @onchange handlers — кастомная логика пользователя.
+        for handler_name in self._get_onchange_handlers(field_name):
             handler: Awaitable | None = getattr(self, handler_name, None)
             if handler and callable(handler):
                 handler_result = await handler()
                 if handler_result:
                     result.update(handler_result)
+
+        # 2. @depends recompute — пересчёт computed-полей по триггеру.
+        cls = self.__class__
+        if cls._cache_has_compute_methods:
+            written = await self.recompute(changed={field_name})
+            for name in written:
+                value = getattr(self, name, None)
+                # Под non-data Field-descriptor (Variant C) getattr на
+                # non-assigned поле уже возвращает None, а не Field.
+                # Безопасно включаем любое значение, кроме явно
+                # ничего-не-делающего None.
+                if value is not None:
+                    result[name] = value
 
         return result
 

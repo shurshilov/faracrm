@@ -1,5 +1,6 @@
+import { useContext } from 'react';
 import { TextInput } from '@mantine/core';
-import { useFormContext } from '../FormContext';
+import { FormFieldsContext, useFormContext } from '../FormContext';
 import { FieldWrapper } from './FieldWrapper';
 import { LabelPosition } from '../FormSettingsContext';
 
@@ -19,7 +20,17 @@ export const FieldChar = ({
   ...props
 }: FieldCharProps) => {
   const form = useFormContext();
+  const { handleFieldChange, onchangeFields } = useContext(FormFieldsContext);
   const displayLabel = label ?? name;
+  const fieldHasOnchange = !!onchangeFields?.includes(name);
+  const inputProps = form.getInputProps(name);
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    inputProps.onBlur?.(e);
+    if (fieldHasOnchange && handleFieldChange) {
+      handleFieldChange(name, form.getValues()[name]);
+    }
+  };
 
   return (
     <FieldWrapper
@@ -28,7 +39,8 @@ export const FieldChar = ({
       required={required}>
       <TextInput
         {...props}
-        {...form.getInputProps(name)}
+        {...inputProps}
+        onBlur={handleBlur}
         key={form.key(name)}
         required={required}
       />

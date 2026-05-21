@@ -131,9 +131,13 @@ async def execute_onchange(req: Request, body: OnchangeRequest):
             }
         )
 
-    # Проверяем есть ли обработчики для этого поля
-    handlers = model_class._get_onchange_handlers(body.trigger_field)
-    if not handlers:
+    # Проверяем есть ли обработчики для этого поля.
+    # ВАЖНО: триггером может быть не только явный @onchange-handler, но и
+    # @depends-поле — `execute_onchange` внутри сам гоняет `recompute`
+    # для пересчёта зависимых computed-полей. get_onchange_fields()
+    # объединяет оба источника. Если поля нет ни в @onchange, ни в depends
+    # триггерах — этот вызов нам нечего вернуть, выходим раньше.
+    if body.trigger_field not in model_class.get_onchange_fields():
         return {"values": {}, "fields": {}}
 
     # Фильтруем только известные поля модели
