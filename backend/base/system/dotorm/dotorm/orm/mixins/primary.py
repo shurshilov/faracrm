@@ -416,9 +416,18 @@ class OrmPrimaryMixin(_Base):
         if records:
             created_ids = [r["id"] for r in records]
             await cls._check_access(Operation.CREATE, record_ids=created_ids)
+            # p.id = rid обязателен; depends по строкам — только если они есть
+            # (иначе на больших bulk-вставках no-depends моделей это была бы
+            # поштучная трата на assigned_fields() + no-op _collect_depends).
+            has_depends = bool(
+                cls._depends_local_triggers or cls._depends_parent_triggers
+            )
             for p, rid in zip(payload, created_ids):
                 p.id = rid
-                await p._collect_depends(p.assigned_fields(), collect, session)
+                if has_depends:
+                    await p._collect_depends(
+                        p.assigned_fields(), collect, session
+                    )
 
         await cls._depends_flush(collect, owner, session)
         return records
