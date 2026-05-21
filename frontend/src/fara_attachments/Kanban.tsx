@@ -52,7 +52,7 @@ import {
 } from '@/components/Attachment/fileIcons';
 import {
   attachmentPreviewUrl,
-  attachmentContentUrl,
+  downloadAttachment,
   googleEditUrl,
   isGoogleEditable,
 } from '@/utils/attachmentUrls';
@@ -185,12 +185,7 @@ function AttachmentCard({
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!attachment.id) return;
-
-    // Скачивание через cookie auth — прямая ссылка
-    const a = document.createElement('a');
-    a.href = attachmentContentUrl(attachment.id);
-    a.download = attachment.name || 'file';
-    a.click();
+    downloadAttachment(attachment.id, attachment.name);
   };
 
   const handlePreview = (e: React.MouseEvent) => {

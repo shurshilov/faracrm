@@ -13,7 +13,7 @@ import {
   isImageMimetype,
 } from '@/components/Attachment';
 import type { GalleryItem } from '@/components/Attachment';
-import { attachmentContentUrl } from '@/utils/attachmentUrls';
+import { downloadAttachment } from '@/utils/attachmentUrls';
 
 const PAGE_SIZE = 80;
 
@@ -125,10 +125,8 @@ export function AttachmentsPanel({ resModel, resId }: AttachmentsPanelProps) {
   };
 
   const handleDownload = (id: number) => {
-    const a = document.createElement('a');
-    a.href = attachmentContentUrl(id);
-    a.download = attachments.find((att: any) => att.id === id)?.name || 'file';
-    a.click();
+    const name = attachments.find((att: any) => att.id === id)?.name;
+    downloadAttachment(id, name);
   };
 
   const handleLoadMore = () => {

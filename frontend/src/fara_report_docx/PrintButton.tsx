@@ -8,6 +8,7 @@
  */
 
 import { Menu, Button, Loader, Text } from '@mantine/core';
+import { triggerDownload } from '@/utils/attachmentUrls';
 import {
   IconPrinter,
   IconFileTypePdf,
@@ -80,12 +81,7 @@ export function PrintButton({ model, recordId }: PrintButtonProps) {
 
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      triggerDownload(blobUrl, filename);
       URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error('Report download error:', error);

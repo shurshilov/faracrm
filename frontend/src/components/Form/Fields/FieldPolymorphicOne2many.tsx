@@ -26,7 +26,7 @@ import {
 } from '@/components/Attachment';
 import type { GalleryItem, AttachmentData } from '@/components/Attachment';
 import classes from './FieldPolymorphicOne2many.module.css';
-import { attachmentDownloadUrl } from '@/utils/attachmentUrls';
+import { downloadAttachment, downloadBase64 } from '@/utils/attachmentUrls';
 
 interface AttachmentFile {
   id?: number;
@@ -77,15 +77,6 @@ export const FieldPolymorphicOne2many = <RecordType extends FaraRecord>({
   // Галерея
   const [galleryOpened, setGalleryOpened] = useState(false);
   const [galleryInitialIndex, setGalleryInitialIndex] = useState(0);
-
-  // Для скачивания файлов
-  const [downloadFileId, setDownloadFileId] = useState(0);
-  const [shouldFetch, setShouldFetch] = useState(false);
-
-  useEffect(() => {
-    handleDownload({ id: downloadFileId } as AttachmentFile);
-    setShouldFetch(false);
-  }, [shouldFetch]);
 
   // Получить все файлы (существующие + новые)
   const getExistingFiles = (): AttachmentFile[] => {
@@ -258,16 +249,9 @@ export const FieldPolymorphicOne2many = <RecordType extends FaraRecord>({
   // Скачивание файла
   const handleDownload = (file: AttachmentFile) => {
     if (file.id && !file._isNew) {
-      setDownloadFileId(file.id);
-      window.open(attachmentDownloadUrl(file.id), '_blank');
-      setShouldFetch(true);
+      downloadAttachment(file.id, file.name);
     } else if (file.content) {
-      const link = document.createElement('a');
-      link.href = `data:${file.mimetype};base64,${file.content}`;
-      link.download = file.name || 'file';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadBase64(file.content, file.mimetype, file.name);
     }
   };
 

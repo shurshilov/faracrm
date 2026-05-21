@@ -40,6 +40,49 @@ export function attachmentDownloadUrl(id: number | string): string {
 }
 
 // ============================================================
+// Скачивание файлов
+// ============================================================
+// Единая точка для скачивания: раньше связка
+//   const a = document.createElement('a'); a.href = ...; a.download = ...;
+//   a.click();
+// дублировалась в ~8 местах (карточки вложений, поля форм, чат, отчёты).
+
+/**
+ * Низкоуровневый триггер скачивания: создаёт скрытый <a download> и кликает.
+ * appendChild/removeChild нужны для Firefox (требует элемент в DOM).
+ * `href` может быть любым: content-URL, blob:, data:.
+ *
+ * Надёжнее window.open('_blank'): на iOS Safari попап с ответом
+ * Content-Disposition: attachment часто блокируется и файл не скачивается.
+ * Должен вызываться синхронно внутри обработчика клика (user gesture).
+ */
+export function triggerDownload(href: string, filename?: string): void {
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = filename || 'file';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+/** Скачать существующее вложение по id (через cookie-auth content-роут). */
+export function downloadAttachment(
+  id: number | string,
+  filename?: string,
+): void {
+  triggerDownload(attachmentContentUrl(id), filename);
+}
+
+/** Скачать ещё не загруженный файл прямо из base64-контента. */
+export function downloadBase64(
+  content: string,
+  mimetype: string,
+  filename?: string,
+): void {
+  triggerDownload(`data:${mimetype};base64,${content}`, filename);
+}
+
+// ============================================================
 // Google Drive
 // ============================================================
 

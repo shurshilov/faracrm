@@ -50,7 +50,7 @@ import {
   isImageMimetype,
 } from '@/components/Attachment';
 import type { GalleryItem } from '@/components/Attachment';
-import { attachmentContentUrl } from '@/utils/attachmentUrls';
+import { downloadAttachment } from '@/utils/attachmentUrls';
 import { useDispatch } from 'react-redux';
 import styles from './ChatMessages.module.css';
 import { EmailMessageContent } from './EmailMessageContent';
@@ -265,18 +265,12 @@ export function ChatMessages({
     setGalleryOpened(true);
   };
 
-  // Скачивание через скрытый <a download>, а не window.open('_blank').
-  // На iOS Safari window.open для ответа с Content-Disposition: attachment
-  // часто блокируется (попап-блокировка, standalone-режим PWA) и файл не
-  // скачивается. Якорь со скачиванием — тот же приём, что в остальном коде
-  // проекта (AttachmentPreviewCard, AttachmentsPanel и т.д.).
+  // Скачивание вынесено в общий хелпер downloadAttachment
+  // (utils/attachmentUrls): на iOS Safari window.open для ответа с
+  // Content-Disposition: attachment часто блокируется, поэтому везде
+  // используем скрытый <a download>.
   const handleDownloadAttachment = (attachmentId: number, name?: string) => {
-    const a = document.createElement('a');
-    a.href = attachmentContentUrl(attachmentId);
-    a.download = name || 'file';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    downloadAttachment(attachmentId, name);
   };
 
   const handleContextMenu = (e: React.MouseEvent, message: ChatMessage) => {

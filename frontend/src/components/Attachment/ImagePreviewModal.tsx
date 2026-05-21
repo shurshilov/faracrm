@@ -18,6 +18,7 @@ import {
   IconZoomIn,
   IconZoomOut,
 } from '@tabler/icons-react';
+import { triggerDownload } from '@/utils/attachmentUrls';
 import classes from './ImagePreviewModal.module.css';
 
 interface ImagePreviewModalProps {
@@ -58,13 +59,8 @@ export function ImagePreviewModal({
     if (onDownload) {
       onDownload();
     } else {
-      // Fallback: скачивание через создание ссылки
-      const link = document.createElement('a');
-      link.href = src;
-      link.download = filename || 'image';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Fallback: прямое скачивание из src (data:/blob:/URL)
+      triggerDownload(src, filename || 'image');
     }
   };
 

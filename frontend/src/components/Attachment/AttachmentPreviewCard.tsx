@@ -52,7 +52,8 @@ import {
 } from './fileIcons';
 import {
   attachmentPreviewUrl,
-  attachmentContentUrl,
+  downloadAttachment,
+  downloadBase64,
 } from '@/utils/attachmentUrls';
 import classes from './AttachmentPreviewCard.module.css';
 
@@ -205,15 +206,9 @@ export function AttachmentPreviewCard({
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (id) {
-      const a = document.createElement('a');
-      a.href = attachmentContentUrl(id);
-      a.download = name || 'file';
-      a.click();
+      downloadAttachment(id, name);
     } else if (newFileContent && mimetype) {
-      const a = document.createElement('a');
-      a.href = `data:${mimetype};base64,${newFileContent}`;
-      a.download = name || 'file';
-      a.click();
+      downloadBase64(newFileContent, mimetype, name);
     }
   };
 

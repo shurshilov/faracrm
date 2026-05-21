@@ -19,7 +19,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
 } from '@tabler/icons-react';
-import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
+import { attachmentPreviewUrl, triggerDownload } from '@/utils/attachmentUrls';
 import { isImageMimetype } from './fileIcons';
 import classes from './ImagePreviewModal.module.css';
 
@@ -148,12 +148,7 @@ export function ImageGalleryModal({
     if (onDownload && currentItem) {
       onDownload(currentItem);
     } else if (loadedSrc && currentItem) {
-      const link = document.createElement('a');
-      link.href = loadedSrc;
-      link.download = currentItem.name || 'image';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      triggerDownload(loadedSrc, currentItem.name || 'image');
     }
   };
 

@@ -10,7 +10,7 @@ import {
   formatFileSize,
 } from '@/components/Attachment';
 import classes from './FieldPolymorphicMany2one.module.css';
-import { attachmentDownloadUrl } from '@/utils/attachmentUrls';
+import { downloadAttachment, downloadBase64 } from '@/utils/attachmentUrls';
 
 interface FieldPolymorphicMany2oneProps {
   name: string;
@@ -167,15 +167,13 @@ export const FieldPolymorphicMany2one = <RecordType extends FaraRecord>({
   // Скачивание файла
   const handleDownload = () => {
     if (hasExistingFile) {
-      window.open(attachmentDownloadUrl(currentValue.id), '_blank');
+      downloadAttachment(currentValue.id, currentValue.name);
     } else if (hasNewFile && currentValue.content) {
-      // Скачивание нового файла из base64
-      const link = document.createElement('a');
-      link.href = `data:${currentValue.mimetype};base64,${currentValue.content}`;
-      link.download = currentValue.name || 'file';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      downloadBase64(
+        currentValue.content,
+        currentValue.mimetype,
+        currentValue.name,
+      );
     }
   };
 
