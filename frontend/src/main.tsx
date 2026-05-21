@@ -4,6 +4,7 @@ import '@mantinex/mantine-header/styles.css';
 import 'mantine-datatable/styles.layer.css';
 import '@mantine/dates/styles.css';
 import '@mantine/notifications/styles.css';
+import './styles/global-mobile.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';

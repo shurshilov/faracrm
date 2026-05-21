@@ -50,6 +50,7 @@ import {
   isImageMimetype,
 } from '@/components/Attachment';
 import type { GalleryItem } from '@/components/Attachment';
+import { attachmentContentUrl } from '@/utils/attachmentUrls';
 import { useDispatch } from 'react-redux';
 import styles from './ChatMessages.module.css';
 import { EmailMessageContent } from './EmailMessageContent';
@@ -264,8 +265,18 @@ export function ChatMessages({
     setGalleryOpened(true);
   };
 
-  const handleDownloadAttachment = (attachmentId: number) => {
-    window.open(`/api/attachments/${attachmentId}/content`, '_blank');
+  // Скачивание через скрытый <a download>, а не window.open('_blank').
+  // На iOS Safari window.open для ответа с Content-Disposition: attachment
+  // часто блокируется (попап-блокировка, standalone-режим PWA) и файл не
+  // скачивается. Якорь со скачиванием — тот же приём, что в остальном коде
+  // проекта (AttachmentPreviewCard, AttachmentsPanel и т.д.).
+  const handleDownloadAttachment = (attachmentId: number, name?: string) => {
+    const a = document.createElement('a');
+    a.href = attachmentContentUrl(attachmentId);
+    a.download = name || 'file';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleContextMenu = (e: React.MouseEvent, message: ChatMessage) => {
@@ -294,7 +305,7 @@ export function ChatMessages({
   const handleDownloadFile = () => {
     if (contextMenu?.message.attachments?.length) {
       contextMenu.message.attachments.forEach(att =>
-        handleDownloadAttachment(att.id),
+        handleDownloadAttachment(att.id, att.name),
       );
     }
     setContextMenu(null);
@@ -561,7 +572,7 @@ export function ChatMessages({
                                   : undefined
                               }
                               onDownload={() =>
-                                handleDownloadAttachment(att.id)
+                                handleDownloadAttachment(att.id, att.name)
                               }
                               showPreview={att.show_preview !== false}
                               previewSize={
@@ -904,7 +915,9 @@ export function ChatMessages({
         onClose={() => setGalleryOpened(false)}
         items={galleryItems}
         initialIndex={galleryIndex}
-        onDownload={item => item.id && handleDownloadAttachment(item.id)}
+        onDownload={item =>
+          item.id && handleDownloadAttachment(item.id, item.name)
+        }
       />
 
       <Modal

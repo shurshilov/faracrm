@@ -66,6 +66,7 @@ export function ChatPage({
   const selectedChatRef = useRef<Chat | null>(null);
   const refetchChatsRef = useRef<(() => void) | null>(null);
   const skipMarkAsReadRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Синхронизируем ref с state
   useEffect(() => {
@@ -76,6 +77,37 @@ export function ChatPage({
   useEffect(() => {
     setShowDeletedMessages(false);
   }, [selectedChat?.id]);
+
+  // iOS Safari: программная клавиатура не сжимает layout viewport (100dvh
+  // остаётся во весь экран), поэтому нижняя панель с полем ввода и кнопкой
+  // "Отправить" уезжает под клавиатуру. Через VisualViewport API вычисляем
+  // высоту перекрытия клавиатурой и поджимаем контейнер чата на эту величину —
+  // input снова оказывается над клавиатурой. Только для мобильных, чтобы не
+  // ловить ложные срабатывания при pinch-zoom на десктопе.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv || !isMobile) {
+      containerRef.current?.style.setProperty('--keyboard-inset', '0px');
+      return;
+    }
+    const update = () => {
+      const overlap = Math.max(
+        0,
+        window.innerHeight - vv.height - vv.offsetTop,
+      );
+      containerRef.current?.style.setProperty(
+        '--keyboard-inset',
+        `${overlap}px`,
+      );
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, [isMobile]);
 
   // Читаем фильтр из URL query params
   const [searchParams, setSearchParams] = useSearchParams();
@@ -417,11 +449,14 @@ export function ChatPage({
 
   return (
     <Box
+      ref={containerRef}
       className={styles.container}
       // height: 100% — наследуем от AppShell.Main (height: 100dvh, padding-bottom: 0).
       // Раньше было calc(100vh - 50px - 2*md): на мобильном 100vh > 100dvh пока
       // видна адресная строка, и нижняя часть с input уезжала за viewport.
-      style={{ height: '100%' }}>
+      // --keyboard-inset выставляет VisualViewport-эффект выше: на iOS при
+      // открытой клавиатуре поджимаем высоту, чтобы input не ушёл под неё.
+      style={{ height: 'calc(100% - var(--keyboard-inset, 0px))' }}>
       {/* Chat list sidebar */}
       <Box
         className={`${styles.sidebar} ${isMobile && !showSidebar ? styles.hidden : ''}`}>
