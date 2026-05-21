@@ -89,11 +89,8 @@ class SaleLine(AuditMixin, DotModel):
     )
 
     @depends(
-        price_unit,
-        product_uom_qty,
-        discount,
-        tax_id,
-        "tax_id.amount",  # либо (tax_id, "amount") — head через ссылку
+        triggers=[price_unit, product_uom_qty, discount, tax_id],
+        prefetch=[(tax_id, "amount")],
     )
     async def _compute_amount(self) -> None:
         """Subtotal / tax / total / undiscounted по строке."""

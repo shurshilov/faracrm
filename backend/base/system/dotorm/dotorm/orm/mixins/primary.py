@@ -645,33 +645,21 @@ class OrmPrimaryMixin(_Base):
             klass._depends_prefetch = {}
 
         for klass in models:
-            method_deps = (
+            all_fields = getattr(klass, "_cache_all_fields", {}) or {}
+
+            # --- TRIGGERS ---
+            # bare скаляр / M2O → local; dotted O2M/M2M → parent на ребёнке.
+            trigger_deps = (
                 getattr(klass, "_cache_compute_method_deps", {}) or {}
             )
-            all_fields = getattr(klass, "_cache_all_fields", {}) or {}
-            for method_name, deps in method_deps.items():
+            for method_name, deps in trigger_deps.items():
                 for dep in deps:
                     if "." in dep:
                         head, tail = dep.split(".", 1)
                         field = all_fields.get(head)
-
-                        # PREFETCH: и для O2M, и для M2O — собираем
-                        # tail-поля в словарь под этим методом.
-                        if isinstance(field, (One2many, Many2many, Many2one)):
-                            prefetch_for_method = (
-                                klass._depends_prefetch.setdefault(
-                                    method_name, {}
-                                )
-                            )
-                            tails_set = prefetch_for_method.setdefault(
-                                head, set()
-                            )
-                            tails_set.add(tail)
-                            tails_set.add("id")
-
-                        # CROSS-MODEL TRIGGER: только для O2M/M2M
-                        # (через инверсию). M2O dotted в триггеры пока
-                        # не идёт — другой контракт обратной навигации.
+                        # cross-model trigger только через инверсию O2M/M2M.
+                        # dotted M2O в triggers игнорируем (обратной
+                        # навигации «кто на меня ссылается» пока нет).
                         if not isinstance(field, (One2many, Many2many)):
                             continue
                         child = field.relation_table
@@ -689,12 +677,33 @@ class OrmPrimaryMixin(_Base):
                     else:
                         field = all_fields.get(dep)
                         if isinstance(field, (One2many, Many2many)):
-                            # Плоский O2M/M2M dep — покрывается через
-                            # _depends_parent_triggers на ребёнке.
+                            # Плоский O2M/M2M в triggers смысла не имеет —
+                            # покрывается через детей. Пропускаем.
                             continue
                         klass._depends_local_triggers.setdefault(
                             dep, set()
                         ).add(method_name)
+
+            # --- PREFETCH ---
+            # Только dotted (любая relation: O2M/M2M/M2O) → собираем
+            # tail-поля под методом.
+            prefetch_deps = (
+                getattr(klass, "_cache_compute_prefetch_deps", {}) or {}
+            )
+            for method_name, deps in prefetch_deps.items():
+                for dep in deps:
+                    if "." not in dep:
+                        continue
+                    head, tail = dep.split(".", 1)
+                    field = all_fields.get(head)
+                    if not isinstance(field, (One2many, Many2many, Many2one)):
+                        continue
+                    head_map = klass._depends_prefetch.setdefault(
+                        method_name, {}
+                    )
+                    tails_set = head_map.setdefault(head, set())
+                    tails_set.add(tail)
+                    tails_set.add("id")
 
         # Перегоняем set'ы tail-ов в list'ы — фиксируем итоговую форму.
         for klass in models:

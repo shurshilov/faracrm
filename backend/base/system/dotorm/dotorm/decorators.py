@@ -178,39 +178,68 @@ class hybridmethod(Generic[_T, _P, _R]):
         return self.func(*args, **kwargs)
 
 
-def depends(*field_names: str) -> Callable[[Callable], Callable]:
+def depends(
+    *positional,
+    triggers=None,
+    prefetch=None,
+    triggers_with_prefetch=None,
+) -> Callable[[Callable], Callable]:
     """
     Декоратор для вычисляемых (stored) полей — аналог @api.depends.
 
-    Помечает async-метод как compute-обработчик. Метод присваивает
-    одно или несколько stored-полей на self. Поля связываются с методом
-    через объявление ``compute="_имя_метода"`` в самом поле.
+    Помечает async-метод как compute-обработчик. Метод присваивает одно
+    или несколько stored-полей на self. Поля связываются с методом через
+    объявление ``compute="_имя_метода"`` в самом поле.
 
-    Зависимости (`field_names`) задают, при изменении каких полей метод
-    должен пересчитываться. Поддерживаются вложенные пути через точку,
-    например ``"order_line_ids.price_subtotal"`` — пересчёт родителя при
-    изменении строк.
+    Принимает ДВА раздельных списка:
 
-    Движок пересчёта (DotModel.recompute) вызывается:
-      - в ORM при create / create_bulk / update (как будто в write);
-      - на фронтенде через onchange по любому из dep-полей.
+    triggers — поля, при изменении которых метод пересчитывается:
+        • локальный скаляр / M2O    → пересчёт этой же модели;
+        • dotted через O2M/M2M
+          ("order_line_ids.price_subtotal" / (order_line_ids, "price_subtotal"))
+          → cross-model: пересчёт родителя при изменении поля ребёнка.
+
+    prefetch — relation-поля, которые движок ДОГРУЗИТ на self ПЕРЕД
+        запуском compute (чтобы читать self.tax_id.amount /
+        self.order_line_ids[i].price_subtotal без fetch'ей внутри):
+        • dotted M2O   ("tax_id.amount" / (tax_id, "amount"))
+        • dotted O2M/M2M
+
+    triggers_with_prefetch — шорткат: элементы попадают И в triggers,
+        И в prefetch. Удобно для O2M-аггрегаций родителя, где одно и то
+        же поле и триггерит, и подгружается.
+
+    Каждый элемент списков может быть:
+        • строкой:        "price_unit", "tax_id.amount"
+        • Field-объектом: price_unit, tax_id (typo ловится NameError'ом)
+        • кортежем:       (tax_id, "amount") — head Field + tail-строка
+
+    Обратная совместимость: позиционные аргументы трактуются как triggers
+    (старый стиль ``@depends("a", "b")`` продолжает работать).
 
     Пример::
 
-        class SaleLine(DotModel):
-            price_subtotal: float = Decimal(
-                16, 2, compute="_compute_amount"
-            )
+        @depends(
+            triggers=[price_unit, product_uom_qty, discount, tax_id],
+            prefetch=[(tax_id, "amount")],
+        )
+        async def _compute_amount(self): ...
 
-            @depends("price_unit", "product_uom_qty", "discount")
-            async def _compute_amount(self):
-                self.price_subtotal = self.price_unit * self.product_uom_qty
+        @depends(triggers_with_prefetch=[
+            (order_line_ids, "price_subtotal"),
+            (order_line_ids, "price_tax"),
+        ])
+        async def _compute_amounts(self): ...
     """
 
     def decorator(func: Callable) -> Callable:
-        deps = tuple(field_names)
-        func._compute_deps = deps  # type: ignore[attr-defined]
-        func.compute_deps = set(deps)  # back-compat
+        shared = list(triggers_with_prefetch or [])
+        all_triggers = list(positional) + list(triggers or []) + shared
+        all_prefetch = list(prefetch or []) + shared
+        # Сырые элементы (Field / tuple / str). Резолв в имена-строки —
+        # в _build_compute_cache, когда у Field уже проставлен .name.
+        func._compute_deps_triggers = tuple(all_triggers)  # type: ignore
+        func._compute_deps_prefetch = tuple(all_prefetch)  # type: ignore
         func._is_compute = True  # type: ignore[attr-defined]
         return func
 

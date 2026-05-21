@@ -258,19 +258,26 @@ class DotModel(
                     return f"{head_name}.{tail}"
             return None
 
-        # имя_метода → кортеж зависимостей (всё уже как строки имён)
+        def _resolve_list(raw) -> tuple[str, ...]:
+            return tuple(d for d in (_resolve_dep(x) for x in raw) if d)
+
+        # Два раздельных списка на метод:
+        #   triggers — поля, при изменении которых метод пересчитывается;
+        #   prefetch — relation-пути, которые догружаются перед compute.
         method_deps: dict[str, tuple[str, ...]] = {}
+        method_prefetch: dict[str, tuple[str, ...]] = {}
         for klass in reversed(cls.__mro__):
             if klass is object:
                 continue
             for attr_name, attr in klass.__dict__.items():
                 func = getattr(attr, "__func__", attr)
                 if callable(func) and getattr(func, "_is_compute", False):
-                    raw_deps = getattr(func, "_compute_deps", ())
-                    resolved = tuple(
-                        d for d in (_resolve_dep(x) for x in raw_deps) if d
+                    method_deps[attr_name] = _resolve_list(
+                        getattr(func, "_compute_deps_triggers", ())
                     )
-                    method_deps[attr_name] = resolved
+                    method_prefetch[attr_name] = _resolve_list(
+                        getattr(func, "_compute_deps_prefetch", ())
+                    )
 
         # имя_метода → множество полей, которые он пишет
         # (определяется по объявлению compute="..." / compute=callable
@@ -288,8 +295,9 @@ class DotModel(
                 method_writes[target].add(fname)
 
         # dep-поле (локальный первый сегмент пути) → методы.
-        # Нужно recompute() для onchange: по триггерному полю формы
-        # выбираются методы, чьи depends его упоминают.
+        # Только из triggers (prefetch — это про загрузку, не про
+        # инвалидацию). Нужно recompute()/onchange: по триггерному полю
+        # формы выбираются методы, чьи triggers его упоминают.
         by_dep: dict[str, set[str]] = {}
         for m, deps in method_deps.items():
             for d in deps:
@@ -297,6 +305,7 @@ class DotModel(
                 by_dep.setdefault(local, set()).add(m)
 
         cls._cache_compute_method_deps = method_deps
+        cls._cache_compute_prefetch_deps = method_prefetch
         cls._cache_compute_writes = method_writes
         cls._cache_compute_by_dep = by_dep
         cls._cache_compute_order = list(method_deps.keys())

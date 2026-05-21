@@ -124,9 +124,11 @@ class Sale(AuditMixin, DotModel):
     )
 
     @depends(
-        "order_line_ids.price_subtotal",
-        "order_line_ids.price_tax",
-        "order_line_ids.price_undiscounted",
+        triggers_with_prefetch=[
+            (order_line_ids, "price_subtotal"),
+            (order_line_ids, "price_tax"),
+            (order_line_ids, "price_undiscounted"),
+        ],
     )
     async def _compute_amounts(self) -> None:
         """Сумма по строкам заказа: untaxed / tax / total / undiscounted.
