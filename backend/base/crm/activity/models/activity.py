@@ -162,6 +162,7 @@ class Activity(AuditMixin, DotModel):
         payload: "Activity",
         fields: list[str] | None = None,
         session=None,
+        collect=None,
     ):
         """
         При переходе в state="done" автоматически:
@@ -185,14 +186,11 @@ class Activity(AuditMixin, DotModel):
                 extras = {"active", "done", "done_datetime"}
                 fields = list({*fields, *extras})
 
-        await super().update(payload, fields=fields, session=session)
+        await super().update(payload, fields, session, collect)
 
     @hybridmethod
     async def update_bulk(
-        self,
-        ids: list[int],
-        payload: "Activity",
-        session=None,
+        self, ids: list[int], payload: "Activity", session=None, collect=None
     ):
         """
         То же поведение, что и в `update`: если массово переводим записи
@@ -208,7 +206,7 @@ class Activity(AuditMixin, DotModel):
             payload.done = True
             payload.done_datetime = datetime.now(timezone.utc)
 
-        return await super().update_bulk(ids, payload, session=session)
+        return await super().update_bulk(ids, payload, session, collect)
 
     @hybridmethod
     async def schedule_activity(

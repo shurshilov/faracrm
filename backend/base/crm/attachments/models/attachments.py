@@ -290,14 +290,14 @@ class Attachment(AuditMixin, DotModel):
             return None
 
     @hybridmethod
-    async def create(self, payload: Self, session=None) -> int:
+    async def create(self, payload: Self, session=None, collect=None) -> int:
         # Нет контента или это Binary-sentinel — обычный INSERT без FS
         if (
             not payload
             or not payload.content
             or isinstance(payload.content, Binary)
         ):
-            return await super().create(payload, session)
+            return await super().create(payload, session, collect)
 
         async with env.apps.db.get_transaction():
             if not payload.size:
@@ -316,7 +316,7 @@ class Attachment(AuditMixin, DotModel):
 
             if not has_strategy(storage.type):
                 logger.warning("Strategy '%s' not found", storage.type)
-                return await super().create(payload, session)
+                return await super().create(payload, session, collect)
 
             payload.storage_id = storage
             if route:
@@ -350,13 +350,14 @@ class Attachment(AuditMixin, DotModel):
                 storage.name,
             )
 
-            return await super().create(payload, session)
+            return await super().create(payload, session, collect)
 
     async def update(
         self,
         payload: Self,
         fields: list | None = None,
         session=None,
+        collect=None,
     ) -> None:
         if (
             not payload.content
@@ -384,10 +385,12 @@ class Attachment(AuditMixin, DotModel):
             if result.get("storage_file_url"):
                 payload.storage_file_url = result["storage_file_url"]
 
-            await super().update(payload, fields, session)
+            await super().update(payload, fields, session, collect)
 
     @hybridmethod
-    async def create_bulk(self, payloads: list[Self], session=None):
+    async def create_bulk(
+        self, payloads: list[Self], session=None, collect=None
+    ):
         """
         Массовое создание вложений с сохранением файлов через стратегию.
 
@@ -425,7 +428,7 @@ class Attachment(AuditMixin, DotModel):
                     )
                 )
 
-            return await super().create_bulk(payloads, active_session)
+            return await super().create_bulk(payloads, active_session, collect)
 
     async def _prepare_attachments(
         self, payloads: list[Self]
@@ -499,7 +502,7 @@ class Attachment(AuditMixin, DotModel):
         if result.get("storage_parent_name"):
             payload.storage_parent_name = result["storage_parent_name"]
 
-    async def delete(self) -> bool:
+    async def delete(self, session=None, collect=None) -> bool:
         """
         Удалить вложение и файл из хранилища.
 
@@ -511,10 +514,10 @@ class Attachment(AuditMixin, DotModel):
         if self.storage_id and (self.storage_file_url or self.storage_file_id):
             await self._safe_delete_file()
 
-        return await super().delete()
+        return await super().delete(session, collect)
 
     @hybridmethod
-    async def delete_bulk(self, ids: list[int], session=None):
+    async def delete_bulk(self, ids: list[int], session=None, collect=None):
         """
         Массовое удаление вложений с очисткой файлов в хранилище.
 

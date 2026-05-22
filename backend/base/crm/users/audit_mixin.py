@@ -81,7 +81,13 @@ class AuditMixin(_Base):
         description="Когда последний раз обновлена запись (UTC)",
     )
 
-    async def update(self, payload, fields=None, session=None):
+    async def update(
+        self,
+        payload,
+        fields=None,
+        session=None,
+        collect=None,
+    ):
         """
         Override DotModel.update — автоматически проставляет
         update_user_id и update_datetime в payload перед записью в БД.
@@ -100,4 +106,4 @@ class AuditMixin(_Base):
         if not payload.update_datetime:
             payload.update_datetime = _default_now()
 
-        return await super().update(payload, fields=fields, session=session)
+        return await super().update(payload, fields, session, collect)

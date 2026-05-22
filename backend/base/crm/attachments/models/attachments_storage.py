@@ -218,6 +218,7 @@ class AttachmentStorage(DotModel):
         payload,
         fields: list | None = None,
         session=None,
+        collect=None,
     ) -> None:
         """Update storage with cascade activation/deactivation."""
         # Check if active field is being changed
@@ -229,7 +230,7 @@ class AttachmentStorage(DotModel):
             # Remove active from payload since activate/deactivate already handled it
             # payload.active = False
 
-        await super().update(payload, fields, session)
+        await super().update(payload, fields, session, collect)
 
     # ========================================================================
     # Sync methods

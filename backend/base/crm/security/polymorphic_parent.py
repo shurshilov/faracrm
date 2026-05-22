@@ -48,7 +48,7 @@ class PolymorphicParentMixin(DotModel):
         ("activity", "res_model", "res_id"),
     ]
 
-    async def delete(self, session=None):
+    async def delete(self, session=None, collect=None):
         # Сначала удаляем сам parent — если упадёт, дальше не пойдём.
         # Это правильный порядок: удалить родителя приоритетно, children
         # каскадятся как best-effort.
@@ -62,7 +62,7 @@ class PolymorphicParentMixin(DotModel):
         return result
 
     @hybridmethod
-    async def delete_bulk(self, ids: list[int], session=None):
+    async def delete_bulk(self, ids: list[int], session=None, collect=None):
         cls = self.__class__
         result = await super().delete_bulk(ids, session=session)
         await cls._delete_polymorphic_children(ids, session=session)

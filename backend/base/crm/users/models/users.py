@@ -254,7 +254,7 @@ class User(PolymorphicParentMixin):
     #     return user_id
 
     @hybridmethod
-    async def create(self, payload: Self, session=None) -> int:
+    async def create(self, payload: Self, session=None, collect=None) -> int:
         """
         Создание пользователя с проверкой уникальности login.
 
@@ -277,7 +277,7 @@ class User(PolymorphicParentMixin):
                     }
                 )
 
-        return await super().create(payload=payload, session=session)
+        return await super().create(payload, session, collect)
 
     def generate_password_hash_salt_old(self, password: str):
         return self.generate_password_hash(password, self.password_salt)
