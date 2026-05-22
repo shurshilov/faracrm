@@ -15,6 +15,13 @@ from .session import NoTransactionNoPoolSession
 
 log = logging.getLogger("dotorm")
 
+# Advisory lock ID для сериализации DDL (create/alter table) между воркерами.
+# Пока один воркер накатывает схему, остальные блокируются на этом локе и
+# заходят уже на готовую схему — idempotent-проверки (existing_columns /
+# existing_fk_names) корректно пропускают всё существующее. xact-вариант лока
+# сам освобождается на commit/rollback транзакции, ручной unlock не нужен.
+DDL_LOCK_ID = 0xFA4ADD11
+
 
 class ContainerPostgres:
     """
@@ -107,6 +114,13 @@ class ContainerPostgres:
         stmt_foreign_keys: list[tuple[str, str]] = []
 
         async with ContainerTransaction(self.pool) as session:
+            # Сериализуем DDL между воркерами: пока этот воркер создаёт/меняет
+            # таблицы и FK, остальные ждут здесь и затем видят готовую схему.
+            # Блокирующий xact-lock освобождается автоматически на commit/rollback.
+            await session.execute(
+                f"SELECT pg_advisory_xact_lock({DDL_LOCK_ID})", cursor="void"
+            )
+
             # создаем модели в БД, без FK
             for model in models:
                 foreign_keys = await model.__create_table__(session)

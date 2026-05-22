@@ -274,11 +274,14 @@ CREATE TABLE IF NOT EXISTS "{cls.__table__}" (\
             for row in existing_columns_result
         }
 
-        # Добавляем только отсутствующие колонки
+        # Добавляем только отсутствующие колонки.
+        # IF NOT EXISTS — защита от гонки нескольких воркеров: Postgres
+        # перепроверяет наличие колонки под ACCESS EXCLUSIVE локом и при
+        # совпадении делает молчаливый NOTICE вместо ошибки "column already exists".
         for field_name, field_declaration in fields_created:
             if field_name not in existing_columns:
                 await session.execute(
-                    f'ALTER TABLE "{cls.__table__}" ADD COLUMN {field_declaration};'
+                    f'ALTER TABLE "{cls.__table__}" ADD COLUMN IF NOT EXISTS {field_declaration};'
                 )
 
         # Авто-миграция Char (varchar) → TranslatedChar (jsonb) при изменении типа поля.
