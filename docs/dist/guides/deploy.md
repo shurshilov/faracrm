@@ -250,19 +250,25 @@ docker exec fara-proxy ping -c 2 frontend
 
 ```bash
 cd /opt/faracrm
+# Вариант через гит (рекомендуемый)
+git pull
+docker compose build
+docker compose down
+docker compose up
+```
 
-# Применить изменения (распаковав очередной zip-патч)
+```bash
+cd /opt/faracrm
+# Вариант через zip файл
 unzip -o ~/some_patch.zip
 cp -r some_patch/. ./
 rm -rf some_patch
-
-# Пересобрать только нужный сервис
-docker compose build backend  # или frontend
-
-# Поднять
-docker compose up -d backend
-docker compose logs backend --tail 50 -f
+docker compose build
+docker compose down
+docker compose up
 ```
+
+
 
 Frontend Vite билдится в production-режиме внутри Docker-образа на этапе сборки — `npm run build` уже зашит в Dockerfile. После rebuilt'а статика подменяется автоматически.
 
