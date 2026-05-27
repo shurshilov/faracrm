@@ -20,7 +20,7 @@ proxy/nginx/conf.d/*
 !proxy/nginx/conf.d/.gitkeep
 
 # .env файлы — содержат email, домен и потенциально другие настройки.
-# В git коммитится только .env.example.
+# В git коммитится только .env.sample.
 proxy/.env
 
 # Логи и бэкапы

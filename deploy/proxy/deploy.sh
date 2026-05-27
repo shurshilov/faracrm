@@ -29,7 +29,7 @@ if [ ! -f ".env" ]; then
   echo "✗ Не найден файл .env."
   echo
   echo "  Скопируй образец и поправь под свой домен:"
-  echo "      cp .env.example .env"
+  echo "      cp .env.sample .env"
   echo "      nano .env"
   exit 1
 fi

@@ -12,7 +12,7 @@ deploy/
 └── proxy/                                   ← reverse-proxy + Let's Encrypt
     ├── README.md
     ├── docker-compose.yml
-    ├── .env.example                         ← шаблон конфига; копируется в .env
+    ├── .env.sample                         ← шаблон конфига; копируется в .env
     ├── deploy.sh                  ← первый запуск + рендеринг конфига
     ├── nginx/
     │   ├── templates/fara.conf.template     ← шаблон (в git)
@@ -102,7 +102,7 @@ docker network ls | grep default
 
 ```bash
 cd deploy/proxy
-cp .env.example .env
+cp .env.sample .env
 nano .env
 ```
 
@@ -220,7 +220,7 @@ tar czf certbot-backup-$(date +%F).tar.gz deploy/proxy/certbot/conf/
 Скопируй образец и заполни:
 
 ```bash
-cd deploy/proxy && cp .env.example .env && nano .env
+cd deploy/proxy && cp .env.sample .env && nano .env
 ```
 
 ### `Сеть faracrm_default не найдена`

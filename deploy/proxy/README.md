@@ -7,7 +7,7 @@ Reverse-proxy + Let's Encrypt для FARA CRM.
 Быстрый чек:
 
 ```bash
-cp .env.example .env
+cp .env.sample .env
 nano .env                  # домен, email, имя сети
 ./deploy.sh
 ```

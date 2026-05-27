@@ -22,7 +22,7 @@ FARA CRM is a modular CRM system built on FastAPI + React with a custom ORM (Dot
 
     ```bash
     pip install -r requirements.txt
-    cp .env.example .env # setup your credentials
+    cp .env.sample .env # setup your credentials
     uvicorn backend.main:app --host 0.0.0.0 --port 8090 # or click f5 (vs code)
     ```
 
