@@ -14,6 +14,7 @@
 """
 
 import asyncio
+import json
 import logging
 import signal
 import sys
@@ -240,6 +241,7 @@ class CronProcess:
 
     async def _write_heartbeat(self) -> None:
         try:
+            payload = json.dumps(datetime.now(timezone.utc).isoformat())
             async with self.pool.acquire() as conn:
                 await conn.execute(
                     """
@@ -247,7 +249,7 @@ class CronProcess:
                     VALUES ('cron_heartbeat', $1)
                     ON CONFLICT (key) DO UPDATE SET value = $1
                     """,
-                    datetime.now(timezone.utc).isoformat(),
+                    payload,
                 )
         except Exception:
             pass
