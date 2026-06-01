@@ -1,0 +1,5 @@
+# Вендоренные оффлайн-ассеты Swagger UI / ReDoc — не учитывать в статистике языков GitHub
+backend/base/system/swagger_offlain/static/** linguist-vendored
+
+# Сгенерированный статический сайт документации (MkDocs build) — не учитывать в статистике языков GitHub
+docs/site/** linguist-generated
