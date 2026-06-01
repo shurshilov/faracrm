@@ -13,7 +13,7 @@
     "type": "Type",
     "active": "Active",
     "user_id": "Salesperson",
-    "parent_id": "Partner",
+    "partner_id": "Partner",
     "company_id": "Company",
     "notes": "Notes",
     "website": "Website",

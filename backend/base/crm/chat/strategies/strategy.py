@@ -651,7 +651,7 @@ class ChatStrategyBase(ABC):
 
         Логика:
         - имя лида = item_title (заголовок объявления) или partner.name;
-        - ищем существующий лид по (parent_id, connector_id);
+        - ищем существующий лид по (partner_id, connector_id);
         - если у найденного лида другой website (item_url) — создаём новый
           (клиент пишет по другому объявлению — это другой лид);
         - применяем правила chat_routing_rule_lead если включено
@@ -685,10 +685,10 @@ class ChatStrategyBase(ABC):
             item_title = (external_chat.item_title or "").strip()
             item_url = (external_chat.item_url or "").strip()
 
-        # Ищем существующий лид по (parent_id, connector_id) — берём свежий
+        # Ищем существующий лид по (partner_id, connector_id) — берём свежий
         existing_leads = await env.models.lead.search(
             filter=[
-                ("parent_id", "=", partner.id),
+                ("partner_id", "=", partner.id),
                 ("connector_id", "=", connector.id),
             ],
             fields=["id", "website", "name"],
@@ -754,7 +754,7 @@ class ChatStrategyBase(ABC):
         lead_payload = {
             "name": lead_name,
             "type": connector.lead_type or "opportunity",
-            "parent_id": partner,
+            "partner_id": partner,
             "connector_id": env.models.chat_connector(id=connector.id),
             "website": item_url or None,
             "notes": (

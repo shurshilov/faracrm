@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from 'react';
 import { InputBase } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
 import {
   FormFieldsContext,
   useFormContext,
@@ -8,12 +9,13 @@ import { FieldWrapper } from '@/components/Form/Fields/FieldWrapper';
 import { LabelPosition } from '@/components/Form/FormSettingsContext';
 import { ContactsWidget } from './ContactsWidget';
 import { Contact, ContactType } from './types';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   useCreateMutation,
   useDeleteBulkMutation,
   useSearchQuery,
 } from '@/services/api/crudApi';
+import { useCreateChatMutation } from '@/services/api/chat';
 
 interface FieldContactsProps {
   /** Имя поля в форме */
@@ -31,15 +33,17 @@ interface FieldContactsProps {
   /** Скрыть звёздочку основного */
   hidePrimary?: boolean;
   /**
-   * Имя поля формы, из которого брать ID владельца контактов.
-   * Например, parentField="partner_id" — контакты загружаются по partner_id клиента.
-   * Если не указан — используется id текущей записи (поведение по умолчанию).
+   * Имя поля ФОРМЫ, из которого брать ID владельца контактов (партнёра).
+   * Например parentField="partner_id" (на заказе) или "parent_id" (на лиде).
+   * По нему же открывается чат с партнёром.
+   * Поле модели contact для фильтра/создания берётся ОТДЕЛЬНО — из метаданных
+   * One2many (relatedField), поэтому имя поля-владельца в форме и имя FK в
+   * модели contact могут отличаться (на лиде: parent_id ↔ contact.partner_id).
+   * Если не указан — используется id текущей записи из URL.
    */
   parentField?: string;
   /**
    * Модель владельца контактов (для определения relatedModel/relatedField).
-   * Например, parentModel="partners" — используется когда contact_ids не является
-   * полем текущей модели, а берётся из связанной модели.
    * Если не указан — берётся из fieldsServer[name].
    */
   parentModel?: string;
@@ -79,14 +83,16 @@ export function FieldContacts({
   const form = useFormContext();
   const { fields: fieldsServer } = useContext(FormFieldsContext);
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [deleteBulk] = useDeleteBulkMutation();
   const [create, { isLoading }] = useCreateMutation();
+  const [createChat, { isLoading: creatingChat }] = useCreateChatMutation();
 
   const displayLabel = label ?? name;
 
-  // Определяем ID владельца контактов:
-  // Если указан parentField — берём значение Many2one поля из формы (например partner_id)
-  // Иначе — используем id текущей записи из URL
+  // ID владельца контактов:
+  // Если указан parentField — берём значение Many2one поля из формы
+  // (partner_id на заказе / parent_id на лиде). Иначе — id текущей записи.
   const parentValue = parentField ? form.getValues()?.[parentField] : null;
   const ownerId: number | null = parentField
     ? typeof parentValue === 'object' && parentValue !== null
@@ -98,17 +104,13 @@ export function FieldContacts({
       ? Number(id)
       : null;
 
-  // Определяем relatedField для фильтра запроса:
-  // Если parentField указан — используем его как фильтр (partner_id)
-  // Иначе — берём из метаданных сервера
-  const relatedField = parentField
-    ? parentField
-    : fieldsServer[name]?.relatedField || 'partner_id';
+  // Поле модели contact для фильтра/создания (partner_id / user_id) — берём
+  // из метаданных One2many (relation_table_field), а НЕ из parentField:
+  // имя поля-владельца в форме может отличаться от имени FK в contact
+  // (на лиде владелец в parent_id, а контакт фильтруется по partner_id).
+  const relatedField = fieldsServer[name]?.relatedField || 'partner_id';
 
-  // Определяем модель для запроса контактов:
-  // Если parentModel указан — берём relatedModel из fieldsServer родительской модели
-  // через parentModel + name. Иначе — из fieldsServer текущей модели.
-  // Фоллбэк — 'contact'.
+  // Модель для запроса контактов (фоллбэк — 'contact').
   const queryModel = fieldsServer[name]?.relatedModel || 'contact';
 
   // Локальное состояние для контактов
@@ -162,7 +164,6 @@ export function FieldContacts({
           contact_type_id: contact.contact_type_id,
           name: contact.name,
           is_primary: contact.is_primary,
-          // [relatedField]: ownerId || 'VirtualId',
         });
       } else if (contact._isDeleted && contact.id) {
         deleted.push(contact.id);
@@ -170,9 +171,7 @@ export function FieldContacts({
     }
 
     // Нет владельца (новая запись ещё не сохранена) — откладываем
-    // API-вызовы до момента создания родителя. Сохраняем в служебное
-    // поле `_${name}`, ButtonCreate подхватит и сделает bulk-create
-    // контактов с актуальным ownerId после создания родителя.
+    // API-вызовы до момента создания родителя.
     if (!ownerId) {
       form.setValues({
         [`_${name}`]: { created, deleted, relatedField },
@@ -185,7 +184,6 @@ export function FieldContacts({
       if (deleted.length > 0) {
         await deleteBulk({ model: 'contact', ids: deleted }).unwrap();
       }
-      // TODO: можно ускорить через bulk-create, но обычно создаётся одна запись
       for (const item of created) {
         await create({
           model: 'contact',
@@ -195,15 +193,41 @@ export function FieldContacts({
     } catch (error) {
       console.error('Failed to delete or create contact:', error);
     }
-    // Сохраняем изменения в служебное поле (как FieldOne2many)
-    // const changesFieldName = `_${name}`;
-    // form.setValues({
-    //   [changesFieldName]: {
-    //     created,
-    //     deleted,
-    //     fieldsServer: fieldsServer,
-    //   },
-    // });
+  };
+
+  // ── Чат с партнёром ─────────────────────────────────────────────────
+  // Чат в системе — на уровне партнёра (chat_member.partner_id), а контакт
+  // это канал. Поэтому иконка одна на виджет и открывает чат с владельцем.
+  // Показываем только если владелец-партнёр известен И есть хотя бы один
+  // контакт (без канала чат бессмысленен). Только для партнёров.
+  const activeContactsCount = contacts.filter(c => !c._isDeleted).length;
+  const canOpenChat =
+    !!ownerId && activeContactsCount > 0 && relatedField === 'partner_id';
+
+  const handleOpenChat = async () => {
+    if (!ownerId) return;
+    try {
+      // /chats делает get-or-create, поэтому повторный клик откроет тот же чат.
+      const res = await createChat({
+        chat_type: 'direct',
+        user_ids: [],
+        partner_ids: [ownerId],
+      }).unwrap();
+
+      const params = new URLSearchParams();
+      // Передаём is_internal, чтобы ChatPage загрузил список с этим чатом
+      // и ?open смог его найти (партнёрский чат — is_internal=false).
+      if (res.data.is_internal !== undefined) {
+        params.set('is_internal', String(res.data.is_internal));
+      }
+      params.set('open', String(res.data.id));
+      navigate(`/chat?${params.toString()}`);
+    } catch {
+      notifications.show({
+        color: 'red',
+        message: 'Не удалось открыть чат',
+      });
+    }
   };
 
   return (
@@ -216,7 +240,8 @@ export function FieldContacts({
         {...form.getInputProps(name)}
       />
 
-      {/* Наш кастомный виджет */}
+      {/* Наш кастомный виджет. Иконка «открыть чат» рендерится в конце
+          инпута добавления контакта (см. ContactsWidget). */}
       <ContactsWidget
         name={name}
         value={contacts}
@@ -225,6 +250,9 @@ export function FieldContacts({
         maxContacts={maxContacts}
         hidePrimary={hidePrimary}
         loading={isFetching}
+        canOpenChat={canOpenChat}
+        onOpenChat={handleOpenChat}
+        chatLoading={creatingChat}
       />
     </FieldWrapper>
   );

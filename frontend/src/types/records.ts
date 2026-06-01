@@ -35,7 +35,7 @@ export interface LeadRecord extends BaseRecord {
   active: boolean;
   stage_id: RelationRecord | null;
   user_id: RelationRecord | null;
-  parent_id: RelationRecord | null;
+  partner_id: RelationRecord | null;
   company_id: RelationRecord | null;
   notes: string | null;
   type: 'lead' | 'opportunity';

@@ -43,9 +43,9 @@ class Lead(AuditMixin, PolymorphicParentMixin):
         # index=True,
         ondelete="restrict",
     )
-    parent_id: "Partner | None" = Many2one(
+    partner_id: "Partner | None" = Many2one(
         lambda: env.models.partner,
-        string="Parent partner",
+        string="Partner",
         index=True,
         ondelete="restrict",
     )

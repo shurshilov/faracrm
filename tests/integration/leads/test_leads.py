@@ -71,16 +71,16 @@ class TestLeadCreate:
             Lead(
                 name="Partner Lead",
                 stage_id=LeadStage(id=sid),
-                parent_id=Partner(id=pid),
+                partner_id=Partner(id=pid),
             )
         )
 
         lead = await Lead.get(
             lid,
-            fields=["id", "name", "parent_id"],
-            fields_nested={"parent_id": ["id"]},
+            fields=["id", "name", "partner_id"],
+            fields_nested={"partner_id": ["id"]},
         )
-        assert lead.parent_id.id == pid
+        assert lead.partner_id.id == pid
 
     async def test_create_lead_with_contact_info(self):
 

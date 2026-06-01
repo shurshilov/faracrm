@@ -104,9 +104,18 @@ export function ContactsWidget({
   hidePrimary = false,
   loading = false,
   showTypeButton = false,
+  canOpenChat = false,
+  onOpenChat,
+  chatLoading = false,
 }: Omit<ContactsWidgetProps, 'label'> & {
   loading?: boolean;
   showTypeButton?: boolean;
+  /** Показать иконку «открыть чат» в конце инпута. */
+  canOpenChat?: boolean;
+  /** Колбэк по клику на иконку чата. */
+  onOpenChat?: () => void;
+  /** Индикатор загрузки на иконке чата (создание чата). */
+  chatLoading?: boolean;
 }) {
   const [inputValue, setInputValue] = useState('');
   const [selectedType, setSelectedType] = useState<ContactType | null>(null);
@@ -337,8 +346,8 @@ export function ContactsWidget({
               onChange={e => setInputValue(e.currentTarget.value)}
               onKeyDown={handleKeyDown}
               rightSection={
-                inputValue &&
-                typeToAdd && (
+                inputValue && typeToAdd ? (
+                  // Идёт ввод нового контакта — показываем кнопку добавления.
                   <ActionIcon
                     variant="filled"
                     color="blue"
@@ -346,7 +355,20 @@ export function ContactsWidget({
                     onClick={handleAdd}>
                     <IconPlus size={14} />
                   </ActionIcon>
-                )
+                ) : canOpenChat ? (
+                  // Иначе (есть контакт, ввода нет) — иконка перехода в чат.
+                  // Один слот rightSection → вёрстка инпута не меняется.
+                  <Tooltip label="Открыть чат" withArrow>
+                    <ActionIcon
+                      variant="subtle"
+                      color="blue"
+                      size="sm"
+                      loading={chatLoading}
+                      onClick={onOpenChat}>
+                      <IconMessageCircle size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                ) : null
               }
             />
           </Box>
