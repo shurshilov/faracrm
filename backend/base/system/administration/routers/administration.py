@@ -373,10 +373,9 @@ async def branding_file(
 
     attach = attaches[0]
     return Response(
+        # Без filename* браузер не переведет проценты обратно в буквы
         headers={
-            "Content-Disposition": (
-                f"inline;filename={quote(attach.name, safe='')}"
-            ),
+            "Content-Disposition": f"inline; filename*=utf-8''{quote(attach.name, safe='')}",
             "Cache-Control": "public, max-age=300",
         },
         media_type=attach.mimetype,

@@ -96,9 +96,9 @@ async def attachment_content(req: Request, attachment_id: Id):
     attachment_content = await attach.read_content()
 
     return Response(
+        # Без filename* браузер не переведет проценты обратно в буквы
         headers={
-            "Content-Disposition": f"Attachment"
-            f""";filename={quote(attach.name, safe="")}"""
+            "Content-Disposition": f"attachment; filename*=utf-8''{quote(attach.name, safe='')}"
         },
         media_type=attach.mimetype,
         content=attachment_content,
@@ -171,8 +171,9 @@ async def attachment_preview(
         return Response(status_code=304, headers={"ETag": etag})
 
     return Response(
+        # Без filename* браузер не переведет проценты обратно в буквы
         headers={
-            "Content-Disposition": f"inline; filename={quote(attach.name, safe='')}",
+            "Content-Disposition": f"inline; filename*=utf-8''{quote(attach.name, safe='')}",
             "Cache-Control": "private, max-age=86400, immutable",
             "ETag": etag,
         },

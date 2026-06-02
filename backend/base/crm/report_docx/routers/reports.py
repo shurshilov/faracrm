@@ -152,7 +152,8 @@ async def generate_report(
     return Response(
         content=file_bytes,
         media_type=content_type,
+        # Без filename* браузер не переведет проценты обратно в буквы
         headers={
-            "Content-Disposition": (f'attachment; filename="{filename_enc}"'),
+            "Content-Disposition": f"attachment; filename*=utf-8''{filename_enc}",
         },
     )
