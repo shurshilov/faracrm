@@ -12,6 +12,7 @@ export function ViewKanbanLeads() {
       fields={['id', 'name', 'type', 'user_id']}
       groupByField="stage_id"
       groupByModel="lead_stage"
+      groupByFilter={[['active', '=', true]]}
     />
   );
 }

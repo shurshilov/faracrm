@@ -23,6 +23,7 @@ export function ViewKanbanTasks() {
       ]}
       groupByField="stage_id"
       groupByModel="task_stage"
+      groupByFilter={[['active', '=', true]]}
     />
   );
 }

@@ -209,6 +209,14 @@ export interface KanbanProps<T extends FaraRecord> {
   groupByModel?: string;
   /** Жёсткий префильтр от родителя (комбинируется с общим фильтром вью). */
   filter?: FilterExpression;
+  /**
+   * Домен-фильтр для колонок-стадий (модель groupByModel), напр.
+   * [['active', '=', true]] — показать только активные стадии. По умолчанию
+   * НЕ фильтруем: Kanban переиспользуемый и не знает, есть ли у конкретной
+   * модели стадий поле active, поэтому решение оставлено за вью (см.
+   * fara_leads / fara_sales / fara_tasks, где явно отсекаются архивные стадии).
+   */
+  groupByFilter?: FilterExpression;
 }
 
 export function Kanban<T extends FaraRecord>({
@@ -217,6 +225,7 @@ export function Kanban<T extends FaraRecord>({
   groupByField,
   groupByModel,
   filter,
+  groupByFilter,
 }: KanbanProps<T>) {
   const navigate = useNavigate();
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -257,7 +266,9 @@ export function Kanban<T extends FaraRecord>({
     filter,
   }) as TypedUseQueryHookResult<GetListResult<T>, GetListParams, BaseQueryFn>;
 
-  // Загрузка стадий (если группировка)
+  // Загрузка стадий (если группировка). groupByFilter (если передан вью)
+  // отсекает лишние стадии прямо на бэке тем же доменным синтаксисом, что и
+  // фильтр карточек, напр. [['active', '=', true]]. По умолчанию — без фильтра.
   const { data: stagesData } = useSearchQuery(
     {
       model: groupByModel || '',
@@ -265,6 +276,7 @@ export function Kanban<T extends FaraRecord>({
       limit: 100,
       order: 'asc',
       sort: 'sequence',
+      filter: groupByFilter,
     },
     { skip: !groupByModel }
   ) as TypedUseQueryHookResult<GetListResult<FaraRecord>, GetListParams, BaseQueryFn>;
