@@ -85,7 +85,7 @@ export function ChatHeader({
 
   const getChatIcon = () => {
     if (chat.chat_type === 'direct' && members.length === 2) {
-      const otherMember = members.find(m => m.name !== chat.name);
+      const otherMember = members.find(m => m.name === chat.name);
       return (
         <Avatar color="blue" radius="xl" size="md">
           {getInitials(otherMember?.name || chat.name)}
@@ -132,9 +132,7 @@ export function ChatHeader({
         <Group gap="xs" wrap="nowrap">
           {/* Call button — только в direct-чате между юзерами */}
           {otherUser && (
-            <CallButton
-              peer={{ id: otherUser.id, name: otherUser.name }}
-            />
+            <CallButton peer={{ id: otherUser.id, name: otherUser.name }} />
           )}
 
           {/* Pinned messages */}

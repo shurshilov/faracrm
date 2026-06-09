@@ -218,7 +218,8 @@ class Chat(AuditMixin, DotModel):
 
         now = datetime.now(timezone.utc)
         chat = Chat(
-            name=f"{user1.name} - {user2.name}",
+            # name=f"{user1.name} - {user2.name}",
+            name=f"{user2.name}",
             chat_type="direct",
             create_user_id=user1,
             create_datetime=now,

@@ -227,7 +227,7 @@ export function ChatList({
 
   const getChatIcon = (chat: Chat) => {
     if (chat.chat_type === 'direct' && chat.members.length === 2) {
-      const otherMember = chat.members.find(m => m.name !== chat.name);
+      const otherMember = chat.members.find(m => m.name === chat.name);
       return (
         <Avatar color="blue" radius="xl" size="md">
           {getInitials(otherMember?.name || chat.name)}
@@ -326,9 +326,7 @@ export function ChatList({
                         <Switch
                           key={opt.key}
                           checked={opt.checked}
-                          onChange={e =>
-                            opt.onChange(e.currentTarget.checked)
-                          }
+                          onChange={e => opt.onChange(e.currentTarget.checked)}
                           label={opt.label}
                           disabled={opt.disabled}
                           size="sm"
@@ -378,13 +376,16 @@ export function ChatList({
                         {chat.name}
                       </Text>
                       <Text size="xs" c="dimmed">
-                        {formatTime(chat.last_message_date || chat.create_datetime)}
+                        {formatTime(
+                          chat.last_message_date || chat.create_datetime,
+                        )}
                       </Text>
                     </Group>
 
                     <Group justify="space-between" wrap="nowrap">
                       <Text size="sm" c="dimmed" truncate style={{ flex: 1 }}>
-                        {getMessagePreview(chat.last_message, t) || t('noMessages')}
+                        {getMessagePreview(chat.last_message, t) ||
+                          t('noMessages')}
                       </Text>
                       {chat.unread_count > 0 && (
                         <Badge size="sm" variant="filled" color="blue" circle>
