@@ -7,6 +7,7 @@ import {
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import avitoIconUrl from '@/fara_chat_avito/assets/avito.svg';
+import { MaxIcon } from '@/fara_chat_max_bot/components/MaxIcon';
 
 interface ConnectorFilterProps {
   value: string;
@@ -34,6 +35,9 @@ const connectorIcons: Record<string, React.ReactNode> = {
   telegram: <IconBrandTelegram size={16} />,
   whatsapp: <IconBrandWhatsapp size={16} />,
   avito: <AvitoIcon />,
+  max_bot: <MaxIcon />,
+  // max_wamm: <MaxIcon />,
+  max_business: <MaxIcon />,
 };
 
 // Названия типов коннекторов
@@ -43,6 +47,9 @@ const connectorLabels: Record<string, string> = {
   telegram: 'Telegram',
   whatsapp: 'WhatsApp',
   avito: 'Avito',
+  max_bot: 'MAX (бот)',
+  // max_wamm: 'MAX (WAMM)',
+  max_business: 'MAX Business',
 };
 
 export function ConnectorFilter({
@@ -67,7 +74,13 @@ export function ConnectorFilter({
                   ? 'green'
                   : type === 'avito'
                     ? 'lime'
-                    : 'gray'
+                    : type === 'max_bot'
+                      ? 'grape'
+                      : type === 'max_wamm'
+                        ? 'grape'
+                        : type === 'max_business'
+                          ? 'grape'
+                          : 'gray'
             }>
             {connectorIcons[type] || <IconApps size={16} />}
           </ThemeIcon>

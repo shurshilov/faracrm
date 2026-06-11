@@ -1,11 +1,5 @@
 import { useMemo } from 'react';
-import {
-  Stack,
-  Text,
-  UnstyledButton,
-  Group,
-  Divider,
-} from '@mantine/core';
+import { Stack, Text, UnstyledButton, Group, Divider } from '@mantine/core';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -18,6 +12,7 @@ import {
   IconMessageCircle,
 } from '@tabler/icons-react';
 import { useGetMyConnectorsQuery } from '@/services/api/chat';
+import { MaxIcon } from '@/fara_chat_max_bot/components/MaxIcon';
 import classes from './ChatSidebar.module.css';
 
 // ─── Цветовая карта коннекторов ─────────────────────────────────────────────
@@ -27,9 +22,9 @@ import classes from './ChatSidebar.module.css';
 
 interface ConnectorTheme {
   icon: React.ComponentType<{ size?: number }>;
-  color: string;       // основной цвет иконки
-  activeBg: string;    // фон при active
-  activeText: string;  // текст при active
+  color: string; // основной цвет иконки
+  activeBg: string; // фон при active
+  activeText: string; // текст при active
 }
 
 const CONNECTOR_THEME: Record<string, ConnectorTheme> = {
@@ -50,6 +45,24 @@ const CONNECTOR_THEME: Record<string, ConnectorTheme> = {
     color: '#f59e0b',
     activeBg: 'rgba(245, 158, 11, 0.1)',
     activeText: '#b45309',
+  },
+  max_bot: {
+    icon: MaxIcon,
+    color: '#8E5BFF',
+    activeBg: 'rgba(142, 91, 255, 0.1)',
+    activeText: '#6E3FE0',
+  },
+  // max_wamm: {
+  //   icon: MaxIcon,
+  //   color: '#8E5BFF',
+  //   activeBg: 'rgba(142, 91, 255, 0.1)',
+  //   activeText: '#6E3FE0',
+  // },
+  max_business: {
+    icon: MaxIcon,
+    color: '#8E5BFF',
+    activeBg: 'rgba(142, 91, 255, 0.1)',
+    activeText: '#6E3FE0',
   },
 };
 
@@ -169,27 +182,30 @@ export function ChatSidebar() {
       )}
 
       {/* ── Все внешние ── */}
-      {hasExternal && (() => {
-        const isActive = currentPath === '/chat?is_internal=false';
-        return (
-          <UnstyledButton
-            className={`${classes.item} ${classes.external}`}
-            data-active={isActive || undefined}
-            onClick={() => navigate('/chat?is_internal=false')}
-            style={{
-              '--c-icon': '#0ea5e9',
-              '--c-active-bg': 'rgba(14, 165, 233, 0.1)',
-              '--c-active-text': '#0369a1',
-            } as React.CSSProperties}>
-            <Group gap="sm">
-              <IconWorld size={18} />
-              <Text size="sm" fw={isActive ? 600 : 400}>
-                {t('chat:menu.allExternal', 'Все')}
-              </Text>
-            </Group>
-          </UnstyledButton>
-        );
-      })()}
+      {hasExternal &&
+        (() => {
+          const isActive = currentPath === '/chat?is_internal=false';
+          return (
+            <UnstyledButton
+              className={`${classes.item} ${classes.external}`}
+              data-active={isActive || undefined}
+              onClick={() => navigate('/chat?is_internal=false')}
+              style={
+                {
+                  '--c-icon': '#0ea5e9',
+                  '--c-active-bg': 'rgba(14, 165, 233, 0.1)',
+                  '--c-active-text': '#0369a1',
+                } as React.CSSProperties
+              }>
+              <Group gap="sm">
+                <IconWorld size={18} />
+                <Text size="sm" fw={isActive ? 600 : 400}>
+                  {t('chat:menu.allExternal', 'Все')}
+                </Text>
+              </Group>
+            </UnstyledButton>
+          );
+        })()}
 
       {/* ── Динамические коннекторы (стиль A — colored pills) ── */}
       {externalItems.map(item => {
@@ -206,11 +222,13 @@ export function ChatSidebar() {
             className={`${classes.item} ${classes.external}`}
             data-active={isActive || undefined}
             onClick={() => navigate(item.to)}
-            style={{
-              '--c-icon': color,
-              '--c-active-bg': activeBg,
-              '--c-active-text': activeText,
-            } as React.CSSProperties}>
+            style={
+              {
+                '--c-icon': color,
+                '--c-active-bg': activeBg,
+                '--c-active-text': activeText,
+              } as React.CSSProperties
+            }>
             <Group gap="sm">
               <Icon size={18} />
               <Text size="sm" fw={isActive ? 600 : 400}>

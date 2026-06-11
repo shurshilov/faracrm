@@ -9,6 +9,7 @@ import {
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import avitoIconUrl from '@/fara_chat_avito/assets/avito.svg';
+import { MaxIcon } from '@/fara_chat_max_bot/components/MaxIcon';
 
 interface ConnectorSwitcherProps {
   connectors: ChatConnectorDetail[];
@@ -37,6 +38,9 @@ const connectorIcons: Record<string, React.ReactNode> = {
   whatsapp: <IconBrandWhatsapp size={16} />,
   email: <IconMail size={16} />,
   avito: <AvitoIcon />,
+  max_bot: <MaxIcon />,
+  // max_wamm: <MaxIcon />,
+  max_business: <MaxIcon />,
 };
 
 const connectorColors: Record<string, string> = {
@@ -45,6 +49,9 @@ const connectorColors: Record<string, string> = {
   whatsapp: 'green',
   email: 'orange',
   avito: 'lime',
+  max_bot: 'grape',
+  // max_wamm: 'grape',
+  max_business: 'grape',
 };
 
 export function ConnectorSwitcher({

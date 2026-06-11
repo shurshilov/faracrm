@@ -71,6 +71,10 @@ from backend.base.crm.chat.models.chat_message import ChatMessage
 from backend.base.crm.chat_telegram.mixins import ChatConnectorTelegramMixin
 from backend.base.crm.chat_email.mixins import ChatConnectorEmailMixin
 from backend.base.crm.chat_avito.mixins import ChatConnectorAvitoMixin
+from backend.base.crm.chat_max_bot.mixins import ChatConnectorMaxBotMixin
+from backend.base.crm.chat_max_business.mixins import (
+    ChatConnectorMaxBusinessMixin,
+)
 from backend.base.crm.chat_whatsapp_chatapp.mixins import (
     ChatConnectorWhatsAppChatAppMixin,
 )
@@ -115,6 +119,8 @@ if TYPE_CHECKING:
         ChatConnectorWebPushMixin,
         ChatConnectorTelegramMixin,
         ChatConnectorAvitoMixin,
+        ChatConnectorMaxBotMixin,
+        ChatConnectorMaxBusinessMixin,
         ChatConnectorWhatsAppChatAppMixin,
         ChatConnectorEmailMixin,
         ChatConnectorBase,
@@ -190,6 +196,8 @@ from backend.base.crm.chat_phone.app import ChatPhoneApp
 from backend.base.crm.chat_phone_sipuni.app import ChatPhoneSipuniApp
 from backend.base.crm.chat_phone_megafon.app import ChatPhoneMegafonApp
 from backend.base.crm.chat_avito.app import ChatAvitoApp
+from backend.base.crm.chat_max_bot.app import ChatMaxBotApp
+from backend.base.crm.chat_max_business.app import ChatMaxBusinessApp
 from backend.base.crm.tasks.app import TasksApp
 from backend.base.crm.activity.app import ActivityApp
 from backend.base.crm.report_docx.app import ReportDocxApp
@@ -311,6 +319,8 @@ class Apps(AppsCore):
     chat_phone_megafon = ChatPhoneMegafonApp()
     chat_web_push = ChatWebPushApp()
     chat_avito = ChatAvitoApp()
+    chat_max_bot = ChatMaxBotApp()
+    chat_max_business = ChatMaxBusinessApp()
     task = TasksApp()
     activity = ActivityApp()
     report_docx = ReportDocxApp()

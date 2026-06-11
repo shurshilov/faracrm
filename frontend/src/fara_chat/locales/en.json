@@ -145,6 +145,11 @@
       "externalAccountId": "External Account ID",
       "telegramBotId": "Telegram bot ID",
       "telegramBotToken": "Telegram bot token",
+      "maxBotId": "MAX bot ID (user_id)",
+      "maxBotToken": "MAX bot token",
+      "wammToken": "WAMM API Token",
+      "maxBusinessToken": "MAX Business token",
+      "maxBusinessId": "MAX Business account ID",
       "leadType": "Lead Type",
       "lastResponse": "Last Response",
       "createDate": "Created",
@@ -173,7 +178,10 @@
       "leadSettings": "Lead Settings",
       "lastResponse": "Last API Response",
       "timestamps": "Timestamps",
-      "telegram": "Telegram Bot"
+      "telegram": "Telegram Bot",
+      "maxBot": "MAX Bot",
+      "maxWamm": "MAX via WAMM.chat",
+      "maxBusiness": "MAX for Business (official)"
     },
     "actions": {
       "setWebhook": "Set Webhook",
@@ -190,6 +198,9 @@
       "whatsapp": "WhatsApp",
       "whatsapp_chatapp": "WhatsApp (ChatApp)",
       "avito": "Avito",
+      "max_bot": "MAX (bot)",
+      "max_wamm": "MAX (WAMM)",
+      "max_business": "MAX Business",
       "vk": "VKontakte"
     },
     "categories": {
@@ -206,6 +217,18 @@
     "leadTypes": {
       "lead": "Lead",
       "opportunity": "Opportunity"
+    },
+    "maxBot": {
+      "noAuthRequired": "MAX uses Bot Token for authorization. Configure it in the \"Connection\" tab."
+    },
+    "maxWamm": {
+      "hint": "MAX via the WAMM.chat business aggregator: send by phone number, you can message the client first.",
+      "webhookHint": "WAMM has no webhook API — copy the webhook_url into your WAMM dashboard settings (Settings → public URL).",
+      "noAuthRequired": "MAX (WAMM) uses a WAMM API token. Configure it in the \"Connection\" tab."
+    },
+    "maxBusiness": {
+      "hint": "Official \"MAX for Business\" channel: you can message the client first by phone number. Requires a verified business account (business.max.ru).",
+      "noAuthRequired": "MAX Business uses a business-account token. Configure it in the \"Connection\" tab."
     },
     "telegram": {
       "noAuthRequired": "Telegram uses Bot Token for authorization. Configure it in the \"Connection\" tab."

@@ -144,6 +144,9 @@ export const modelsConfig: Record<string, ModelConfig> = {
     extensions: [
       () => import('@/fara_chat_telegram'),
       () => import('@/fara_chat_avito'),
+      () => import('@/fara_chat_max_bot'),
+      // () => import('@/fara_chat_max_wamm'),
+      () => import('@/fara_chat_max_business'),
       () => import('@/fara_chat_email'),
     ],
   },

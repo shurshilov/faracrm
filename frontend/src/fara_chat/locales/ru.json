@@ -145,6 +145,11 @@
       "externalAccountId": "ID внешнего аккаунта",
       "telegramBotId": "Телеграм бот ID",
       "telegramBotToken": "Телеграм бот токен",
+      "maxBotId": "MAX бот ID (user_id)",
+      "maxBotToken": "MAX бот токен",
+      "wammToken": "WAMM API Token",
+      "maxBusinessToken": "MAX Business токен",
+      "maxBusinessId": "MAX Business ID аккаунта",
       "leadType": "Тип лида",
       "lastResponse": "Последний ответ",
       "createDate": "Дата создания",
@@ -173,7 +178,10 @@
       "leadSettings": "Настройки лидов",
       "lastResponse": "Последний ответ API",
       "timestamps": "Временные метки",
-      "telegram": "Telegram Bot"
+      "telegram": "Telegram Bot",
+      "maxBot": "MAX Bot",
+      "maxWamm": "MAX через WAMM.chat",
+      "maxBusiness": "MAX для бизнеса (официальный)"
     },
     "actions": {
       "setWebhook": "Установить Webhook",
@@ -190,6 +198,9 @@
       "whatsapp": "WhatsApp",
       "whatsapp_chatapp": "WhatsApp (ChatApp)",
       "avito": "Avito",
+      "max_bot": "MAX (бот)",
+      "max_wamm": "MAX (WAMM)",
+      "max_business": "MAX Business",
       "vk": "ВКонтакте"
     },
     "categories": {
@@ -206,6 +217,18 @@
     "leadTypes": {
       "lead": "Лид",
       "opportunity": "Сделка"
+    },
+    "maxBot": {
+      "noAuthRequired": "MAX использует Bot Token для авторизации. Настройте его во вкладке \"Подключение\"."
+    },
+    "maxWamm": {
+      "hint": "Интеграция MAX через бизнес-агрегатор WAMM.chat: отправка по номеру телефона, можно писать клиенту первым.",
+      "webhookHint": "WAMM не имеет API для webhook — скопируйте webhook_url в настройки кабинета WAMM (Settings → public URL).",
+      "noAuthRequired": "MAX (WAMM) использует API-токен WAMM. Настройте его во вкладке \"Подключение\"."
+    },
+    "maxBusiness": {
+      "hint": "Официальный канал «MAX для бизнеса»: можно писать клиенту первым по номеру телефона. Нужен верифицированный бизнес-аккаунт (business.max.ru).",
+      "noAuthRequired": "MAX Business использует токен бизнес-аккаунта. Настройте его во вкладке \"Подключение\"."
     },
     "telegram": {
       "noAuthRequired": "Telegram использует Bot Token для авторизации. Настройте его во вкладке \"Подключение\"."
