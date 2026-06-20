@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Any
 
 from backend.base.system.core.enviroment import Environment
 from backend.base.system.dotorm.dotorm.access import (
+    BYPASS_DOMAIN,
+    BYPASS_DOMAIN_LEGACY,
     AccessChecker,
     Operation,
 )
@@ -188,6 +190,9 @@ class SecurityAccessChecker(AccessChecker["Session"]):
             if domain_str:
                 try:
                     domain = json.loads(domain_str)
+                    # если есть специфичный домен, то тогда сразу разрешить
+                    if domain in [BYPASS_DOMAIN, BYPASS_DOMAIN_LEGACY]:
+                        return []
                     if domain:
                         # Подставляем переменные ({{user_id}})
                         domain = self._substitute_variables(domain, user_id)
@@ -218,7 +223,7 @@ class SecurityAccessChecker(AccessChecker["Session"]):
             return d
 
         # Несколько rules — OR-объединение
-        combined: list = []
+        combined = []
         for i, domain in enumerate(domains):
             if i > 0:
                 combined.append("or")

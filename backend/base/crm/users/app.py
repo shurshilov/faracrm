@@ -4,6 +4,7 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
     from backend.base.system.core.enviroment import Environment
 
+from backend.base.system.dotorm.dotorm.access import BYPASS_DOMAIN
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL, ACLPerms
 from .models.users import (
@@ -248,7 +249,7 @@ class UserApp(App):
                 {
                     "name": "System admin can see and edit all users",
                     "role_id": system_admin_role_id,
-                    "domain": [["id", "!=", None]],
+                    "domain": BYPASS_DOMAIN,
                     "perm_create": False,
                     "perm_read": True,
                     "perm_update": True,

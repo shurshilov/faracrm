@@ -4,6 +4,7 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
     from backend.base.system.core.enviroment import Environment
 
+from backend.base.system.dotorm.dotorm.access import BYPASS_DOMAIN
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
 from backend.base.crm.security.utils import init_module_roles
@@ -136,7 +137,7 @@ class LeadsApp(App):
                 "name": "Лиды: все (менеджер)",
                 "model_id": lead_model_rec,
                 "role_id": role_manager[0],
-                "domain": [["id", "!=", None]],  # 1=1, все записи
+                "domain": BYPASS_DOMAIN,
                 "perm_read": True,
                 "perm_create": True,
                 "perm_update": True,
@@ -146,7 +147,7 @@ class LeadsApp(App):
                 "name": "Лиды: все (админ)",
                 "model_id": lead_model_rec,
                 "role_id": role_admin[0],
-                "domain": [["id", "!=", None]],
+                "domain": BYPASS_DOMAIN,
                 "perm_read": True,
                 "perm_create": True,
                 "perm_update": True,

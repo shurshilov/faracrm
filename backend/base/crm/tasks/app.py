@@ -4,6 +4,7 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
     from backend.base.system.core.enviroment import Environment
 
+from backend.base.system.dotorm.dotorm.access import BYPASS_DOMAIN
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
 from backend.base.crm.security.utils import init_module_roles
@@ -162,8 +163,6 @@ class TasksApp(App):
         task_member_domain = [
             ["@has_parent_access", "project", "project_id"],
         ]
-        # Широкий domain — «все записи» (для manager/admin)
-        all_domain = [["id", "!=", None]]
 
         rules_to_create = [
             {
@@ -176,13 +175,13 @@ class TasksApp(App):
                 "name": "Проекты: все (менеджер)",
                 "model_id": project_model_rec,
                 "role_id": role_manager[0],
-                "domain": all_domain,
+                "domain": BYPASS_DOMAIN,
             },
             # {
             #     "name": "Проекты: все (админ)",
             #     "model_id": project_model_rec,
             #     "role_id": role_admin[0],
-            #     "domain": all_domain,
+            #     "domain": BYPASS_DOMAIN,
             # },
             {
                 "name": "Задачи: в проектах где я участник",
@@ -194,7 +193,7 @@ class TasksApp(App):
                 "name": "Задачи: все (менеджер)",
                 "model_id": task_model_rec,
                 "role_id": role_manager[0],
-                "domain": all_domain,
+                "domain": BYPASS_DOMAIN,
             },
             # {
             #     "name": "Задачи: все (админ)",

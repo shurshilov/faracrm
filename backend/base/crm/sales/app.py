@@ -4,6 +4,7 @@ if TYPE_CHECKING:
     from fastapi import FastAPI
     from backend.base.system.core.enviroment import Environment
 
+from backend.base.system.dotorm.dotorm.access import BYPASS_DOMAIN
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
 from .models.sale_stage import SaleStage, INITIAL_SALE_STAGES
@@ -160,7 +161,7 @@ class SalesApp(App):
                 "name": "Заказы на продажу: все",
                 "model_id": sale_model_rec,
                 "role_id": role_manager[0],
-                "domain": [["id", "!=", None]],  # 1=1
+                "domain": BYPASS_DOMAIN,
                 "perm_read": True,
                 "perm_create": True,
                 "perm_update": True,
@@ -185,7 +186,7 @@ class SalesApp(App):
                 "name": "Строки заказов: все",
                 "model_id": sale_line_model_rec,
                 "role_id": role_manager[0],
-                "domain": [["id", "!=", None]],  # 1=1
+                "domain": BYPASS_DOMAIN,
                 "perm_read": True,
                 "perm_create": True,
                 "perm_update": True,

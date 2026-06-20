@@ -32,6 +32,9 @@ class Operation(StrEnum):
     DELETE = "delete"
 
 
+BYPASS_DOMAIN = []
+BYPASS_DOMAIN_LEGACY = [["id", "!=", None]]
+
 # Generic тип для Session
 TSession = TypeVar("TSession")
 
