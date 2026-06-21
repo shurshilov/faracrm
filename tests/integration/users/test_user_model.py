@@ -14,6 +14,8 @@ Run: pytest tests/integration/users/test_user_model.py -v -m integration
 import pytest
 from datetime import datetime, timezone
 
+from ..security.test_security_rules import as_user
+
 pytestmark = pytest.mark.integration
 
 
@@ -313,6 +315,21 @@ class TestUserUpdate:
 
         updated = await User.get(user.id)
         assert updated.is_admin is True
+
+    async def test_update_admin_flag_none_admin_user(self, user_factory):
+        """User with is_admin field False, cant change other user is_admin field"""
+        from backend.base.crm.users.models.users import User
+        from backend.base.system.core.exceptions.environment import (
+            FaraException,
+        )
+
+        none_admin = await user_factory(
+            name="NoneAdmin", login="noneadmin", is_admin=False
+        )
+
+        async with as_user(none_admin):
+            with pytest.raises(FaraException):
+                await none_admin.update(User(is_admin=True))
 
     async def test_bulk_update(self, user_factory):
         """Test bulk update."""

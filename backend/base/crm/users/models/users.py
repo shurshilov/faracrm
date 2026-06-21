@@ -5,6 +5,7 @@ import secrets
 from typing import TYPE_CHECKING, Self
 
 from backend.base.crm.attachments.models.attachments import Attachment
+from backend.base.system.dotorm.dotorm.access import get_access_session
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
     FilterExpression,
 )
@@ -280,6 +281,47 @@ class User(PolymorphicParentMixin):
                 )
 
         return await super().create(payload, session, depends_jobs)
+
+    async def update(
+        self,
+        payload: "User",
+        fields: list[str] | None = None,
+        session=None,
+        depends_jobs=None,
+    ):
+        # Берем переданные поля или автоматически вычисляем заполненные
+        fields = payload.assigned_fields()
+
+        if "is_admin" in fields and payload.is_admin != self.is_admin:
+            auth_session = get_access_session()
+            current_user = auth_session.user_id
+
+            # Правило 1: Только админ имеет право трогать это поле
+            if not current_user.is_admin:
+                raise FaraException(
+                    {"content": "ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD"}
+                )
+
+            # Если админа пытаются СНЯТЬ
+            if payload.is_admin is False:
+
+                # Правило 2: Запрещаем снимать права с самого себя
+                if current_user.id == self.id:
+                    raise FaraException(
+                        {"content": "YOU_CANNOT_REVOKE_YOUR_OWN_ADMIN_STATUS"}
+                    )
+
+                # Правило 3: Защита последнего выжившего админа.
+                # Считаем, сколько админов сейчас в базе
+                active_admins_count = await self.search_count(
+                    filter=[("is_admin", "=", True)], session=session
+                )
+                if active_admins_count <= 1:
+                    raise FaraException(
+                        {"content": "CANNOT_REMOVE_THE_LAST_ADMINISTRATOR"}
+                    )
+
+        await super().update(payload, fields, session, depends_jobs)
 
     def generate_password_hash_salt_old(self, password: str):
         return self.generate_password_hash(password, self.password_salt)

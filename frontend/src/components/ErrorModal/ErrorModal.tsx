@@ -51,6 +51,20 @@ const TRANSLATIONS: Record<
       title: 'Невозможно редактировать чат',
       description: 'Личные чаты нельзя редактировать.',
     },
+    ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD: {
+      title: 'Невозможно редактировать пользователя',
+      description:
+        'Менять суперпользователя может только другой суперпользователь',
+    },
+    YOU_CANNOT_REVOKE_YOUR_OWN_ADMIN_STATUS: {
+      title: 'Невозможно убрать статус суперадмина у себя',
+      description:
+        'Менять суперпользователя можно только у другого пользователя',
+    },
+    CANNOT_REMOVE_THE_LAST_ADMINISTRATOR: {
+      title: 'Невозможно удалить последнего суперадмина',
+      description: 'В системе должен оставаться хотя бы один суперпользователь',
+    },
     MEMBER_NOT_FOUND: {
       title: 'Участник не найден',
       description: 'Указанный участник не найден в этом чате.',
@@ -65,7 +79,8 @@ const TRANSLATIONS: Record<
     },
     USER_LOGIN_EXISTS: {
       title: 'Логин уже занят',
-      description: 'Пользователь с таким логином уже существует. Выберите другой.',
+      description:
+        'Пользователь с таким логином уже существует. Выберите другой.',
     },
     VALIDATION_ERROR: {
       title: 'Ошибка валидации',
@@ -105,6 +120,18 @@ const TRANSLATIONS: Record<
       title: 'Cannot Edit Chat',
       description: 'Direct chats cannot be edited.',
     },
+    ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD: {
+      title: 'Cannot Edit User.',
+      description: 'Only another superuser can change the superuser.',
+    },
+    YOU_CANNOT_REVOKE_YOUR_OWN_ADMIN_STATUS: {
+      title: 'It is impossible to remove superadmin status from yourself.',
+      description: 'You can only change the superuser for another user.',
+    },
+    CANNOT_REMOVE_THE_LAST_ADMINISTRATOR: {
+      title: 'Unable to delete last superadmin',
+      description: 'There must be at least one superuser left in the system.',
+    },
     MEMBER_NOT_FOUND: {
       title: 'Member Not Found',
       description: 'The specified member was not found in this chat.',
@@ -119,7 +146,8 @@ const TRANSLATIONS: Record<
     },
     USER_LOGIN_EXISTS: {
       title: 'Login already taken',
-      description: 'A user with this login already exists. Please choose another.',
+      description:
+        'A user with this login already exists. Please choose another.',
     },
     VALIDATION_ERROR: {
       title: 'Validation Error',

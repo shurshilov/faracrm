@@ -654,16 +654,16 @@ class DotModel(
                 — это валидное явное значение «обнулить FK», и compute,
                 подписанный на tax_id, должен это увидеть.
         """
-        result: list[str] = []
-        for name in self._cache_all_fields:
-            if name in exclude:
-                continue
-            if name not in self.__dict__:
-                continue
-            if exclude_none and self.__dict__[name] is None:
-                continue
-            result.append(name)
-        return result
+
+        instance_dict = self.__dict__
+        return [
+            # проходим все поля в классе
+            name
+            for name in self._cache_all_fields
+            if name not in exclude
+            and name in instance_dict
+            and not (exclude_none and instance_dict[name] is None)
+        ]
 
     @classmethod
     async def get_default_values(
