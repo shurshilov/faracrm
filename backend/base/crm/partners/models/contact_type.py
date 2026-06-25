@@ -251,4 +251,13 @@ INITIAL_CONTACT_TYPES = [
         "pattern": None,
         "sequence": 11,
     },
+    {
+        "name": "max",
+        "label": "MAX",
+        "icon": "IconMessageCircle",
+        "color": "grape",
+        "placeholder": "ID пользователя (user_id)",
+        "pattern": None,
+        "sequence": 12,
+    },
 ]
