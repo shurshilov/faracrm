@@ -113,7 +113,7 @@ async def get_connector_self_account(req: Request, connector_id: int):
 @router_private.get("/connectors/my")
 async def get_my_connectors(req: Request):
     """
-    Активные коннекторы, где текущий пользователь — оператор.
+    Активные коннекторы, где текущий пользователь — руководитель.
 
     Возвращает уникальные типы коннекторов для построения
     динамического меню в ChatSidebar.
@@ -126,10 +126,10 @@ async def get_my_connectors(req: Request):
     query = """
         SELECT DISTINCT cc.type, cc.name
         FROM chat_connector cc
-        JOIN chat_connector_operator_many2many op
-            ON op.connector_id = cc.id
+        JOIN chat_connector_manager_many2many m
+            ON m.connector_id = cc.id
         WHERE cc.active = true
-            AND op.user_id = %s
+            AND m.user_id = %s
         ORDER BY cc.type
     """
     result = await session.execute(query, [user_id])

@@ -268,18 +268,10 @@ class ChatConnector(AuditMixin, DotModel):
         self, payload: Self, session=None, depends_jobs=None
     ) -> int:
         """
-        Создание коннектора с автоматическим созданием ChatExternalAccount
-        для назначенных операторов и outbox-аккаунта коннектора.
+        Создание коннектора с автоматическим созданием outbox-аккаунта.
         """
         # Создаём коннектор (Many2many operator_ids заполнится автоматически)
         self.id = await super().create(payload, session, depends_jobs)
-
-        # Получаем операторов из Many2many таблицы
-        new_operator_ids = await self._get_current_operator_ids()
-
-        # Создаём ChatExternalAccount для операторов
-        if new_operator_ids:
-            await self._sync_operators(self.id, [], new_operator_ids)
 
         # Создаём outbox-аккаунт (обязательно, если задан external_account_id)
         await self._ensure_outbox_account()
@@ -295,45 +287,20 @@ class ChatConnector(AuditMixin, DotModel):
         depends_jobs=None,
     ):
         """
-        Обновление коннектора с синхронизацией Contact для операторов
-        и outbox-аккаунта.
+        Обновление коннектора с синхронизацией outbox-аккаунта.
         """
-        # Проверяем, изменяются ли операторы
-        has_operator_changes = fields and "operator_ids" in fields
         has_external_account_change = (
             fields and "external_account_id" in fields
         )
 
-        old_operator_ids = []
-        if has_operator_changes:
-            old_operator_ids = await self._get_current_operator_ids()
-
         # Выполняем обновление (включая Many2many)
         result = await super().update(payload, fields, session, depends_jobs)
-
-        # Синхронизируем Contact если были изменения операторов
-        if has_operator_changes:
-            new_operator_ids = await self._get_current_operator_ids()
-            if old_operator_ids != new_operator_ids:
-                await self._sync_operators(
-                    self.id, old_operator_ids, new_operator_ids
-                )
 
         # Если поменялся external_account_id — синхронизируем outbox-аккаунт.
         if has_external_account_change:
             await self._ensure_outbox_account()
 
         return result
-
-    async def _get_current_operator_ids(self) -> list[int]:
-        """Получить текущий список ID операторов из БД."""
-        query = """
-            SELECT user_id FROM chat_connector_operator_many2many
-            WHERE connector_id = $1
-        """
-        session = env.apps.db.get_session()
-        result = await session.execute(query, [self.id], cursor="fetch")
-        return [row["user_id"] for row in result]
 
     async def _ensure_outbox_account(self) -> None:
         """Создать (или найти) outbox-аккаунт коннектора и привязать в outbox_account_id.
@@ -396,116 +363,6 @@ class ChatConnector(AuditMixin, DotModel):
                 ),
                 fields=["outbox_account_id"],
             )
-
-    async def _sync_operators(
-        self, connector_id: int, old_ids: list[int], new_ids: list[int]
-    ) -> None:
-        """
-        Синхронизировать Contact при изменении списка операторов.
-
-        - Для добавленных операторов: создать Contact
-        - Для удалённых операторов: деактивировать Contact
-        """
-        old_set = set(old_ids)
-        new_set = set(new_ids)
-
-        added = list(new_set - old_set)
-        removed = list(old_set - new_set)
-
-        if not added and not removed:
-            return
-
-        connector = await self.search(
-            filter=[("id", "=", connector_id)],
-            # fields=["id", "name", "external_account_id", "contact_type_id"],
-        )
-        if not connector:
-            raise ValueError(f"Connector {connector_id} not found")
-        connector = connector[0]
-
-        if not connector.contact_type_id:
-            raise ValueError(
-                f"Contact type not set for connector {connector_id}"
-            )
-
-        contact_type = connector.contact_type_id
-        contact_value = connector.external_account_id or connector.name
-
-        if added:
-            # Загружаем пользователей и существующие контакты параллельно (если позволяет движок)
-            users = await env.models.user.search(
-                filter=[("id", "in", added)], fields=["id", "name"]
-            )
-            users_map = {u.id: u for u in users}
-
-            existing_contacts = await env.models.contact.search(
-                filter=[
-                    ("user_id", "in", added),
-                    ("contact_type_id", "=", contact_type.id),
-                ],
-                fields=["id", "name", "user_id"],
-            )
-            existing_contacts_map = {
-                c.user_id.id: c for c in existing_contacts if c.user_id
-            }
-
-            # 1. Реактивация (исправлено active=True)
-            to_reactivate = [c.id for c in existing_contacts if not c.active]
-            if to_reactivate:
-                await env.models.contact.update_bulk(
-                    to_reactivate, env.models.contact(active=True)
-                )
-                logger.info("Reactivated %s contacts", len(to_reactivate))
-
-            # 2. Создание новых
-            new_contacts = [
-                env.models.contact(
-                    user_id=users_map[uid],
-                    contact_type_id=contact_type,
-                    name=contact_value,
-                    is_primary=True,
-                    active=True,
-                )
-                for uid in added
-                if uid in users_map and uid not in existing_contacts_map
-            ]
-
-            if new_contacts:
-                await env.models.contact.create_bulk(new_contacts)
-                logger.info("Created %s new contacts", len(new_contacts))
-
-        if removed:
-            # Сразу ищем активные контакты для удаления
-            to_deactivate = await env.models.contact.search(
-                filter=[
-                    ("user_id", "in", removed),
-                    ("contact_type_id", "=", contact_type.id),
-                    ("active", "=", True),
-                ],
-                fields=["id"],
-            )
-            if to_deactivate:
-                ids = [c.id for c in to_deactivate]
-                await env.models.contact.update_bulk(
-                    ids, env.models.contact(active=False)
-                )
-                logger.info("Deactivated %s contacts", len(ids))
-
-    # async def get_next_operator(self):
-    #     """
-    #     Получить следующего доступного оператора для распределения чата.
-
-    #     Returns:
-    #         Пользователь-оператор или None
-    #     """
-    #     operators = await self._get_current_operator_ids()
-
-    #     if not operators:
-    #         return None
-
-    #     # TODO: Реализовать round-robin или load balancing
-    #     # Пока возвращаем первого
-    #     return operators[0]
 
     @property
     def strategy(self):
