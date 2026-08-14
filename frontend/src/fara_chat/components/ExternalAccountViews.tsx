@@ -58,7 +58,7 @@ export function ViewFormExternalAccount(props: ViewFormProps) {
         />
         <Field
           name="contact_id"
-          label={t('externalAccount.fields.partnerId')}
+          label={t('externalAccount.fields.contactId', 'Контакт (номер / tel)')}
         />
       </FormSection>
 

@@ -27,7 +27,7 @@ from backend.base.crm.users.models.users import SYSTEM_USER_ID
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
     from backend.base.crm.partners.models.contact import Contact
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
     from backend.base.crm.chat.models.chat_message import ChatMessage
     from backend.base.crm.chat.models.chat import Chat
     from backend.base.crm.chat.models.chat_external_chat import (
@@ -129,10 +129,23 @@ class IncomingMessagePipeline:
     и т.п.) работают как раньше — диспетчеризация по переданному экземпляру.
     """
 
-    def __init__(self, strategy, env, connector, adapter):
+    def __init__(
+        self,
+        strategy,
+        env,
+        connector,
+        adapter,
+        notify=True,
+        generate_lead=True,
+    ):
         self.ctx = IncomingMessage(
             env=env, connector=connector, adapter=adapter, strategy=strategy
         )
+        # режим истории, когда не создается новое, а берется
+        # старое событие, например CDR история звонков
+        # тогда нет смысла генерировать лиды и слать попап по ws
+        self.notify = notify
+        self.generate_lead = generate_lead
 
     async def run(self) -> None:
         ctx = self.ctx
@@ -143,9 +156,11 @@ class IncomingMessagePipeline:
         self._log_route()
         if ctx.route in _SKIP_ROUTES:
             return
-        await self._attach_lead()
+        if self.generate_lead:
+            await self._attach_lead()
         await self._persist_message()
-        await self._notify()
+        if self.notify:
+            await self._notify()
 
     async def _resolve_counterparty(self) -> bool:
         """Клиент-контрагент: его внешние id и имя одним хуком стратегии.

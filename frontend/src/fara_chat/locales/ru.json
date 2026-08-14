@@ -1,6 +1,7 @@
 {
   "menu": {
     "chat_connector": "Коннекторы",
+    "phone_number": "Номера",
     "chat_folder": "Папки",
     "chat_external_account": "Внешние аккаунты",
     "chat_external_chat": "Внешние чаты",

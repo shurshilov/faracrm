@@ -4,7 +4,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
 
 
 class ChatMessageAdapter:

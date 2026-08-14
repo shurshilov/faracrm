@@ -12,8 +12,9 @@ from backend.base.crm.chat.strategies.pipeline_incoming import (
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime
     from backend.base.system.core.enviroment import Environment
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
     from backend.base.crm.attachments.models.attachments import Attachment
     from backend.base.crm.chat.models.chat_external_account import (
         ChatExternalAccount,
@@ -184,6 +185,8 @@ class ChatStrategyBase(ABC):
         connector: "ChatConnector",
         payload: dict,
         env: "Environment",
+        notify: bool = True,
+        generate_lead: bool = True,
     ) -> dict:
         """
         Шаблонный метод обработки входящего webhook запроса.
@@ -202,6 +205,10 @@ class ChatStrategyBase(ABC):
             connector: Экземпляр коннектора
             payload: Данные от провайдера
             env: Environment с доступом к моделям
+            notify: слать ли живое WS-уведомление (попап нового сообщения).
+                Импорт истории звонков из CDR выключает — событие не «новое».
+            generate_lead: создавать ли лид по этому сообщению. Импорт истории
+                из CDR выключает — не плодим лиды по старым звонкам.
 
         Returns:
             Ответ для провайдера
@@ -231,7 +238,12 @@ class ChatStrategyBase(ABC):
             # 4. Обрабатываем сообщение в транзакции
             async with env.apps.db.get_transaction():
                 await IncomingMessagePipeline(
-                    self, env, connector, adapter
+                    self,
+                    env,
+                    connector,
+                    adapter,
+                    notify=notify,
+                    generate_lead=generate_lead,
                 ).run()
 
             return {"ok": True}
@@ -462,6 +474,66 @@ class ChatStrategyBase(ABC):
                 f"типа '{self.strategy_type}'"
             ),
             "details": {},
+        }
+
+    async def sync_numbers(self, connector: "ChatConnector", env) -> dict:
+        """
+        Синхронизировать номера / операторские линии из внешней системы.
+
+        Телефонные стратегии (Asterisk) переопределяют: тянут endpoints из АТС и
+        создают/обновляют операторские линии (ChatExternalAccount), сопоставляя
+        сотрудника по контакту (sip extension / phone). База — не поддерживает.
+        Возвращает {"ok": bool, "message": str, "details": {...}}.
+        """
+        return {
+            "ok": False,
+            "message": (
+                f"Синхронизация номеров не поддерживается для "
+                f"типа '{self.strategy_type}'"
+            ),
+            "details": {},
+        }
+
+    async def import_history(
+        self,
+        connector: "ChatConnector",
+        start_date: "datetime",
+        end_date: "datetime",
+        env,
+        mode: str = "silent",
+    ) -> dict:
+        """
+        Импортировать историю. Например звонки из CDR за период [start_date, end_date]
+        (создать call-сообщения). Телефонные стратегии (Asterisk) переопределяют.
+        База — не поддерживает. Возвращает {"ok", "message", "imported"}.
+
+        mode — режим обработки CDR: normal (как живой звонок) / no_notify (без
+        попапа) / silent (без попапа и без лида, по умолчанию).
+        """
+        return {
+            "ok": False,
+            "imported": 0,
+            "message": (
+                f"Импорт истории звонков не поддерживается для "
+                f"типа '{self.strategy_type}'"
+            ),
+        }
+
+    async def set_listener(
+        self, connector: "ChatConnector", enabled: bool, env
+    ) -> dict:
+        """
+        Включить/выключить постоянный in-process слушатель событий провайдера
+        (напр. Asterisk ARI в local-режиме). База не поддерживает.
+        Возвращает {"ok": bool, "enabled": bool, "message": str}.
+        """
+        return {
+            "ok": False,
+            "enabled": False,
+            "message": (
+                f"Слушатель событий не поддерживается для "
+                f"типа '{self.strategy_type}'"
+            ),
         }
 
     async def chat_send_message_binary(

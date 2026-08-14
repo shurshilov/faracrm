@@ -8,9 +8,10 @@
 #
 # Webhook callback endpoint находится в webhook.py
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Body, Depends, Request
+from pydantic import AwareDatetime
 
 from backend.base.crm.auth_token.app import AuthTokenApp
 
@@ -52,6 +53,7 @@ async def set_connector_webhook(req: Request, connector_id: int):
         "success": success,
         "webhook_state": connector.webhook_state,
         "webhook_url": connector.webhook_url,
+        "webhook_hash": connector.webhook_hash,
     }
 
 
@@ -127,6 +129,77 @@ async def test_connector_connection(req: Request, connector_id: int):
     connector = await env.models.chat_connector.get(connector_id)
 
     result = await connector.strategy.test_connection(connector)
+    return {"data": result}
+
+
+@router_private.post("/connectors/{connector_id}/sync-numbers")
+async def sync_connector_numbers(req: Request, connector_id: int):
+    """
+    Синхронизировать номера / операторские линии из АТС.
+    """
+    env: "Environment" = req.app.state.env
+
+    connector = await env.models.chat_connector.get(connector_id)
+
+    result = await connector.strategy.sync_numbers(connector, env)
+    return {"data": result}
+
+
+@router_private.post("/connectors/{connector_id}/fetch-history")
+async def fetch_connector_history(
+    req: Request,
+    connector_id: int,
+    start: AwareDatetime = Body(...),
+    end: AwareDatetime = Body(...),
+    mode: Literal["normal", "no_notify", "silent"] = Body("silent"),
+):
+    """
+    Прочитать историю звонков из CDR за период [start, end] и импортировать
+    (создать call-сообщения). start/end — timezone-aware даты (валидируются
+    Pydantic; из фронта уходят как ISO-строки с зоной).
+
+    mode — как обрабатывать исторические звонки (по умолчанию silent):
+    normal (как живой звонок: попап + лид) / no_notify (без попапа) /
+    silent (без попапа и без лида — только сообщение).
+
+    Для Asterisk: тянет CDR через источник и прогоняет каждую запись через
+    пайплайн. Для типов без поддержки — ok=false (см. базовый
+    ChatStrategyBase.import_history).
+    """
+    env: "Environment" = req.app.state.env
+
+    connector = await env.models.chat_connector.get(connector_id)
+
+    result = await connector.strategy.import_history(
+        connector, start, end, env, mode=mode
+    )
+    return {"data": result}
+
+
+@router_private.post("/connectors/{connector_id}/listener/start")
+async def start_connector_listener(req: Request, connector_id: int):
+    """
+    Включить постоянный in-process слушатель событий (Asterisk ARI, local-режим).
+
+    Проверяет соединение и, только если прошло, поднимает слушатель + ставит флаг
+    автозапуска. Возвращает {"ok", "enabled", "message"}.
+    """
+    env: "Environment" = req.app.state.env
+
+    connector = await env.models.chat_connector.get(connector_id)
+
+    result = await connector.strategy.set_listener(connector, True, env)
+    return {"data": result}
+
+
+@router_private.post("/connectors/{connector_id}/listener/stop")
+async def stop_connector_listener(req: Request, connector_id: int):
+    """Выключить постоянный слушатель событий (снимает флаг автозапуска)."""
+    env: "Environment" = req.app.state.env
+
+    connector = await env.models.chat_connector.get(connector_id)
+
+    result = await connector.strategy.set_listener(connector, False, env)
     return {"data": result}
 
 

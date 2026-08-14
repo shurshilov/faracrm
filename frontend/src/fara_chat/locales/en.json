@@ -1,6 +1,7 @@
 {
   "menu": {
     "chat_connector": "Connectors",
+    "phone_number": "Numbers",
     "chat_folder": "Folders",
     "chat_external_account": "External Accounts",
     "chat_external_chat": "External Chats",

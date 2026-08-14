@@ -12,7 +12,7 @@ from backend.base.crm.chat.strategies.strategy import ChatStrategyBase
 from .adapter import MaxBotMessageAdapter
 
 if TYPE_CHECKING:
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
     from backend.base.crm.chat.models.chat_external_account import (
         ChatExternalAccount,
     )

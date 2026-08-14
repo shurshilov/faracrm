@@ -17,7 +17,7 @@ from backend.base.system.core.enviroment import env
 
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat import Chat
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
 
 
 class ChatExternalChat(DotModel):

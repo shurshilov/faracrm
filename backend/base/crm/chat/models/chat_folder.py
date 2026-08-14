@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
 
 
 def _default_current_user():

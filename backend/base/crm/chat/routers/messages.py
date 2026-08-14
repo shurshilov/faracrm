@@ -160,6 +160,20 @@ async def get_messages(
             )
         )
 
+    # Архитектура 2: звонки — независимая сущность (таблица call), в истории
+    # чата они подмешиваются на чтении как виртуальные сообщения call_external
+    # (по времени). Окно выравниваем по самому старому сообщению страницы; если
+    # страница неполная — берём последние звонки без нижней границы. messages
+    # отсортированы id DESC, поэтому messages[-1] — самое старое сообщение.
+    time_from = None
+    if messages and len(messages) >= limit:
+        oldest = messages[-1].create_datetime
+        time_from = oldest.isoformat() if oldest else None
+    calls = await env.models.call.list_for_chat(
+        env, chat_id, time_from=time_from, limit=limit
+    )
+    result.extend(calls)
+
     return {"data": result}
 
 

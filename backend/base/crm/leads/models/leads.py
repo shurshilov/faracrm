@@ -4,7 +4,7 @@ if TYPE_CHECKING:
     from backend.base.crm.company.models.company import Company
     from backend.base.crm.users.models.users import User
     from backend.base.crm.partners.models.partners import Partner
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
     from .team_crm import TeamCrm
     from .lead_stage import LeadStage
 
@@ -142,7 +142,7 @@ class Lead(AuditMixin, PolymorphicParentMixin):
                     fields=["chat_id"],
                 )
                 for ec in ext_chats:
-                    await env.models.chat._ensure_membership(
+                    await env.models.chat(id=ec.chat_id.id)._ensure_membership(
                         ec.chat_id.id, payload.user_id.id
                     )
                     # _ensure_membership добавляет DB-участника, но НЕ

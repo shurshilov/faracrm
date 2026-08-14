@@ -96,6 +96,33 @@ export const modelsConfig: Record<string, ModelConfig> = {
       'active',
     ],
   },
+  // Номера телефонии (extension/trunk/group/queue) — настроенные в АТС номера,
+  // наполняются синхронизацией. Обычный список/форма (как chat_external_account).
+  phone_number: {
+    menu: MenuGroups.communication,
+    list: () =>
+      import('@/fara_chat/components/PhoneNumberViews').then(m => ({
+        default: m.ViewListPhoneNumber,
+      })),
+    form: () =>
+      import('@/fara_chat/components/PhoneNumberViews').then(m => ({
+        default: m.ViewFormPhoneNumber,
+      })),
+  },
+
+  // Журнал телефонии Asterisk (экран «События»): ARI-события + чтения CDR.
+  // Только просмотр, наполняется бэком.
+  asterisk_log: {
+    menu: MenuGroups.communication,
+    list: () =>
+      import('@/fara_chat/components/AsteriskLogViews').then(m => ({
+        default: m.ViewListAsteriskLog,
+      })),
+    form: () =>
+      import('@/fara_chat/components/AsteriskLogViews').then(m => ({
+        default: m.ViewFormAsteriskLog,
+      })),
+  },
 
   // === CRM ===
   leads: {
@@ -160,6 +187,7 @@ export const modelsConfig: Record<string, ModelConfig> = {
       () => import('@/fara_chat_max_business'),
       () => import('@/fara_chat_vk'),
       () => import('@/fara_chat_email'),
+      () => import('@/fara_chat_phone_asterisk'),
     ],
   },
   chat_external_account: {

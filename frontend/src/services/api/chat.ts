@@ -578,7 +578,12 @@ const chatApi = api.injectEndpoints({
 
     // Set webhook
     setConnectorWebhook: build.mutation<
-      { success: boolean; webhook_state: string },
+      {
+        success: boolean;
+        webhook_state: string;
+        webhook_url?: string;
+        webhook_hash?: string;
+      },
       { connectorId: number }
     >({
       query: ({ connectorId }) => ({
@@ -639,6 +644,62 @@ const chatApi = api.injectEndpoints({
     >({
       query: ({ connectorId }) => ({
         url: `/connectors/${connectorId}/test`,
+        method: 'POST',
+      }),
+    }),
+
+    // Sync operator lines/numbers from the PBX (Asterisk endpoints -> external accounts)
+    syncNumbers: build.mutation<
+      {
+        data: {
+          ok: boolean;
+          message: string;
+          details?: Record<string, unknown>;
+        };
+      },
+      { connectorId: number }
+    >({
+      query: ({ connectorId }) => ({
+        url: `/connectors/${connectorId}/sync-numbers`,
+        method: 'POST',
+      }),
+      invalidatesTags: [{ type: 'phone_number', id: 'LIST' }],
+    }),
+
+    // Read call history from CDR for a date range (Asterisk) and import as calls.
+    // mode: normal (popup + lead) / no_notify / silent (message only, default).
+    fetchCallHistory: build.mutation<
+      { data: { ok: boolean; message: string; imported?: number } },
+      {
+        connectorId: number;
+        start: string;
+        end: string;
+        mode?: 'normal' | 'no_notify' | 'silent';
+      }
+    >({
+      query: ({ connectorId, start, end, mode }) => ({
+        url: `/connectors/${connectorId}/fetch-history`,
+        method: 'POST',
+        body: { start, end, mode: mode ?? 'silent' },
+      }),
+    }),
+
+    // Start/stop the in-process ARI listener (Asterisk local-mode autostart switch)
+    startListener: build.mutation<
+      { data: { ok: boolean; message: string; enabled: boolean } },
+      { connectorId: number }
+    >({
+      query: ({ connectorId }) => ({
+        url: `/connectors/${connectorId}/listener/start`,
+        method: 'POST',
+      }),
+    }),
+    stopListener: build.mutation<
+      { data: { ok: boolean; message: string; enabled: boolean } },
+      { connectorId: number }
+    >({
+      query: ({ connectorId }) => ({
+        url: `/connectors/${connectorId}/listener/stop`,
         method: 'POST',
       }),
     }),
@@ -716,7 +777,13 @@ export interface ChatLastMessage {
   body?: string;
   author_id: number;
   create_datetime?: string;
-  message_type?: 'comment' | 'notification' | 'system' | 'email' | 'call';
+  message_type?:
+    | 'comment'
+    | 'notification'
+    | 'system'
+    | 'email'
+    | 'call'
+    | 'call_external';
   // Канал сообщения (email/telegram/...). Для email-превью проверяем его;
   // старые письма несли message_type='email' — оставлен как фолбэк.
   connector_type?: string;
@@ -787,7 +854,7 @@ export interface ChatMessage {
   is_edited?: boolean;
   is_read?: boolean;
   reactions?: MessageReaction[];
-  // Call fields (заполняются при message_type='call')
+  // Call fields (message_type='call' — WebRTC; 'call_external' — телефония)
   call_direction?: 'incoming' | 'outgoing';
   call_disposition?:
     | 'ringing'
@@ -1155,6 +1222,10 @@ export const {
   useLazyGetConnectorWebhookInfoQuery,
   useLazyGetConnectorSelfAccountQuery,
   useTestConnectorMutation,
+  useSyncNumbersMutation,
+  useFetchCallHistoryMutation,
+  useStartListenerMutation,
+  useStopListenerMutation,
 } = chatApi;
 
 export const {

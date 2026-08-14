@@ -46,6 +46,8 @@ function getIcon(iconName: string): React.ElementType {
 }
 
 // ============ LIST ============
+// value — РЕАЛЬНОЕ значение (телефон/email/username/extension);
+// name — человекочитаемое ОПИСАНИЕ («Александр рабочий телефон»), опционально.
 export function ViewListContacts() {
   const { contactTypes } = useContactTypes();
 
@@ -69,7 +71,12 @@ export function ViewListContacts() {
           );
         }}
       />
-      <Field name="name" label="Значение" />
+      <Field name="value" label="Значение" />
+      <Field
+        name="name"
+        label="Описание"
+        render={value => value || '—'}
+      />
       <Field
         name="partner_id"
         label="Партнёр"
@@ -97,7 +104,10 @@ export function ViewFormContacts(props: ViewFormProps) {
     <Form<ContactRecord> model="contact" {...props}>
       <FormRow cols={2}>
         <Field name="contact_type_id" label="Тип контакта" />
-        <Field name="name" label="Значение" />
+        <Field name="value" label="Значение" />
+      </FormRow>
+      <FormRow cols={1}>
+        <Field name="name" label="Описание (напр. «Александр рабочий телефон»)" />
       </FormRow>
       <FormRow cols={2}>
         <Field name="partner_id" label="Партнёр" />

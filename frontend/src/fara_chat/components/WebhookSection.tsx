@@ -88,6 +88,14 @@ export function WebhookSection({
         connectorId: Number(connectorId),
       }).unwrap();
       setWebhookState(result.webhook_state);
+      // Показать сгенерированные url/hash СРАЗУ (бэк их создал и сохранил, но
+      // форма о них не знает — иначе поля остаются пустыми до переоткрытия).
+      if (result.webhook_url) {
+        form.setFieldValue('webhook_url', result.webhook_url);
+      }
+      if (result.webhook_hash) {
+        form.setFieldValue('webhook_hash', result.webhook_hash);
+      }
       notifications.show({
         title: t('common.success', 'Успешно'),
         message: t('connector.webhook.setSuccess', 'Webhook установлен'),

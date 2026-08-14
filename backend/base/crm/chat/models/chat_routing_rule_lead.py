@@ -18,7 +18,7 @@ from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 
 if TYPE_CHECKING:
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
     from backend.base.crm.leads.models.team_crm import TeamCrm
     from backend.base.crm.users.models.users import User
 

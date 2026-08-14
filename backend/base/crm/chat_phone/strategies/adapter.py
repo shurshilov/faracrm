@@ -95,6 +95,15 @@ class PhoneMessageAdapter(ChatMessageAdapter):
         """Внутренний номер/extension оператора."""
         return None
 
+    async def cache_numbers(self, env) -> None:
+        """
+        Хук до-резолва async-состояния адаптера перед пайплайном (есть доступ к
+        БД). База ничего не делает; провайдеры переопределяют — напр. Asterisk
+        подгружает СВОИ номера, чтобы точно знать «наш номер или внешний» без
+        эвристики длины (см. AsteriskPhoneAdapter.cache_numbers).
+        """
+        return None
+
     # Свойства ChatMessageAdapter
 
     @property

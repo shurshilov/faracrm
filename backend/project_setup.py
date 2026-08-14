@@ -5,6 +5,7 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
+from backend.base.crm import chat_phone_asterisk
 from backend.base.system.core.apps import AppsCore
 from backend.base.system.core.models import ModelsCore
 from backend.base.system.core.extensions import ExtensibleMixin
@@ -71,7 +72,24 @@ from backend.base.crm.leads.models.lead_stage import LeadStage
 # Chat
 from backend.base.crm.chat.models.chat import Chat
 from backend.base.crm.chat.models.chat_member import ChatMember
-from backend.base.crm.chat.models.chat_message import ChatMessage
+
+from backend.base.crm.chat_phone.chat_message_mixins import (
+    ChatMessagePhoneMixin,
+)
+
+if TYPE_CHECKING:
+    from backend.base.crm.chat.models.chat_message import (
+        ChatMessage as ChatMessageBase,
+    )
+
+    class ChatMessage(
+        ChatMessagePhoneMixin,
+        ChatMessageBase,
+    ): ...
+
+else:
+    from backend.base.crm.chat.models.chat_message import ChatMessage
+
 from backend.base.crm.chat_telegram.mixins import ChatConnectorTelegramMixin
 from backend.base.crm.chat_email.mixins import ChatConnectorEmailMixin
 from backend.base.crm.chat_avito.mixins import ChatConnectorAvitoMixin
@@ -79,19 +97,20 @@ from backend.base.crm.chat_max_bot.mixins import ChatConnectorMaxBotMixin
 from backend.base.crm.chat_max_business.mixins import (
     ChatConnectorMaxBusinessMixin,
 )
+
 from backend.base.crm.chat_vk.mixins import ChatConnectorVkMixin
 from backend.base.crm.chat_whatsapp_chatapp.mixins import (
     ChatConnectorWhatsAppChatAppMixin,
 )
 from backend.base.crm.chat_web_push.mixins import ChatConnectorWebPushMixin
-from backend.base.crm.chat_phone.chat_message_mixins import (
-    ChatMessagePhoneMixin,
-)
 from backend.base.crm.chat_phone_sipuni.mixins import (
     ChatConnectorSipuniMixin,
 )
 from backend.base.crm.chat_phone_megafon.mixins import (
     ChatConnectorMegafonMixin,
+)
+from backend.base.crm.chat_phone_asterisk.mixins import (
+    ChatConnectorAsteriskMixin,
 )
 
 # Project and task
@@ -118,9 +137,9 @@ if TYPE_CHECKING:
     )
 
     class ChatConnector(
+        ChatConnectorAsteriskMixin,
         ChatConnectorMegafonMixin,
         ChatConnectorSipuniMixin,
-        ChatMessagePhoneMixin,
         ChatConnectorWebPushMixin,
         ChatConnectorTelegramMixin,
         ChatConnectorAvitoMixin,
@@ -178,6 +197,11 @@ from backend.base.crm.chat.models.chat_routing_rule_lead import (
     ChatRoutingRuleLead,
 )
 from backend.base.crm.chat.models.chat_folder import ChatFolder
+from backend.base.crm.chat_phone.models.phone_number import PhoneNumber
+from backend.base.crm.chat_phone.models.call import Call
+from backend.base.crm.chat_phone_asterisk.models.asterisk_log import (
+    AsteriskLog,
+)
 
 # apps
 from backend.base.system.cron.app import CronApp
@@ -203,6 +227,7 @@ from backend.base.crm.chat_web_push.app import ChatWebPushApp
 from backend.base.crm.chat_phone.app import ChatPhoneApp
 from backend.base.crm.chat_phone_sipuni.app import ChatPhoneSipuniApp
 from backend.base.crm.chat_phone_megafon.app import ChatPhoneMegafonApp
+from backend.base.crm.chat_phone_asterisk.app import ChatPhoneAsteriskApp
 from backend.base.crm.chat_avito.app import ChatAvitoApp
 from backend.base.crm.chat_max_bot.app import ChatMaxBotApp
 from backend.base.crm.chat_max_business.app import ChatMaxBusinessApp
@@ -292,6 +317,10 @@ class Models(ModelsCore, ExtensibleMixin):
     chat_message_reaction = ChatMessageReaction
     chat_routing_rule_lead = ChatRoutingRuleLead
     chat_folder = ChatFolder
+    # telephony
+    phone_number = PhoneNumber
+    call = Call
+    asterisk_log = AsteriskLog
     # project and task
     task = Task
     task_tag = TaskTag
@@ -330,6 +359,7 @@ class Apps(AppsCore):
     chat_phone = ChatPhoneApp()
     chat_phone_sipune = ChatPhoneSipuniApp()
     chat_phone_megafon = ChatPhoneMegafonApp()
+    chat_phone_asterisk = ChatPhoneAsteriskApp()
     chat_web_push = ChatWebPushApp()
     chat_avito = ChatAvitoApp()
     chat_max_bot = ChatMaxBotApp()

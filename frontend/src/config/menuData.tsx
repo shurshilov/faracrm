@@ -205,21 +205,15 @@ const menuTree: GroupConfig[] = [
       },
       {
         id: 'menu_phone_numbers',
-        to: '/phone_numbers',
+        to: '/phone_number',
         label: 'Номера',
         labelKey: 'common:menu.phoneNumbers',
       },
       {
         id: 'menu_call_events',
-        to: '/call_events',
+        to: '/asterisk_log',
         label: 'События',
         labelKey: 'common:menu.callEvents',
-      },
-      {
-        id: 'menu_call_sources',
-        to: '/call_sources',
-        label: 'Источники',
-        labelKey: 'common:menu.callSources',
       },
     ],
   },

@@ -39,3 +39,98 @@
 У email-коннектора есть кнопка **«Проверить соединение»** — она отдельно проверяет доступ по SMTP (отправка) и IMAP (приём), чтобы не гадать, почему письма не ходят.
 
 > [!warning] Для каждого канала нужен свой доступ: токен бота, ключ сообщества, логин/пароль приложения для почты и т.д. Заводите их в настройках коннектора и держите в секрете — это доступ к переписке.
+
+## Телефония Asterisk / FreePBX
+
+Коннектор Asterisk работает в двух режимах (поле **«Режим транспорта»**):
+
+- **Удалённый агент** — рядом с АТС стоит внешний Asterisk-agent: он шлёт события звонков на вебхук FARA, а историю и записи FARA берёт из его REST API.
+- **Встроенный** — FARA сама ходит в базу Asterisk за историей звонков (CDR) и слушает события ARI напрямую, без промежуточного агента. Нужны доступы к БД АТС и к ARI.
+
+### Где взять настройки встроенного режима (FreePBX)
+
+Выполните на сервере АТС по SSH:
+
+```bash
+# ARI логин и пароль
+fwconsole setting FPBX_ARI_USER
+fwconsole setting FPBX_ARI_PASSWORD
+
+# Доступ к базе данных (host / name / user / pass)
+cat /etc/freepbx.conf | grep -E "AMPDB(HOST|NAME|USER|PASS)"
+```
+
+- **ARI URL** — `http://<адрес-PBX>:8088/ari`
+- **ARI WebSocket (WSS)** — `ws://<адрес-PBX>:8088/ari/events`
+- **База CDR** — обычно `asteriskcdrdb`, таблица `cdr`; хост/пользователь/пароль — из `AMPDB*` выше.
+
+Эта же подсказка продублирована прямо в форме коннектора (свёрнутая плашка во встроенном режиме).
+
+### Как включить ARI и HTTP на FreePBX
+
+**Вариант 1 — через `fwconsole`** (FreePBX сам включит HTTP-сервер и сгенерирует `http.conf` / `ari.conf`):
+
+```bash
+fwconsole setting ENABLE_ARI 1
+fwconsole setting ARI_ALLOWED_ORIGINS "*"
+fwconsole reload
+# проверить:
+fwconsole setting --list | grep -iE 'ari|http'
+```
+
+> [!warning] На FreePBX 17 HTTP-сервер по умолчанию слушает только `127.0.0.1` — с другого хоста ARI недоступен (`ENABLE_ARI` это НЕ меняет). Поставьте bind на все интерфейсы: **Advanced Settings → «HTTP Bind Address» → `0.0.0.0`** (в конфиге это `http.conf` → `bindaddr = 0.0.0.0`, см. Вариант 2). На FreePBX 16 по умолчанию уже `0.0.0.0`.
+
+**Вариант 2 — через конфиг-файлы** (обычный Asterisk без FreePBX):
+
+```ini
+# /etc/asterisk/http.conf
+[general]
+enabled = yes
+bindaddr = 0.0.0.0
+bindport = 8088
+
+# /etc/asterisk/ari.conf
+[general]
+enabled = yes
+pretty = yes
+allowed_origins = *
+
+[my_ari_user]
+type = user
+read_only = no
+password = ВАШ_ПАРОЛЬ
+```
+
+Применить конфиг: `asterisk -rx "module reload http"` и `asterisk -rx "module reload res_ari"` (или `fwconsole reload`).
+
+### Удалённый доступ к БД Asterisk (MariaDB)
+
+Встроенный режим читает CDR (и ring groups / queues) напрямую из БД Asterisk. Если FARA стоит на другом хосте — откройте MariaDB для сети:
+
+1. Разрешить сетевые подключения — в `/etc/my.cnf.d/server.cnf` (в некоторых сборках `/etc/mysql/mariadb.conf.d/50-server.cnf`):
+
+```ini
+[mysqld]
+bind-address = 0.0.0.0
+```
+
+```bash
+systemctl restart mariadb
+```
+
+2. Дать права пользователю БД с IP FARA:
+
+```sql
+GRANT ALL PRIVILEGES ON *.* TO 'freepbxuser'@'IP_ФАРЫ' IDENTIFIED BY 'ПАРОЛЬ_БД_freepbxuser';
+FLUSH PRIVILEGES;
+```
+
+> [!warning] `ALL PRIVILEGES ON *.*` избыточно и небезопасно. FARA нужен только `SELECT`: `GRANT SELECT ON asterisk.* TO 'freepbxuser'@'IP_ФАРЫ';` и `GRANT SELECT ON asteriskcdrdb.* TO 'freepbxuser'@'IP_ФАРЫ';`. Открытие БД в сеть — риск: ограничьте доступ файрволом до IP FARA.
+
+### Автозапуск слушателя
+
+Свич **«Автозапуск ARI-слушателя»** включается только если проверка ARI прошла успешно. После включения FARA слушает события звонков постоянно и поднимает слушатель автоматически при старте бэкенда.
+
+### Синхронизация номеров
+
+Кнопка **«Синхронизировать номера»** подтягивает из АТС внутренние номера (extensions), транки, группы и очереди в раздел **«Номера»**. Если у сотрудника задан контакт типа **SIP** с этим extension — номер привязывается к сотруднику.

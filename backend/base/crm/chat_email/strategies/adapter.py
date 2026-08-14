@@ -13,7 +13,7 @@ from backend.base.crm.chat.strategies.adapter import ChatMessageAdapter
 from backend.base.crm.chat_email.sanitizer import sanitize_email_html
 
 if TYPE_CHECKING:
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
 
 
 def decode_email_header(header_value: str | None) -> str:

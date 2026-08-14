@@ -126,6 +126,7 @@ const modelToNamespace: Record<string, string> = {
   chat_external_chat: 'chat',
   chat_external_message: 'chat',
   chat_folder: 'chat',
+  phone_number: 'chat',
   products: 'products',
   category: 'products',
   uom: 'products',
@@ -166,6 +167,7 @@ const modelToNamespace: Record<string, string> = {
 };
 
 const modelLabels: Record<string, string> = {
+  phone_number: 'Номера',
   contact: 'Контакты',
   contact_type: 'Типы контактов',
   partners: 'Партнёры',

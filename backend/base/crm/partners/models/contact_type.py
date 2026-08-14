@@ -13,7 +13,7 @@ from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 
 if TYPE_CHECKING:
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
 
 
 class ContactType(DotModel):
@@ -165,6 +165,20 @@ INITIAL_CONTACT_TYPES = [
         "placeholder": "+7 999 123-45-67",
         "pattern": r"^[\+]?[0-9\s\-\(\)]{10,20}$",
         "sequence": 1,
+    },
+    {
+        # Внутренний номер АТС (extension), напр. "301". НЕ телефонный формат
+        # (не E.164) — отдельное семейство, в подбор клиента по телефону не идёт.
+        # Используется операторскими линиями телефонии (ChatExternalAccount.
+        # extension_contact_id) и синхронизацией номеров Asterisk.
+        "name": "sip",
+        "label": "SIP / extension",
+        "is_phone_format": False,
+        "icon": "IconPhoneCall",
+        "color": "grape",
+        "placeholder": "301",
+        "pattern": r"^\d{2,6}$",
+        "sequence": 2,
     },
     {
         "name": "email",

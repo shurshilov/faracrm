@@ -10,7 +10,7 @@ from backend.base.crm.chat_phone.strategies.strategy import PhoneStrategyBase
 from .adapter import MegafonPhoneAdapter
 
 if TYPE_CHECKING:
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
     from backend.base.crm.partners.models.contact import Contact
 
 logger = logging.getLogger(__name__)

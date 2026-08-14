@@ -28,18 +28,39 @@ class Contact(AuditMixin, DotModel):
     """
     Контакт партнёра или пользователя.
 
-    Хранит контактные данные: телефоны, email, telegram username и т.д.
+    Хранит контактные данные: телефоны, email, telegram username, SIP-extension.
     Тип контакта — Many2one на contact_type.
+
+    ВАЖНО (рефактор name→value):
+    - value — РЕАЛЬНОЕ значение (+79991234567, ivan@mail.ru, @username, 307).
+      Именно по нему идёт матчинг (find_for_webhook). Канонизируется на записи
+      (email/username → lower; валидный телефон → E.164).
+    - name — человекочитаемое ОПИСАНИЕ («Александр рабочий телефон»),
+      опционально. Раньше в name лежало значение — переносится миграцией
+      PartnersApp._migration_contact_name_to_value (удалить после переноса).
     """
 
     __table__ = "contact"
 
     id: int = Integer(primary_key=True)
 
-    # Значение контакта (телефон, email, username)
+    # Реальное значение контакта (по нему матчинг). Каноничное (см. _canonicalize).
+    # НЕ required → nullable в БД. Причина: ADD COLUMN ... NOT NULL в уже
+    # заполненную таблицу contact падает (NotNullViolation), а миграция,
+    # заполняющая value, идёт позже (PartnersApp.post_init). На уровне ORM value
+    # всегда задаётся при создании (find_or_create_for_webhook / create_with_partner).
+    value: str | None = Char(
+        index=True,
+        description="Значение: +79991234567, ivan@mail.ru, @username, 307",
+    )
+
+    # Описание контакта. Историческая совместимость: раньше здесь лежало
+    # ЗНАЧЕНИЕ, теперь основное значение — в value (миграция КОПИРУЕТ name→value,
+    # name НЕ трогает). Остаётся NOT NULL (не меняем существующее ограничение БД);
+    # со временем можно переиспользовать как «Александр рабочий телефон».
     name: str = Char(
         required=True,
-        description="Значение: +79991234567, ivan@mail.ru, @username",
+        description="Описание контакта (для старых записей = значение)",
     )
 
     # Владелец контакта
@@ -61,7 +82,7 @@ class Contact(AuditMixin, DotModel):
         relation_table=lambda: env.models.contact_type,
         ondelete="restrict",
         required=True,
-        description="Тип контакта (phone, email, telegram, ...)",
+        description="Тип контакта (phone, sip, email, telegram, ...)",
         index=True,
     )
 
@@ -89,31 +110,50 @@ class Contact(AuditMixin, DotModel):
         )
 
     @staticmethod
-    def _canon_email(payload) -> None:
-        """Канонизировать email в lowercase ПРИ ЗАПИСИ.
-
-        Корень проблемы «входящее письмо уезжает в новый чат»: email регистро-
-        независим по RFC, входящий адрес адаптер приводит к .lower(), а
-        сохранённый контакт хранился как введён (с заглавными) → матч
-        промахивался. Нормализуем на записи, чтобы ХРАНЕНИЕ было каноничным и
-        find_for_webhook матчил обычным `=` (индексируемо), без LOWER() на
-        чтении. Детект по '@': телефоны/логины/screen-name (без '@') не трогаем.
+    def _canonicalize(value: str) -> str:
         """
-        name = payload.name
-        if isinstance(name, str) and "@" in name:
-            payload.name = name.strip().lower()
+        Канонизировать значение контакта.
+
+        - email / @username (есть '@') → lowercase (регистронезависимость по RFC);
+        - валидный телефон → E.164 (+79991234567); 8/7/+7 сводятся к одному виду;
+        - невалидные как телефон (SIP-extension «307», логины) — как есть.
+
+        phonenumbers (libphonenumber) — проверенная нормализация. Регион по
+        умолчанию RU (TODO: вынести в system_settings при мультирегионе).
+        Если библиотека недоступна — деградируем без E.164 (телефон как есть).
+        """
+        v = value.strip()
+        if "@" in v:
+            return v.lower()
+        try:
+            import phonenumbers
+
+            parsed = phonenumbers.parse(v, "RU")
+            if phonenumbers.is_valid_number(parsed):
+                return phonenumbers.format_number(
+                    parsed, phonenumbers.PhoneNumberFormat.E164
+                )
+        except Exception:
+            pass
+        return v
+
+    @staticmethod
+    def _canon_value(payload) -> None:
+        """Канонизировать value ПРИ ЗАПИСИ (хранение каноничное → матч по '=')."""
+        if isinstance(payload.value, str):
+            payload.value = Contact._canonicalize(payload.value)
 
     @hybridmethod
     async def create(self, payload, session=None, depends_jobs=None) -> int:
-        Contact._canon_email(payload)
+        Contact._canon_value(payload)
         return await super().create(payload, session, depends_jobs)
 
     async def update(
         self, payload, fields=None, session=None, depends_jobs=None
     ):
-        # Нормализуем только если поле name реально пишется.
-        if "name" in (fields or payload.assigned_fields()):
-            Contact._canon_email(payload)
+        # Нормализуем только если поле value реально пишется.
+        if "value" in (fields or payload.assigned_fields()):
+            Contact._canon_value(payload)
         return await super().update(payload, fields, session, depends_jobs)
 
     @classmethod
@@ -123,24 +163,29 @@ class Contact(AuditMixin, DotModel):
         value: str | None,
     ) -> "Contact | None":
         """
-        Найти активный контакт по значению внутри данного типа, либо —
-        при is_phone_format — по любому телефонному типу (phone, whatsapp,
-        viber используют один и тот же номер как идентификатор человека).
+        Найти активный КЛИЕНТСКИЙ контакт по значению внутри данного типа, либо
+        — при is_phone_format — по любому телефонному типу (phone, whatsapp,
+        viber, max используют один и тот же номер как идентификатор человека).
+
+        GUARD: только контакты с partner_id (клиентские). Операторские линии
+        (user_id задан, partner_id пуст: tel/extension операторов) в подбор
+        собеседника НЕ попадают.
         """
         if not value:
             return None
 
-        # 1) Точное совпадение по типу. Обычное `=` (индексируемо): email
-        #    хранится каноничным lowercase (Contact._canon_email при записи +
-        #    миграция легаси), входящий адрес адаптер тоже .lower() → регистр
-        #    консистентен с обеих сторон, LOWER() на чтении не нужен.
+        # Канонизируем вход так же, как хранение → индексируемый '=' матч.
+        value = cls._canonicalize(value)
+
+        # 1) Точное совпадение по типу (только клиентские контакты).
         exact = await env.models.contact.search(
             filter=[
                 ("contact_type_id", "=", contact_type.id),
-                ("name", "=", value),
+                ("value", "=", value),
+                ("partner_id", "!=", None),
                 ("active", "=", True),
             ],
-            fields=["id", "name", "user_id", "partner_id"],
+            fields=["id", "value", "name", "user_id", "partner_id"],
             limit=1,
         )
         if exact:
@@ -153,13 +198,14 @@ class Contact(AuditMixin, DotModel):
         session = env.apps.db.get_session()
         rows = await session.execute(
             """
-            SELECT c.id, c.name, c.user_id, c.partner_id
+            SELECT c.id, c.value, c.user_id, c.partner_id
             FROM contact c
             JOIN contact_type ct ON ct.id = c.contact_type_id
             WHERE ct.is_phone_format = true
               AND ct.active = true
               AND ct.id != %s
-              AND c.name = %s
+              AND c.value = %s
+              AND c.partner_id IS NOT NULL
               AND c.active = true
             LIMIT 1
             """,
@@ -171,7 +217,7 @@ class Contact(AuditMixin, DotModel):
         row = rows[0]
         return env.models.contact(
             id=row["id"],
-            name=row["name"],
+            value=row["value"],
             user_id=(
                 env.models.user(id=row["user_id"])
                 if row["user_id"] is not None
@@ -185,6 +231,43 @@ class Contact(AuditMixin, DotModel):
         )
 
     @classmethod
+    async def find_operator_by_value(
+        cls,
+        value: str | None,
+        contact_type_id: int | None = None,
+    ) -> "Contact | None":
+        """
+        Найти активный ОПЕРАТОРСКИЙ контакт по значению (user_id задан).
+
+        Зеркало find_for_webhook, но для операторских линий телефонии: GUARD —
+        только контакты с user_id (клиентские, с partner_id, сюда НЕ попадают).
+        Используется синхронизацией номеров Asterisk: extension (sip) или телефон
+        (phone) сотрудника → сам сотрудник (user_id).
+        """
+        if not value:
+            return None
+
+        # Канонизируем так же, как хранение (sip-extension остаётся как есть,
+        # телефон → E.164) → индексируемый '=' матч.
+        value = cls._canonicalize(value)
+
+        filters = [
+            ("value", "=", value),
+            ("user_id", "!=", None),
+            ("active", "=", True),
+        ]
+        if contact_type_id:
+            filters.append(("contact_type_id", "=", contact_type_id))
+
+        rows = await env.models.contact.search(
+            filter=filters,
+            fields=["id", "value", "name", "user_id", "contact_type_id"],
+            fields_nested={"user_id": ["id", "name"]},
+            limit=1,
+        )
+        return rows[0] if rows else None
+
+    @classmethod
     async def create_with_partner(
         cls,
         contact_type: "ContactType",
@@ -194,9 +277,8 @@ class Contact(AuditMixin, DotModel):
         """
         Создать нового Partner и привязанный к нему Contact.
 
-        Удобство для сценариев, когда контакт появляется вместе с новым
-        субъектом (например, входящий webhook от неизвестного отправителя).
         Возвращает созданный Contact с заполненным id и ссылкой на Partner.
+        name (описание) оставляем пустым — заполняется вручную позже.
         """
         partner = env.models.partner(name=partner_name)
         partner.id = await env.models.partner.create(payload=partner)
@@ -205,6 +287,8 @@ class Contact(AuditMixin, DotModel):
             user_id=None,
             partner_id=partner,
             contact_type_id=contact_type,
+            value=value,
+            # name NOT NULL → держим значение (совместимость); описание — потом
             name=value,
             is_primary=True,
         )
@@ -233,16 +317,16 @@ class Contact(AuditMixin, DotModel):
             sort="contact_type_id",
         )
 
-    async def find_by_name(
+    async def find_by_value(
         self,
-        name: str,
+        value: str,
         contact_type_id: int | None = None,
         partner_id: int | None = None,
         user_id: int | None = None,
     ) -> "Contact | None":
-        """Найти контакт по значению (name)."""
+        """Найти контакт по значению (value), опц. с фильтрами."""
         filter_conditions = [
-            ("name", "=", name),
+            ("value", "=", self._canonicalize(value)),
             ("active", "=", True),
         ]
 
@@ -253,9 +337,5 @@ class Contact(AuditMixin, DotModel):
         if user_id:
             filter_conditions.append(("user_id", "=", user_id))
 
-        results = await self.search(
-            filter=filter_conditions,
-            limit=1,
-        )
-
+        results = await self.search(filter=filter_conditions, limit=1)
         return results[0] if results else None

@@ -75,12 +75,20 @@ const isEmailMessage = (m: {
 }): boolean => m.connector_type === 'email' || m.message_type === 'email';
 
 /**
+ * Звонок ли это (рендерить плашку через CallMessageContent).
+ * 'call' — WebRTC-звонок сотрудников (реальное сообщение); 'call_external' —
+ * телефонный звонок (независимая таблица call, подмешан в историю на чтении).
+ */
+const isCallMessage = (m: { message_type?: string }): boolean =>
+  m.message_type === 'call' || m.message_type === 'call_external';
+
+/**
  * Есть ли что показать в бабле. У письма body — всегда непустой JSON
  * {subject, html}, поэтому проверка body.trim() для него ничего не значит:
  * письмо с одним вложением рисовало пустой бабл над карточкой файла.
  */
 const hasBubbleContent = (m: ChatMessage): boolean => {
-  if (m.message_type === 'call') return true;
+  if (isCallMessage(m)) return true;
   if (!isEmailMessage(m)) return Boolean(m.body?.trim());
   const { subject, html } = parseEmailBody(m.body ?? '');
   return Boolean(subject?.trim() || html.replace(/<[^>]*>/g, '').trim());
@@ -306,6 +314,9 @@ export function ChatMessages({
 
   const handleContextMenu = (e: React.MouseEvent, message: ChatMessage) => {
     e.preventDefault();
+    // call_external — виртуальное сообщение (звонок из таблицы call, id<0):
+    // редактировать/удалять/реагировать нечего, контекстное меню не открываем.
+    if (message.message_type === 'call_external') return;
     const menuWidth = 200,
       menuHeight = 350;
     let x = e.clientX,
@@ -628,7 +639,7 @@ export function ChatMessages({
                             />
                           </Box>
                         )}
-                        {message.message_type === 'call' ? (
+                        {isCallMessage(message) ? (
                           <CallMessageContent
                             body={message.body}
                             callDirection={message.call_direction}

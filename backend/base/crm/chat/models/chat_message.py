@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from backend.base.crm.leads.models.leads import Lead
     from backend.base.crm.tasks.models.task import Task
     from backend.base.crm.chat.models.chat import Chat
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
     from backend.base.crm.chat.models.chat_external_message import (
         ChatExternalMessage,
     )

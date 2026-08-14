@@ -17,7 +17,7 @@ from backend.base.system.core.enviroment import env
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat import Chat
     from backend.base.crm.chat.models.chat_message import ChatMessage
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
 
 
 class ChatExternalMessage(DotModel):
@@ -75,6 +75,7 @@ class ChatExternalMessage(DotModel):
         default=lambda: datetime.now(timezone.utc)
     )
 
+    @hybridmethod
     async def find_by_external_id(
         self,
         external_id: str,

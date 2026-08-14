@@ -19,7 +19,7 @@ from backend.base.crm.users.audit_mixin import AuditMixin
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat import Chat
     from backend.base.crm.users.models.users import User
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
 
 
 class ChatMember(AuditMixin, MemberMixin):

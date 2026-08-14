@@ -2,6 +2,7 @@
 # Chat Phone module - application configuration
 
 from backend.base.system.core.app import App
+from backend.base.crm.security.acl_post_init_mixin import ACL
 
 
 class ChatPhoneApp(App):
@@ -26,4 +27,17 @@ class ChatPhoneApp(App):
         "license": "FARA CRM License v1.0",
         "depends": ["chat"],
         "sequence": 115,
+        "post_init": True,
+    }
+
+    # phone_number справочник номеров телефонии: правит админ, юзерам чтение
+    BASE_USER_ACL = {
+        "phone_number": ACL.READ_ONLY,
+        "call": ACL.READ_ONLY,
+    }
+    ROLE_ACL = {
+        "system_admin": {
+            "phone_number": ACL.FULL,
+            "call": ACL.FULL,
+        },
     }

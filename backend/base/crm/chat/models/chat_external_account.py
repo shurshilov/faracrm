@@ -19,7 +19,7 @@ from backend.base.system.core.enviroment import env
 
 if TYPE_CHECKING:
     from backend.base.crm.partners.models.contact import Contact
-    from backend.base.crm.chat.models.chat_connector import ChatConnector
+    from backend.project_setup import ChatConnector
 
 logger = logging.getLogger(__name__)
 

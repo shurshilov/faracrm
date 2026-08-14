@@ -3,6 +3,7 @@ import {
   IconBrandWhatsapp,
   IconMail,
   IconMessage,
+  IconPhoneCall,
 } from '@tabler/icons-react';
 import avitoIconUrl from '@/fara_chat_avito/assets/avito.svg';
 import { MaxIcon } from '@/fara_chat_max_bot/components/MaxIcon';
@@ -32,6 +33,7 @@ export const connectorColors: Record<string, string> = {
   // max_wamm: 'grape',
   max_business: 'grape',
   vk: 'indigo',
+  phone_asterisk: 'teal',
 };
 
 /**
@@ -57,6 +59,8 @@ export function connectorIcon(
       return <MaxIcon size={size} />;
     case 'vk':
       return <VkIcon size={size} />;
+    case 'phone_asterisk':
+      return <IconPhoneCall size={size} />;
     default:
       return <IconMessage size={size} />;
   }
