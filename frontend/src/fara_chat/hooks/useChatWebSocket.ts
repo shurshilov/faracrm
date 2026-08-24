@@ -1,6 +1,9 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { WSMessage } from '@/services/api/chat';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
+import { logOut } from '@/slices/authSlice';
+import type { AppDispatch } from '@/store/store';
 
 interface UseChatWebSocketOptions {
   token: string;
@@ -26,6 +29,7 @@ export function useChatWebSocket({
   onDisconnect,
   onError,
 }: UseChatWebSocketOptions): UseChatWebSocketReturn {
+  const dispatch = useDispatch<AppDispatch>();
   const wsRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,15 +113,16 @@ export function useChatWebSocket({
         }
 
         // Не переподключаемся на auth-ошибках — иначе бесконечный цикл
-        // запросов с мёртвым токеном. Сервер закрывает с кодом 4001
-        // ('Token required' / 'Invalid token' / 'Auth error').
-        // Коды 4003/4401/4403 тоже трактуем как auth-ошибку на будущее.
-        const AUTH_CLOSE_CODES = [4001, 4003, 4401, 4403];
+        // запросов с мёртвым токеном. Сервер закрывает 1008 (Policy Violation,
+        // см. chat/routers/ws.py). Коды 4001/4003/4401/4403 — прежний контракт,
+        // оставлены на случай старого бэкенда.
+        const AUTH_CLOSE_CODES = [1008, 4001, 4003, 4401, 4403];
         if (AUTH_CLOSE_CODES.includes(event.code)) {
-          console.warn(
-            'Chat WebSocket: auth error, giving up reconnect. ' +
-              'Session should be cleared by REST 401 handler.'
-          );
+          // Разлогиниваем сам: на REST-обработчик 401 надеяться нельзя —
+          // фоновая вкладка запросов не шлёт и осталась бы с мёртвым чатом
+          // и без единого признака, что сеанс кончился.
+          console.warn('Chat WebSocket: сессия недействительна, выходим');
+          dispatch(logOut());
           return;
         }
 
@@ -156,7 +161,7 @@ export function useChatWebSocket({
       console.error('Failed to create WebSocket:', error);
       isConnectingRef.current = false;
     }
-  }, [token]); // Only depend on token
+  }, [token, dispatch]); // dispatch стабилен, token — единственный реальный триггер
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {

@@ -19,6 +19,12 @@ import {
   WSMessagePinned,
 } from '@/services/api/chat';
 import type { RootState, AppDispatch } from '@/store/store';
+import { logOut } from '@/slices/authSlice';
+
+// Коды закрытия, означающие «сессии нет» — переподключение только плодит
+// мусорные хендшейки. 1008 шлёт бэкенд (chat/routers/ws.py), 4001/4003/4401/
+// 4403 — контракт до коммита 5e2fa46, оставлены для совместимости.
+const AUTH_CLOSE_CODES = [1008, 4001, 4003, 4401, 4403];
 
 interface ChatWebSocketContextValue {
   isConnected: boolean;
@@ -359,8 +365,8 @@ export function ChatWebSocketProvider({
         }, 30000);
       };
 
-      ws.onclose = () => {
-        console.log('ChatWebSocketProvider: Disconnected');
+      ws.onclose = event => {
+        console.log('ChatWebSocketProvider: Disconnected', event.code);
         isConnectingRef.current = false;
         setIsConnected(false);
         setOnlineUsers(new Set());
@@ -368,6 +374,17 @@ export function ChatWebSocketProvider({
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current);
           pingIntervalRef.current = null;
+        }
+
+        // Сессии больше нет — переподключаться бессмысленно. Без этой ветки
+        // вкладка долбилась в /ws/chat мёртвым токеном раз в 3 секунды вечно.
+        // 1008 шлёт chat/routers/ws.py; 4001+ — прежний контракт бэкенда.
+        if (AUTH_CLOSE_CODES.includes(event.code)) {
+          // Разлогиниваем сами: обработчик 401 в baseQueryWithReauth сюда не
+          // доберётся — фоновая вкладка REST-запросов не шлёт.
+          console.warn('ChatWebSocketProvider: сессия недействительна, выходим');
+          dispatch(logOut());
+          return;
         }
 
         if (isMountedRef.current) {
@@ -399,7 +416,7 @@ export function ChatWebSocketProvider({
       console.error('Failed to create WebSocket:', error);
       isConnectingRef.current = false;
     }
-  }, [token, handleMessage]);
+  }, [token, handleMessage, dispatch]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
