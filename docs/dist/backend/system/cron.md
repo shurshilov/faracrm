@@ -237,10 +237,11 @@ finally:
 | Имя | Интервал | Что делает |
 |-----|---------|-----------|
 | `Activity: check deadlines` | 1 минута | Находит просроченные активности → шлёт уведомления в чат |
-| `Auth: deactivate expired sessions` | 5 минут | Помечает истёкшие сессии `active=false` |
+| `Auth: deactivate expired sessions` | 1 час | Помечает истёкшие сессии `active=false` |
 | `Attachments: cleanup orphan files` | 1 день | Удаляет вложения без `res_model`/`res_id` старше N дней |
 | `Chat: archive inactive chats` | 1 неделя | Архивирует чаты без активности 90+ дней |
 
 ## См. также
 
 - [Activity — задачи и дедлайны](activity.md) — главный потребитель cron в FARA.
+- [Аутентификация и сессии](../security/sessions.md) — что делает задача `Auth: deactivate expired sessions`.

@@ -290,21 +290,11 @@ class Session(DotModel):
 
         session_id = result[0]
         now = datetime.now(timezone.utc)
-        # expired = session_id["create_datetime"] + timedelta(
-        #     seconds=session_id["ttl"]
-        # )
-        expired = session_id["expired_datetime"]
 
-        if expired < now:
-            # Деактивируем сессию
-            await session.execute(
-                "UPDATE sessions SET active = false WHERE id = %s",
-                [session_id["id"]],
-            )
-            raise AuthException.SessionExpired()
-
-        # Token Binding: cookie_token обязателен.
-        # На будущее для мобильных: добавить client_type + device_id.
+        # Token Binding: cookie_token обязателен. Сверяем ДО проверки срока —
+        # тогда ниже точно известно, что кука принадлежит этой сессии, и её
+        # можно удалять вместе с ней. При несовпадении куку НЕ трогаем: она от
+        # другой сессии, возможно живой (кука одна на весь браузер).
         stored_cookie = session_id.get("cookie_token")
         if (
             not stored_cookie
@@ -312,6 +302,15 @@ class Session(DotModel):
             or cookie_token != stored_cookie
         ):
             raise AuthException.SessionNotExist()
+
+        expired = session_id["expired_datetime"]
+        if expired < now:
+            # Деактивируем сессию
+            await session.execute(
+                "UPDATE sessions SET active = false WHERE id = %s",
+                [session_id["id"]],
+            )
+            raise AuthException.SessionExpired(clear_cookie=True)
 
         # Создаём объект сессии с user_id содержащим is_admin
         session_obj = Session(
@@ -380,7 +379,8 @@ class Session(DotModel):
                 "UPDATE sessions SET active = false WHERE id = %s",
                 [session_id["id"]],
             )
-            raise AuthException.SessionExpired()
+            # Сессию нашли ПО САМОЙ куке — значит она точно её, можно удалять.
+            raise AuthException.SessionExpired(clear_cookie=True)
 
         session_obj = Session(
             id=session_id["id"],
@@ -419,8 +419,17 @@ class Session(DotModel):
             if cached is None:
                 raise AuthException.SessionNotExist()
 
-        if cached.revoked:
+        # Token Binding: сверяем куку ДО остальных проверок — см. session_check.
+        # Не совпала значит она от другой сессии, удалять её нельзя.
+        if (
+            not cached.cookie_token
+            or not cookie_token
+            or cookie_token != cached.cookie_token
+        ):
             raise AuthException.SessionNotExist()
+
+        if cached.revoked:
+            raise AuthException.SessionNotExist(clear_cookie=True)
 
         now = datetime.now(timezone.utc)
         if cached.expired_datetime < now:
@@ -431,15 +440,7 @@ class Session(DotModel):
             )
             await cache.drop_by_token(token)
             await Session.publish_revoked([cached.session_id])
-            raise AuthException.SessionExpired()
-
-        # Token Binding: cookie_token обязателен.
-        if (
-            not cached.cookie_token
-            or not cookie_token
-            or cookie_token != cached.cookie_token
-        ):
-            raise AuthException.SessionNotExist()
+            raise AuthException.SessionExpired(clear_cookie=True)
 
         session_obj = Session(
             id=cached.session_id,
@@ -480,8 +481,9 @@ class Session(DotModel):
             if cached is None:
                 raise AuthException.SessionNotExist()
 
+        # Здесь сессия найдена ПО САМОЙ куке — она точно её, удалять можно.
         if cached.revoked:
-            raise AuthException.SessionNotExist()
+            raise AuthException.SessionNotExist(clear_cookie=True)
 
         now = datetime.now(timezone.utc)
         if cached.expired_datetime < now:
@@ -492,7 +494,7 @@ class Session(DotModel):
             )
             await cache.drop_by_token(cached.token or "")
             await Session.publish_revoked([cached.session_id])
-            raise AuthException.SessionExpired()
+            raise AuthException.SessionExpired(clear_cookie=True)
 
         return Session(
             id=cached.session_id,

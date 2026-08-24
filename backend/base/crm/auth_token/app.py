@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Security
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from backend.base.system.auth.exception import AuthFailed
 from backend.base.system.auth.strategy_abstract import AuthStrategyAbstract
 from backend.base.system.core.app import App
 from backend.base.system.core.enviroment import Environment
@@ -230,7 +231,7 @@ class AuthTokenApp(App, AuthStrategyAbstract):
 
     def handler_errors(self, app_server: FastAPI):
         async def catch_exception_handler_auth(
-            request: Request, exc: Exception
+            request: Request, exc: AuthFailed
         ):
             env: "Environment" = request.app.state.env
             # если ошибка связанная с аутентификацией
@@ -240,14 +241,19 @@ class AuthTokenApp(App, AuthStrategyAbstract):
                 status_code=401,
             )
 
-            # удаляем куку
-            response.delete_cookie(
-                key=env.settings.auth.cookie_name,
-                httponly=True,
-                path="/",
-                secure=env.settings.auth.cookie_secure,
-                samesite=env.settings.auth.cookie_samesite,
-            )
+            # Куку удаляем ТОЛЬКО если доказано, что она принадлежит именно
+            # умершей сессии (флаг ставится в месте выброса, см. AuthFailed).
+            # Кука одна на весь браузер: раньше её сносил любой 401, поэтому
+            # запрос протухшей вкладки гасил живую сессию во всех остальных —
+            # они теряли куку и на следующем запросе тоже получали 401.
+            if exc.clear_cookie:
+                response.delete_cookie(
+                    key=env.settings.auth.cookie_name,
+                    httponly=True,
+                    path="/",
+                    secure=env.settings.auth.cookie_secure,
+                    samesite=env.settings.auth.cookie_samesite,
+                )
 
             return response
 

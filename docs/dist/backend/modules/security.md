@@ -118,3 +118,9 @@ set_access_session(SystemSession(user_id=SYSTEM_USER_ID))
 
 !!! warning "Только для серверного кода"
     `SystemSession` обходит все проверки доступа. Никогда не устанавливай его для пользовательских запросов.
+
+## См. также
+
+- [Аутентификация и сессии](../security/sessions.md) — двойной токен, guard-кука, TTL и кэш сессий подробно.
+- [Роли и правила](../security/roles-and-rules.md) — модели Role, AccessList, Rule.
+- [Иерархия пользователей](../security/hierarchy.md) — системные пользователи и наследование ролей.

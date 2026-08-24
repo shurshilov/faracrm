@@ -137,4 +137,5 @@ def has_full_access(self) -> bool:
 ## См. также
 
 - [Роли и правила](roles-and-rules.md) — модели Role, AccessList, Rule подробно.
-- [Security Module](../modules/security.md) — аутентификация и сессии.
+- [Аутентификация и сессии](sessions.md) — двойной токен, жизненный цикл сессии, guard-кука.
+- [Security Module](../modules/security.md) — ACL через ContextVar, SystemSession.

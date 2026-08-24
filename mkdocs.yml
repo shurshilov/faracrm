@@ -112,6 +112,7 @@ plugins:
             "CRUD Auto — автогенерация REST API": "CRUD Auto — REST API auto-generation"
             Безопасность и доступы: "Security and access"
             Модуль безопасности: "Security Module"
+            Аутентификация и сессии: "Authentication and sessions"
             Роли и правила: "Roles and rules"
             Иерархия пользователей: "User hierarchy"
             Чат и звонки: "Chat and calls"
@@ -160,6 +161,7 @@ nav:
           - CRUD Auto — автогенерация REST API: backend/dotorm/crud-auto.md
       - Безопасность и доступы:
           - Модуль безопасности: backend/modules/security.md
+          - Аутентификация и сессии: backend/security/sessions.md
           - Роли и правила: backend/security/roles-and-rules.md
           - Иерархия пользователей: backend/security/hierarchy.md
       - Чат и звонки:

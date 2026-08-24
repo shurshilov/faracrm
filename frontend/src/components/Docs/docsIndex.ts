@@ -115,6 +115,13 @@ export const META: Record<string, DocMeta> = {
       soon('Списки: фильтры, поиск и колонки', '4:10'),
     ],
   },
+  login: {
+    title: 'Вход и сессии',
+    group: 'start',
+    summary:
+      'Почему разлогинивает: срок сессии 7 дней, вкладки, устройства, выход и пароль.',
+    videos: [],
+  },
 
   // ── Общение ──
   chat: {
@@ -323,7 +330,9 @@ export const ALIASES: Record<string, string> = {
   // Настройки / доступ
   rules: 'roles',
   access_list: 'roles',
-  sessions: 'users',
+  // Экран «Сессии» — про срок жизни входа и завершение сессий, а не про
+  // заведение сотрудника.
+  sessions: 'login',
   apps: 'workspace',
   models: 'overview',
   language: 'overview',

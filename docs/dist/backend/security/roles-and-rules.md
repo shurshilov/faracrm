@@ -244,4 +244,5 @@ managers = await User.search(filter=[("role_ids", "=", manager_role_id)])
 ## См. также
 
 - [Иерархия ролей](hierarchy.md) — как наследование через `based_role_ids` влияет на права в реальных сценариях.
-- [Security Module](../modules/security.md) — аутентификация, сессии, ContextVar.
+- [Аутентификация и сессии](sessions.md) — как сессия попадает в ContextVar до того, как начнут работать ACL и Rules.
+- [Security Module](../modules/security.md) — обзор модуля, ContextVar, SystemSession.

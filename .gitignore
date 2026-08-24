@@ -2,7 +2,9 @@
 *.venv
 *.node_modules
 /dist
-dist/
+# Только билд фронта: голое `dist/` ловило ещё и docs/dist — а это исходники
+# документации, их нужно коммитить.
+/frontend/dist/
 /filestore/
 .env
 # See http://help.github.com/ignore-files/ for more about ignoring files.

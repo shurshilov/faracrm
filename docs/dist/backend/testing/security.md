@@ -197,4 +197,5 @@ Security-тесты должны идти **на каждом PR** — это с
 
 - [Роли и правила](../security/roles-and-rules.md)
 - [Иерархия пользователей](../security/hierarchy.md)
+- [Аутентификация и сессии](../security/sessions.md) — матрица `clear_cookie`, которую покрывают тесты сессий.
 - [Security Module](../modules/security.md)
