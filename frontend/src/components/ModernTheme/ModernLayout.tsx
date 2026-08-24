@@ -12,17 +12,16 @@ import { useLocation } from 'react-router-dom';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 
-import ThemeToggle from '@/components/ThemeToggle';
 import FaraRouters from '@/route/Routers';
 import Logo from '@/components/Logo';
 import UserMenu from '@/components/UserMenu';
-import { DocsButton } from '@/components/Docs';
 import { ChatNotification } from '@/components/ChatNotification';
 import { ActivityNotification } from '@/fara_activity/ActivityNotification';
 import { ChatWebSocketProvider } from '@/fara_chat/context';
 import { CallProvider } from '@/fara_chat/context/CallContext';
 import { CallWidget } from '@/fara_chat/components/CallWidget';
 import { IncomingCallCard } from '@/fara_telephony/IncomingCallCard';
+import { SipErrorBoundary, SipPhoneButton } from '@/fara_sip_phone';
 import { NotificationListener } from '@/components/NotificationToast/NotificationToast';
 import { AppLauncher } from './AppLauncher';
 import { HorizontalMenu } from './HorizontalMenu';
@@ -180,16 +179,18 @@ export function ModernLayout() {
               <Box hiddenFrom="md">
                 <MobileSubmenuDrawer activeGroup={activeGroup} />
               </Box>
-              <Box visibleFrom="sm">
-                <ThemeToggle />
-              </Box>
+              {/* В шапке — только то, что сообщает о СОБЫТИЯХ: активности,
+                  чаты, звонки. Тема и документация переехали в меню
+                  пользователя: они нужны редко и не требуют внимания. */}
               <Box visibleFrom="lg">
                 <ActivityNotification />
               </Box>
               <ChatNotification />
-              {/* Контекстная документация: книга открывает справку по текущему
-                  разделу (по имени модели/маршруту) + общее оглавление */}
-              <DocsButton />
+              {/* Звонилка: лист в шапке и под своей границей ошибок — упасть
+                  может только она сама, история и карточки живут на бэкенде. */}
+              <SipErrorBoundary>
+                <SipPhoneButton />
+              </SipErrorBoundary>
               <UserMenu />
             </Group>
           </Flex>

@@ -7,7 +7,7 @@ from backend.base.system.core.extensions import extend
 from backend.base.crm.chat.models.chat_connector import ChatConnector
 from backend.base.crm.chat_phone.connector import phone_connector_defaults
 from backend.base.system.dotorm.dotorm.decorators import onchange
-from backend.base.system.dotorm.dotorm.fields import Selection
+from backend.base.system.dotorm.dotorm.fields import Char, Selection
 
 if TYPE_CHECKING:
     _Base = ChatConnector
@@ -32,6 +32,17 @@ class ChatConnectorAsteriskMixin(_Base):
 
     type: str = Selection(
         selection_add=[("phone_asterisk", "Asterisk / FreePBX")]
+    )
+
+    # Звонилка в браузере (SIP поверх WebSocket). Пустой sip_ws_url = выключена:
+    # кнопка в шапке не появится. Пароль регистрации — у линии сотрудника
+    # (phone_number.sip_password), здесь только общий транспорт.
+    sip_ws_url: str = Char(
+        max_length=500, description="URL WSS (wss://pbx:8089/ws)"
+    )
+    sip_realm: str = Char(max_length=255, description="SIP-домен (realm)")
+    sip_ice: str = Char(
+        max_length=500, description="ICE-серверы через запятую"
     )
 
     @onchange("type")

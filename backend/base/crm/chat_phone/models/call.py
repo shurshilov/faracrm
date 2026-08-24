@@ -179,9 +179,7 @@ class Call(AuditMixin, DotModel):
             FROM "call" c
             JOIN chat_connector cc ON cc.id = c.connector_id
             LEFT JOIN partners p ON p.id = c.partner_id
-            LEFT JOIN attachments a
-                ON a.res_model = 'call' AND a.res_id = c.id
-                AND a.mimetype = 'audio/mpeg'
+            LEFT JOIN attachments a ON a.id = c.record_id
             WHERE {" AND ".join(where)}
             ORDER BY c.started_at DESC
             LIMIT %s

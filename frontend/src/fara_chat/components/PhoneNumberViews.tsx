@@ -8,6 +8,7 @@ import { ViewFormProps } from '@/route/type';
 import { FormSection, FormRow } from '@/components/Form/Layout';
 import { IconPhone, IconUser, IconSettings } from '@tabler/icons-react';
 import type { RelationRecord } from '@/types/records';
+import { SipPasswordField } from '@/fara_sip_phone/SipPasswordField';
 
 // Модель phone_number (номера телефонии: extension / trunk / group / queue),
 // наполняется синхронизацией номеров Asterisk. Обычный список + форма (как
@@ -117,6 +118,7 @@ export function ViewFormPhoneNumber(props: ViewFormProps) {
               'звонок с/на такой номер — внутренний (сотрудник↔сотрудник), партнёр не создаётся.',
           )}
         </Text>
+        <SipPasswordField />
       </FormSection>
 
       <FormSection

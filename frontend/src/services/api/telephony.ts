@@ -15,6 +15,26 @@ export interface CallsStatsParams {
   filter?: FilterExpression;
 }
 
+/**
+ * Настройки SIP-регистрации браузера. available:false — звонилка выключена.
+ *
+ * Адреса АТС здесь нет: браузер подключается к НАШЕМУ /ws/sip, а тот уже знает,
+ * куда переслать (адрес АТС — в настройках коннектора). Так его можно менять из
+ * интерфейса, не трогая конфиг nginx.
+ */
+export interface SipConfig {
+  available: boolean;
+  /** Чего не хватает — кнопка всегда видна и объясняет это пользователю. */
+  has_line?: boolean;
+  has_transport?: boolean;
+  has_password?: boolean;
+  line?: string;
+  realm?: string;
+  ice?: string[];
+  extension?: string;
+  password?: string | null;
+}
+
 export interface CallsStats {
   total: number;
   answered: number;
@@ -35,7 +55,29 @@ const telephonyApi = crudApi.injectEndpoints({
       // инвалидирует список модели — тем же тегом инвалидируется и она.
       providesTags: [{ type: 'call', id: 'LIST' }],
     }),
+
+    // Настройки звонилки для ТЕКУЩЕГО пользователя. available:false —
+    // штатный ответ (нет своей линии, не задан WSS или пароль).
+    getSipConfig: build.query<{ data: SipConfig }, void>({
+      query: () => ({ method: 'GET', url: 'telephony/sip/config' }),
+    }),
+
+    // Пароль линии — private-поле, в generic-форму не приезжает.
+    setSipPassword: build.mutation<
+      { data: { ok: boolean } },
+      { phoneNumberId: number; password: string }
+    >({
+      query: ({ phoneNumberId, password }) => ({
+        method: 'PUT',
+        url: `telephony/sip/password/${phoneNumberId}`,
+        body: { password },
+      }),
+    }),
   }),
 });
 
-export const { useGetCallsStatsQuery } = telephonyApi;
+export const {
+  useGetCallsStatsQuery,
+  useGetSipConfigQuery,
+  useSetSipPasswordMutation,
+} = telephonyApi;

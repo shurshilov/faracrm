@@ -138,6 +138,8 @@ export const META: Record<string, DocMeta> = {
       soon('Настройка почты: SMTP и IMAP', '6:30'),
       soon('Как обрабатываются входящие сообщения', '4:50'),
       soon('Написать клиенту первым по номеру', '3:20'),
+      soon('Телефония: история, записи и карточка звонка', '5:10'),
+      soon('Звонки из CRM: софтфон в браузере', '4:30'),
     ],
   },
 
@@ -295,6 +297,11 @@ export const ALIASES: Record<string, string> = {
   chat_external_account: 'chat_connector',
   chat_external_chat: 'chat_connector',
   chat_external_message: 'chat_connector',
+  // Телефония: экраны «Звонки», «Номера» и «События» описаны в разделе про
+  // коннекторы — там же, где их настройка.
+  call: 'chat_connector',
+  phone_number: 'chat_connector',
+  asterisk_log: 'chat_connector',
   chat_folder: 'chat',
   // Продажи
   sale_stage: 'sales',

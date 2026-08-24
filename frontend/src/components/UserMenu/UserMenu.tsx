@@ -7,6 +7,8 @@ import {
   UnstyledButton,
   Image,
   Box,
+  useComputedColorScheme,
+  useMantineColorScheme,
 } from '@mantine/core';
 import {
   IconChevronDown,
@@ -21,11 +23,17 @@ import {
   IconVolume,
   IconVolumeOff,
   IconBellRinging,
+  IconBook,
+  IconMoon,
+  IconSun,
 } from '@tabler/icons-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useMediaQuery } from '@mantine/hooks';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
+import { useLocation } from 'react-router-dom';
+import { DocsDrawer } from '@/components/Docs/DocsDrawer';
+import { resolveDocKey } from '@/components/Docs/docsIndex';
 import { logOut, storeSession, selectCurrentSession } from '@/slices/authSlice';
 import { authApi, useLogoutMutation } from '@/services/auth/auth';
 import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
@@ -238,6 +246,16 @@ function UserMenu() {
       }
     }
   };
+
+  // Тема и панель документации — пункты меню, а не иконки в шапке.
+  const { setColorScheme } = useMantineColorScheme();
+  const isDark = useComputedColorScheme('light') === 'dark';
+  const [docsOpened, { open: openDocs, close: closeDocs }] =
+    useDisclosure(false);
+  const docsLocation = useLocation();
+  const { key: docKey, exact: docExact } = resolveDocKey(
+    docsLocation.pathname,
+  );
 
   // На touch-устройствах hover на вложенных меню не работает — используем click
   const isTouchDevice = useMediaQuery('(hover: none)');
@@ -454,6 +472,31 @@ function UserMenu() {
           </Menu.Dropdown>
         </Menu>
 
+        {/* Тема и документация: раньше жили иконками в шапке, но нужны редко и
+            ни о чём не сигналят — там остались только события. */}
+        <Menu.Item
+          leftSection={
+            isDark ? (
+              <IconSun style={{ width: 16, height: 16 }} stroke={1.5} />
+            ) : (
+              <IconMoon style={{ width: 16, height: 16 }} stroke={1.5} />
+            )
+          }
+          closeMenuOnClick={false}
+          onClick={() => setColorScheme(isDark ? 'light' : 'dark')}>
+          {isDark
+            ? t('common:themeLight', 'Светлая тема')
+            : t('common:themeDark', 'Тёмная тема')}
+        </Menu.Item>
+
+        <Menu.Item
+          leftSection={
+            <IconBook style={{ width: 16, height: 16 }} stroke={1.5} />
+          }
+          onClick={openDocs}>
+          {t('common:documentation', 'Документация')}
+        </Menu.Item>
+
         <Menu.Divider />
 
         {/* Выход */}
@@ -476,6 +519,13 @@ function UserMenu() {
           </Text>
         </Box>
       </Menu.Dropdown>
+
+      <DocsDrawer
+        opened={docsOpened}
+        onClose={closeDocs}
+        initialKey={docKey}
+        initialExact={docExact}
+      />
     </Menu>
   );
 }
