@@ -1,3 +1,20 @@
+### Stage 1: сборка документации ###
+# Собираем docs/site здесь, а не коммитим в репозиторий: это 7.6 МБ генерата,
+# который протухает при каждой правке .md и раздувает историю. Готовая статика
+# переезжает в рантайм-образ, сам mkdocs в него не попадает.
+FROM python:3.14-slim AS docs
+
+WORKDIR /build
+
+COPY docs/requirements.txt ./docs/requirements.txt
+RUN pip install --no-cache-dir -r docs/requirements.txt
+
+COPY mkdocs.yml .
+COPY docs/dist/ ./docs/dist/
+RUN mkdocs build
+
+
+### Stage 2: рантайм ###
 FROM python:3.14-slim
 
 WORKDIR /app
@@ -19,13 +36,13 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 COPY backend/ ./backend/
-COPY docs/site/ ./docs/site/
+COPY --from=docs /build/docs/site/ ./docs/site/
 
 # Создаем не-root пользователя
 # RUN useradd -m appuser
 # Копируем код и сразу меняем владельца на appuser
 # COPY --chown=appuser:appuser backend/ ./backend/
-# COPY --chown=appuser:appuser docs/site/ ./docs/site/
+# COPY --from=docs --chown=appuser:appuser /build/docs/site/ ./docs/site/
 # RUN mkdir -p /app/filestore && chown -R appuser:appuser /app/filestore
 
 # USER appuser

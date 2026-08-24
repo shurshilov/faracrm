@@ -1,0 +1,8 @@
+# Зависимости ТОЛЬКО для сборки документации (mkdocs build).
+# В рантайм бэкенда не попадают: ставятся в отдельной стадии
+# docker/backend.Dockerfile, из неё в образ переезжает лишь готовая статика.
+#
+# Локально:  pip install -r docs/requirements.txt && mkdocs build
+mkdocs==1.6.1
+mkdocs-material==9.7.1
+mkdocs-static-i18n==1.3.1

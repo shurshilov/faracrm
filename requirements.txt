@@ -1,9 +1,6 @@
 aiofiles==25.1.0
 aioimaplib==2.0.1
 aiomysql==0.2.0
-# only for build
-# mkdocs==1.6.1
-# mkdocs-material==9.6.1
 aiosmtplib==5.1.0
 asyncpg==0.31.0
 docxtpl==0.20.2
