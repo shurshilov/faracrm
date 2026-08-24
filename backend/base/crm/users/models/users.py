@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     from backend.base.crm.leads.models.team_crm import TeamCrm
     from backend.base.crm.partners.models.contact import Contact
     from backend.base.crm.security.routers.sessions import TerminationMode
+    from backend.project_setup import ChatConnector
 from backend.base.crm.security.models.sessions import Session
 
 # Зарезервированные ID пользователей
@@ -145,6 +146,15 @@ class User(PolymorphicParentMixin):
         relation_table=lambda: env.models.workspace,
         required=False,
         description="Рабочее место (набор видимых приложений)",
+    )
+    # Каким каналом звонит звонилка в шапке. NULL — внутренний звонок между
+    # сотрудниками через WebRTC (он есть всегда и не требует настройки).
+    # Заполнен — SIP-коннектор телефонии. Выбор пользователя, не админа.
+    call_connector_id: "ChatConnector | None" = Many2one(
+        relation_table=lambda: env.models.chat_connector,
+        required=False,
+        ondelete="set null",
+        description="Канал звонков по умолчанию",
     )
     # Команды пользователя (обратная сторона team_crm.user_ids — та же
     # join-таблица). Кладутся в сессию при сборке (как role_ids) для

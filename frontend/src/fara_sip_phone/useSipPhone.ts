@@ -14,7 +14,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store/store';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
-import { useGetSipConfigQuery } from '@/services/api/telephony';
+import {
+  useGetSipConfigQuery,
+  type SipChannel,
+} from '@/services/api/telephony';
 
 export type SipState =
   | 'disabled'
@@ -28,6 +31,8 @@ export interface SipPhone {
   state: SipState;
   /** Что осталось настроить (пусто — всё готово). Для подсказки в кнопке. */
   todo: string[];
+  /** Телефонные каналы для выбора — показываются всегда. */
+  channels: SipChannel[];
   /** Номер собеседника текущего звонка. */
   peer: string;
   /** Секунды с начала разговора. */
@@ -48,16 +53,21 @@ const IDLE: SipState[] = ['disabled', 'offline', 'registered'];
  * только на свой домен, а адрес АТС знает бэкенд из настроек коннектора.
  * Путь /ws/* уже проксируется nginx с Upgrade-семантикой.
  */
-function sipWsUrl(token: string): string {
+function sipWsUrl(token: string, connectorId: number): string {
   // Тот же способ, что у сокета чата (ChatWebSocketContext).
   const apiUrl = new URL(API_BASE_URL, window.location.origin);
   const scheme = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${scheme}//${apiUrl.host}/ws/sip?token=${token}`;
+  return `${scheme}//${apiUrl.host}/ws/sip?token=${token}&connector=${connectorId}`;
 }
 
-export function useSipPhone(): SipPhone {
+/**
+ * @param connectorId выбранный телефонный канал (null — внутренний, SIP не нужен)
+ */
+export function useSipPhone(connectorId: number | null): SipPhone {
   const { data } = useGetSipConfigQuery();
-  const config = data?.data;
+  const channels = data?.data?.channels || [];
+  // Регистрируемся ИМЕННО выбранным каналом: у каждого свои extension и пароль.
+  const config = channels.find(c => c.id === connectorId);
   const token = useSelector(
     (state: RootState) => state.auth.session?.token || '',
   );
@@ -132,7 +142,9 @@ export function useSipPhone(): SipPhone {
         const JsSIP = mod.UA ? mod : mod.default;
         if (cancelled) return;
 
-        const socket = new JsSIP.WebSocketInterface(sipWsUrl(token));
+        const socket = new JsSIP.WebSocketInterface(
+          sipWsUrl(token, config.id),
+        );
         const ua = new JsSIP.UA({
           sockets: [socket],
           uri: `sip:${config.extension}@${config.realm || 'localhost'}`,
@@ -186,6 +198,7 @@ export function useSipPhone(): SipPhone {
       audioRef.current = null;
     };
   }, [
+    config?.id,
     config?.available,
     config?.extension,
     config?.realm,
@@ -261,15 +274,19 @@ export function useSipPhone(): SipPhone {
     }
   }, []);
 
+  // Показываем ВСЁ, чего не хватает, разом: настраивать это всё равно придётся
+  // целиком, а по одному пункту за раз получается угадайка.
   const todo: string[] = [];
   if (config && !config.available) {
+    if (!config.has_transport) {
+      todo.push(
+        'На вкладке «Авторизация» коннектора не задан адрес веб-сокета АТС',
+      );
+    }
     if (!config.has_line) {
       todo.push('В разделе «Номера» нет линии, привязанной к вам');
-    }
-    if (config.has_line && !config.has_transport) {
-      todo.push('У коннектора не задан адрес веб-сокета АТС');
-    }
-    if (config.has_line && !config.has_password) {
+    } else if (!config.has_password) {
+      // Пароль живёт на линии — без неё сообщение было бы бессмысленным.
       todo.push('У вашей линии не задан пароль SIP');
     }
   }
@@ -277,6 +294,7 @@ export function useSipPhone(): SipPhone {
   return {
     state,
     todo,
+    channels,
     peer,
     duration,
     error,

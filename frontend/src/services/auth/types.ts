@@ -7,6 +7,8 @@ export interface User {
   layout_theme?: 'classic' | 'modern';
   notification_popup?: boolean;
   notification_sound?: boolean;
+  /** Канал звонилки по умолчанию. Пусто — внутренний звонок сотруднику. */
+  call_connector_id?: { id: number; name?: string } | null;
   is_admin: boolean;
   role_ids: RoleRecord[];
 }

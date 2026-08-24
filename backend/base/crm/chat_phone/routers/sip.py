@@ -38,34 +38,25 @@ router_public = APIRouter(
     dependencies=[Depends(AuthTokenApp.use_anonymous_session(["sessions"]))],
 )
 
-UNAVAILABLE = {
-    "available": False,
-    "has_line": False,
-    "has_transport": False,
-    "has_password": False,
-}
-
 # Коды закрытия WebSocket (как в chat/routers/ws.py).
 _CLOSE_UNAUTHORIZED = 1008
 _CLOSE_UNAVAILABLE = 1011
 
 
-async def _my_line(env: "Environment", user_id: int):
+async def _my_lines(env: "Environment", user_id: int) -> dict:
     """
-    Линия сотрудника вместе с нужными полями коннектора — ОДНИМ запросом.
+    Линии сотрудника по коннекторам: {connector_id: линия}.
 
-    private=True прячет sip_password только из API-схемы, ORM его читает как
-    любое store-поле, поэтому отдельный SQL за паролем не нужен.
+    Линий может быть несколько — по одной в каждом коннекторе телефонии,
+    поэтому доступность считаем ДЛЯ КАЖДОГО канала отдельно, а не выбираем
+    одну «свою». private=True прячет sip_password только из API-схемы, ORM
+    читает его как обычное store-поле — отдельный SQL за паролем не нужен.
     """
     rows = await env.models.phone_number.search(
         filter=[("user_id", "=", user_id), ("active", "=", True)],
         fields=["id", "extension", "number", "sip_password", "connector_id"],
-        fields_nested={
-            "connector_id": ["id", "sip_ws_url", "sip_realm", "sip_ice"]
-        },
-        limit=1,
     )
-    return rows[0] if rows else None
+    return {row.connector_id.id: row for row in rows if row.connector_id}
 
 
 @router_private.get("/telephony/sip/config")
@@ -80,30 +71,44 @@ async def get_sip_config(req: Request):
     env: "Environment" = req.app.state.env
     user_id = req.state.session.user_id.id
 
-    line = await _my_line(env, user_id)
-    if not line:
-        return {"data": UNAVAILABLE}
+    # Телефонные каналы показываем ВСЕ и всегда: выбор канала — это способ
+    # узнать, чего ему не хватает. Доступность считаем для КАЖДОГО отдельно:
+    # линий у сотрудника может быть несколько, по одной в разных коннекторах.
+    connectors = await env.models.chat_connector.search(
+        filter=[("category", "=", "phone"), ("active", "=", True)],
+        fields=["id", "name", "sip_ws_url", "sip_realm", "sip_ice"],
+        sort="id",
+        order="ASC",
+    )
+    lines = await _my_lines(env, user_id)
 
-    connector = line.connector_id
-    password = line.sip_password
-    transport = connector.sip_ws_url
-    ready = bool(transport and password)
+    channels = []
+    for connector in connectors:
+        line = lines.get(connector.id)
+        password = line.sip_password if line else None
+        transport = connector.sip_ws_url
+        ready = bool(transport and password)
+        ice = connector.sip_ice or ""
+        channels.append(
+            {
+                "id": connector.id,
+                "name": connector.name or "Телефония",
+                "available": ready,
+                "has_transport": bool(transport),
+                "has_line": bool(line),
+                "has_password": bool(password),
+                "extension": (
+                    (line.extension or line.number or "") if line else ""
+                ),
+                "realm": connector.sip_realm or "",
+                "ice": [s.strip() for s in ice.split(",") if s.strip()],
+                # Адрес АТС наружу НЕ отдаём: браузер ходит на наш же /ws/sip,
+                # а тот уже знает, куда переслать.
+                "password": password if ready else None,
+            }
+        )
 
-    # Адрес АТС наружу НЕ отдаём: браузер ходит на наш же /ws/sip, а тот уже
-    # знает, куда переслать. Фронт собирает адрес из своего origin.
-    ice = connector.sip_ice or ""
-    return {
-        "data": {
-            "available": ready,
-            "has_line": True,
-            "has_transport": bool(transport),
-            "has_password": bool(password),
-            "realm": connector.sip_realm or "",
-            "ice": [s.strip() for s in ice.split(",") if s.strip()],
-            "extension": line.extension or line.number or "",
-            "password": password if ready else None,
-        }
-    }
+    return {"data": {"channels": channels}}
 
 
 @router_private.put("/telephony/sip/password/{phone_number_id}")
@@ -165,8 +170,16 @@ async def sip_ws_proxy(websocket: WebSocket):
         await websocket.close(_CLOSE_UNAUTHORIZED, "Invalid token")
         return
 
-    line = await _my_line(env, sessions[0].user_id.id)
-    url = line.connector_id.sip_ws_url if line else None
+    # Каким коннектором регистрируемся — говорит браузер. Проверяем, что линия
+    # сотрудника в нём действительно есть: иначе через нас можно было бы
+    # достучаться до любой чужой АТС.
+    connector_id = int(websocket.query_params.get("connector") or 0)
+    lines = await _my_lines(env, sessions[0].user_id.id)
+    url = None
+    if connector_id in lines:
+        connector = await env.models.chat_connector.get(connector_id)
+        url = connector.sip_ws_url
+
     if not url:
         await websocket.accept()
         await websocket.close(_CLOSE_UNAVAILABLE, "SIP not configured")

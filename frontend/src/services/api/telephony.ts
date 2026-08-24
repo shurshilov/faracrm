@@ -15,24 +15,27 @@ export interface CallsStatsParams {
   filter?: FilterExpression;
 }
 
-/**
- * Настройки SIP-регистрации браузера. available:false — звонилка выключена.
+/** Телефонный канал звонилки. Доступность считается для каждого отдельно:
+ *  линий у сотрудника может быть несколько, по одной в разных коннекторах.
  *
- * Адреса АТС здесь нет: браузер подключается к НАШЕМУ /ws/sip, а тот уже знает,
- * куда переслать (адрес АТС — в настройках коннектора). Так его можно менять из
- * интерфейса, не трогая конфиг nginx.
- */
-export interface SipConfig {
+ *  Адреса АТС здесь нет: браузер подключается к НАШЕМУ /ws/sip, а тот уже
+ *  знает, куда переслать. Так адрес меняется из интерфейса, а не в nginx. */
+export interface SipChannel {
+  id: number;
+  name: string;
   available: boolean;
-  /** Чего не хватает — кнопка всегда видна и объясняет это пользователю. */
-  has_line?: boolean;
-  has_transport?: boolean;
-  has_password?: boolean;
-  line?: string;
-  realm?: string;
-  ice?: string[];
-  extension?: string;
+  /** Чего не хватает именно этому каналу — показываем при его выборе. */
+  has_transport: boolean;
+  has_line: boolean;
+  has_password: boolean;
+  extension: string;
+  realm: string;
+  ice: string[];
   password?: string | null;
+}
+
+export interface SipConfig {
+  channels: SipChannel[];
 }
 
 export interface CallsStats {
