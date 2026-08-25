@@ -41,8 +41,12 @@ class ChatConnectorAsteriskMixin(_Base):
         max_length=500, description="URL WSS (wss://pbx:8089/ws)"
     )
     sip_realm: str = Char(max_length=255, description="SIP-домен (realm)")
+    # ДОПОЛНЕНИЕ к общесистемному релею (TURN__* в .env), а не замена: общий
+    # список приходит из /ice/servers и одинаков для звонилки и внутренних
+    # звонков. Здесь — только если у конкретной АТС есть свой сервер.
     sip_ice: str = Char(
-        max_length=500, description="ICE-серверы через запятую"
+        max_length=500,
+        description="Доп. ICE-серверы этой АТС, через запятую",
     )
 
     @onchange("type")

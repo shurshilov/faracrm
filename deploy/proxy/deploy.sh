@@ -154,6 +154,27 @@ docker run --rm \
 docker compose exec nginx-proxy nginx -s reload
 docker compose up -d  # поднимаем certbot для авто-renew
 
+# ─── 8. Порты релея звонков (coturn) ───────────────────────────
+# Релей работает в host-сети, а такие контейнеры правила фаервола НЕ обходят:
+# без открытых портов звонки не соединятся у всех, кто за симметричным NAT.
+# Зовём на каждом деплое — скрипт идемпотентный. Сбой фаервола не должен
+# ронять уже сделанный деплой, поэтому ошибку глушим и говорим о ней.
+TURN_PORTS="../open-turn-ports.sh"
+TURN_ENABLED="$(grep -sE '^[[:space:]]*TURN__ENABLED[[:space:]]*=' ../../.env \
+  | tail -1 | cut -d= -f2 | tr -d '[:space:]"' | tr '[:upper:]' '[:lower:]')"
+
+if [ "$TURN_ENABLED" = "false" ] || [ "$TURN_ENABLED" = "0" ]; then
+  echo "→ TURN выключен в .env — порты релея не трогаю."
+elif [ ! -f "$TURN_PORTS" ]; then
+  echo "⚠ Не нашёл $TURN_PORTS — порты релея открой вручную."
+elif [ "$(id -u)" = "0" ]; then
+  echo "→ Открываю порты релея звонков…"
+  bash "$TURN_PORTS" || echo "⚠ Не удалось открыть порты релея — см. вывод выше."
+else
+  echo "→ Порты релея звонков требуют root. Выполни отдельно:"
+  echo "      sudo bash deploy/open-turn-ports.sh"
+fi
+
 echo
 echo "✓ Готово. Открой https://$DOMAIN в браузере."
 echo "  Сертификат будет автоматически обновляться сервисом certbot."

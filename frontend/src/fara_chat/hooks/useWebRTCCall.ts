@@ -4,8 +4,10 @@
  * Архитектура:
  *   - Сигналинг идёт через существующий WebSocket чата (call.offer/answer/ice).
  *   - Старт/принятие/завершение — через HTTP эндпоинты /calls/*.
- *   - Медиа (голос) — peer-to-peer между браузерами (через STUN).
- *   - TURN на старте не используем (хватает в одной сети или dan дружественные NAT).
+ *   - Медиа (голос) — peer-to-peer между браузерами (через STUN), а там,
+ *     где p2p не собирается (симметричный NAT, закрытый наружу UDP) — через
+ *     наш TURN-релей. Список серверов НЕ хардкодится здесь: он общий с
+ *     телефонией и приходит с бэкенда (services/api/ice.ts).
  *
  * State machine:
  *   idle → calling   (мы инициировали, ждём ответа)
@@ -19,6 +21,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '@/store/store';
 import { useChatWebSocketContext } from '@/fara_chat/context/ChatWebSocketContext';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
+import { useIceConfig } from '@/services/api/ice';
 
 export type CallState =
   | 'idle'
@@ -40,11 +43,6 @@ interface CallSession {
   isCaller: boolean;
   startedAt: number | null; // момент когда pc стал 'connected'
 }
-
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-];
 
 // Причины завершения — для UI-сообщения юзеру.
 export type EndReason =
@@ -86,6 +84,14 @@ export function useWebRTCCall(): UseWebRTCCallResult {
   useEffect(() => {
     authTokenRef.current = authToken;
   }, [authToken]);
+
+  // ICE-серверы держим в ref: соединение создаётся внутри обработчика
+  // сигналинга, и пересобирать этот обработчик при обновлении кредов не за чем.
+  const iceConfig = useIceConfig();
+  const iceConfigRef = useRef(iceConfig);
+  useEffect(() => {
+    iceConfigRef.current = iceConfig;
+  }, [iceConfig]);
 
   /**
    * Единая точка HTTP-запросов к /calls/*. Добавляет Authorization-header
@@ -163,7 +169,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
    */
   const createPeerConnection = useCallback(
     (callId: number, toUserId: number) => {
-      const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+      const pc = new RTCPeerConnection(iceConfigRef.current);
 
       pc.onicecandidate = event => {
         if (event.candidate) {

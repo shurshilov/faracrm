@@ -120,8 +120,16 @@ export function ViewFormConnectorAsteriskSip() {
         />
         <FieldChar
           name="sip_ice"
-          label={t('connector.fields.sipIce', 'ICE-серверы (через запятую)')}
-          placeholder="stun:stun.l.google.com:19302"
+          label={t(
+            'connector.fields.sipIce',
+            'Доп. ICE-серверы этой АТС (через запятую)',
+          )}
+          description={t(
+            'connector.fields.sipIceHint',
+            'Только stun:-адреса. Общий релей настраивается один раз в системных ' +
+              'настройках (turn.*), и turn:-адрес с логином и паролем сюда не вписать',
+          )}
+          placeholder="stun:pbx.example.com:3478"
         />
       </FormRow>
 
@@ -157,7 +165,10 @@ export function ViewFormConnectorAsteriskSip() {
                 </li>
                 <li>
                   Открыть наружу <b>UDP 10000–20000</b> — звук идёт напрямую
-                  браузер ↔ АТС, мимо ФАРЫ.
+                  браузер ↔ АТС, мимо ФАРЫ. Если поднят встроенный релей
+                  (TURN), сотрудники из сетей с закрытым UDP дозвонятся и без
+                  этого: звук придёт на АТС с одного известного адреса —
+                  адреса релея.
                 </li>
                 <li>
                   Нажать «Синхронизировать номера». Если завели отдельный

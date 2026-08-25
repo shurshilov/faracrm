@@ -123,8 +123,85 @@ services:
       # API_URL: "http://127.0.0.1:7777/api"
     # ports:
     #   - "8000:8000"
+      # Секрет релея: бэкенд создаёт файл при первом старте, релей читает.
+      # Отдельный том, а не filestore: оттуда файлы раздаются наружу.
+      TURN__SECRET_FILE: /run/turn/secret
     volumes:
       - filestore_docker:/app/filestore
+      - turn_secret:/run/turn
+    security_opt:
+      - no-new-privileges:true
+
+  # ─── TURN/STUN (coturn) ────────────────────────────────
+  # Релей для звонков: и для внутренних WebRTC между сотрудниками, и для
+  # звонилки в браузере к АТС. Нужен там, где прямое p2p не собирается —
+  # симметричный NAT у мобильных операторов, закрытый наружу UDP в офисе.
+  #
+  # Поднимается ВМЕСТЕ со всем остальным (docker compose up -d). Секрет
+  # генерируется сам, адрес релея берётся из site_url, а если он не задан —
+  # из домена, по которому браузер открыл CRM. Настраивать руками нечего.
+  # Не забудьте открыть порты в фаерволе хоста: host-сеть, в отличие от
+  # опубликованных портов, правила ufw НЕ обходит. Одна команда на всё:
+  #     sudo bash deploy/open-turn-ports.sh
+  #
+  # Выключить: TURN__ENABLED=false в .env (тогда CRM отдаёт только STUN) и,
+  # если контейнер не нужен вовсе, `docker compose stop turn`.
+  turn:
+    image: coturn/coturn:4.6
+    restart: unless-stopped
+    # host-сеть — не прихоть: релею нужен диапазон портов и настоящие адреса
+    # клиентов, а публикация сотни UDP-портов через docker-proxy поднимает
+    # сотню процессов. На Linux-проде это правильный режим; на Docker Desktop
+    # (Windows/macOS) host-режима нет — там см. закомментированный вариант.
+    network_mode: host
+    # ports:
+    #   - "3478:3478/udp"
+    #   - "3478:3478/tcp"
+    #   - "49160-49660:49160-49660/udp"
+    volumes:
+      - ./docker/turnserver.conf:/etc/coturn/turnserver.conf:ro
+      # Секрет: общий файл с бэкендом. Он его создаёт при первом старте,
+      # релей — только читает. Через переменные окружения это не сделать:
+      # compose подставляет их при СОЗДАНИИ контейнера, поэтому любая правка
+      # требовала бы пересоздавать оба сервиса, а опечатка в регистре имени
+      # давала бы молча пустой секрет и релей, отвергающий все звонки.
+      - turn_secret:/run/turn:ro
+      # TLS: сертификат сайта от certbot (см. deploy/proxy) — только вместе с
+      # копированием ключа под пользователя релея, см. docker/turnserver.conf.
+      # - ./deploy/proxy/certbot/conf:/etc/letsencrypt:ro
+    # Ждём секрет: при первом запуске релей может стартовать раньше бэкенда.
+    # $$ — экранирование для compose: подстановку делает шелл контейнера, а не
+    # compose. TURN_EXTRA_ARGS (из .env, ЗАГЛАВНЫМИ) — для того, что зависит
+    # от площадки:
+    #   --external-ip=<белый IP>  (облако с 1:1 NAT: адрес не виден изнутри)
+    #   --allowed-peer-ip=<АТС>   (если АТС в приватной сети)
+    #   --cert=... --pkey=...     (TLS)
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        until [ -s /run/turn/secret ]; do
+          echo "[turn] жду секрет от бэкенда..."; sleep 2;
+        done;
+        exec turnserver -c /etc/coturn/turnserver.conf
+        --realm=${TURN__REALM:-fara}
+        --static-auth-secret="$$(cat /run/turn/secret)"
+        ${TURN_EXTRA_ARGS:-}
+    healthcheck:
+      # Отвечает ли релей на STUN с самой машины. Не доказывает доступность
+      # снаружи (это делает кнопка «Проверить релей» в CRM), но ловит самое
+      # частое: контейнер жив, а turnserver внутри упал.
+      test: ["CMD-SHELL", "turnutils_stunclient -p 3478 127.0.0.1 >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # В логах релея видно, кто и с какого адреса звонил, — это персональные
+    # данные и заметный объём. Ограничиваем срок их жизни явно.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     security_opt:
       - no-new-privileges:true
 
@@ -144,3 +221,6 @@ services:
 volumes:
   pgdata:
   filestore_docker:
+  # Общий секрет TURN. Живёт в томе, а не в .env: его пишет бэкенд, читает
+  # релей, и оба делают это в рантайме.
+  turn_secret:

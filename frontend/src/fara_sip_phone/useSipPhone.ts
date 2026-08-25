@@ -10,7 +10,7 @@
 // История звонков, карточка клиента и лидогенерация к браузеру отношения не
 // имеют — они питаются событиями от АТС на вебхук.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store/store';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
@@ -18,6 +18,7 @@ import {
   useGetSipConfigQuery,
   type SipChannel,
 } from '@/services/api/telephony';
+import { useIceConfig } from '@/services/api/ice';
 
 export type SipState =
   | 'disabled'
@@ -70,6 +71,23 @@ export function useSipPhone(connectorId: number | null): SipPhone {
   const config = channels.find(c => c.id === connectorId);
   const token = useSelector(
     (state: RootState) => state.auth.session?.token || '',
+  );
+
+  // ICE общий с внутренними звонками (свой TURN/STUN), плюс то, что задано
+  // строкой в самом коннекторе — на случай, когда у конкретной АТС свой релей.
+  const globalIce = useIceConfig();
+  const pcConfig: RTCConfiguration = useMemo(
+    () => ({
+      iceServers: [
+        ...(globalIce.iceServers || []),
+        ...(config?.ice || []).map(urls => ({ urls })),
+      ],
+      // iceTransportPolicy сюда НЕ наследуем. «Всё через релей» — настройка
+      // приватности внутренних звонков (скрыть IP сотрудников друг от друга);
+      // на плече к АТС прятать нечего, а если АТС в приватной сети, режим
+      // relay её просто отрежет: релею запрещено ходить в приватные сети.
+    }),
+    [globalIce, config?.ice],
   );
 
   const [state, setState] = useState<SipState>('disabled');
@@ -218,9 +236,7 @@ export function useSipPhone(connectorId: number | null): SipPhone {
       try {
         ua.call(`sip:${target}@${config?.realm || 'localhost'}`, {
           mediaConstraints: { audio: true, video: false },
-          pcConfig: {
-            iceServers: (config?.ice || []).map(urls => ({ urls })),
-          },
+          pcConfig,
         });
       } catch {
         setState('registered');
@@ -228,19 +244,19 @@ export function useSipPhone(connectorId: number | null): SipPhone {
         setError('Не удалось начать звонок');
       }
     },
-    [state, config?.realm, config?.ice],
+    [state, config?.realm, pcConfig],
   );
 
   const answer = useCallback(() => {
     try {
       sessionRef.current?.answer({
         mediaConstraints: { audio: true, video: false },
-        pcConfig: { iceServers: (config?.ice || []).map(urls => ({ urls })) },
+        pcConfig,
       });
     } catch {
       setError('Не удалось ответить');
     }
-  }, [config?.ice]);
+  }, [pcConfig]);
 
   const hangup = useCallback(() => {
     try {

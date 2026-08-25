@@ -141,6 +141,8 @@ class ChatApp(Service):
             settings.pubsub_backend,
         )
 
+        self._init_turn_secret(env)
+
     async def _ws_reaper_loop(self):
         """Периодически выбрасывать молчащие WebSocket-соединения."""
         while True:
@@ -152,6 +154,30 @@ class ChatApp(Service):
                 logger.warning(
                     "ChatApp: WS reaper iteration failed", exc_info=True
                 )
+
+    def _init_turn_secret(self, env: "Environment") -> None:
+        """
+        Секрет релея: создать при первом запуске, дальше только читать.
+
+        Секрет обязан совпадать у нас и у контейнера релея, поэтому носитель —
+        файл в общем томе, а не переменная окружения: переменные подставляются
+        при СОЗДАНИИ контейнера, и любая правка требовала бы пересоздавать оба
+        сервиса. Генерируем здесь, потому что это единственное место, которое
+        выполняется один раз на старте и умеет писать атомарно.
+        """
+        from .turn import ensure_secret
+
+        turn = env.settings.turn
+        if not turn.enabled or not turn.secret_file or turn.secret:
+            return
+        if ensure_secret(turn):
+            logger.info("ChatApp: TURN secret ready (%s)", turn.secret_file)
+        else:
+            logger.warning(
+                "ChatApp: TURN включён, но секрет недоступен (%s) — "
+                "релей выдавать не будем",
+                turn.secret_file,
+            )
 
     async def shutdown(self, app: "FastAPI"):
         """Остановка pub/sub backend."""
@@ -329,8 +355,44 @@ class ChatApp(Service):
                     "is_system": False,
                     "cache_ttl": -1,
                 },
+                *self._turn_settings_defaults(),
             ]
         )
+
+    @staticmethod
+    def _turn_settings_defaults() -> list[dict]:
+        """
+        Настройки релея, видимые в интерфейсе.
+
+        Заводятся ПУСТЫМИ (value=null): пустое значение означает «берём из
+        .env». Так уже настроенные стенды не меняют поведения, а новые
+        настраиваются мышкой. cache_ttl=0 обязателен — кеш системных настроек
+        живёт в процессе, а воркеров несколько, и закешированное значение
+        расходилось бы между ними до перезапуска.
+
+        Секрета здесь нет намеренно: он общий с контейнером релея, который
+        читает его при старте, — правка «на лету» молча сломала бы звонки.
+        """
+        descriptions = {
+            "enabled": "Использовать TURN-релей для звонков (true/false)",
+            "host": "Публичный адрес релея: домен или IP, попадает в браузер",
+            "port": "Порт релея для STUN/TURN (обычно 3478)",
+            "tls_port": "Порт turns: (TLS). 0 — не анонсировать",
+            "ttl": "Сколько секунд живут выданные браузеру креды",
+            "force_relay": "Гнать весь трафик через релей (true/false)",
+            "fallback_stun": "Запасные STUN-серверы, список строк",
+        }
+        return [
+            {
+                "key": f"turn.{key}",
+                "value": {"value": None},
+                "description": f"{text}. Пусто — берётся из .env",
+                "module": "turn",
+                "is_system": False,
+                "cache_ttl": 0,
+            }
+            for key, text in descriptions.items()
+        ]
 
     # async def _init_chat_rules(self, env: "Environment"):
     #     """Создаёт правила безопасности для чатов и сообщений."""
