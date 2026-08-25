@@ -126,6 +126,9 @@ async def copy_user(req: Request, payload: CopyUserInput):
         if payload.copy_contacts and source_user.contact_ids:
             new_contacts = [
                 env.models.contact(
+                    # value — реальное значение (по нему идёт матчинг);
+                    # без него копия контакта нерабочая. name — описание.
+                    value=contact.value,
                     name=contact.name,
                     contact_type_id=contact.contact_type_id,
                     user_id=new_user,

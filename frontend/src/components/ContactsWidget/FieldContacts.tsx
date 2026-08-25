@@ -16,6 +16,7 @@ import {
   useCreateMutation,
   useDeleteBulkMutation,
   useSearchQuery,
+  useUpdateMutation,
 } from '@/services/api/crudApi';
 import { useCreateChatMutation } from '@/services/api/chat';
 
@@ -86,6 +87,7 @@ export function FieldContacts({
   const navigate = useNavigate();
   const [deleteBulk] = useDeleteBulkMutation();
   const [create] = useCreateMutation();
+  const [update] = useUpdateMutation();
   const [createChat, { isLoading: creatingChat }] = useCreateChatMutation();
 
   const displayLabel = label ?? name;
@@ -125,7 +127,7 @@ export function FieldContacts({
   const { data, isFetching } = useSearchQuery(
     {
       model: queryModel,
-      fields: ['id', 'contact_type_id', 'name', 'is_primary'],
+      fields: ['id', 'contact_type_id', 'value', 'name', 'is_primary'],
       filter: [[relatedField, '=', ownerId!]],
       limit: 100,
     },
@@ -142,7 +144,10 @@ export function FieldContacts({
       const initialContacts: Contact[] = data.data.map((item: any) => ({
         id: item.id,
         contact_type: item.contact_type_id?.name || item.contact_type_id,
-        name: item.name,
+        // Фоллбэк на name — легаси-записи, созданные до рефактора name→value
+        // (миграция PartnersApp._migration_contact_name_to_value заполняет
+        // value на старте бэка, но до неё значение лежит только в name).
+        value: item.value ?? item.name ?? '',
         is_primary: item.is_primary || false,
         _isNew: false,
         _isDeleted: false,
@@ -157,21 +162,32 @@ export function FieldContacts({
   }, [id, ownerId]);
 
   const handleChange = async (newContacts: Contact[]) => {
-    setContacts(newContacts);
+    // Правки уже сохранённых контактов уходят в update прямо здесь, поэтому
+    // флаг _isDirty в состоянии не держим (иначе тот же PUT полетит повторно
+    // при следующем изменении виджета — update не инвалидирует список).
+    setContacts(newContacts.map(c => ({ ...c, _isDirty: false })));
 
     // Собираем изменения для сохранения
     const created: any[] = [];
+    const updated: { id: number; value: string }[] = [];
     const deleted: number[] = [];
 
     for (const contact of newContacts) {
       if (contact._isNew && !contact._isDeleted) {
         created.push({
           contact_type_id: contact.contact_type_id,
-          name: contact.name,
+          // value — реальное значение (по нему матчинг на бэке).
+          value: contact.value,
+          // name в модели NOT NULL и означает описание; при создании из
+          // виджета описания нет — кладём значение (так же делает бэк в
+          // Contact.create_with_partner).
+          name: contact.value,
           is_primary: contact.is_primary,
         });
       } else if (contact._isDeleted && contact.id) {
         deleted.push(contact.id);
+      } else if (contact._isDirty && contact.id) {
+        updated.push({ id: contact.id, value: contact.value });
       }
     }
 
@@ -195,8 +211,15 @@ export function FieldContacts({
           values: { ...item, [relatedField]: ownerId },
         });
       }
+      for (const item of updated) {
+        await update({
+          model: 'contact',
+          id: item.id,
+          values: { value: item.value },
+        });
+      }
     } catch (error) {
-      console.error('Failed to delete or create contact:', error);
+      console.error('Failed to save contact:', error);
     }
   };
 

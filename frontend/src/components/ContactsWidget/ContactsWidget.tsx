@@ -64,17 +64,17 @@ function getIcon(iconName: string): React.ElementType {
 }
 
 /**
- * Для типа web_push значение в поле `name` — это JSON PushSubscription
- * с полями endpoint/keys, т.е. огромная строка. Показывать её целиком
+ * Для типа web_push значение — это JSON PushSubscription с полями
+ * endpoint/keys, т.е. огромная строка. Показывать её целиком
  * в списке контактов бессмысленно. Возвращаем короткое представление:
  * "Web Push · <домен endpoint-а>" (например, "Web Push · fcm.googleapis.com"),
  * чтобы было понятно, какому провайдеру принадлежит подписка.
  * Для всех остальных типов возвращаем исходное значение.
  */
 function formatContactDisplay(contact: Contact): string {
-  if (contact.contact_type !== 'web_push') return contact.name;
+  if (contact.contact_type !== 'web_push') return contact.value;
   try {
-    const parsed = JSON.parse(contact.name);
+    const parsed = JSON.parse(contact.value);
     const endpoint: string | undefined = parsed?.endpoint;
     if (endpoint) {
       try {
@@ -167,7 +167,7 @@ export function ContactsWidget({
     const newContact: Contact = {
       contact_type: typeToAdd,
       contact_type_id: typeConfig?.id,
-      name: inputValue.trim(),
+      value: inputValue.trim(),
       is_primary: activeContacts.length === 0,
       _isNew: true,
     };
@@ -226,7 +226,7 @@ export function ContactsWidget({
     (index: number) => {
       if (disabled) return;
       setEditingIndex(index);
-      setEditValue(value[index].name);
+      setEditValue(value[index].value);
     },
     [disabled, value],
   );
@@ -237,7 +237,10 @@ export function ContactsWidget({
 
     const updated = value.map((c, i) => {
       if (i !== editingIndex) return c;
-      return { ...c, name: editValue.trim() };
+      if (c.value === editValue.trim()) return c;
+      // _isDirty — только для уже сохранённых контактов: у новых значение
+      // и так уедет в create.
+      return { ...c, value: editValue.trim(), _isDirty: !c._isNew };
     });
 
     onChange(updated);
@@ -456,7 +459,9 @@ export function ContactsWidget({
                   />
                 ) : (
                   <>
-                    <Text className={classes.contactValue} title={contact.name}>
+                    <Text
+                      className={classes.contactValue}
+                      title={contact.value}>
                       {formatContactDisplay(contact)}
                     </Text>
 

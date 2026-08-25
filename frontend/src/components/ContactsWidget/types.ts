@@ -21,10 +21,18 @@ export interface Contact {
   contact_type: ContactType;
   /** ID записи contact_type (для сохранения в БД) */
   contact_type_id?: number;
-  name: string;
+  /**
+   * РЕАЛЬНОЕ значение контакта (+79991234567, ivan@mail.ru, @username, 307).
+   * Соответствует полю `value` модели contact — именно по нему идёт матчинг
+   * на бэке (find_for_webhook / find_operator_by_value). Виджет работает
+   * только с ним; `name` в модели — человекочитаемое описание.
+   */
+  value: string;
   is_primary: boolean;
   _isNew?: boolean;
   _isDeleted?: boolean;
+  /** Значение изменено пользователем — нужно записать в БД (только для id). */
+  _isDirty?: boolean;
 }
 
 export interface ContactsWidgetProps {
