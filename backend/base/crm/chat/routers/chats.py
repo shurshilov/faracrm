@@ -4,7 +4,6 @@
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Query
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
@@ -915,35 +914,13 @@ async def create_chat(req: Request, body: ChatCreate):
             else:
                 is_internal = True
 
-    # Уведомляем всех участников о новом чате через WebSocket
-    chat_data = {
-        "id": chat.id,
-        "name": chat.name,
-        "chat_type": chat.chat_type,
-        "is_internal": is_internal,
-        "members": [],  # Будет заполнено на клиенте при refetch
-        "unread_count": 0,
-        "connectors": [],
-    }
-
-    cm = env.apps.chat.chat_manager
-
-    # Атомарная подписка + получение списка онлайн-участников
-    online_user_ids = await cm.get_online_members(chat.id, all_user_ids)
-
-    # Одно событие chat_created всем онлайн-участникам (включая создателя).
-    # Внутри — и данные чата, и список онлайн-юзеров для обновления presence.
-    if online_user_ids:
-        msg = {
-            "type": "chat_created",
-            "chat_id": chat.id,
-            "chat": chat_data,
-            "online_users": sorted(online_user_ids),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-        await asyncio.gather(
-            *(cm.send_to_user(uid, msg) for uid in online_user_ids)
-        )
+    # Уведомляем участников через шину, а не локальным фан-аутом: они сидят
+    # на разных воркерах (см. секцию PRESENCE в websocket/manager.py), и
+    # участник с чужого воркера раньше не получал chat_created вовсе.
+    # Данные чата клиент дочитает рефетчем списка, как и раньше.
+    await env.apps.chat.chat_manager.notify_new_chat_bulk(
+        all_user_ids, chat.id
+    )
 
     return {
         "data": {

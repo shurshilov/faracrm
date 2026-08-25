@@ -1,10 +1,11 @@
 # Copyright 2025 FARA CRM
 # Chat module - application configuration
 
+import asyncio
 import logging
 from typing import TYPE_CHECKING
 
-from .websocket.manager import ConnectionManager
+from .websocket.manager import ConnectionManager, WS_REAP_INTERVAL_SECONDS
 from backend.base.system.core.service import Service
 from backend.base.crm.security.acl_post_init_mixin import ACL
 
@@ -51,6 +52,9 @@ class ChatApp(Service):
 
     chat_manager: ConnectionManager
 
+    # Фоновая уборка залипших WS-соединений (см. startup).
+    _ws_reaper_task: "asyncio.Task | None" = None
+
     BASE_USER_ACL = {
         "chat": ACL.FULL,
         "chat_member": ACL.FULL,
@@ -83,6 +87,13 @@ class ChatApp(Service):
 
         env: "Environment" = app.state.env
         self.chat_manager = ConnectionManager()
+
+        # Жнец залипших соединений. Мобильный клиент уходит молча (сон
+        # вкладки, NAT оператора, WiFi↔LTE рвут TCP без close-кадра), и без
+        # этой уборки он навсегда остаётся «в сети» для остальных.
+        # Запускаем до pub/sub: не зависит от него и нужен даже если шина
+        # не поднялась.
+        self._ws_reaper_task = asyncio.create_task(self._ws_reaper_loop())
 
         settings = env.settings.chat
 
@@ -130,8 +141,28 @@ class ChatApp(Service):
             settings.pubsub_backend,
         )
 
+    async def _ws_reaper_loop(self):
+        """Периодически выбрасывать молчащие WebSocket-соединения."""
+        while True:
+            await asyncio.sleep(WS_REAP_INTERVAL_SECONDS)
+            try:
+                await self.chat_manager.reap_stale_connections()
+            except Exception:
+                # Уборка не должна убивать себя из-за одного сбойного сокета.
+                logger.warning(
+                    "ChatApp: WS reaper iteration failed", exc_info=True
+                )
+
     async def shutdown(self, app: "FastAPI"):
         """Остановка pub/sub backend."""
+
+        if self._ws_reaper_task:
+            self._ws_reaper_task.cancel()
+            try:
+                await self._ws_reaper_task
+            except asyncio.CancelledError:
+                pass
+            self._ws_reaper_task = None
 
         if self.chat_manager.pubsub:
             await self.chat_manager.pubsub.stop()

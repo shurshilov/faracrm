@@ -163,8 +163,8 @@ export function FieldContacts({
 
   const handleChange = async (newContacts: Contact[]) => {
     // Правки уже сохранённых контактов уходят в update прямо здесь, поэтому
-    // флаг _isDirty в состоянии не держим (иначе тот же PUT полетит повторно
-    // при следующем изменении виджета — update не инвалидирует список).
+    // флаг _isDirty в состоянии не держим — иначе тот же PUT полетел бы
+    // повторно на каждое следующее изменение виджета.
     setContacts(newContacts.map(c => ({ ...c, _isDirty: false })));
 
     // Собираем изменения для сохранения
@@ -205,21 +205,28 @@ export function FieldContacts({
       if (deleted.length > 0) {
         await deleteBulk({ model: 'contact', ids: deleted }).unwrap();
       }
+      // unwrap обязателен: без него RTK резолвит промис объектом {error},
+      // catch не срабатывает, и отказ бэка (валидация, права) выглядит как
+      // успешное сохранение — контакт есть на экране и нет в БД.
       for (const item of created) {
         await create({
           model: 'contact',
           values: { ...item, [relatedField]: ownerId },
-        });
+        }).unwrap();
       }
       for (const item of updated) {
         await update({
           model: 'contact',
           id: item.id,
           values: { value: item.value },
-        });
+        }).unwrap();
       }
     } catch (error) {
       console.error('Failed to save contact:', error);
+      notifications.show({
+        color: 'red',
+        message: t('contacts.saveFailed'),
+      });
     }
   };
 

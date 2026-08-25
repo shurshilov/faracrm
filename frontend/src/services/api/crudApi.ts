@@ -243,24 +243,25 @@ export const crudApi = createApi({
           ),
         );
 
-        // Список можно инвалидировать рано — он перечитается только при
-        // переходе обратно в табличный вид, и оптимистичный patch формы
-        // туда не утекает.
-        lifecycleApi.dispatch(
-          crudApi.util.invalidateTags([{ type: model, id: 'LIST' }]),
-        );
-
         try {
           await lifecycleApi.queryFulfilled;
 
-          // ВАЖНО: refetch текущей записи только ПОСЛЕ того, как PUT
-          // отработал на сервере. Раньше эта инвалидация стояла до
-          // await — GET успевал стартануть, пока PUT ещё летел, забирал
-          // из БД старые computed-поля строк (price_subtotal и др.),
+          // ВАЖНО: refetch — только ПОСЛЕ того, как PUT отработал на
+          // сервере. Раньше GET успевал стартануть, пока PUT ещё летел,
+          // забирал из БД старые computed-поля строк (price_subtotal и др.),
           // и финальный PUT уже не триггерил повторного refetch'а.
           // Итог: O2M-строки висели stale до полного F5.
+          //
+          // То же и для списка: он инвалидировался рано в расчёте, что
+          // подписчиков на него сейчас нет. Но живая подписка бывает прямо
+          // на форме — например виджет контактов (FieldContacts держит
+          // useSearchQuery по contact) — и она успевала перечитать СТАРОЕ
+          // значение поверх только что отредактированного.
           lifecycleApi.dispatch(
-            crudApi.util.invalidateTags([{ type: model, id: id }]),
+            crudApi.util.invalidateTags([
+              { type: model, id: id },
+              { type: model, id: 'LIST' },
+            ]),
           );
 
           // Инвалидируем M2M/O2M кеши для затронутых полей

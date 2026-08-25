@@ -104,7 +104,8 @@
   "contacts": {
     "selectPartnerFirst": "Select a partner first",
     "selectPartnerHint": "Contacts are stored on the selected partner",
-    "pressPlusToAdd": "Press «+» to add a contact"
+    "pressPlusToAdd": "Press «+» to add a contact",
+    "saveFailed": "Failed to save the contact"
   },
   "dropzone": {
     "dropFile": "Drag a file here or click to select",

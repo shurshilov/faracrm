@@ -168,25 +168,18 @@ export class WSClient {
   }
 
   /**
-   * Ждать presence.
-   * status='online' → userId должен быть в chat_created.online_users
-   * status='offline' → userId должен быть в presence_update.remove
-   * без status → любой из двух путей
+   * Ждать presence. Оба направления приходят одним кадром presence_update:
+   * status='online' → userId в add, status='offline' → userId в remove.
    */
   async waitForPresence(userId: number, status?: string, timeoutMs = 10_000): Promise<WSEvent> {
     return this.waitFor(
       (msg) => {
-        const inChatCreatedOnline =
-          msg.type === 'chat_created' &&
-          Array.isArray(msg.online_users) &&
-          msg.online_users.includes(userId);
-        const inPresenceRemove =
-          msg.type === 'presence_update' &&
-          Array.isArray(msg.remove) &&
-          msg.remove.includes(userId);
-        if (status === 'online') return inChatCreatedOnline;
-        if (status === 'offline') return inPresenceRemove;
-        return inChatCreatedOnline || inPresenceRemove;
+        if (msg.type !== 'presence_update') return false;
+        const inAdd = Array.isArray(msg.add) && msg.add.includes(userId);
+        const inRemove = Array.isArray(msg.remove) && msg.remove.includes(userId);
+        if (status === 'online') return inAdd;
+        if (status === 'offline') return inRemove;
+        return inAdd || inRemove;
       },
       timeoutMs,
     );

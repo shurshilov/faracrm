@@ -263,10 +263,9 @@ test.describe("WebSocket — messages_read", () => {
 
 test.describe("WebSocket — presence", () => {
   /**
-   * При create_chat бэк шлёт ОДНО событие chat_created всем онлайн-участникам.
-   * В нём — online_users со списком онлайн-юзеров этого чата.
-   *
-   * При disconnect последнего коннекта юзера — presence_update { remove:[uid] }.
+   * Присутствие идёт отдельными кадрами presence_update: при появлении
+   * участника — { add:[uid] }, при отключении последнего его коннекта —
+   * { remove:[uid] }. Само chat_created несёт только chat_id.
    */
 
   test("presence online при создании чата", async ({
@@ -286,14 +285,14 @@ test.describe("WebSocket — presence", () => {
       user_ids: [user2Session.user_id.id],
     });
 
-    // admin получает chat_created с user2 в online_users
+    // admin узнаёт, что user2 в сети
     const event = await adminWS.waitForPresence(
       user2Session.user_id.id,
       "online",
       15_000,
     );
-    expect(event.type).toBe("chat_created");
-    expect(event.online_users).toContain(user2Session.user_id.id);
+    expect(event.type).toBe("presence_update");
+    expect(event.add).toContain(user2Session.user_id.id);
 
     await api.deleteChat(adminSession, chat.id);
   });
@@ -317,7 +316,7 @@ test.describe("WebSocket — presence", () => {
       user_ids: [user3Session.user_id.id],
     });
 
-    // admin получает chat_created с user3 в online_users
+    // admin узнаёт, что user3 в сети
     await adminWS.waitForPresence(user3Session.user_id.id, "online", 15_000);
 
     adminWS.clearMessages();
@@ -350,7 +349,7 @@ test.describe("WebSocket — chat_created", () => {
     });
     const event = await user2WS.waitForChatCreated();
     expect(event.type).toBe("chat_created");
-    // Сервер шлёт { type: 'chat_created', chat: { id, ... } }
+    // Сервер шлёт { type: 'chat_created', chat_id }
     expect(event.chat?.id ?? event.chat_id).toBe(chat.id);
     await api.deleteChat(adminSession, chat.id);
   });

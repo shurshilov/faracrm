@@ -4,7 +4,7 @@
 import asyncio
 from enum import Enum
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Set
 
 from fastapi import WebSocket
@@ -14,6 +14,16 @@ if TYPE_CHECKING:
     from .pubsub.base import PubSubBackend
 
 logger = logging.getLogger(__name__)
+
+# Сколько секунд соединение может молчать, прежде чем считать его мёртвым.
+# Клиент шлёт ping раз в 30 секунд, так что это 4 пропущенных пинга.
+#
+# Зачем вообще: мобильный браузер усыпляет вкладку, а сотовый NAT/переход
+# WiFi↔LTE рвут TCP БЕЗ close-кадра. Сокет остаётся "живым" для обеих
+# сторон: сервер держит юзера в _connections (все видят его онлайн, хотя
+# он ушёл), клиент считает readyState=OPEN и не переподключается.
+WS_IDLE_TIMEOUT_SECONDS = 120
+WS_REAP_INTERVAL_SECONDS = 60
 
 
 class WebsocketCommand(str, Enum):
@@ -42,6 +52,13 @@ class PubSubCommand(str, Enum):
     # Будит asyncio.Event в HTTP /calls/start на любом воркере.
     CALL_ACK = "call_ack"
 
+    # Presence. Кто онлайн — знание ЛОКАЛЬНОЕ: у каждого воркера свои
+    # _connections/_chat_subscriptions. Поэтому "я вошёл"/"я вышел" должны
+    # обойти все воркеры, иначе собеседники, попавшие в другой процесс,
+    # не узнают друг о друге (и снапшот при входе придёт неполным).
+    PRESENCE_HELLO = "presence_hello"
+    PRESENCE_BYE = "presence_bye"
+
 
 class ConnectionManager:
     """
@@ -67,8 +84,10 @@ class ConnectionManager:
         # user_id -> set of chat_ids user is subscribed to
         self._user_subscriptions: dict[int, Set[int]] = {}
 
-        # user_id -> last activity timestamp
-        self._user_activity: dict[int, datetime] = {}
+        # websocket -> время последнего кадра ОТ КЛИЕНТА. Именно посокетно,
+        # а не по юзеру: у юзера с двумя устройствами живые пинги одного
+        # маскировали бы намертво зависший второй сокет.
+        self._ws_activity: dict[WebSocket, datetime] = {}
 
         # Lock for thread-safe operations
         self._lock = asyncio.Lock()
@@ -107,7 +126,7 @@ class ConnectionManager:
                     self._user_subscriptions[user_id] = set()
 
                 self._connections[user_id].add(websocket)
-                self._user_activity[user_id] = now
+                self._ws_activity[websocket] = now
 
                 total_connections = len(self._connections[user_id])
 
@@ -137,74 +156,62 @@ class ConnectionManager:
         """
         Отключить конкретное WebSocket соединение пользователя.
 
-        Под одним локом:
-        - снимаем сокет и чистим структуры, если это последнее соединение;
-        - собираем согласованный снимок подписчиков общих чатов,
-          которым нужно разослать presence=offline.
-
-        Сетевой broadcast выполняется строго вне лока.
+        Под локом снимаем сокет и чистим подписки, если живых соединений
+        не осталось. Рассылка presence=offline идёт вне лока и ЧЕРЕЗ ШИНУ
+        (PRESENCE_BYE): собеседники могут сидеть на других воркерах, где
+        свои _chat_subscriptions — локального снимка получателей мало.
 
         Args:
             websocket: WebSocket соединение для отключения
             user_id: ID пользователя
         """
-        is_last = False
-        remaining_count = 0
-        notified: set[int] = set()
+        user_chat_ids: set[int] = set()
 
         async with self._lock:
+            self._ws_activity.pop(websocket, None)
+
             conns = self._connections.get(user_id)
-            if conns is None:
-                return
-            conns.discard(websocket)
+            if conns is not None:
+                conns.discard(websocket)
 
-            if conns:
-                remaining_count = len(conns)
-            else:
-                is_last = True
-                del self._connections[user_id]
-                self._user_activity.pop(user_id, None)
-
+            # Пустой бакет = юзера на этом воркере больше нет. Бакет может
+            # опустеть и мимо нас: _send_to_websocket при сбое отправки
+            # выкидывает сокет сам, и тогда вызов из finally в ws.py приходит
+            # уже к пустому. Раньше он тут молча выходил — presence=offline
+            # не уходил никогда, и ушедший горел зелёным у всех.
+            if not conns:
+                self._connections.pop(user_id, None)
                 user_chat_ids = self._user_subscriptions.pop(user_id, set())
                 for chat_id in user_chat_ids:
                     subs = self._chat_subscriptions.get(chat_id)
-                    if subs is None:
-                        continue
-                    subs.discard(user_id)
-                    # Под этим же локом склеиваем получателей —
-                    # снимок согласован с моментом disconnect.
-                    notified.update(subs)
+                    if subs is not None:
+                        subs.discard(user_id)
 
         logger.info(
             "User %s disconnected from WebSocket (remaining connections: %s)",
             user_id,
-            remaining_count,
+            len(self._connections.get(user_id, ())),
         )
 
-        # Уведомляем о выходе — только если это было последнее подключение
-        if is_last and notified:
-            presence_msg = {
-                "type": "presence_update",
-                "subtype": "disconnect",
-                "add": [],
-                "remove": [user_id],
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-            # cross-process: участники могут сидеть на других воркерах
-            await asyncio.gather(
-                *[self.send_to_user(uid, presence_msg) for uid in notified],
-                return_exceptions=True,
+        # Пустой набор чатов = отключение уже отработало (повторный вызов из
+        # ws.py или жнеца) → BYE не дублируем. Если юзер держит сокет ещё
+        # где-то (второе устройство), тот воркер переподтвердит присутствие
+        # — см. _presence_dispatch.
+        if user_chat_ids:
+            await self._presence_publish(
+                PubSubCommand.PRESENCE_BYE, user_id, sorted(user_chat_ids)
             )
 
     async def subscribe_to_chats(self, user_id: int, chat_ids: list[int]):
         """
         Подписать пользователя на несколько чатов одной операцией.
 
-        Делает две симметричные вещи при онлайн-юзере:
-        1. Шлёт presence=online всем ранее известным подписчикам общих чатов
-           (чтобы они узнали, что юзер появился).
-        2. Шлёт самому юзеру presence_snapshot со списком тех, кто уже онлайн
-           в этих чатах (чтобы он сразу знал, кто из собеседников в сети).
+        Регистрирует подписки локально и объявляет присутствие ПО ШИНЕ
+        (PRESENCE_HELLO): каждый воркер отвечает за своих подключённых —
+        сообщает им «этот юзер онлайн» и присылает юзеру список своих
+        онлайн-пиров по этим чатам. Локальным снимком тут не обойтись:
+        _chat_subscriptions знает только соединения СВОЕГО процесса, а
+        воркеров несколько (uvicorn --workers).
 
         Это основной путь presence при первом подключении: клиент после
         WS-accept шлёт subscribe_all со своим списком чатов, и только здесь
@@ -217,10 +224,10 @@ class ConnectionManager:
         if not chat_ids:
             return
 
-        # Подписчики ДО нас одновременно:
-        #  - получатели presence=online про нас (push),
-        #  - онлайн-пиры, о которых сообщаем нам (snapshot в ответ).
-        notified: set[int] = set()
+        # Объявляем присутствие только по чатам, где юзер на этом воркере
+        # реально впервые: повторный subscribe (или тот же чат в списке
+        # дважды) не должен генерировать лишний обход шины.
+        fresh_chat_ids: list[int] = []
         user_online = False
 
         async with self._lock:
@@ -233,64 +240,20 @@ class ConnectionManager:
                 if chat_id not in self._chat_subscriptions:
                     self._chat_subscriptions[chat_id] = set()
 
-                # Собираем существующих подписчиков ТОЛЬКО для чатов,
-                # где юзер реально впервые — иначе присутствие уже известно.
                 if user_id not in self._chat_subscriptions[chat_id]:
-                    notified.update(self._chat_subscriptions[chat_id])
+                    fresh_chat_ids.append(chat_id)
 
                 self._chat_subscriptions[chat_id].add(user_id)
                 self._user_subscriptions[user_id].add(chat_id)
 
-            notified.discard(user_id)
-
         logger.info("User %s subscribed to %s chats", user_id, len(chat_ids))
 
-        if not (user_online and notified):
+        if not (user_online and fresh_chat_ids):
             return
 
-        timestamp = datetime.now(timezone.utc).isoformat()
-
-        # 1. Юзеру — snapshot онлайн-пиров (одним кадром, меньше шума фронту).
-        # Сам юзер только что подключился к ЭТОМУ воркеру — можно локально.
-        await self._send_to_user(
-            user_id,
-            {
-                "type": "presence_update",
-                "subtype": "subscribe_to_chat",
-                "add": sorted(notified),
-                "timestamp": timestamp,
-            },
+        await self._presence_publish(
+            PubSubCommand.PRESENCE_HELLO, user_id, fresh_chat_ids
         )
-
-        # 2. Остальным — presence=online про юзера, cross-process.
-        # Участники могут сидеть на других воркерах, поэтому через pubsub.
-        presence_msg = {
-            "type": "presence_update",
-            "subtype": "subscribe_to_chat_me",
-            "add": [user_id],
-            "timestamp": timestamp,
-        }
-        await asyncio.gather(
-            *[self.send_to_user(uid, presence_msg) for uid in notified],
-            return_exceptions=True,
-        )
-
-        logger.info("User %s subscribed to %s chats", user_id, len(chat_ids))
-
-    async def get_online_members(
-        self, chat_id: int, user_ids: list[int]
-    ) -> list[int]:
-        """
-        Атомарно подписать всех user_ids на chat_id под одним локом
-        и вернуть тех из них, у кого есть активные WS-соединения.
-        """
-        async with self._lock:
-            if chat_id not in self._chat_subscriptions:
-                self._chat_subscriptions[chat_id] = set()
-            for uid in user_ids:
-                self._chat_subscriptions[chat_id].add(uid)
-                self._user_subscriptions.setdefault(uid, set()).add(chat_id)
-            return [uid for uid in user_ids if self._connections.get(uid)]
 
     async def unsubscribe_from_chat(self, user_id: int, chat_id: int):
         """
@@ -381,6 +344,165 @@ class ConnectionManager:
                 )
 
     # ──────────────────────────────────────────────
+    # PRESENCE (cross-process)
+    # ──────────────────────────────────────────────
+    # Кто онлайн — состояние ПРОЦЕССА: _connections живёт в памяти воркера.
+    # Поэтому обе стороны presence идут через шину: воркер-инициатор только
+    # объявляет факт («юзер вошёл/вышел, вот его чаты»), а отвечает на это
+    # КАЖДЫЙ воркер за своих подключённых.
+    #
+    # Без этого presence работал только внутри одного воркера: два клиента,
+    # попавшие в разные процессы, не видели друг друга в сети (сообщения при
+    # этом ходили — они и так идут через шину).
+
+    async def _presence_publish(
+        self, command: str, user_id: int, chat_ids: list[int]
+    ) -> None:
+        """Объявить вход/выход юзера всем воркерам (включая свой)."""
+        payload = {"user_id": user_id, "chat_ids": list(chat_ids)}
+        if self._pubsub:
+            # Своя же нотификация вернётся сюда через LISTEN — отдельная
+            # локальная ветка не нужна и создала бы дубли.
+            await self._pubsub.publish(command, payload)
+        else:
+            # Шины нет (тесты, одиночный процесс без pubsub) — не терять
+            # presence совсем, обработать на месте.
+            await self._presence_dispatch(command, user_id, list(chat_ids))
+
+    async def _presence_dispatch(
+        self, command: str, user_id: int, chat_ids: list[int]
+    ) -> None:
+        """
+        Обработать объявление присутствия ЗА СВОИХ подключённых.
+
+        peers — юзеры, которые прямо сейчас держат сокет на ЭТОМ воркере и
+        подписаны на пересечение чатов. Проверка по _connections обязательна:
+        подписка сама по себе не означает, что юзер в сети.
+        """
+        is_bye = command == PubSubCommand.PRESENCE_BYE
+        peers: set[int] = set()
+
+        async with self._lock:
+            subject_here = bool(self._connections.get(user_id))
+
+            for chat_id in chat_ids:
+                for uid in self._chat_subscriptions.get(chat_id, ()):
+                    if uid != user_id and self._connections.get(uid):
+                        peers.add(uid)
+
+            # Ушедший больше не наш — вычищаем его подписки. Чистим и по
+            # чатам из события, и по своему индексу: наборы у воркеров
+            # разные, а запись без обратного индекса не вычистит уже никто.
+            # Если он всё ещё подключён к нам (второе устройство) — не
+            # трогаем.
+            if is_bye and not subject_here:
+                stale = set(chat_ids) | self._user_subscriptions.pop(
+                    user_id, set()
+                )
+                for chat_id in stale:
+                    subs = self._chat_subscriptions.get(chat_id)
+                    if subs is not None:
+                        subs.discard(user_id)
+
+        if is_bye and subject_here:
+            # Юзер отключился на другом воркере, но у нас ещё в сети —
+            # переподтверждаем присутствие, иначе чужой disconnect погасит
+            # его у всех. HELLO публикуется строго ПОСЛЕ этого BYE, порядок
+            # доставки в канале сохраняется — «add» придёт вторым.
+            await self._presence_publish(
+                PubSubCommand.PRESENCE_HELLO, user_id, chat_ids
+            )
+            return
+
+        if not peers:
+            return
+
+        timestamp = datetime.now(timezone.utc).isoformat()
+        delta = (
+            {"add": [], "remove": [user_id]}
+            if is_bye
+            else {"add": [user_id], "remove": []}
+        )
+        await asyncio.gather(
+            *[
+                self._send_to_user(
+                    uid,
+                    {
+                        "type": "presence_update",
+                        **delta,
+                        "timestamp": timestamp,
+                    },
+                )
+                for uid in peers
+            ],
+            return_exceptions=True,
+        )
+
+        if is_bye:
+            return
+
+        # Вошедшему — снимок наших онлайн-пиров. Он может быть и на другом
+        # воркере, тогда только через шину.
+        send = self._send_to_user if subject_here else self.send_to_user
+        await send(
+            user_id,
+            {
+                "type": "presence_update",
+                "add": sorted(peers),
+                "remove": [],
+                "timestamp": timestamp,
+            },
+        )
+
+    # ──────────────────────────────────────────────
+    # STALE CONNECTIONS REAPER
+    # ──────────────────────────────────────────────
+
+    async def reap_stale_connections(
+        self, max_idle_seconds: int = WS_IDLE_TIMEOUT_SECONDS
+    ) -> int:
+        """
+        Закрыть соединения, от которых давно не было ни одного кадра.
+
+        Мобильные сети рвут TCP без close-кадра (сон вкладки, NAT оператора,
+        WiFi↔LTE). Такой сокет не диагностируется ни одной из сторон: сервер
+        считает юзера онлайн (и все видят зелёную точку у ушедшего), клиент
+        видит readyState=OPEN и не переподключается. Единственный признак —
+        тишина: клиент обязан слать ping раз в 30 секунд.
+
+        Returns:
+            Сколько соединений закрыто.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(
+            seconds=max_idle_seconds
+        )
+        stale: list[tuple[int, WebSocket]] = []
+
+        async with self._lock:
+            for uid, bucket in self._connections.items():
+                for ws in bucket:
+                    last = self._ws_activity.get(ws)
+                    if last is None or last <= cutoff:
+                        stale.append((uid, ws))
+
+        for uid, ws in stale:
+            logger.info(
+                "Reaping stale WebSocket of user %s (silent > %ss)",
+                uid,
+                max_idle_seconds,
+            )
+            # Сначала снимаем из структур (тут же уходит presence=offline),
+            # затем закрываем сокет: receive-цикл в ws.py разорвётся сам и
+            # вызовет disconnect повторно — он идемпотентен.
+            await self.disconnect(ws, uid)
+            try:
+                await ws.close(code=1001, reason="Idle timeout")
+            except Exception as exc:
+                logger.debug("Stale WS close failed: %s", exc)
+
+        return len(stale)
+
+    # ──────────────────────────────────────────────
     # PG_NOTIFY EVENT HANDLER
     # Вызывается при получении event от PostgreSQL LISTEN.
     # Выполняет ЛОКАЛЬНУЮ доставку в WebSocket connections этого worker-а.
@@ -409,9 +531,25 @@ class ConnectionManager:
         elif event_type == PubSubCommand.NEW_CHAT:
             user_id = event["user_id"]
             chat_id = event["chat_id"]
+            # Только за своих. Подписывать юзера, которого на этом воркере
+            # нет, незачем — свои чаты он пришлёт в subscribe_all при входе.
+            # А осевшая подписка потом ВРЁТ: его вход выглядит «не первым»
+            # для этого чата, и присутствие не объявляется вовсе.
+            if not self._connections.get(user_id):
+                return
             await self.subscribe_to_chats(user_id, [chat_id])
             await self._send_to_user(
                 user_id, {"type": "chat_created", "chat_id": chat_id}
+            )
+
+        elif event_type in (
+            PubSubCommand.PRESENCE_HELLO,
+            PubSubCommand.PRESENCE_BYE,
+        ):
+            await self._presence_dispatch(
+                event_type,
+                event["user_id"],
+                event.get("chat_ids", []),
             )
 
         elif event_type == PubSubCommand.CALL_ACK:
@@ -435,6 +573,7 @@ class ConnectionManager:
     async def _remove_websocket(self, ws: WebSocket) -> None:
         """Удалить сокет из всех user-бакетов."""
         async with self._lock:
+            self._ws_activity.pop(ws, None)
             empty = []
             for uid, bucket in self._connections.items():
                 bucket.discard(ws)
@@ -458,60 +597,6 @@ class ConnectionManager:
                 *(self._send_to_websocket(ws, message) for ws in websockets)
             )
 
-    # async def _broadcast_presence(self, user_id: int, status: str):
-    #     """
-    #     Разослать presence-статус всем онлайн-участникам общих чатов юзера.
-
-    #     Под одним локом собираем согласованный снимок получателей
-    #     (онлайн-подписчики чатов юзера, кроме него самого),
-    #     затем выполняем рассылку через asyncio.gather вне лока.
-
-    #     В текущем flow напрямую не вызывается — subscribe_to_chat(s) и
-    #     disconnect формируют свой более точный снимок. Метод оставлен
-    #     для будущих сценариев массового re-broadcast: например,
-    #     presence=offline по таймауту неактивности.
-
-    #     Args:
-    #         user_id: ID пользователя
-    #         status: Статус (online/offline)
-    #     """
-    #     async with self._lock:
-    #         user_chats = self._user_subscriptions.get(user_id, set())
-    #         notified: set[int] = set()
-    #         for chat_id in user_chats:
-    #             subs = self._chat_subscriptions.get(chat_id)
-    #             if subs:
-    #                 notified.update(subs)
-    #         notified.discard(user_id)
-
-    #     if not notified:
-    #         return
-
-    #     presence_msg = {
-    #         "type": "presence",
-    #         "user_id": user_id,
-    #         "status": status,
-    #         "timestamp": datetime.now(timezone.utc).isoformat(),
-    #     }
-
-    #     await asyncio.gather(
-    #         *[self._send_to_user(uid, presence_msg) for uid in notified],
-    #         return_exceptions=True,
-    #     )
-
-    # def is_online(self, user_id: int) -> bool:
-    #     """Проверить онлайн ли пользователь."""
-    #     return bool(self._connections.get(user_id))
-
-    # def get_online_users(self) -> list[int]:
-    #     """Получить список онлайн пользователей."""
-    #     return [uid for uid, conns in self._connections.items() if conns]
-
-    # def get_chat_online_users(self, chat_id: int) -> list[int]:
-    #     """Получить онлайн пользователей в конкретном чате."""
-    #     subscribers = self._chat_subscriptions.get(chat_id, set())
-    #     return [uid for uid in subscribers if self.is_online(uid)]
-
     async def handle_message(
         self, websocket: WebSocket, user_id: int, data: dict
     ):
@@ -525,10 +610,12 @@ class ConnectionManager:
         """
         message_type = data.get("type")
 
+        # Любой кадр — признак жизни ЭТОГО сокета (см. reap_stale_connections).
+        async with self._lock:
+            self._ws_activity[websocket] = datetime.now(timezone.utc)
+
         if message_type == WebsocketCommand.ping:
             # Heartbeat — отвечаем только в этот websocket
-            async with self._lock:
-                self._user_activity[user_id] = datetime.now(timezone.utc)
             await self._send_to_websocket(websocket, {"type": "pong"})
 
         elif message_type == WebsocketCommand.subscribe:

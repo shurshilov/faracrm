@@ -26,6 +26,16 @@ import { logOut } from '@/slices/authSlice';
 // 4403 — контракт до коммита 5e2fa46, оставлены для совместимости.
 const AUTH_CLOSE_CODES = [1008, 4001, 4003, 4401, 4403];
 
+// Heartbeat. Сервер отвечает pong на каждый ping и сам выбрасывает молчащие
+// соединения (WS_IDLE_TIMEOUT_SECONDS в chat/websocket/manager.py) — держим
+// период тем же.
+const PING_INTERVAL_MS = 30_000;
+// Через сколько тишины считать сокет мёртвым. Мобильная сеть рвёт TCP без
+// close-кадра (сон вкладки, NAT оператора, WiFi↔LTE): readyState остаётся
+// OPEN, onclose не приходит, реконнекта нет — соединение молча «залипает».
+// Единственный признак — пропавшие pong'и.
+const PONG_TIMEOUT_MS = PING_INTERVAL_MS * 2.5;
+
 interface ChatWebSocketContextValue {
   isConnected: boolean;
   subscribe: (chatId: number) => void;
@@ -62,9 +72,9 @@ export function ChatWebSocketProvider({
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<number>>(new Set());
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isConnectingRef = useRef(false);
   const isMountedRef = useRef(true);
+  const lastPongRef = useRef(0);
 
   // Список слушателей сообщений
   const messageListenersRef = useRef<Set<(message: WSMessage) => void>>(
@@ -96,31 +106,11 @@ export function ChatWebSocketProvider({
         }
       });
 
-      // Обработка нового чата
+      // Новый чат. Подписку на него и presence по нему сервер делает сам,
+      // до отправки события (см. handle_pubsub_event/NEW_CHAT), поэтому
+      // здесь остаётся только перечитать список — за данными чата.
       if ((message.type as string) === 'chat_created') {
-        const chatId = (message as any).chat_id;
-        console.log('New chat created:', chatId);
-
-        // Мёржим онлайн-юзеров этого чата в общий onlineUsers
-        const onlineFromEvent = (message as any).online_users as
-          | number[]
-          | undefined;
-        if (onlineFromEvent?.length) {
-          setOnlineUsers(prev => {
-            const next = new Set(prev);
-            for (const uid of onlineFromEvent) next.add(uid);
-            return next;
-          });
-        }
-
-        // Подписываемся на WS-события нового чата
-        if (chatId && wsRef.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(
-            JSON.stringify({ type: 'subscribe', chat_id: chatId }),
-          );
-        }
-
-        // Refetch списка чатов чтобы получить полные данные
+        console.log('New chat created:', (message as any).chat_id);
         dispatch(chatApi.util.invalidateTags([{ type: 'Chat', id: 'LIST' }]));
       }
 
@@ -321,6 +311,34 @@ export function ChatWebSocketProvider({
     [currentUserId, dispatch],
   );
 
+  /**
+   * Единственная точка разрыва соединения.
+   *
+   * Важно, что она приводит состояние к тому же виду, что и onclose: сокет
+   * мы рвём и сами (сторож pong, пробуждение вкладки), а onclose на мёртвом
+   * TCP приходит только по таймауту браузера — или не приходит вовсе. Без
+   * setIsConnected(false) переход true→false→true не случается, и
+   * ChatNotification не переотправляет subscribe_all на новый сокет: клиент
+   * выглядит подключённым, но сервер не знает ни одной его подписки.
+   */
+  const teardown = useCallback(() => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+
+    if (wsRef.current) {
+      // Реконнект планирует вызывающий, поэтому onclose снимаем.
+      wsRef.current.onclose = null;
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+
+    isConnectingRef.current = false;
+    setIsConnected(false);
+    setOnlineUsers(new Set());
+  }, []);
+
   const connect = useCallback(() => {
     if (
       !token ||
@@ -330,12 +348,7 @@ export function ChatWebSocketProvider({
       return;
     }
 
-    if (wsRef.current) {
-      wsRef.current.onclose = null;
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
+    teardown();
     isConnectingRef.current = true;
 
     const apiUrl = new URL(API_BASE_URL, window.location.origin);
@@ -356,13 +369,8 @@ export function ChatWebSocketProvider({
 
         console.log('ChatWebSocketProvider: Connected');
         isConnectingRef.current = false;
+        lastPongRef.current = Date.now();
         setIsConnected(true);
-
-        pingIntervalRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping' }));
-          }
-        }, 30000);
       };
 
       ws.onclose = event => {
@@ -370,11 +378,6 @@ export function ChatWebSocketProvider({
         isConnectingRef.current = false;
         setIsConnected(false);
         setOnlineUsers(new Set());
-
-        if (pingIntervalRef.current) {
-          clearInterval(pingIntervalRef.current);
-          pingIntervalRef.current = null;
-        }
 
         // Сессии больше нет — переподключаться бессмысленно. Без этой ветки
         // вкладка долбилась в /ws/chat мёртвым токеном раз в 3 секунды вечно.
@@ -405,6 +408,7 @@ export function ChatWebSocketProvider({
         try {
           const data = JSON.parse(event.data) as WSMessage;
           if ((data as any).type === 'pong') {
+            lastPongRef.current = Date.now();
             return;
           }
           handleMessage(data);
@@ -416,27 +420,7 @@ export function ChatWebSocketProvider({
       console.error('Failed to create WebSocket:', error);
       isConnectingRef.current = false;
     }
-  }, [token, handleMessage, dispatch]);
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current);
-      pingIntervalRef.current = null;
-    }
-
-    if (wsRef.current) {
-      wsRef.current.onclose = null;
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    isConnectingRef.current = false;
-  }, []);
+  }, [token, teardown, handleMessage, dispatch]);
 
   const sendMessage = useCallback((message: object) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -485,6 +469,11 @@ export function ChatWebSocketProvider({
     [sendMessage],
   );
 
+  /** Сокет числится живым, но ответов на ping давно нет. */
+  const isStale = () =>
+    wsRef.current?.readyState === WebSocket.OPEN &&
+    Date.now() - lastPongRef.current > PONG_TIMEOUT_MS;
+
   // Connect on mount
   useEffect(() => {
     isMountedRef.current = true;
@@ -495,9 +484,60 @@ export function ChatWebSocketProvider({
 
     return () => {
       isMountedRef.current = false;
-      disconnect();
+      teardown();
     };
   }, [token]);
+
+  // Heartbeat. Интервал один на весь провайдер и смотрит на текущий сокет
+  // через ref — так он не может осиротеть при пересоздании соединения.
+  // Заодно сторож: молчащий сокет рвём и поднимаем заново сами, потому что
+  // onclose на мёртвом TCP ждёт таймаута браузера (десятки секунд), а то и
+  // не приходит.
+  useEffect(() => {
+    if (!token) return;
+
+    const id = setInterval(() => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+      if (isStale()) {
+        console.warn('ChatWebSocketProvider: pong не пришёл — переподключаемся');
+        teardown();
+        connect();
+        return;
+      }
+
+      ws.send(JSON.stringify({ type: 'ping' }));
+    }, PING_INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [token, teardown, connect]);
+
+  // Возврат вкладки и восстановление сети — момент, когда мобильный сокет
+  // чаще всего оказывается мёртвым: пока вкладка заморожена, не тикает ни
+  // heartbeat, ни таймер реконнекта. Поэтому при пробуждении проверяем
+  // соединение сами, не дожидаясь их.
+  useEffect(() => {
+    if (!token) return;
+
+    const wake = () => {
+      if (document.visibilityState === 'hidden') return;
+
+      const state = wsRef.current?.readyState;
+      const alive = state === WebSocket.OPEN || state === WebSocket.CONNECTING;
+      if (!alive || isStale()) {
+        teardown();
+        connect();
+      }
+    };
+
+    document.addEventListener('visibilitychange', wake);
+    window.addEventListener('online', wake);
+    return () => {
+      document.removeEventListener('visibilitychange', wake);
+      window.removeEventListener('online', wake);
+    };
+  }, [token, teardown, connect]);
 
   const isUserOnline = useCallback(
     (userId: number) => onlineUsers.has(userId),

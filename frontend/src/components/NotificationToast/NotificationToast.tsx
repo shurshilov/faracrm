@@ -109,7 +109,9 @@ export function NotificationListener() {
         const chatId = (message as any).chat_id;
         notifications.show({
           title: 'Новый чат',
-          message: (message as any).chat?.name || 'Создан новый чат',
+          // Имени в событии нет: оно приходит одинаковым по всем путям
+          // ({type, chat_id}), а название подтянется рефетчем списка.
+          message: 'Создан новый чат',
           icon: <IconMessagePlus size={18} />,
           color: 'teal',
           autoClose: 5000,
