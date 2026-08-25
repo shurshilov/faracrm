@@ -263,74 +263,35 @@ test.describe("WebSocket — messages_read", () => {
 
 test.describe("WebSocket — presence", () => {
   /**
-   * Присутствие идёт отдельными кадрами presence_update: при появлении
-   * участника — { add:[uid] }, при отключении последнего его коннекта —
-   * { remove:[uid] }. Само chat_created несёт только chat_id.
+   * Присутствие — про сотрудников, а не про чаты: событие приходит на самом
+   * подключении, общий чат для этого не нужен. Кадры: { add:[uid] } при
+   * появлении, { remove:[uid] } при отключении последнего его коннекта.
    */
 
-  test("presence online при создании чата", async ({
+  test("online при подключении и offline при отключении", async ({
     adminWS,
-    user2WS,
-    adminSession,
-    user2Session,
-    api,
-  }) => {
-    test.setTimeout(30_000);
-
-    adminWS.clearMessages();
-    user2WS.clearMessages();
-
-    const chat = await api.createChat(adminSession, {
-      name: `Presence ${Date.now()}`,
-      user_ids: [user2Session.user_id.id],
-    });
-
-    // admin узнаёт, что user2 в сети
-    const event = await adminWS.waitForPresence(
-      user2Session.user_id.id,
-      "online",
-      15_000,
-    );
-    expect(event.type).toBe("presence_update");
-    expect(event.add).toContain(user2Session.user_id.id);
-
-    await api.deleteChat(adminSession, chat.id);
-  });
-
-  test("presence offline при отключении", async ({
-    adminWS,
-    adminSession,
     user3Token,
     user3Session,
-    api,
   }) => {
     test.setTimeout(60_000);
+    const userId = user3Session.user_id.id;
+
+    // Ни одного общего чата у admin и user3 нет — и это не должно мешать.
+    adminWS.clearMessages();
 
     const user3ws = new WSClient(WS_URL, user3Token);
     await user3ws.connect();
 
-    adminWS.clearMessages();
-
-    const chat = await api.createChat(adminSession, {
-      name: `Presence Off ${Date.now()}`,
-      user_ids: [user3Session.user_id.id],
-    });
-
-    // admin узнаёт, что user3 в сети
-    await adminWS.waitForPresence(user3Session.user_id.id, "online", 15_000);
+    const online = await adminWS.waitForPresence(userId, "online", 15_000);
+    expect(online.type).toBe("presence_update");
+    expect(online.add).toContain(userId);
 
     adminWS.clearMessages();
     await user3ws.close();
 
-    const offlineEvent = await adminWS.waitForPresence(
-      user3Session.user_id.id,
-      "offline",
-      20_000,
-    );
-    expect(offlineEvent.type).toBe("presence_update");
-    expect(offlineEvent.remove).toContain(user3Session.user_id.id);
-
-    await api.deleteChat(adminSession, chat.id);
+    const offline = await adminWS.waitForPresence(userId, "offline", 20_000);
+    expect(offline.type).toBe("presence_update");
+    expect(offline.remove).toContain(userId);
   });
 });
 

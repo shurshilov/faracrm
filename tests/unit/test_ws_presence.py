@@ -1,12 +1,16 @@
 # Copyright 2025 FARA CRM
 # Unit tests for cross-process presence — чистая логика, без БД и без сети.
 """
-Presence между воркерами.
+Присутствие сотрудников.
 
-Бэкенд крутится в нескольких процессах (uvicorn --workers), и у каждого
-свои _connections/_chat_subscriptions. Пока presence считался по локальным
-структурам, два клиента, попавшие в разные воркеры, не видели друг друга в
-сети — при том что сообщения между ними ходили (они идут через шину).
+Два свойства, ради которых всё это существует:
+
+1. Presence — про СОТРУДНИКОВ, а не про чаты: в сети видно всех, независимо
+   от того, есть ли общий чат (иначе новый сотрудник, у которого чатов нет,
+   невидим для всех и сам никого не видит — и позвонить ему нельзя).
+2. Presence переживает несколько воркеров: бэкенд крутится в нескольких
+   процессах (uvicorn --workers), у каждого свои _connections, поэтому факт
+   входа/выхода едет через шину.
 
 Здесь два ConnectionManager сидят на общей фейковой шине — ровно как два
 воркера на одном pg_notify.
@@ -71,7 +75,26 @@ def two_workers():
     return workers
 
 
-class TestCrossWorkerPresence:
+class TestPresence:
+    async def test_employees_without_common_chat_see_each_other(
+        self, two_workers
+    ):
+        """
+        Главный сценарий: у сотрудников нет ни одного общего чата.
+
+        Раньше присутствие объявлялось из subscribe_all, поэтому новый
+        сотрудник (чатов нет — клиент не шлёт subscribe_all вовсе) не
+        появлялся в сети ни у кого и сам никого не видел.
+        """
+        w1, w2 = two_workers
+        ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
+
+        await w1.connect(ws_a, ALICE)
+        await w2.connect(ws_b, BOB)
+
+        assert online_seen_by(ws_b) == {ALICE}
+        assert online_seen_by(ws_a) == {BOB}
+
     async def test_users_on_different_workers_see_each_other(
         self, two_workers
     ):
@@ -84,7 +107,6 @@ class TestCrossWorkerPresence:
         await w2.connect(ws_b, BOB)
         await w2.subscribe_to_chats(BOB, [CHAT])
 
-        # Вошедшему — снимок уже онлайн, остальным — пуш про вошедшего.
         assert online_seen_by(ws_b) == {ALICE}
         assert online_seen_by(ws_a) == {BOB}
 
@@ -93,39 +115,11 @@ class TestCrossWorkerPresence:
         ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
 
         await w1.connect(ws_a, ALICE)
-        await w1.subscribe_to_chats(ALICE, [CHAT])
         await w2.connect(ws_b, BOB)
-        await w2.subscribe_to_chats(BOB, [CHAT])
 
         await w2.disconnect(ws_b, BOB)
 
         assert online_seen_by(ws_a) == set()
-
-    async def test_chat_created_while_offline_does_not_mute_presence(
-        self, two_workers
-    ):
-        """
-        Чат, созданный пока юзер офлайн, не должен глушить его presence.
-
-        Фан-аут NEW_CHAT ходит по всем воркерам; если бы он подписывал и
-        офлайн-юзеров, вход выглядел бы «не первым» для этих чатов и
-        присутствие не объявлялось бы вовсе.
-        """
-        w1, w2 = two_workers
-        ws_a = FakeWS("alice")
-
-        await w1.connect(ws_a, ALICE)
-        await w1.subscribe_to_chats(ALICE, [CHAT])
-
-        # Боб ещё офлайн — чат создаётся без него.
-        await w1.notify_new_chat_bulk([ALICE, BOB], CHAT)
-
-        ws_b = FakeWS("bob")
-        await w2.connect(ws_b, BOB)
-        await w2.subscribe_to_chats(BOB, [CHAT])
-
-        assert online_seen_by(ws_b) == {ALICE}
-        assert online_seen_by(ws_a) == {BOB}
 
     async def test_send_failure_still_reports_offline(self, two_workers):
         """
@@ -138,12 +132,9 @@ class TestCrossWorkerPresence:
         ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
 
         await w1.connect(ws_a, ALICE)
-        await w1.subscribe_to_chats(ALICE, [CHAT])
         await w2.connect(ws_b, BOB)
-        await w2.subscribe_to_chats(BOB, [CHAT])
         assert online_seen_by(ws_a) == {BOB}
 
-        # Сокет Боба умирает на отправке — менеджер снимет его сам.
         async def boom(_message):
             raise RuntimeError("socket is gone")
 
@@ -162,18 +153,31 @@ class TestCrossWorkerPresence:
         ws_desktop, ws_phone = FakeWS("bob-desktop"), FakeWS("bob-phone")
 
         await w1.connect(ws_a, ALICE)
-        await w1.subscribe_to_chats(ALICE, [CHAT])
-
         await w1.connect(ws_desktop, BOB)
-        await w1.subscribe_to_chats(BOB, [CHAT])
         await w2.connect(ws_phone, BOB)
-        await w2.subscribe_to_chats(BOB, [CHAT])
         assert online_seen_by(ws_a) == {BOB}
 
         # Отвалился телефон (другой воркер) — десктоп ещё в сети.
         await w2.disconnect(ws_phone, BOB)
 
         assert online_seen_by(ws_a) == {BOB}
+
+
+class TestChatSubscriptions:
+    async def test_new_chat_does_not_subscribe_offline_user(self, two_workers):
+        """
+        Фан-аут NEW_CHAT ходит по всем воркерам, но подписывать там, где
+        юзера нет, нельзя: свои чаты он пришлёт в subscribe_all при входе,
+        а осевшая подписка потом врёт про его состояние.
+        """
+        w1, w2 = two_workers
+        ws_a = FakeWS("alice")
+
+        await w1.connect(ws_a, ALICE)
+        await w1.notify_new_chat_bulk([ALICE, BOB], CHAT)
+
+        assert w2._chat_subscriptions.get(CHAT, set()) == set()
+        assert w1._chat_subscriptions[CHAT] == {ALICE}
 
 
 class TestStaleConnectionReaper:
@@ -188,9 +192,7 @@ class TestStaleConnectionReaper:
         ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
 
         await w1.connect(ws_a, ALICE)
-        await w1.subscribe_to_chats(ALICE, [CHAT])
         await w2.connect(ws_b, BOB)
-        await w2.subscribe_to_chats(BOB, [CHAT])
         assert online_seen_by(ws_a) == {BOB}
 
         # max_idle_seconds=0 → любое соединение считается молчащим.
