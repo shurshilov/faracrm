@@ -632,15 +632,29 @@ class ConnectionManager:
                 )
 
         # ── WebRTC call signaling ─────────────────────────────────────
-        # Все call-события tuнeлируются между двумя участниками звонка.
-        # Сервер здесь — тупой router через PubSub: нашёл "второго"
-        # участника по call_id и переслал ему payload. Бизнес-логики ноль.
+        # Тупая пересылка второму участнику звонка: адресата клиент уже
+        # указал в to_user_id. Бизнес-логики ноль.
+        #
+        # Раньше сервер вычислял адресата сам — читал call-сообщение из БД и
+        # искал второго участника чата, и делал это на КАЖДЫЙ кадр (а их за
+        # звонок десятки: offer/answer плюс все ICE-кандидаты). Любой сбой
+        # того чтения молча съедал кадр: invite/accepted ходили из HTTP как
+        # ни в чём не бывало, а SDP и ICE пропадали — звонок навсегда
+        # оставался в «Соединение…», ICE даже не доходил до checking.
         elif message_type in (
             WebsocketCommand.call_offer,
             WebsocketCommand.call_answer,
             WebsocketCommand.call_ice,
         ):
-            await self._handle_call_signal(user_id, data)
+            to_user_id = data.get("to_user_id")
+            if to_user_id:
+                await self.send_to_user(int(to_user_id), data)
+            else:
+                logger.warning(
+                    "call signal %s without to_user_id (from user %s)",
+                    message_type,
+                    user_id,
+                )
 
         elif message_type == WebsocketCommand.call_invite_ack:
             # Callee подтвердил получение invite. Шлём cross-process
@@ -656,76 +670,6 @@ class ConnectionManager:
                         PubSubCommand.CALL_ACK,
                         {"call_id": int(call_id)},
                     )
-
-    # ──────────────────────────────────────────────
-    # WebRTC signaling helpers
-    # ──────────────────────────────────────────────
-
-    async def _handle_call_signal(self, from_user_id: int, data: dict) -> None:
-        """
-        Пересылка call.offer / call.answer / call.ice от from_user_id
-        "второму" участнику звонка.
-
-        Второй участник определяется тут же — по call_id читаем ChatMessage,
-        берём chat_id и находим второго chat_member (не автора сообщения).
-        """
-        call_id = data.get("call_id")
-        if call_id is None:
-            return
-
-        # Поздний импорт — избегаем циклов при старте.
-        from backend.base.system.core.enviroment import env
-
-        try:
-            call_msg = await env.models.chat_message.get(int(call_id))
-        except Exception:
-            logger.warning(
-                "call signal: message %s not found (from user %s)",
-                call_id,
-                from_user_id,
-            )
-            return
-
-        # Находим "другого" участника direct-чата.
-        other_user_id = await self._find_other_direct_user(
-            (
-                call_msg.chat_id.id
-                if hasattr(call_msg.chat_id, "id")
-                else call_msg.chat_id
-            ),
-            from_user_id,
-        )
-        if not other_user_id:
-            logger.warning(
-                "call signal: no peer found for call %s (from user %s)",
-                call_id,
-                from_user_id,
-            )
-            return
-
-        # Пересылаем payload как есть, меняя только направление.
-        # Клиент на той стороне узнаёт событие по `type`.
-        await self.send_to_user(other_user_id, data)
-
-    async def _find_other_direct_user(
-        self, chat_id: int, not_user_id: int
-    ) -> int | None:
-        """Найти второго юзера в direct-чате (не равного not_user_id)."""
-        from backend.base.system.core.enviroment import env
-
-        members = await env.models.chat_member.search(
-            filter=[
-                ("chat_id", "=", chat_id),
-                ("is_active", "=", True),
-            ],
-            fields=["user_id"],
-            limit=2,
-        )
-        for m in members:
-            uid = m.user_id.id if hasattr(m.user_id, "id") else m.user_id
-            if uid and uid != not_user_id:
-                return uid
-        return None
 
     # ──────────────────────────────────────────────
     # Presence check (ожидание invite_ack)

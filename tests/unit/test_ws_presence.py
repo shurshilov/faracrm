@@ -180,6 +180,55 @@ class TestChatSubscriptions:
         assert w1._chat_subscriptions[CHAT] == {ALICE}
 
 
+class TestCallSignaling:
+    async def test_sdp_and_ice_reach_the_peer_on_another_worker(
+        self, two_workers
+    ):
+        """
+        offer/answer/ice просто пересылаются адресату из to_user_id.
+
+        Раньше сервер вычислял адресата сам — читал call-сообщение из БД на
+        КАЖДЫЙ кадр — и при сбое чтения молча его выбрасывал: invite и
+        accepted (они из HTTP) ходили, а SDP с ICE пропадали, из-за чего
+        звонок навсегда застревал в «Соединение…».
+        """
+        w1, w2 = two_workers
+        ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
+        await w1.connect(ws_a, ALICE)
+        await w2.connect(ws_b, BOB)
+        ws_b.sent.clear()
+
+        for frame in (
+            {"type": "call.offer", "call_id": 1, "to_user_id": BOB, "sdp": {}},
+            {
+                "type": "call.ice",
+                "call_id": 1,
+                "to_user_id": BOB,
+                "candidate": {},
+            },
+        ):
+            await w1.handle_message(ws_a, ALICE, frame)
+
+        types = [m.get("type") for m in ws_b.sent]
+        assert types == ["call.offer", "call.ice"]
+
+    async def test_signal_without_addressee_is_not_broadcast(
+        self, two_workers
+    ):
+        """Кадр без to_user_id никому не уходит (а не всем подряд)."""
+        w1, w2 = two_workers
+        ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
+        await w1.connect(ws_a, ALICE)
+        await w2.connect(ws_b, BOB)
+        ws_b.sent.clear()
+
+        await w1.handle_message(
+            ws_a, ALICE, {"type": "call.answer", "call_id": 1, "sdp": {}}
+        )
+
+        assert ws_b.sent == []
+
+
 class TestStaleConnectionReaper:
     async def test_silent_socket_is_closed_and_reported_offline(
         self, two_workers
