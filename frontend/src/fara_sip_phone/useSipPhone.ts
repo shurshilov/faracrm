@@ -49,6 +49,12 @@ export interface SipPhone {
 
 const IDLE: SipState[] = ['disabled', 'offline', 'registered'];
 
+// Сколько ждать сбор ICE после ПЕРВОГО кандидата, прежде чем слать INVITE с
+// тем, что уже собрано. Рабочий кандидат (host или relay) приходит за
+// десятки миллисекунд, так что секунды с запасом хватает, а недоступный
+// сервер больше не подвешивает звонок целиком.
+const ICE_GATHERING_TIMEOUT_MS = 1500;
+
 /**
  * Адрес SIP-сокета: НАШ же бэкенд, а не АТС напрямую. CSP разрешает WebSocket
  * только на свой домен, а адрес АТС знает бэкенд из настроек коннектора.
@@ -118,13 +124,39 @@ export function useSipPhone(connectorId: number | null): SipPhone {
     sessionRef.current = session;
     setMuted(false);
 
-    session.on('confirmed', () => setState('active'));
+    // JsSIP не отправит INVITE (и не ответит на входящий), пока браузер не
+    // ЗАКОНЧИТ сбор ICE-кандидатов, а своего таймаута у него нет: промис в
+    // createLocalDescription ждёт кандидата-null. Серверов в списке несколько
+    // (наш STUN, TURN по udp и tcp, запасные Google STUN), и одного
+    // недоступного — например заблокированного корпоративным VPN — хватает,
+    // чтобы звонок повис молча. Обрываем ожидание сами: JsSIP для этого и
+    // отдаёт ready() в событии. Кандидаты, собранные позже, доедут обычным
+    // trickle ICE.
+    let iceCutoff: ReturnType<typeof setTimeout> | null = null;
+    session.on('icecandidate', (event: any) => {
+      if (iceCutoff) return;
+      iceCutoff = setTimeout(() => {
+        console.warn('[sip] сбор ICE затянулся — шлём то, что собрали');
+        event.ready();
+      }, ICE_GATHERING_TIMEOUT_MS);
+    });
+    const stopIceCutoff = () => {
+      if (iceCutoff) clearTimeout(iceCutoff);
+      iceCutoff = null;
+    };
+
+    session.on('confirmed', () => {
+      stopIceCutoff();
+      setState('active');
+    });
     session.on('ended', () => {
+      stopIceCutoff();
       sessionRef.current = null;
       setState(uaRef.current?.isRegistered() ? 'registered' : 'offline');
       setPeer('');
     });
     session.on('failed', (e: any) => {
+      stopIceCutoff();
       sessionRef.current = null;
       setState(uaRef.current?.isRegistered() ? 'registered' : 'offline');
       setPeer('');
