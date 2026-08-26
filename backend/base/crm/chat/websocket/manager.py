@@ -93,6 +93,8 @@ class ConnectionManager:
 
         # PubSub backend — устанавливается при startup через set_pubsub()
         self._pubsub: "PubSubBackend | None" = None
+        # Про отсутствие шины говорим один раз, а не на каждое событие.
+        self._warned_no_pubsub = False
 
     def set_pubsub(self, backend: "PubSubBackend") -> None:
         """Установить pub/sub backend. Вызывается из ChatApp.startup()."""
@@ -245,6 +247,28 @@ class ConnectionManager:
 
         logger.debug("User %s unsubscribed from chat %s", user_id, chat_id)
 
+    async def _publish(self, command: str, payload: dict) -> bool:
+        """
+        Отправить событие в шину. False — шины нет, событие потеряно.
+
+        Без шины воркер живёт «в себе»: его пользователи не видят чужих
+        сообщений и присутствия. Раньше это молчало — публикация просто не
+        происходила, и отличить такой воркер от здорового было нельзя.
+        """
+        if self._pubsub:
+            await self._pubsub.publish(command, payload)
+            return True
+
+        if not self._warned_no_pubsub:
+            self._warned_no_pubsub = True
+            logger.error(
+                "PubSub недоступен — этот воркер изолирован: его клиенты не "
+                "получат ни чужих сообщений, ни присутствия (первое "
+                "потерянное событие: %s)",
+                command,
+            )
+        return False
+
     async def send_to_chat(
         self, chat_id: int, message: dict, exclude_user: int | None = None
     ):
@@ -252,43 +276,34 @@ class ConnectionManager:
         Отправить сообщение всем участникам чата (CROSS-PROCESS).
         Проходит через pg_notify → все workers.
         """
-        if self._pubsub:
-            await self._pubsub.publish(
-                PubSubCommand.SEND_CHAT,
-                {
-                    "chat_id": chat_id,
-                    "message": message,
-                    "exclude_user": exclude_user,
-                },
-            )
+        await self._publish(
+            PubSubCommand.SEND_CHAT,
+            {
+                "chat_id": chat_id,
+                "message": message,
+                "exclude_user": exclude_user,
+            },
+        )
 
     async def send_to_user(self, user_id: int, message: dict):
         """
         Отправить сообщение пользователю (CROSS-PROCESS).
         Проходит через pg_notify → все workers.
         """
-        if self._pubsub:
-            await self._pubsub.publish(
-                PubSubCommand.SEND_USER,
-                {
-                    "user_id": user_id,
-                    "message": message,
-                },
-            )
+        await self._publish(
+            PubSubCommand.SEND_USER,
+            {"user_id": user_id, "message": message},
+        )
 
     async def notify_new_chat(self, user_id: int, chat_id: int):
         """
         Уведомить пользователя о новом чате (CROSS-PROCESS).
         Проходит через pg_notify → все workers.
         """
-        if self._pubsub:
-            await self._pubsub.publish(
-                PubSubCommand.NEW_CHAT,
-                {
-                    "user_id": user_id,
-                    "chat_id": chat_id,
-                },
-            )
+        await self._publish(
+            PubSubCommand.NEW_CHAT,
+            {"user_id": user_id, "chat_id": chat_id},
+        )
 
     async def notify_new_chat_bulk(
         self, user_ids: list[int], chat_id: int
@@ -332,14 +347,14 @@ class ConnectionManager:
 
     async def _presence_publish(self, command: str, user_id: int) -> None:
         """Объявить вход/выход юзера всем воркерам (включая свой)."""
-        if self._pubsub:
-            # Своя же нотификация вернётся сюда через LISTEN — отдельная
-            # локальная ветка не нужна и создала бы дубли.
-            await self._pubsub.publish(command, {"user_id": user_id})
-        else:
-            # Шины нет (тесты, одиночный процесс без pubsub) — не терять
-            # presence совсем, обработать на месте.
-            await self._presence_dispatch(command, user_id)
+        # Своя же нотификация вернётся сюда через LISTEN — отдельная
+        # локальная ветка не нужна и создала бы дубли.
+        if await self._publish(command, {"user_id": user_id}):
+            return
+
+        # Шины нет (тесты, одиночный процесс без pubsub) — не терять
+        # presence совсем, обработать на месте.
+        await self._presence_dispatch(command, user_id)
 
     async def _presence_dispatch(self, command: str, user_id: int) -> None:
         """
@@ -665,11 +680,9 @@ class ConnectionManager:
                 # 1) разбудить локально (если /calls/start в этом же воркере)
                 self._notify_invite_ack_local(int(call_id))
                 # 2) разбудить в любом другом воркере через PubSub
-                if self._pubsub:
-                    await self._pubsub.publish(
-                        PubSubCommand.CALL_ACK,
-                        {"call_id": int(call_id)},
-                    )
+                await self._publish(
+                    PubSubCommand.CALL_ACK, {"call_id": int(call_id)}
+                )
 
     # ──────────────────────────────────────────────
     # Presence check (ожидание invite_ack)
