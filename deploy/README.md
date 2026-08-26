@@ -83,6 +83,18 @@ sudo ufw allow 49160:49660/udp   # диапазон релея, см. docker/tur
 В облаке (Yandex, Selectel, AWS) те же порты нужно открыть **ещё и в security
 group** — хостовой фаервол там не единственный гейт.
 
+Если на машине нет ufw и firewalld, скрипт применит правила через `iptables` —
+а они не переживут перезагрузку. Чтобы применялись снова:
+
+```bash
+sudo cp deploy/turn-ports.service /etc/systemd/system/
+sudo systemctl enable --now turn-ports.service
+```
+
+Юнит просто зовёт тот же скрипт после старта docker. `iptables-persistent`
+здесь хуже: он сохранит и докеровские цепочки и будет конфликтовать с ними
+при загрузке.
+
 ### 3. Поправить композ FARA
 
 В корневом `docker-compose.yml` проекта (т.е. на уровень выше `deploy/`):

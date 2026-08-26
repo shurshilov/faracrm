@@ -29,6 +29,7 @@ from backend.base.crm.chat.turn import (
     _attr,
     _is_response_to,
     host_from_request,
+    resolve_settings,
     _pack,
     _parse_attrs,
     _with_integrity,
@@ -346,3 +347,68 @@ class TestHostFromRequest:
 
     def test_no_headers_is_empty_not_error(self):
         assert host_from_request(self._Req()) == ""
+
+
+class _FakeSettings:
+    """Половина env.settings, которая нужна resolve_settings."""
+
+    def __init__(self, turn):
+        self.turn = turn
+        self.site_url = ""
+
+
+class _FakeModels:
+    """system_settings, который отказывает в чтении — как в проде."""
+
+    class system_settings:
+        @staticmethod
+        async def get_by_module(module):
+            raise PermissionError("No read access to system_settings")
+
+        @staticmethod
+        async def get_site_url():
+            raise PermissionError("No read access to system_settings")
+
+
+class _FakeEnv:
+    def __init__(self, turn):
+        self.settings = _FakeSettings(turn)
+        self.models = _FakeModels()
+
+
+class TestResolveSettings:
+    """
+    Настройки могут быть недоступны — адрес релея от этого пропадать не должен.
+
+    /ice/servers зовёт обычный сотрудник, а таблица system_settings ему
+    закрыта (там же пароли SMTP). Раньше на этой ошибке стоял ранний выход, и
+    вместе с настройками терялся резолв адреса: релей молча вырождался в
+    «отдаём только STUN», хотя coturn был поднят и порты открыты.
+    """
+
+    async def test_host_falls_back_to_request_when_settings_unreadable(self):
+        env = _FakeEnv(TurnSettings(host="", secret="s", secret_file=""))
+
+        resolved = await resolve_settings(env, request_host="crm.example.com")
+
+        assert resolved.host == "crm.example.com"
+
+    async def test_explicit_host_is_not_overridden_by_request(self):
+        env = _FakeEnv(TurnSettings(host="turn.example.com", secret="s"))
+
+        resolved = await resolve_settings(env, request_host="crm.example.com")
+
+        assert resolved.host == "turn.example.com"
+
+    async def test_ice_config_gets_relay_after_fallback(self):
+        """Сквозная проверка: адрес добрался до конфига для браузера."""
+        env = _FakeEnv(TurnSettings(host="", secret="s", secret_file=""))
+
+        resolved = await resolve_settings(env, request_host="crm.example.com")
+        config = build_ice_config(resolved, user_id=7)
+
+        urls = [
+            url for entry in config["ice_servers"] for url in entry["urls"]
+        ]
+        assert any(url.startswith("turn:crm.example.com:") for url in urls)
+        assert config["ttl"] > 0

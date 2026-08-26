@@ -54,8 +54,10 @@ elif command -v iptables >/dev/null 2>&1; then
     add INPUT -p tcp --dport "${PORT}" -j ACCEPT
     add INPUT -p udp --dport "${MIN}:${MAX}" -j ACCEPT
     echo "[turn] iptables: правила добавлены"
-    echo "[turn] ВНИМАНИЕ: они не переживут перезагрузку — сохраните их" >&2
-    echo "[turn]            (iptables-save / netfilter-persistent save)" >&2
+    echo "[turn] ВНИМАНИЕ: они не переживут перезагрузку. Чтобы применялись" >&2
+    echo "[turn]            снова после ребута — поставьте юнит:" >&2
+    echo "[turn]     sudo cp deploy/turn-ports.service /etc/systemd/system/" >&2
+    echo "[turn]     sudo systemctl enable --now turn-ports.service" >&2
 else
     echo "[turn] хостового фаервола не нашёл — открывать нечего" >&2
 fi

@@ -274,14 +274,9 @@ async def resolve_settings(env, request_host: str = "") -> "TurnSettings":
     Секрет через интерфейс не переопределяется (см. TurnSettings.UI_KEYS).
     """
     base = env.settings.turn
-    try:
-        rows = await env.models.system_settings.get_by_module("turn")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("[turn] настройки из БД не прочитаны: %s", exc)
-        return base
 
     overrides: dict = {}
-    for row in rows:
+    for row in await _read_overrides(env):
         key = (row.key or "").split(".", 1)[-1]
         if key not in base.UI_KEYS:
             continue
@@ -330,6 +325,28 @@ async def resolve_settings(env, request_host: str = "") -> "TurnSettings":
         return base
 
 
+async def _read_overrides(env) -> list:
+    """
+    Прочитать строки настроек turn.* — НЕ от имени текущего пользователя.
+
+    /ice/servers зовёт обычный сотрудник, а таблица system_settings ему
+    закрыта, и правильно: там же лежат пароли SMTP и токены. Но конфиг релея
+    это не пользовательские данные, а параметры соединения, которые всё равно
+    уедут в браузер. Поэтому читаем под системной сессией и сразу возвращаем
+    прежнюю.
+
+    Сбой чтения не должен стоить нам адреса релея: возвращаем пустой список,
+    и вызывающий доберёт host из site_url или домена запроса. Раньше здесь
+    был ранний выход, и вместе с настройками терялся резолв адреса — релей
+    молча вырождался в «отдаём только STUN».
+    """
+    try:
+        return await env.models.system_settings.sudo().get_by_module("turn")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[turn] настройки из БД не прочитаны: %s", exc)
+        return []
+
+
 async def _host_from_site_url(env) -> str:
     """
     Домен, на котором открывают CRM, — он же адрес релея по умолчанию.
@@ -341,7 +358,7 @@ async def _host_from_site_url(env) -> str:
     from urllib.parse import urlparse
 
     try:
-        site_url = await env.models.system_settings.get_site_url()
+        site_url = await env.models.system_settings.sudo().get_site_url()
     except Exception:  # noqa: BLE001
         site_url = getattr(env.settings, "site_url", "")
 

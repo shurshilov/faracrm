@@ -36,6 +36,13 @@ const PING_INTERVAL_MS = 30_000;
 // Единственный признак — пропавшие pong'и.
 const PONG_TIMEOUT_MS = PING_INTERVAL_MS * 2.5;
 
+// Сколько ждём само рукопожатие. Браузер сдаётся сам, но нескоро: при
+// ERR_CONNECTION_TIMED_OUT Windows перебирает SYN 20–30 секунд, и всё это
+// время соединение «устанавливается» — сторож pong и пробуждение вкладки в
+// это окно не вмешиваются, presence пуст, клиент выглядит живым. Рвём раньше
+// и пробуем заново: повторная попытка обычно проходит.
+const CONNECT_TIMEOUT_MS = 10_000;
+
 interface ChatWebSocketContextValue {
   isConnected: boolean;
   subscribe: (chatId: number) => void;
@@ -75,6 +82,9 @@ export function ChatWebSocketProvider({
   const isConnectingRef = useRef(false);
   const isMountedRef = useRef(true);
   const lastPongRef = useRef(0);
+  const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // Список слушателей сообщений
   const messageListenersRef = useRef<Set<(message: WSMessage) => void>>(
@@ -327,6 +337,11 @@ export function ChatWebSocketProvider({
       reconnectTimeoutRef.current = null;
     }
 
+    if (connectTimeoutRef.current) {
+      clearTimeout(connectTimeoutRef.current);
+      connectTimeoutRef.current = null;
+    }
+
     if (wsRef.current) {
       // Реконнект планирует вызывающий, поэтому onclose снимаем.
       wsRef.current.onclose = null;
@@ -361,6 +376,15 @@ export function ChatWebSocketProvider({
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
+      connectTimeoutRef.current = setTimeout(() => {
+        if (ws.readyState === WebSocket.OPEN) return;
+        console.warn(
+          'ChatWebSocketProvider: рукопожатие не уложилось в отведённое время — пробую заново',
+        );
+        teardown();
+        connect();
+      }, CONNECT_TIMEOUT_MS);
+
       ws.onopen = () => {
         if (!isMountedRef.current) {
           ws.close();
@@ -368,6 +392,10 @@ export function ChatWebSocketProvider({
         }
 
         console.log('ChatWebSocketProvider: Connected');
+        if (connectTimeoutRef.current) {
+          clearTimeout(connectTimeoutRef.current);
+          connectTimeoutRef.current = null;
+        }
         isConnectingRef.current = false;
         lastPongRef.current = Date.now();
         setIsConnected(true);
@@ -375,6 +403,10 @@ export function ChatWebSocketProvider({
 
       ws.onclose = event => {
         console.log('ChatWebSocketProvider: Disconnected', event.code);
+        if (connectTimeoutRef.current) {
+          clearTimeout(connectTimeoutRef.current);
+          connectTimeoutRef.current = null;
+        }
         isConnectingRef.current = false;
         setIsConnected(false);
         setOnlineUsers(new Set());

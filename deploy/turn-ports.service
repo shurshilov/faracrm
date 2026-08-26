@@ -1,0 +1,28 @@
+; Открыть порты TURN-релея после перезагрузки.
+;
+; Зачем юнит, а не iptables-persistent: тот сохраняет ВСЕ текущие правила,
+; включая докеровские цепочки, и восстанавливает их до старта docker — потом
+; docker пишет свои поверх, и получается каша. Наши три правила дешевле
+; просто применить заново, когда docker уже поднялся.
+;
+; Установка (если проект лежит не в /opt/faracrm — поправьте WorkingDirectory):
+;     sudo cp deploy/turn-ports.service /etc/systemd/system/
+;     sudo systemctl enable --now turn-ports.service
+;
+; Проверка:
+;     systemctl status turn-ports.service
+;     iptables -S INPUT | grep 3478
+
+[Unit]
+Description=FARA: открыть порты TURN-релея
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/faracrm
+ExecStart=/bin/bash deploy/open-turn-ports.sh
+
+[Install]
+WantedBy=multi-user.target

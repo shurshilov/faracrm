@@ -185,6 +185,15 @@ class SecurityAccessChecker(AccessChecker["Session"]):
     # Private: базовые проверки
     # =========================================================================
 
+    def system_session(self) -> "SystemSession":
+        """
+        Сессия для .sudo(). Именно НАША: _is_full_access сверяет тип через
+        isinstance, и маркер из dotorm полным доступом признан не будет.
+        """
+        from backend.base.crm.users.models.users import SYSTEM_USER_ID
+
+        return SystemSession(user_id=SYSTEM_USER_ID)
+
     def _is_full_access(self, session: "Session") -> bool:
         """Проверяет, есть ли полный доступ (SystemSession или admin)."""
         if isinstance(session, SystemSession):
