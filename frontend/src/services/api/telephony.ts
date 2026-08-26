@@ -64,23 +64,10 @@ const telephonyApi = crudApi.injectEndpoints({
     getSipConfig: build.query<{ data: SipConfig }, void>({
       query: () => ({ method: 'GET', url: 'telephony/sip/config' }),
     }),
-
-    // Пароль линии — private-поле, в generic-форму не приезжает.
-    setSipPassword: build.mutation<
-      { data: { ok: boolean } },
-      { phoneNumberId: number; password: string }
-    >({
-      query: ({ phoneNumberId, password }) => ({
-        method: 'PUT',
-        url: `telephony/sip/password/${phoneNumberId}`,
-        body: { password },
-      }),
-    }),
   }),
 });
 
 export const {
   useGetCallsStatsQuery,
   useGetSipConfigQuery,
-  useSetSipPasswordMutation,
 } = telephonyApi;

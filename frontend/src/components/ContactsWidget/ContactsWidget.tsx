@@ -64,30 +64,29 @@ function getIcon(iconName: string): React.ElementType {
 }
 
 /**
- * Для типа web_push значение — это JSON PushSubscription с полями
- * endpoint/keys, т.е. огромная строка. Показывать её целиком
- * в списке контактов бессмысленно. Возвращаем короткое представление:
- * "Web Push · <домен endpoint-а>" (например, "Web Push · fcm.googleapis.com"),
- * чтобы было понятно, какому провайдеру принадлежит подписка.
- * Для всех остальных типов возвращаем исходное значение.
+ * У подписки на web push показывать значение целиком бессмысленно: это либо
+ * длинный endpoint, либо (у записей, созданных до того, как endpoint стали
+ * писать в value) весь JSON PushSubscription. Показываем короткое
+ * "Web Push · <домен endpoint-а>" — по нему видно, какому провайдеру
+ * принадлежит подписка. Остальные типы отдаём как есть.
  */
 function formatContactDisplay(contact: Contact): string {
   if (contact.contact_type !== 'web_push') return contact.value;
-  try {
-    const parsed = JSON.parse(contact.value);
-    const endpoint: string | undefined = parsed?.endpoint;
-    if (endpoint) {
-      try {
-        const host = new URL(endpoint).hostname;
-        return `Web Push · ${host}`;
-      } catch {
-        return 'Web Push';
-      }
+
+  let endpoint = contact.value;
+  if (endpoint.startsWith('{')) {
+    try {
+      endpoint = JSON.parse(endpoint)?.endpoint || '';
+    } catch {
+      return 'Web Push';
     }
-  } catch {
-    // не JSON — отдадим просто короткий лейбл
   }
-  return 'Web Push';
+
+  try {
+    return `Web Push · ${new URL(endpoint).hostname}`;
+  } catch {
+    return 'Web Push';
+  }
 }
 
 /**

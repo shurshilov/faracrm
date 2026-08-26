@@ -1,9 +1,9 @@
 # Copyright 2025 FARA CRM
 # Chat Phone module - конфиг SIP-звонилки в браузере
 #
-# Пароль SIP-регистрации лежит на линии (phone_number.sip_password) с
-# private=True, то есть в обычный CRUD он не попадает никогда. Отдать его можно
-# только здесь и только владельцу линии — это единственная ручка, знающая пароль.
+# Пароль SIP-регистрации лежит на линии (phone_number.sip_password) и правится
+# на форме номера. Здесь он отдаётся браузеру — но только ВЛАДЕЛЬЦУ линии и
+# только вместе с остальным конфигом звонилки.
 
 import asyncio
 import logging
@@ -11,9 +11,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import (
     APIRouter,
-    Body,
     Depends,
-    HTTPException,
     Request,
     WebSocket,
 )
@@ -49,7 +47,7 @@ async def _my_lines(env: "Environment", user_id: int) -> dict:
 
     Линий может быть несколько — по одной в каждом коннекторе телефонии,
     поэтому доступность считаем ДЛЯ КАЖДОГО канала отдельно, а не выбираем
-    одну «свою». private=True прячет sip_password только из API-схемы, ORM
+    одну «свою». sip_password правится на форме номера, ORM
     читает его как обычное store-поле — отдельный SQL за паролем не нужен.
     """
     rows = await env.models.phone_number.search(
@@ -109,32 +107,6 @@ async def get_sip_config(req: Request):
         )
 
     return {"data": {"channels": channels}}
-
-
-@router_private.put("/telephony/sip/password/{phone_number_id}")
-async def set_sip_password(
-    req: Request, phone_number_id: int, password: str = Body(..., embed=True)
-):
-    """
-    Задать пароль линии: private-поле в generic-форму не приезжает, поэтому
-    пишем его отдельной ручкой.
-
-    Пишем через ORM, а не прямым SQL: тогда права проверяет сам движок
-    (phone_number правит админ, у остальных read-only) — вместо ручной проверки,
-    которая не знала бы про роли и record-rules.
-    """
-    env: "Environment" = req.app.state.env
-
-    rows = await env.models.phone_number.search(
-        filter=[("id", "=", phone_number_id)], fields=["id"], limit=1
-    )
-    if not rows:
-        raise HTTPException(status_code=404, detail="PHONE_NUMBER_NOT_FOUND")
-
-    await rows[0].update(
-        env.models.phone_number(sip_password=password or None)
-    )
-    return {"data": {"ok": True}}
 
 
 @router_public.websocket("/ws/sip")

@@ -75,7 +75,9 @@ async def subscribe(req: Request, body: PushSubscriptionData):
             data = json.loads(contact.name)
             if data.get("endpoint") == body.endpoint:
                 await contact.update(
-                    env.models.contact(name=subscription_json)
+                    env.models.contact(
+                        value=body.endpoint, name=subscription_json
+                    )
                 )
                 logger.info(
                     "[web_push] Updated subscription for user %s", user_id
@@ -109,6 +111,14 @@ async def subscribe(req: Request, body: PushSubscriptionData):
         env.models.contact(
             user_id=auth_session.user_id,
             contact_type_id=contact_type[0],
+            # value — идентификатор подписки, то есть endpoint: именно по нему
+            # мы отличаем браузеры друг от друга (см. цикл поиска выше). Класть
+            # сюда весь JSON нельзя: Contact.create канонизирует value, и на
+            # строке с '@' он опустил бы регистр целиком — а ключи p256dh/auth
+            # это base64url, они регистрозависимы.
+            value=body.endpoint,
+            # name — полезная нагрузка подписки: endpoint плюс ключи. Её читают
+            # отправка пуша и этот же обработчик (json.loads).
             name=subscription_json,
             is_primary=len(existing) == 0,
         )
