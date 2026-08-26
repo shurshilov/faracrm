@@ -163,12 +163,27 @@ export function useSipPhone(connectorId: number | null): SipPhone {
       setError(e?.cause ? String(e.cause) : 'Звонок не состоялся');
     });
     // Удалённый звук: один <audio> на всё время жизни хука.
-    session.connection?.addEventListener('track', (e: RTCTrackEvent) => {
-      if (audioRef.current && e.streams[0]) {
-        audioRef.current.srcObject = e.streams[0];
-        audioRef.current.play().catch(() => undefined);
-      }
-    });
+    const playRemote = (pc: RTCPeerConnection) => {
+      pc.addEventListener('track', (e: RTCTrackEvent) => {
+        if (audioRef.current && e.streams[0]) {
+          audioRef.current.srcObject = e.streams[0];
+          audioRef.current.play().catch(() => undefined);
+        }
+      });
+    };
+
+    // ВАЖЕН порядок событий, и он РАЗНЫЙ по направлениям. На исходящем JsSIP
+    // создаёт RTCPeerConnection в connect() — то есть ДО newRTCSession, и
+    // session.connection здесь уже есть. На входящем connection появляется
+    // только в answer(), а newRTCSession прилетает раньше: обращение к
+    // session.connection в этот момент даёт undefined, и обработчик тихо не
+    // навешивается. Слышно при этом одну сторону: наш микрофон уходит, а
+    // входящий поток некуда прицепить.
+    if (session.connection) {
+      playRemote(session.connection);
+    } else {
+      session.on('peerconnection', (e: any) => playRemote(e.peerconnection));
+    }
   }, []);
 
   // Регистрация. Пересобирается только при смене конфига.
