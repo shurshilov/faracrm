@@ -50,7 +50,13 @@ async def _my_lines(env: "Environment", user_id: int) -> dict:
     одну «свою». sip_password правится на форме номера, ORM
     читает его как обычное store-поле — отдельный SQL за паролем не нужен.
     """
-    rows = await env.models.phone_number.search(
+    # sudo: ручку /ws/sip обслуживает AnonymousSession с белым списком из
+    # одной таблицы sessions — под ней чтение phone_number падает с
+    # AccessDenied ДО accept(), и браузер получает 403 на рукопожатии, а
+    # звонилка показывает «нет связи с АТС». Расширять белый список нельзя:
+    # он общий для всех публичных ручек роутера. Прав это не даёт: выборка
+    # жёстко сужена до линий ЭТОГО user_id, а он взят из проверенной сессии.
+    rows = await env.models.phone_number.sudo().search(
         filter=[("user_id", "=", user_id), ("active", "=", True)],
         fields=["id", "extension", "number", "sip_password", "connector_id"],
     )
@@ -149,7 +155,10 @@ async def sip_ws_proxy(websocket: WebSocket):
     lines = await _my_lines(env, sessions[0].user_id.id)
     url = None
     if connector_id in lines:
-        connector = await env.models.chat_connector.get(connector_id)
+        # Тот же случай: chat_connector в белом списке анонимной сессии нет,
+        # а адрес АТС нужен. Коннектор берём только если линия сотрудника в
+        # нём есть (проверка строкой выше).
+        connector = await env.models.chat_connector.sudo().get(connector_id)
         url = connector.sip_ws_url
 
     if not url:
