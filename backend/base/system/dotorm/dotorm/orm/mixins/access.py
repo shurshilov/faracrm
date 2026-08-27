@@ -7,6 +7,7 @@ from ...access import (
     get_access_session,
     AccessDenied,
     Operation,
+    SudoAccessor,
 )
 
 if TYPE_CHECKING:
@@ -30,6 +31,13 @@ class AccessMixin(_Base):
         ставят AnonymousSession, фон/тесты — свою через set_access_session.
     SystemSession даёт полный доступ.
     """
+
+    # Выполнить операцию с полным доступом — как .sudo() в Odoo:
+    #     await env.models.system_settings.sudo().get_by_module("turn")
+    #     await record.sudo().update(payload)
+    # Работает и от класса, и от записи (см. SudoAccessor). Права держатся
+    # ровно на время вызова и снимаются даже при исключении.
+    sudo = SudoAccessor()
 
     @classmethod
     async def _check_access(

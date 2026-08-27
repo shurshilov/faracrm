@@ -10,7 +10,7 @@
 // История звонков, карточка клиента и лидогенерация к браузеру отношения не
 // имеют — они питаются событиями от АТС на вебхук.
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store/store';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
@@ -18,6 +18,7 @@ import {
   useGetSipConfigQuery,
   type SipChannel,
 } from '@/services/api/telephony';
+import { useIceConfig } from '@/services/api/ice';
 
 export type SipState =
   | 'disabled'
@@ -48,6 +49,12 @@ export interface SipPhone {
 
 const IDLE: SipState[] = ['disabled', 'offline', 'registered'];
 
+// Сколько ждать сбор ICE после ПЕРВОГО кандидата, прежде чем слать INVITE с
+// тем, что уже собрано. Рабочий кандидат (host или relay) приходит за
+// десятки миллисекунд, так что секунды с запасом хватает, а недоступный
+// сервер больше не подвешивает звонок целиком.
+const ICE_GATHERING_TIMEOUT_MS = 1500;
+
 /**
  * Адрес SIP-сокета: НАШ же бэкенд, а не АТС напрямую. CSP разрешает WebSocket
  * только на свой домен, а адрес АТС знает бэкенд из настроек коннектора.
@@ -70,6 +77,23 @@ export function useSipPhone(connectorId: number | null): SipPhone {
   const config = channels.find(c => c.id === connectorId);
   const token = useSelector(
     (state: RootState) => state.auth.session?.token || '',
+  );
+
+  // ICE общий с внутренними звонками (свой TURN/STUN), плюс то, что задано
+  // строкой в самом коннекторе — на случай, когда у конкретной АТС свой релей.
+  const globalIce = useIceConfig();
+  const pcConfig: RTCConfiguration = useMemo(
+    () => ({
+      iceServers: [
+        ...(globalIce.iceServers || []),
+        ...(config?.ice || []).map(urls => ({ urls })),
+      ],
+      // iceTransportPolicy сюда НЕ наследуем. «Всё через релей» — настройка
+      // приватности внутренних звонков (скрыть IP сотрудников друг от друга);
+      // на плече к АТС прятать нечего, а если АТС в приватной сети, режим
+      // relay её просто отрежет: релею запрещено ходить в приватные сети.
+    }),
+    [globalIce, config?.ice],
   );
 
   const [state, setState] = useState<SipState>('disabled');
@@ -100,25 +124,66 @@ export function useSipPhone(connectorId: number | null): SipPhone {
     sessionRef.current = session;
     setMuted(false);
 
-    session.on('confirmed', () => setState('active'));
+    // JsSIP не отправит INVITE (и не ответит на входящий), пока браузер не
+    // ЗАКОНЧИТ сбор ICE-кандидатов, а своего таймаута у него нет: промис в
+    // createLocalDescription ждёт кандидата-null. Серверов в списке несколько
+    // (наш STUN, TURN по udp и tcp, запасные Google STUN), и одного
+    // недоступного — например заблокированного корпоративным VPN — хватает,
+    // чтобы звонок повис молча. Обрываем ожидание сами: JsSIP для этого и
+    // отдаёт ready() в событии. Кандидаты, собранные позже, доедут обычным
+    // trickle ICE.
+    let iceCutoff: ReturnType<typeof setTimeout> | null = null;
+    session.on('icecandidate', (event: any) => {
+      if (iceCutoff) return;
+      iceCutoff = setTimeout(() => {
+        console.warn('[sip] сбор ICE затянулся — шлём то, что собрали');
+        event.ready();
+      }, ICE_GATHERING_TIMEOUT_MS);
+    });
+    const stopIceCutoff = () => {
+      if (iceCutoff) clearTimeout(iceCutoff);
+      iceCutoff = null;
+    };
+
+    session.on('confirmed', () => {
+      stopIceCutoff();
+      setState('active');
+    });
     session.on('ended', () => {
+      stopIceCutoff();
       sessionRef.current = null;
       setState(uaRef.current?.isRegistered() ? 'registered' : 'offline');
       setPeer('');
     });
     session.on('failed', (e: any) => {
+      stopIceCutoff();
       sessionRef.current = null;
       setState(uaRef.current?.isRegistered() ? 'registered' : 'offline');
       setPeer('');
       setError(e?.cause ? String(e.cause) : 'Звонок не состоялся');
     });
     // Удалённый звук: один <audio> на всё время жизни хука.
-    session.connection?.addEventListener('track', (e: RTCTrackEvent) => {
-      if (audioRef.current && e.streams[0]) {
-        audioRef.current.srcObject = e.streams[0];
-        audioRef.current.play().catch(() => undefined);
-      }
-    });
+    const playRemote = (pc: RTCPeerConnection) => {
+      pc.addEventListener('track', (e: RTCTrackEvent) => {
+        if (audioRef.current && e.streams[0]) {
+          audioRef.current.srcObject = e.streams[0];
+          audioRef.current.play().catch(() => undefined);
+        }
+      });
+    };
+
+    // ВАЖЕН порядок событий, и он РАЗНЫЙ по направлениям. На исходящем JsSIP
+    // создаёт RTCPeerConnection в connect() — то есть ДО newRTCSession, и
+    // session.connection здесь уже есть. На входящем connection появляется
+    // только в answer(), а newRTCSession прилетает раньше: обращение к
+    // session.connection в этот момент даёт undefined, и обработчик тихо не
+    // навешивается. Слышно при этом одну сторону: наш микрофон уходит, а
+    // входящий поток некуда прицепить.
+    if (session.connection) {
+      playRemote(session.connection);
+    } else {
+      session.on('peerconnection', (e: any) => playRemote(e.peerconnection));
+    }
   }, []);
 
   // Регистрация. Пересобирается только при смене конфига.
@@ -218,9 +283,7 @@ export function useSipPhone(connectorId: number | null): SipPhone {
       try {
         ua.call(`sip:${target}@${config?.realm || 'localhost'}`, {
           mediaConstraints: { audio: true, video: false },
-          pcConfig: {
-            iceServers: (config?.ice || []).map(urls => ({ urls })),
-          },
+          pcConfig,
         });
       } catch {
         setState('registered');
@@ -228,19 +291,19 @@ export function useSipPhone(connectorId: number | null): SipPhone {
         setError('Не удалось начать звонок');
       }
     },
-    [state, config?.realm, config?.ice],
+    [state, config?.realm, pcConfig],
   );
 
   const answer = useCallback(() => {
     try {
       sessionRef.current?.answer({
         mediaConstraints: { audio: true, video: false },
-        pcConfig: { iceServers: (config?.ice || []).map(urls => ({ urls })) },
+        pcConfig,
       });
     } catch {
       setError('Не удалось ответить');
     }
-  }, [config?.ice]);
+  }, [pcConfig]);
 
   const hangup = useCallback(() => {
     try {

@@ -25,6 +25,9 @@
     check_access() → (has_access, domain-фильтр для search).
 """
 
+import functools
+import inspect
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from enum import StrEnum
 from typing import TypeVar, Generic
@@ -98,6 +101,17 @@ class AccessChecker(Generic[TSession]):
     #   True — отсутствие сессии трактуется как ошибка → AccessDenied
     #     (default-deny; так делает FARA AccessChecker).
     require_session: bool = False
+
+    def system_session(self):
+        """
+        Сессия полного доступа — её подставляет .sudo().
+
+        Точка расширения: базовая версия отдаёт маркер dotorm, но проект со
+        своей проверкой должен вернуть СВОЮ сессию. FARA, например, сверяет
+        полный доступ через isinstance с собственной SystemSession, и чужой
+        маркер она бы не признала.
+        """
+        return SystemSession()
 
     async def check_access(
         self,
@@ -237,3 +251,75 @@ def get_access_session():
 def clear_access_session() -> None:
     """Очищает сессию (после завершения post_init)."""
     _access_session.set(None)
+
+
+# ============================================================
+# sudo: выполнить операцию с полным доступом
+# ============================================================
+
+
+@asynccontextmanager
+async def system_access():
+    """
+    Выполнить блок с полным доступом, вернув прежнюю сессию после выхода.
+
+    Нужен там, где код читает СЛУЖЕБНЫЕ данные в контексте обычного
+    пользователя: конфиг, справочник, счётчик. Прикладной код обычно вызывает
+    не его, а .sudo() (см. ниже) — так намерение видно прямо в строке вызова.
+    """
+    token = _access_session.set(get_access_checker().system_session())
+    try:
+        yield
+    finally:
+        _access_session.reset(token)
+
+
+class Sudo:
+    """
+    Прокси, выполняющий вызовы модели с полным доступом.
+
+        rows = await env.models.system_settings.sudo().get_by_module("turn")
+        await record.sudo().update(payload)
+
+    ВАЖНО: любой вызов через прокси возвращает awaitable, даже если сам метод
+    синхронный. Права должны действовать ровно на время выполнения, а для
+    корутины «время выполнения» наступает только на await — иначе сессия
+    вернулась бы обратно раньше, чем метод дошёл бы до запроса.
+    """
+
+    __slots__ = ("_target",)
+
+    def __init__(self, target):
+        self._target = target
+
+    def __getattr__(self, name):
+        attr = getattr(self._target, name)
+        if not callable(attr):
+            return attr
+
+        @functools.wraps(attr)
+        async def with_full_access(*args, **kwargs):
+            async with system_access():
+                result = attr(*args, **kwargs)
+                if inspect.isawaitable(result):
+                    result = await result
+                return result
+
+        return with_full_access
+
+    def __repr__(self) -> str:
+        return f"<Sudo {self._target!r}>"
+
+
+class SudoAccessor:
+    """
+    Дескриптор, дающий .sudo() и классу, и записи.
+
+    Обычным методом это не выразить: у класса не к чему привязать self, а
+    classmethod потерял бы запись — и record.sudo().update(...) записывал бы
+    «в никуда». Дескриптор просто отдаёт то, на чём его позвали.
+    """
+
+    def __get__(self, instance, owner):
+        target = owner if instance is None else instance
+        return lambda: Sudo(target)

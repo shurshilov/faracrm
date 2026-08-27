@@ -62,12 +62,12 @@ class PhoneNumber(AuditMixin, DotModel):
         max_length=64, description="Extension / номер"
     )
 
-    # Пароль SIP-регистрации для звонилки в браузере. private=True прячет поле из
-    # API-схем целиком (как password_hash у пользователя): у phone_number ACL
-    # read-only для всех, и без этого пароль уехал бы в общий список номеров,
-    # фильтры и выгрузку. Владельцу отдаётся отдельной ручкой /telephony/sip/config.
+    # Пароль SIP-регистрации для звонилки в браузере. Обычное поле: правится
+    # на форме номера виджетом пароля (widget="password"), владельцу линии
+    # уезжает в /telephony/sip/config. Учтите, что раз поле не private, оно
+    # видно всем, у кого есть доступ на чтение phone_number.
     sip_password: str | None = Char(
-        max_length=128, private=True, description="Пароль SIP-регистрации"
+        max_length=128, description="Пароль SIP-регистрации"
     )
 
     # Тип номера (унифицирован по провайдерам; у Asterisk = asterisk_type).

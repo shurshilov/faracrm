@@ -19,7 +19,7 @@ from backend.base.system.dotorm_databases_postgres.settings import (
 )
 
 # from backend.base.crm.attachments.settings import AttachmentsSettings
-from backend.base.crm.chat.settings import ChatSettings
+from backend.base.crm.chat.settings import ChatSettings, TurnSettings
 from backend.base.crm.auth_token.settings import AuthTokenSettings
 from backend.base.system.logger.settings import LoggerSettings
 
@@ -261,6 +261,8 @@ class Settings(SettingsCore):
     dotorm_databases_postgres: dict[str, PostgresSettings]
     chat: ChatSettings = ChatSettings()
     auth: AuthTokenSettings = AuthTokenSettings()
+    # STUN/TURN — общий на внутренние звонки и на звонилку к АТС.
+    turn: TurnSettings = TurnSettings()
 
 
 # MONKEY PATCH TRICK

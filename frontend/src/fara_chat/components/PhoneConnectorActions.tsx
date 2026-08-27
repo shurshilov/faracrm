@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { useFormContext } from '@/components/Form/FormContext';
 import { FormRow } from '@/components/Form/Layout';
@@ -9,12 +10,17 @@ import {
   IconHistory,
   IconPlugConnected,
   IconRefresh,
+  IconRouter,
 } from '@tabler/icons-react';
 import {
   useFetchCallHistoryMutation,
   useSyncNumbersMutation,
   useTestConnectorMutation,
 } from '@/services/api/chat';
+import {
+  useGetIceServersQuery,
+  useTestIceMutation,
+} from '@/services/api/ice';
 
 /**
  * Общий блок действий телефонного коннектора (одинаков у всех провайдеров —
@@ -25,6 +31,9 @@ import {
  *   не считаются направление звонка, наша линия и оператор, поэтому это
  *   обязательный шаг настройки;
  * - «Прочитать историю» — импорт звонков за период (как cron, но вручную).
+ * - «Проверить релей» — жив ли TURN. Он общий на всю систему (и на внутренние
+ *   звонки тоже), настраивается в .env, но проверять его ходят сюда: это
+ *   единственный экран, где вообще занимаются звонками.
  *
  * Все действия работают по СОХРАНЁННЫМ настройкам коннектора.
  */
@@ -35,6 +44,11 @@ export function PhoneConnectorActions() {
   const [syncNumbers, { isLoading: isSyncing }] = useSyncNumbersMutation();
   const [fetchCallHistory, { isLoading: isFetchingHistory }] =
     useFetchCallHistoryMutation();
+  const { data: iceData } = useGetIceServersQuery();
+  const [testIce, { isLoading: isTestingIce }] = useTestIceMutation();
+  // Проверка релея — админская: она ходит в сеть и занимает ресурс на сервере
+  // релея, а чинить всё равно админу. Бэкенд это же проверяет сам (403).
+  const isAdmin = !!useSelector((s: any) => s.auth?.session)?.user_id?.is_admin;
 
   // Период импорта истории (даты в формате YYYY-MM-DD, Mantine DateInput).
   const [histFrom, setHistFrom] = useState<string | null>(null);
@@ -175,6 +189,38 @@ export function PhoneConnectorActions() {
     }
   };
 
+  // Релей настроен, если бэкенд отдал хоть один turn:/turns: адрес.
+  const hasTurn = (iceData?.data?.ice_servers || []).some(server =>
+    server.urls.some(url => url.startsWith('turn')),
+  );
+
+  const handleTestIce = async () => {
+    try {
+      const { data } = await testIce().unwrap();
+      showResult(
+        {
+          ok: data.ok,
+          message: data.ok
+            ? t('connector.phone.turnTestOkMsg', {
+                defaultValue:
+                  'Релей выдал адрес {{relayed}} (наш внешний адрес {{mapped}}). ' +
+                  'Звонки через него пойдут.',
+                relayed: data.relayed_address,
+                mapped: data.mapped_address || '—',
+              })
+            : data.error,
+        },
+        t('connector.phone.turnTestOk', 'Релей работает'),
+        t('connector.phone.turnTestFail', 'Релей недоступен'),
+      );
+    } catch (error: any) {
+      showError(
+        error,
+        t('connector.phone.turnTestError', 'Не удалось проверить релей'),
+      );
+    }
+  };
+
   return (
     <>
       <Text fw={600} size="sm" mt="md">
@@ -242,6 +288,44 @@ export function PhoneConnectorActions() {
           {t('connector.phone.fetchHistory', 'Прочитать историю')}
         </Button>
       </Group>
+
+      {isAdmin && (
+        <>
+          <Text fw={600} size="sm" mt="md">
+            {t('connector.phone.turnGroup', 'Релей для звонков (TURN)')}
+          </Text>
+          <Text size="xs" c="dimmed" mb={6}>
+            {hasTurn
+              ? t(
+                  'connector.phone.turnHintOn',
+                  'Релей включён и общий для всех звонков — и для звонилки, и ' +
+                    'для внутренних звонков сотрудников. Проверка делает ' +
+                    'настоящую аллокацию теми же кредами, что получает браузер: ' +
+                    'запрос идёт с сервера CRM, путь конкретного клиента она не ' +
+                    'проверяет.',
+                )
+              : t(
+                  'connector.phone.turnHintOff',
+                  'Релей не отвечает или выключен: звонки идут напрямую и не ' +
+                    'соединятся там, где закрыт UDP или строгий NAT. Обычно ' +
+                    'релей поднят вместе с CRM — проверьте контейнер turn, ' +
+                    'открытые порты 3478 и 49160-49660/udp и ключи turn.* в ' +
+                    '«Системных настройках».',
+                )}
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="light"
+              color="indigo"
+              disabled={!hasTurn}
+              leftSection={<IconRouter size={16} />}
+              onClick={handleTestIce}
+              loading={isTestingIce}>
+              {t('connector.phone.turnTest', 'Проверить релей')}
+            </Button>
+          </Group>
+        </>
+      )}
 
       <Group justify="flex-end" mt="sm">
         <Button
