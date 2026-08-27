@@ -1,5 +1,12 @@
-import { Combobox, InputBase, useCombobox, Modal } from '@mantine/core';
 import {
+  Combobox,
+  InputBase,
+  useCombobox,
+  Modal,
+  CloseButton,
+} from '@mantine/core';
+import {
+  MouseEvent as ReactMouseEvent,
   ReactElement,
   useContext,
   useEffect,
@@ -160,13 +167,17 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
   // (даже без введённого текста — можно открыть пустую форму и заполнить).
   const showCreateModal = quickCreate && !!relatedModel && !!RelatedForm;
 
-  const selectRecord = (record: FaraRecord) => {
+  const selectRecord = (record: FaraRecord | null) => {
     if (onchangeFields?.includes(name) && handleFieldChange) {
       handleFieldChange(name, record);
     } else {
       form.setValues({ [name]: record });
     }
   };
+
+  // Очистка значения. null долетает до prepareValuesToSave как есть
+  // (в число не конвертируется) → на бэк уходит null и связь снимается.
+  const clearable = !required && !!form.getValues()[name];
 
   const combobox = useCombobox({
     onDropdownClose: () => {
@@ -243,18 +254,42 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
                 type="button"
                 pointer
                 rightSection={
-                  <IconChevronDown
-                    size={16}
-                    style={{
-                      opacity: 0.4,
-                      transition: 'transform 150ms ease',
-                      transform: combobox.dropdownOpened
-                        ? 'rotate(180deg)'
-                        : 'rotate(0deg)',
-                    }}
-                  />
+                  clearable ? (
+                    // component="div": таргет комбобокса сам <button>,
+                    // вложенная кнопка — невалидный DOM.
+                    <CloseButton
+                      component="div"
+                      role="button"
+                      aria-label={t('clear')}
+                      title={t('clear')}
+                      size="sm"
+                      style={{ cursor: 'pointer' }}
+                      onMouseDown={(event: ReactMouseEvent) => {
+                        // Не даём таргету получить фокус → не открываем
+                        // дропдаун вместо очистки.
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
+                      onClick={(event: ReactMouseEvent) => {
+                        event.stopPropagation();
+                        selectRecord(null);
+                        combobox.closeDropdown();
+                      }}
+                    />
+                  ) : (
+                    <IconChevronDown
+                      size={16}
+                      style={{
+                        opacity: 0.4,
+                        transition: 'transform 150ms ease',
+                        transform: combobox.dropdownOpened
+                          ? 'rotate(180deg)'
+                          : 'rotate(0deg)',
+                      }}
+                    />
+                  )
                 }
-                rightSectionPointerEvents="none"
+                rightSectionPointerEvents={clearable ? 'auto' : 'none'}
                 onClick={() => {
                   combobox.openDropdown();
                 }}

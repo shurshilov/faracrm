@@ -12,6 +12,9 @@ import type { RootState } from '@/store/store';
 // загрузке чанка, поэтому единственный <Suspense> в FaraRouters может удержать
 // старый экран на переходе (см. комментарий у FaraRouters).
 const ChatPageComponent = lazy(() => import('@/fara_chat/components/ChatPage'));
+const TurnSettingsPageComponent = lazy(
+  () => import('@/fara_chat/components/TurnSettingsPage'),
+);
 
 // Wrapper для ChatPage с props из Redux
 const ChatPage = () => {
@@ -147,6 +150,7 @@ const FaraRouters = () => {
 
           {/* Кастомные страницы */}
           <Route path="chat/*" element={<ChatPage />} />
+          <Route path="turn" element={<TurnSettingsPageComponent />} />
 
           {/* Все остальные роуты - модели */}
           <Route path="*" element={<ModelRoutes />} />

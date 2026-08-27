@@ -28,6 +28,7 @@ from backend.base.crm.chat.turn import (
     _METHOD_ALLOCATE,
     _attr,
     _is_response_to,
+    _xor_peer,
     host_from_request,
     resolve_settings,
     _pack,
@@ -412,3 +413,34 @@ class TestResolveSettings:
         ]
         assert any(url.startswith("turn:crm.example.com:") for url in urls)
         assert config["ttl"] > 0
+
+
+class TestXorPeer:
+    """
+    XOR-PEER-ADDRESS для CreatePermission — на нём держится проверка «пустит
+    ли релей трафик к АТС». Ошибись в кодировании, и релей ответит отказом на
+    исправной конфигурации: проверка станет врать в самую опасную сторону.
+    """
+
+    def test_encodes_family_and_zero_port(self):
+        value = _xor_peer("192.0.2.1")
+
+        assert value[0] == 0  # резерв
+        assert value[1] == 0x01  # IPv4
+        # Порт нулевой, но тоже xor'ится magic cookie.
+        assert struct.unpack(">H", value[2:4])[0] == 0x2112
+
+    def test_address_is_xored_with_magic_cookie(self):
+        value = _xor_peer("192.0.2.1")
+
+        magic = struct.pack(">I", 0x2112A442)
+        restored = bytes(b ^ m for b, m in zip(value[4:8], magic))
+
+        assert restored == bytes((192, 0, 2, 1))
+
+    def test_roundtrip_through_decoder(self):
+        """Свой кодировщик и свой декодер должны сходиться."""
+        value = _xor_peer("10.20.30.40")
+
+        # _xor_address ждёт тот же формат и tid (для IPv4 он не участвует).
+        assert _xor_address(value, bytes(12)) == "10.20.30.40:0"

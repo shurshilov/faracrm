@@ -15,6 +15,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import ipaddress
 import logging
 import os
 import secrets
@@ -32,6 +33,7 @@ logger = logging.getLogger(__name__)
 _MAGIC_COOKIE = 0x2112A442
 _METHOD_BINDING = 0x0001
 _METHOD_ALLOCATE = 0x0003
+_METHOD_CREATE_PERMISSION = 0x0008
 _METHOD_REFRESH = 0x0004
 _CLASS_REQUEST = 0x0000
 _CLASS_ERROR = 0x0110
@@ -41,6 +43,7 @@ _ATTR_MESSAGE_INTEGRITY = 0x0008
 _ATTR_ERROR_CODE = 0x0009
 _ATTR_REALM = 0x0014
 _ATTR_NONCE = 0x0015
+_ATTR_XOR_PEER_ADDRESS = 0x0012
 _ATTR_XOR_RELAYED_ADDRESS = 0x0016
 _ATTR_REQUESTED_TRANSPORT = 0x0019
 _ATTR_XOR_MAPPED_ADDRESS = 0x0020
@@ -421,6 +424,20 @@ def _with_integrity(
     return prepared + _attr(_ATTR_MESSAGE_INTEGRITY, digest)
 
 
+def _xor_peer(ip: str) -> bytes:
+    """
+    XOR-PEER-ADDRESS для CreatePermission (RFC 5766).
+
+    Порт в разрешении не участвует — оно выдаётся на АДРЕС целиком, поэтому
+    шлём ноль. Кодирование то же, что у XOR-MAPPED-ADDRESS: и порт, и адрес
+    складываются по xor с magic cookie.
+    """
+    packed = socket.inet_aton(ip)
+    magic = struct.pack(">I", _MAGIC_COOKIE)
+    xored = bytes(b ^ m for b, m in zip(packed, magic))
+    return struct.pack(">BBH", 0, 0x01, _MAGIC_COOKIE >> 16) + xored
+
+
 def _xor_address(value: bytes, tid: bytes) -> str:
     """XOR-MAPPED/RELAYED-ADDRESS → 'ip:port'."""
     if len(value) < 8:
@@ -464,11 +481,148 @@ def _is_response_to(data: bytes, tid: bytes) -> bool:
     )
 
 
-async def probe(settings: "TurnSettings", timeout: float = 3.0) -> dict:
+async def _check_peer(
+    peer: str, exchange, username: str, realm: str, nonce: bytes, password: str
+) -> dict:
+    """
+    Спросить у релея разрешение носить трафик к этому адресу.
+
+    Отказ приходит как 403 Forbidden IP — именно так релей защищает внутреннюю
+    сеть. Это НЕ поломка: для АТС в приватной сети нужно точечное исключение
+    --allowed-peer-ip, и его добавляет админ осознанно.
+    """
+    entry = {"ip": peer, "allowed": False, "error": ""}
+    try:
+        socket.inet_aton(peer)
+    except OSError:
+        entry["error"] = "не IPv4-адрес"
+        return entry
+
+    tid = os.urandom(12)
+    attrs_out = (
+        _attr(_ATTR_XOR_PEER_ADDRESS, _xor_peer(peer))
+        + _attr(_ATTR_USERNAME, username.encode("utf-8"))
+        + _attr(_ATTR_REALM, realm.encode("utf-8"))
+        + _attr(_ATTR_NONCE, nonce)
+    )
+    message = _pack(_METHOD_CREATE_PERMISSION, _CLASS_REQUEST, tid, attrs_out)
+    try:
+        data = await exchange(
+            _with_integrity(message, username, realm, password), tid
+        )
+    except asyncio.TimeoutError:
+        entry["error"] = "релей не ответил на запрос разрешения"
+        return entry
+
+    kind = struct.unpack(">H", data[0:2])[0]
+    if (kind & _CLASS_ERROR) != _CLASS_ERROR:
+        entry["allowed"] = True
+        return entry
+
+    code = _parse_attrs(data).get(_ATTR_ERROR_CODE, bytes(4))
+    number = code[2] * 100 + code[3] if len(code) >= 4 else 0
+    entry["error"] = f"релей отказал: {number} " + code[4:].decode(
+        "utf-8", "replace"
+    )
+    return entry
+
+
+def _is_private_address(address: str) -> bool:
+    """
+    Приватный ли адрес в форме 'ip:port' (или '[ipv6]:port').
+
+    Нужен ровно для одного вывода проверки: если релей выдал relay-адрес из
+    приватного диапазона, значит он за NAT и своего белого адреса не знает.
+    Браузер такой кандидат получит, но достучаться до него снаружи не сможет —
+    звонок соберётся «вхолостую»: сигналинг есть, звука нет. Лечится
+    --external-ip, и об этом должна сказать проверка, а не логи релея.
+    """
+    host = address.rsplit(":", 1)[0].strip("[]")
+    try:
+        return ipaddress.ip_address(host).is_private
+    except ValueError:
+        return False
+
+
+def _docker_gateway() -> str:
+    """
+    Адрес хоста, видимый из контейнера, — шлюз docker-сети по умолчанию.
+
+    Нужен для проверки за NAT: релей слушает host-сеть (в т.ч. 172.17.0.1), а
+    попытка достучаться до него по ПУБЛИЧНОМУ адресу изнутри уходит наружу и
+    обратно не разворачивается — hairpin NAT бытовые роутеры и облачные шлюзы
+    обычно не делают. Читаем /proc/net/route, а не зовём `ip`: в slim-образе
+    его нет.
+    """
+    try:
+        with open("/proc/net/route", encoding="ascii") as handle:
+            for line in handle.readlines()[1:]:
+                fields = line.split()
+                if len(fields) > 2 and fields[1] == "00000000":
+                    return socket.inet_ntoa(
+                        struct.pack("<L", int(fields[2], 16))
+                    )
+    except (OSError, ValueError):
+        pass
+    return ""
+
+
+async def probe(
+    settings: "TurnSettings",
+    timeout: float = 3.0,
+    peers: list[str] | None = None,
+) -> dict:
+    """
+    Проверить релей: сначала по публичному адресу, при молчании — изнутри.
+
+    Смысл второй попытки: из контейнера за NAT публичный адрес недостижим, и
+    честный ответ «не отвечает» превращался в красную кнопку на исправном
+    релее. Ответ по внутреннему адресу доказывает меньше (внешнюю доступность
+    он не проверяет), но именно то, что мы вообще способны проверить с
+    сервера: релей жив, секрет совпадает, и разрешения на АТС выдаются.
+    """
+    result = await _probe_once(settings, settings.host, timeout, peers)
+    # Ответил, но отказал — второй адрес пробовать незачем: дело не в
+    # достижимости, а в секрете или в том, что там не TURN.
+    if result["ok"] or result["reached"]:
+        return result
+
+    gateway = _docker_gateway()
+    if not gateway or gateway == settings.host:
+        return result
+
+    inside = await _probe_once(settings, gateway, timeout, peers)
+    if not inside["ok"]:
+        return result
+
+    inside["probed_via"] = gateway
+    # Изнутри аллокация выдана на docker-интерфейсе, и её адрес приватный
+    # всегда — даже когда снаружи всё в порядке. Вердикт «релей за NAT» по
+    # такой аллокации был бы ложной тревогой, поэтому снимаем его: этот
+    # признак остаётся за проверкой из браузера, которая видит настоящий
+    # relay-кандидат.
+    inside["relay_private"] = False
+    return inside
+
+
+async def _probe_once(
+    settings: "TurnSettings",
+    target: str,
+    timeout: float = 3.0,
+    peers: list[str] | None = None,
+) -> dict:
     """
     Проверить релей вживую: Binding, затем Allocate с временными кредами.
 
-    Возвращает {"ok", "error", "mapped_address", "relayed_address"}.
+    peers — адреса, до которых релею предстоит носить медиа (например АТС).
+    На каждый запрашивается CreatePermission В ТОЙ ЖЕ аллокации: это ровно то,
+    что делает браузер перед разговором, и единственный способ узнать заранее,
+    пустит ли релей трафик к этому адресу. Приватные диапазоны ему запрещены
+    (denied-peer-ip в turnserver.conf), и без исключения звонок собирается,
+    но остаётся без звука — снаружи это выглядит как необъяснимая тишина.
+
+    Возвращает {"ok", "error", "reached", "mapped_address", "relayed_address",
+    "relay_private", "peers"}.
     Проверяем ТОЛЬКО UDP-плечо: если оно живо, значит адрес, порт и секрет
     верны — а доступность tcp/tls определяется сетью клиента, не нашей.
 
@@ -476,11 +630,17 @@ async def probe(settings: "TurnSettings", timeout: float = 3.0) -> dict:
     доказывает, что релей работает и секрет совпадает, но не проверяет путь
     от конкретного клиента.
     """
-    result = {
+    result: dict = {
         "ok": False,
         "error": "",
+        # Отвечает ли сервер вообще (Binding). Отличает «молчит» — порт закрыт
+        # или контейнер лежит — от «ответил, но отказал».
+        "reached": False,
         "mapped_address": "",
         "relayed_address": "",
+        # Релей раздаёт приватный адрес: он за NAT и не знает своего белого.
+        "relay_private": False,
+        "peers": [],
     }
     secret = load_secret(settings)
     if not (settings.enabled and settings.host and secret):
@@ -494,7 +654,7 @@ async def probe(settings: "TurnSettings", timeout: float = 3.0) -> dict:
 
     try:
         transport, protocol = await loop.create_datagram_endpoint(
-            _StunClient, remote_addr=(settings.host, settings.port)
+            _StunClient, remote_addr=(target, settings.port)
         )
     except OSError as exc:
         result["error"] = f"Не удалось открыть сокет: {exc}"
@@ -533,6 +693,7 @@ async def probe(settings: "TurnSettings", timeout: float = 3.0) -> dict:
             _pack(_METHOD_BINDING, _CLASS_REQUEST, tid, b""), tid
         )
         answered = True
+        result["reached"] = True
         mapped = _parse_attrs(data).get(_ATTR_XOR_MAPPED_ADDRESS)
         if mapped:
             result["mapped_address"] = _xor_address(mapped, tid)
@@ -587,18 +748,29 @@ async def probe(settings: "TurnSettings", timeout: float = 3.0) -> dict:
             return result
 
         result["relayed_address"] = _xor_address(relayed, tid)
+        result["relay_private"] = _is_private_address(
+            result["relayed_address"]
+        )
         result["ok"] = True
+
+        # 4. Разрешения на пиров — в этой же аллокации.
+        for peer in peers or []:
+            result["peers"].append(
+                await _check_peer(
+                    peer, exchange, username, realm, nonce, password
+                )
+            )
         return result
 
     except asyncio.TimeoutError:
         result["error"] = (
             (
-                f"{settings.host}:{settings.port} отвечает на STUN, но не на "
+                f"{target}:{settings.port} отвечает на STUN, но не на "
                 "запрос релея — похоже, это STUN-сервер, а не TURN"
             )
             if answered
             else (
-                f"{settings.host}:{settings.port} не отвечает по UDP. "
+                f"{target}:{settings.port} не отвечает по UDP. "
                 "Проверьте, что контейнер релея запущен и порт открыт; если "
                 "сервер стоит за NAT, проверка может не дойти до него изнутри, "
                 "хотя у клиентов релей работает"

@@ -7,7 +7,8 @@
     "chat_external_chat": "Внешние чаты",
     "chat_external_message": "Внешние сообщения",
     "folders": "Папки",
-    "newFolder": "Новая папка"
+    "newFolder": "Новая папка",
+    "turn": "Релей звонков (TURN)"
   },
   "chats": "Чаты",
   "newChat": "Новый чат",

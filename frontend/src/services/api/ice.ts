@@ -28,11 +28,25 @@ export interface IceConfig {
   ttl: number;
 }
 
+export interface IcePeerCheck {
+  ip: string;
+  allowed: boolean;
+  error: string;
+}
+
 export interface IceTestResult {
   ok: boolean;
   error: string;
+  /** Релей ответил хотя бы на STUN — отличает «молчит» от «отказал». */
+  reached: boolean;
   mapped_address: string;
   relayed_address: string;
+  /** Релей раздаёт приватный адрес: он за NAT и не знает своего белого. */
+  relay_private: boolean;
+  /** Пустит ли релей трафик к АТС: приватные адреса ему запрещены. */
+  peers: IcePeerCheck[];
+  /** Заполнен, если снаружи сервер себя не видит и проверка прошла изнутри. */
+  probed_via?: string;
 }
 
 const iceApi = crudApi.injectEndpoints({

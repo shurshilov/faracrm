@@ -7,7 +7,8 @@
     "chat_external_chat": "External Chats",
     "chat_external_message": "External Messages",
     "folders": "Folders",
-    "newFolder": "New folder"
+    "newFolder": "New folder",
+    "turn": "Call relay (TURN)"
   },
   "chats": "Chats",
   "newChat": "New Chat",

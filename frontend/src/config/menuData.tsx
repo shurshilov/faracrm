@@ -52,11 +52,14 @@ const menuTree: GroupConfig[] = [
   {
     group: 'communication',
     submenus: [
+      // Фильтры чатов живут в боковой панели чата и только там: в шапке они
+      // были теми же ссылками во второй раз.
       {
         id: 'category_chat_internal',
         Icon: IconMessage,
         label: 'Внутренние',
         labelKey: 'chat:menu.internal',
+        inSidebarOnly: true,
         submenus: [
           {
             id: 'menu_chat_internal_all',
@@ -83,6 +86,7 @@ const menuTree: GroupConfig[] = [
         Icon: IconWorld,
         label: 'Внешние',
         labelKey: 'chat:menu.external',
+        inSidebarOnly: true,
         submenus: [
           {
             id: 'menu_chat_external_all',
@@ -120,6 +124,12 @@ const menuTree: GroupConfig[] = [
         visibleForRoles: ['system_admin'] as string[],
         submenus: [
           { model: 'chat_connector' },
+          {
+            id: 'menu_turn',
+            to: '/turn',
+            label: 'Релей звонков (TURN)',
+            labelKey: 'chat:menu.turn',
+          },
           { model: 'chat_folder' },
           { model: 'chat_external_account' },
           { model: 'chat_external_chat' },

@@ -9,9 +9,12 @@
 #
 # Endpoints:
 #   GET  /ice/servers  → { ice_servers, ice_transport_policy, ttl }
-#   POST /ice/test     → { ok, error, mapped_address, relayed_address }
+#   POST /ice/test     → { ok, error, reached, mapped_address,
+#                          relayed_address, relay_private, peers }
 
 import logging
+import socket
+from urllib.parse import urlsplit
 import time
 from typing import TYPE_CHECKING
 
@@ -82,4 +85,35 @@ async def test_ice(req: Request):
     _last_test_at = now
 
     settings = await resolve_settings(env, host_from_request(req))
-    return {"data": await probe(settings)}
+    return {"data": await probe(settings, peers=await _pbx_peers(env))}
+
+
+async def _pbx_peers(env: "Environment") -> list[str]:
+    """
+    Адреса АТС, до которых релею предстоит носить медиа.
+
+    Берём из веб-сокета коннектора: там ровно тот хост, куда браузер пойдёт
+    разговаривать. Проверяем только литеральные IPv4 — имя пришлось бы
+    резолвить, а это лишний источник ложных тревог в проверке, которая должна
+    отвечать однозначно.
+    """
+
+    try:
+        connectors = await env.models.chat_connector.search(
+            filter=[("category", "=", "phone"), ("active", "=", True)],
+            fields=["id", "sip_ws_url"],
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("[turn] коннекторы для проверки не прочитаны: %s", exc)
+        return []
+
+    peers: list[str] = []
+    for connector in connectors:
+        host = urlsplit(connector.sip_ws_url or "").hostname or ""
+        try:
+            socket.inet_aton(host)
+        except OSError:
+            continue
+        if host not in peers:
+            peers.append(host)
+    return peers

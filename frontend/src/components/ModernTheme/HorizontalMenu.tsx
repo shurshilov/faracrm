@@ -13,14 +13,9 @@ import classes from './HorizontalMenu.module.css';
 
 interface HorizontalMenuProps {
   activeGroup: MenuGroup | null;
-  /** Показывать только эти категории (по id). Если не указано - показывать все */
-  filterCategories?: string[];
 }
 
-export function HorizontalMenu({
-  activeGroup,
-  filterCategories,
-}: HorizontalMenuProps) {
+export function HorizontalMenu({ activeGroup }: HorizontalMenuProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,10 +24,13 @@ export function HorizontalMenu({
     return null;
   }
 
-  // Фильтруем подменю если указан filterCategories
-  const filteredSubmenus = filterCategories
-    ? activeGroup.submenus.filter(item => filterCategories.includes(item.id))
-    : activeGroup.submenus;
+  // Категории с inSidebarOnly в шапку не попадают: их место — боковая панель
+  // раздела (для чата это фильтры «Внутренние»/«Внешние» со счётчиками).
+  // Набор пунктов от этого одинаков на всех страницах раздела, поэтому меню
+  // не переезжает при переходе между ними.
+  const filteredSubmenus = activeGroup.submenus.filter(
+    item => !(isMenuCategory(item) && item.inSidebarOnly),
+  );
 
   if (filteredSubmenus.length === 0) {
     return null;

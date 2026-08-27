@@ -157,7 +157,7 @@ services:
     # ports:
     #   - "3478:3478/udp"
     #   - "3478:3478/tcp"
-    #   - "49160-49660:49160-49660/udp"
+    #   - "49160-49259:49160-49259/udp"
     volumes:
       - ./docker/turnserver.conf:/etc/coturn/turnserver.conf:ro
       # Секрет: общий файл с бэкендом. Он его создаёт при первом старте,

@@ -87,8 +87,15 @@ export function ModernLayout() {
     }
   }, [location.pathname]);
 
-  // Проверяем, находимся ли мы в чате (нужен боковой sidebar)
-  const isInChat = location.pathname.startsWith('/chat');
+  // Проверяем, находимся ли мы в чате (нужен боковой sidebar).
+  //
+  // Сравнение точное, а не по префиксу: под startsWith('/chat') попадали и
+  // справочники — /chat_connector, /chat_folder, /chat_external_*. Из-за
+  // этого сайдбар с чатами оставался на одних пунктах меню настроек и
+  // пропадал на других (например на «Релее звонков») — соседние страницы
+  // одного раздела вели себя по-разному.
+  const isInChat =
+    location.pathname === '/chat' || location.pathname.startsWith('/chat/');
 
   const chatNavbarWidth = chatSidebarCollapsed ? 0 : 280;
 
@@ -155,14 +162,7 @@ export function ModernLayout() {
             <Box
               visibleFrom="md"
               style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
-              {isInChat ? (
-                <HorizontalMenu
-                  activeGroup={activeGroup}
-                  filterCategories={['category_comm_settings']}
-                />
-              ) : (
-                <HorizontalMenu activeGroup={activeGroup} />
-              )}
+              <HorizontalMenu activeGroup={activeGroup} />
             </Box>
 
             {/* Спейсер для mobile (когда нет HorizontalMenu) */}

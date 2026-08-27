@@ -53,6 +53,10 @@ export interface MenuCategory extends VisibilityProps {
   Icon: IconType;
   submenus: MenuSimple[];
   defaultCollapsed?: boolean;
+  // Категория живёт только в боковой панели своего раздела и в горизонтальном
+  // меню шапки не показывается. Нужно там, где сайдбар — основная навигация
+  // раздела и повторять её сверху значит показать одни и те же ссылки дважды.
+  inSidebarOnly?: boolean;
 }
 
 export interface MenuSimple extends VisibilityProps {
@@ -101,6 +105,8 @@ export type CategoryConfig = VisibilityProps & {
   labelKey?: string;
   label?: string;
   defaultCollapsed?: boolean;
+  /** Показывать только в боковой панели, не дублировать в шапке. */
+  inSidebarOnly?: boolean;
   submenus: MenuItemConfig[];
 };
 
@@ -230,6 +236,7 @@ function resolveCategory(cat: CategoryConfig): MenuCategory {
     label: cat.label || '',
     labelKey: cat.labelKey,
     defaultCollapsed: cat.defaultCollapsed,
+    inSidebarOnly: cat.inSidebarOnly,
     submenus: cat.submenus
       .map(resolveMenuItem)
       .filter((x): x is MenuSimple => x !== null),
