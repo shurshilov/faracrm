@@ -23,6 +23,12 @@ export interface TurnCheck {
   fix?: string;
   /** Готовая строка .env или команда под fix. */
   command?: string;
+  /**
+   * Чем посмотреть это звено руками. Показываем всегда, а не только при
+   * ошибке: зелёная строка тоже вызывает вопрос «а точно?», и ответ на него
+   * не должен требовать похода в документацию.
+   */
+  diagnose?: string;
 }
 
 type Translate = (key: string, defaultValue: string) => string;
@@ -59,6 +65,21 @@ const EXTERNAL_IP_FIX =
 const PORTS_FIX =
   'sudo ufw allow 3478/udp\nsudo ufw allow 3478/tcp\nsudo ufw allow 49160:49259/udp';
 
+/**
+ * STUN Binding по UDP одной строкой — проверка, которую нельзя сделать с
+ * сервера: он за NAT и сам себя снаружи не видит. Запускать с ДРУГОЙ машины,
+ * не из сети сервера, иначе пакет не пойдёт через роутер и ответ ничего не
+ * докажет. Без зависимостей: голый сокет и 20 байт заголовка.
+ */
+function udpProbeCommand(host: string): string {
+  return (
+    `python3 -c "import socket,struct,os;s=socket.socket(2,2);` +
+    `s.settimeout(3);s.sendto(struct.pack('>HHI',1,0,0x2112A442)` +
+    `+os.urandom(12),('${host}',3478));s.recv(2048);` +
+    `print('UDP отвечает')" 2>/dev/null || echo "UDP молчит"`
+  );
+}
+
 export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
   const { t, config, server, serverError, browser, browserError, loop } = input;
   const checks: TurnCheck[] = [];
@@ -67,6 +88,11 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
   const turnUrls = (config?.ice_servers || [])
     .flatMap(entry => entry.urls)
     .filter(url => url.startsWith('turn'));
+
+  // Адрес релея берём из выданного браузеру URL — команды диагностики должны
+  // проверять ровно то, куда пойдёт клиент.
+  const relayHost =
+    turnUrls[0]?.replace(/^turns?:/, '').split(/[:?]/)[0] || 'АДРЕС_РЕЛЕЯ';
 
   checks.push({
     id: 'config',
@@ -85,6 +111,7 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
           'Причина пишется в лог бэкенда по слову TURN. Обычно не заполнен ' +
             'site_url и релею неоткуда взять адрес.',
         ),
+    diagnose: 'docker compose logs backend --tail 200 | grep -i turn',
   });
 
   // ── 2. Что видно с сервера ────────────────────────────────────
@@ -111,9 +138,8 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
             'turn.checkReachFix',
             'Контейнер релея не поднят или порт закрыт на хосте.',
           ),
-      command: server.reached
-        ? undefined
-        : 'docker compose ps turn\nss -lunp | grep 3478',
+      // Команду не дублируем в fix: она же стоит в diagnose ниже.
+      diagnose: 'docker compose ps turn\nss -lunp | grep 3478',
     });
 
     checks.push({
@@ -137,6 +163,7 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
         !server.ok && server.error.includes('401')
           ? 'docker compose up -d --force-recreate backend turn'
           : undefined,
+      diagnose: 'docker compose logs turn --tail 50',
     });
 
     // Адрес аллокации что-то значит только когда проверка дошла снаружи:
@@ -156,24 +183,33 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
             )
           : undefined,
         command: server.relay_private ? EXTERNAL_IP_FIX : undefined,
+        diagnose: 'grep TURN_EXTRA_ARGS .env',
       });
     }
 
     if (server.probed_via) {
+      // Изнутри «публичный адрес молчит» имеет ДВЕ причины, и с сервера они
+      // неразличимы: либо роутер не разворачивает запрос на себя (hairpin —
+      // норма), либо порт снаружи закрыт. Различает их браузер: если он ниже
+      // получил relay-кандидат — это hairpin, если нет — закрытый порт.
       checks.push({
         id: 'probed_via',
         title: t('turn.checkVia', 'Проверено изнутри'),
         status: 'warn',
-        detail: t(
-          'turn.checkViaDetail',
-          'Снаружи сервер сам себя не видит (так ведёт себя NAT), поэтому ' +
-            'запрос ушёл через',
-        ) + ` ${server.probed_via}. ` +
+        detail:
+          t(
+            'turn.checkViaDetail',
+            'Снаружи сервер сам себя не видит, поэтому запрос ушёл через',
+          ) +
+          ` ${server.probed_via}. ` +
           t(
             'turn.checkViaMeans',
-            'Это доказывает, что релей жив и секрет верен, но не внешнюю ' +
-              'доступность — её показывают строки про браузер ниже.',
+            'Причин две и с сервера они неразличимы: роутер не умеет ' +
+              'разворачивать запрос на себя (hairpin, это норма) — или порт ' +
+              'снаружи закрыт. Что именно, показывают строки про браузер ниже: ' +
+              'есть relay-кандидат — hairpin, нет — закрытый порт.',
           ),
+        diagnose: 'ip route | grep default',
       });
     }
   }
@@ -205,7 +241,9 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
         ? relay
             .map(
               item =>
-                `${item.address} ${item.relayProtocol || item.protocol}`.trim(),
+                `${item.address}:${item.port} ${
+                  item.relayProtocol || item.protocol
+                }`.trim(),
             )
             .join(', ')
         : (browser.srflx.length
@@ -240,7 +278,40 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
         !relay.length && !browser.srflx.length && !codes.includes(401)
           ? PORTS_FIX
           : undefined,
+      diagnose: udpProbeCommand(relayHost),
     });
+
+    // Транспорт до релея. Кандидат есть, но только по TCP — частый и почти
+    // невидимый случай: звонки работают, поэтому никто не разбирается, а
+    // голос идёт худшим путём. Строка выше про такое молчит: relay-кандидат
+    // ведь получен.
+    if (relay.length) {
+      const overUdp = relay.filter(
+        item => (item.relayProtocol || item.protocol) === 'udp',
+      );
+      checks.push({
+        id: 'browser_udp',
+        title: t('turn.checkUdp', 'Релей доступен по UDP'),
+        status: overUdp.length ? 'ok' : 'fail',
+        detail: overUdp.length
+          ? t('turn.checkUdpOk', 'кандидат получен по udp — голос пойдёт им')
+          : t(
+              'turn.checkUdpFail',
+              'relay-кандидаты только по TCP: снаружи UDP до релея не доходит',
+            ),
+        fix: overUdp.length
+          ? undefined
+          : t(
+              'turn.checkUdpFix',
+              'Порт 3478/udp закрыт или не проброшен — TCP при этом проброшен, ' +
+                'иначе не было бы и этих кандидатов. Пробросьте на сервер ' +
+                '3478/udp и диапазон 49160–49259/udp порт в порт. Пока этого ' +
+                'нет, звонки работают через TCP-плечо: на потерях оно ' +
+                'переспрашивает пакеты и голос заикается.',
+            ),
+        diagnose: udpProbeCommand(relayHost),
+      });
+    }
 
     const privateRelay = relay.find(item => isPrivateAddress(item.address));
     if (privateRelay) {
@@ -279,6 +350,7 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
                 'Так выглядит фильтрация UDP на стороне клиента: проверьте, ' +
                 'что открыт и 3478/tcp — он и спасает такие сети.',
             ),
+        diagnose: 'docker compose logs turn --tail 30',
       });
     }
   }
@@ -304,6 +376,7 @@ export function buildTurnChecks(input: TurnCheckInput): TurnCheck[] {
       command: peer.allowed
         ? undefined
         : `TURN_EXTRA_ARGS="--external-ip=БЕЛЫЙ_IP/ПРИВАТНЫЙ_IP --allowed-peer-ip=${peer.ip}"\ndocker compose up -d turn`,
+      diagnose: 'grep TURN_EXTRA_ARGS .env',
     });
   }
 

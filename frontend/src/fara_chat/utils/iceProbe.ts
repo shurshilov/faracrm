@@ -12,6 +12,8 @@
 export interface IceCandidateInfo {
   type: string;
   address: string;
+  /** Порт. Нужен, чтобы два кандидата с одного адреса не выглядели дублем. */
+  port: number;
   /** Транспорт до собеседника. */
   protocol: string;
   /** Транспорт ДО релея (udp/tcp/tls) — только у relay-кандидатов. */
@@ -46,6 +48,7 @@ function describe(candidate: RTCIceCandidate): IceCandidateInfo {
   return {
     type: candidate.type || '',
     address: candidate.address || '',
+    port: candidate.port || 0,
     protocol: candidate.protocol || '',
     // Нестандартное поле, но есть в Chrome и Firefox — именно оно отвечает на
     // вопрос «через какое плечо релея нас пустили», а он в диагностике
