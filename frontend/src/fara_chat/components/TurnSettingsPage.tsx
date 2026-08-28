@@ -18,6 +18,7 @@ import {
   Card,
   Code,
   Group,
+  ScrollArea,
   Stack,
   Text,
   ThemeIcon,
@@ -89,7 +90,11 @@ function CheckRow({ check }: { check: TurnCheck }) {
             {check.fix}
           </Text>
         )}
-        {check.command && <Code block style={SCROLLABLE}>{check.command}</Code>}
+        {check.command && (
+          <Code block style={SCROLLABLE}>
+            {check.command}
+          </Code>
+        )}
         {check.diagnose && (
           <Stack gap={2}>
             <Text size="xs" c="dimmed">
@@ -175,8 +180,7 @@ export function TurnSettingsPage() {
         }
       })().catch(error =>
         merge({
-          browserError:
-            error instanceof Error ? error.message : String(error),
+          browserError: error instanceof Error ? error.message : String(error),
         }),
       ),
     ]);
@@ -185,83 +189,89 @@ export function TurnSettingsPage() {
   };
 
   return (
-    <Stack p="md" gap="md" maw={900} mx="auto" w="100%">
-      <Group gap="xs">
-        <IconRouter size={22} />
-        <Title order={3}>{t('turn.title', 'Релей звонков (TURN)')}</Title>
-      </Group>
-
-      <Text size="sm" c="dimmed">
-        {t(
-          'turn.intro',
-          'Релей нужен там, где браузеры не могут соединиться напрямую: ' +
-            'симметричный NAT у мобильных операторов, закрытый наружу UDP в ' +
-            'офисе, VPN. Он общий и для внутренних звонков сотрудников, и для ' +
-            'звонилки в АТС.',
-        )}
-      </Text>
-
-      {/* ── Проверка ──────────────────────────────────────────── */}
-      <Card withBorder padding="md">
-        <Group justify="space-between" mb="xs">
-          <Text fw={600}>{t('turn.check', 'Проверка')}</Text>
-          <Button
-            variant="light"
-            color="indigo"
-            leftSection={<IconRouter size={16} />}
-            onClick={handleRun}
-            loading={running}>
-            {t('turn.checkButton', 'Проверить релей')}
-          </Button>
+    // AppShell.Main живёт с height:100dvh и overflow:hidden — так сделано ради
+    // чата, где скроллится только лента сообщений. Значит собственный скролл
+    // страница обязана завести сама, иначе список проверок просто обрезается
+    // по нижней кромке окна и до последних пунктов не добраться.
+    <ScrollArea h="100%" type="auto">
+      <Stack p="md" gap="md" maw={900} mx="auto" w="100%">
+        <Group gap="xs">
+          <IconRouter size={22} />
+          <Title order={3}>{t('turn.title', 'Релей звонков (TURN)')}</Title>
         </Group>
 
-        <Text size="xs" c="dimmed">
+        <Text size="sm" c="dimmed">
           {t(
-            'turn.checkHint',
-            'Одна проверка отвечает сразу на всё: выдаётся ли релей браузеру, ' +
-              'отвечает ли он с сервера, принят ли секрет, публичный ли адрес ' +
-              'он раздаёт, доступен ли по UDP, поднимается ли через него ' +
-              'соединение из ЭТОГО браузера и пустит ли он трафик до АТС. ' +
-              'Занимает несколько секунд, микрофон не спрашивает. К каждому ' +
-              'пункту приложена команда, которой его можно посмотреть руками.',
+            'turn.intro',
+            'Релей нужен там, где браузеры не могут соединиться напрямую: ' +
+              'симметричный NAT у мобильных операторов, закрытый наружу UDP в ' +
+              'офисе, VPN. Он общий и для внутренних звонков сотрудников, и для ' +
+              'звонилки в АТС.',
           )}
         </Text>
 
-        {checks.length > 0 && (
-          <Stack gap="md" mt="md">
-            {checks.map(check => (
-              <CheckRow key={check.id} check={check} />
-            ))}
-          </Stack>
-        )}
-      </Card>
+        {/* ── Проверка ──────────────────────────────────────────── */}
+        <Card withBorder padding="md">
+          <Group justify="space-between" mb="xs">
+            <Text fw={600}>{t('turn.check', 'Проверка')}</Text>
+            <Button
+              variant="light"
+              color="indigo"
+              leftSection={<IconRouter size={16} />}
+              onClick={handleRun}
+              loading={running}>
+              {t('turn.checkButton', 'Проверить релей')}
+            </Button>
+          </Group>
 
-      {/* ── Параметры ─────────────────────────────────────────── */}
-      <Card withBorder padding="md">
-        <Text fw={600} mb="xs">
-          {t('turn.params', 'Параметры')}
-        </Text>
-        <Text size="sm" c="dimmed" mb="xs">
-          {t(
-            'turn.paramsHint',
-            'Адрес, порт, срок жизни пропусков и режим «всё через релей» ' +
-              'меняются в системных настройках по ключам turn.* — применяются ' +
-              'со следующего звонка, без перезапуска. Пустое значение означает ' +
-              '«брать из .env». Секрет через интерфейс не меняется: он общий с ' +
-              'сервером релея, который читает его при старте.',
+          <Text size="xs" c="dimmed">
+            {t(
+              'turn.checkHint',
+              'Одна проверка отвечает сразу на всё: выдаётся ли релей браузеру, ' +
+                'отвечает ли он с сервера, принят ли секрет, публичный ли адрес ' +
+                'он раздаёт, доступен ли по UDP, поднимается ли через него ' +
+                'соединение из ЭТОГО браузера и пустит ли он трафик до АТС. ' +
+                'Занимает несколько секунд, микрофон не спрашивает. К каждому ' +
+                'пункту приложена команда, которой его можно посмотреть руками.',
+            )}
+          </Text>
+
+          {checks.length > 0 && (
+            <Stack gap="md" mt="md">
+              {checks.map(check => (
+                <CheckRow key={check.id} check={check} />
+              ))}
+            </Stack>
           )}
-        </Text>
-        <Group>
-          <Button
-            component={Link}
-            to="/system_settings"
-            variant="light"
-            leftSection={<IconSettings size={16} />}>
-            {t('turn.openSettings', 'Открыть системные настройки')}
-          </Button>
-        </Group>
-      </Card>
-    </Stack>
+        </Card>
+
+        {/* ── Параметры ─────────────────────────────────────────── */}
+        <Card withBorder padding="md">
+          <Text fw={600} mb="xs">
+            {t('turn.params', 'Параметры')}
+          </Text>
+          <Text size="sm" c="dimmed" mb="xs">
+            {t(
+              'turn.paramsHint',
+              'Адрес, порт, срок жизни пропусков и режим «всё через релей» ' +
+                'меняются в системных настройках по ключам turn.* — применяются ' +
+                'со следующего звонка, без перезапуска. Пустое значение означает ' +
+                '«брать из .env». Секрет через интерфейс не меняется: он общий с ' +
+                'сервером релея, который читает его при старте.',
+            )}
+          </Text>
+          <Group>
+            <Button
+              component={Link}
+              to="/system_settings"
+              variant="light"
+              leftSection={<IconSettings size={16} />}>
+              {t('turn.openSettings', 'Открыть системные настройки')}
+            </Button>
+          </Group>
+        </Card>
+      </Stack>
+    </ScrollArea>
   );
 }
 
