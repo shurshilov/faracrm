@@ -19,6 +19,9 @@ import {
   type SipChannel,
 } from '@/services/api/telephony';
 import { useIceConfig } from '@/services/api/ice';
+// Звонок входящего общий с внутренними звонками: сигнал должен быть один и
+// тот же, откуда бы ни звонили.
+import { startRinging, stopRinging } from '@/fara_chat/utils/ringtone';
 
 export type SipState =
   | 'disabled'
@@ -68,6 +71,43 @@ function sipWsUrl(token: string, connectorId: number): string {
 }
 
 /**
+ * Причина отказа из JsSIP → что с этим делать.
+ *
+ * Сырые причины JsSIP — это термины протокола («Incompatible SDP»), из
+ * которых непонятно, чинить настройки АТС, номер или микрофон. Самая частая
+ * при первом подключении браузера к FreePBX — как раз несовместимость медиа:
+ * браузер иначе как DTLS-SRTP + AVPF предлагать не умеет, а обычный
+ * SIP-extension такого не принимает и отвечает 488.
+ */
+const FAILURE_HINTS: Record<string, string> = {
+  'Incompatible SDP':
+    'АТС не приняла формат медиа. Обычно extension заведён как обычный ' +
+    'SIP, а для браузера нужен WebRTC: DTLS-SRTP, AVPF, ICE и транспорт WSS.',
+  'Not Found': 'Такого номера нет в плане набора АТС.',
+  Busy: 'Занято.',
+  Rejected: 'Собеседник отклонил звонок.',
+  Unavailable: 'Абонент недоступен: не зарегистрирован или не отвечает.',
+  'No Answer': 'Не ответили.',
+  'Address Incomplete': 'Номер набран не полностью.',
+  'Request Timeout': 'АТС не ответила вовремя.',
+  'Authentication Error': 'АТС не приняла SIP-логин или пароль.',
+  'Connection Error': 'Нет связи с АТС.',
+  'User Denied Media Access': 'Браузер не дал доступ к микрофону.',
+  'WebRTC Error': 'Браузер не смог собрать соединение.',
+  'SIP Failure Code': 'АТС отклонила звонок.',
+  Canceled: 'Звонок отменён.',
+};
+
+function describeFailure(cause: unknown, fallback: string): string {
+  const raw = cause ? String(cause) : '';
+  const hint = FAILURE_HINTS[raw];
+  // Сырую причину оставляем в скобках: с ней ищут строку в логе SIP, и без
+  // неё поддержке пришлось бы гадать, что именно ответила АТС.
+  if (hint) return `${hint} (${raw})`;
+  return raw || fallback;
+}
+
+/**
  * @param connectorId выбранный телефонный канал (null — внутренний, SIP не нужен)
  */
 export function useSipPhone(connectorId: number | null): SipPhone {
@@ -105,6 +145,14 @@ export function useSipPhone(connectorId: number | null): SipPhone {
   const uaRef = useRef<any>(null);
   const sessionRef = useRef<any>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Звонок входящего — тот же, что у внутренних звонков.
+  useEffect(() => {
+    if (state === 'incoming') startRinging();
+    else stopRinging();
+  }, [state]);
+
+  useEffect(() => stopRinging, []);
 
   // Таймер разговора.
   useEffect(() => {
@@ -160,7 +208,7 @@ export function useSipPhone(connectorId: number | null): SipPhone {
       sessionRef.current = null;
       setState(uaRef.current?.isRegistered() ? 'registered' : 'offline');
       setPeer('');
-      setError(e?.cause ? String(e.cause) : 'Звонок не состоялся');
+      setError(describeFailure(e?.cause, 'Звонок не состоялся'));
     });
     // Удалённый звук: один <audio> на всё время жизни хука.
     const playRemote = (pc: RTCPeerConnection) => {
@@ -194,6 +242,7 @@ export function useSipPhone(connectorId: number | null): SipPhone {
     }
 
     let cancelled = false;
+    let unregisterOnClose: ((event: PageTransitionEvent) => void) | null = null;
     const audio = document.createElement('audio');
     audio.autoplay = true;
     document.body.appendChild(audio);
@@ -207,14 +256,18 @@ export function useSipPhone(connectorId: number | null): SipPhone {
         const JsSIP = mod.UA ? mod : mod.default;
         if (cancelled) return;
 
-        const socket = new JsSIP.WebSocketInterface(
-          sipWsUrl(token, config.id),
-        );
+        const socket = new JsSIP.WebSocketInterface(sipWsUrl(token, config.id));
         const ua = new JsSIP.UA({
           sockets: [socket],
           uri: `sip:${config.extension}@${config.realm || 'localhost'}`,
           password: config.password,
           register: true,
+          // По умолчанию JsSIP просит 600 секунд. Вкладок у сотрудника
+          // несколько, и каждая — отдельный контакт на АТС; закрытую вкладку
+          // АТС всё это время считает живой и продолжает форкать в неё
+          // звонки. Две минуты — компромисс между мусорными контактами и
+          // трафиком REGISTER.
+          register_expires: 120,
         });
 
         ua.on('registered', () => !cancelled && setState('registered'));
@@ -223,7 +276,7 @@ export function useSipPhone(connectorId: number | null): SipPhone {
         ua.on('registrationFailed', (e: any) => {
           if (cancelled) return;
           setState('offline');
-          setError(e?.cause ? String(e.cause) : 'Регистрация не удалась');
+          setError(describeFailure(e?.cause, 'Регистрация не удалась'));
         });
 
         ua.on('newRTCSession', (e: any) => {
@@ -242,6 +295,20 @@ export function useSipPhone(connectorId: number | null): SipPhone {
 
         ua.start();
         uaRef.current = ua;
+
+        // Закрытие вкладки React размонтированием не считает, и cleanup ниже
+        // не выполнится. Снимаемся с регистрации сами: 'pagehide' в отличие
+        // от 'beforeunload' надёжно приходит и на мобильных. persisted=true
+        // значит уход в bfcache — вкладку ещё вернут, отключаться нельзя.
+        unregisterOnClose = (event: PageTransitionEvent) => {
+          if (event.persisted) return;
+          try {
+            ua.stop();
+          } catch {
+            /* уже остановлен */
+          }
+        };
+        window.addEventListener('pagehide', unregisterOnClose);
       } catch (e: any) {
         if (cancelled) return;
         setState('offline');
@@ -251,6 +318,10 @@ export function useSipPhone(connectorId: number | null): SipPhone {
 
     return () => {
       cancelled = true;
+      if (unregisterOnClose) {
+        window.removeEventListener('pagehide', unregisterOnClose);
+        unregisterOnClose = null;
+      }
       try {
         sessionRef.current?.terminate();
         uaRef.current?.stop();

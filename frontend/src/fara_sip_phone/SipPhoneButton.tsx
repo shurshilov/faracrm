@@ -33,6 +33,7 @@ import {
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store/store';
 import { useSearchQuery, useUpdateMutation } from '@/services/api/crudApi';
+import { useGetSipConfigQuery } from '@/services/api/telephony';
 import { FilterExpression } from '@/services/api/crudTypes';
 import { useCall } from '@/fara_chat/context/CallContext';
 import { useChatWebSocketContext } from '@/fara_chat/context';
@@ -141,8 +142,20 @@ export function SipPhoneButton() {
     savedChannel ? String(savedChannel) : INTERNAL,
   );
 
-  // Регистрируемся тем каналом, который выбран.
-  const phone = useSipPhone(channel === INTERNAL ? null : Number(channel));
+  // Регистрируемся ВСЕГДА, а не только когда телефонный канал выбран в
+  // списке. Список отвечает на вопрос «чем звонить», а принимать надо на
+  // обоих каналах сразу: внутренние звонки приходят по сокету чата и так, а
+  // с АТС приходили только в ту вкладку, где канал выбран прямо сейчас.
+  // Приоритет у выбранного, иначе канал по умолчанию, иначе первый рабочий.
+  const { data: sipConfig } = useGetSipConfigQuery();
+  const sipChannels = sipConfig?.data?.channels || [];
+  const fallbackSipId =
+    sipChannels.find(c => c.id === savedChannel && c.available)?.id ??
+    sipChannels.find(c => c.available)?.id ??
+    null;
+  const phone = useSipPhone(
+    channel === INTERNAL ? fallbackSipId : Number(channel),
+  );
 
   // Телефонные каналы в списке ВСЕГДА — выбор канала это и есть способ узнать,
   // чего ему не хватает.
@@ -166,9 +179,7 @@ export function SipPhoneButton() {
   // Сначала те, кому реально можно позвонить.
   const employeeList = employees
     .filter(user => user.id !== myId)
-    .sort(
-      (a, b) => Number(isUserOnline(b.id)) - Number(isUserOnline(a.id)),
-    );
+    .sort((a, b) => Number(isUserOnline(b.id)) - Number(isUserOnline(a.id)));
 
   const rememberChannel = async (value: string) => {
     setChannel(value);
@@ -259,12 +270,16 @@ export function SipPhoneButton() {
                 color={viaSip ? STATE_COLOR[phone.state] : 'blue'}>
                 {viaSip ? STATE_LABEL[phone.state] : 'Готов к звонку'}
               </Badge>
-              {viaSip && phone.error && (
-                <Text size="xs" c="red" lineClamp={1}>
-                  {phone.error}
-                </Text>
-              )}
             </Group>
+
+            {/* Ошибка — отдельной строкой во всю ширину. Рядом с бейджем она
+                жила с lineClamp={1}, и от подсказки оставалось несколько
+                слов: как раз то место, где нужно объяснить, что чинить. */}
+            {viaSip && phone.error && (
+              <Text size="xs" c="red" mb="xs">
+                {phone.error}
+              </Text>
+            )}
 
             {viaSip && !ready && (
               <>
@@ -282,150 +297,148 @@ export function SipPhoneButton() {
             {/* Набор номера — только у SIP: внутренним звонят конкретному
                 сотруднику, а не на номер. */}
             {viaSip && ready && (
-            <>
-            <Group gap="xs" wrap="nowrap">
-              <TextInput
-                flex={1}
-                value={number}
-                onChange={e => setNumber(e.currentTarget.value)}
-                onKeyDown={e => e.key === 'Enter' && dial(number)}
-                placeholder="Номер"
-              />
-              <ActionIcon
-                color="green"
-                variant="filled"
-                size="lg"
-                disabled={busy || !number.trim()}
-                onClick={() => dial(number)}>
-                <IconPhone size={18} />
-              </ActionIcon>
-            </Group>
+              <>
+                <Group gap="xs" wrap="nowrap">
+                  <TextInput
+                    flex={1}
+                    value={number}
+                    onChange={e => setNumber(e.currentTarget.value)}
+                    onKeyDown={e => e.key === 'Enter' && dial(number)}
+                    placeholder="Номер"
+                  />
+                  <ActionIcon
+                    color="green"
+                    variant="filled"
+                    size="lg"
+                    disabled={busy || !number.trim()}
+                    onClick={() => dial(number)}>
+                    <IconPhone size={18} />
+                  </ActionIcon>
+                </Group>
 
-            <SimpleGrid cols={3} spacing={4} mt="xs">
-              {KEYS.map(key => (
-                <Button
-                  key={key}
-                  variant="default"
-                  size="compact-md"
-                  onClick={() => setNumber(n => n + key)}>
-                  {key}
-                </Button>
-              ))}
-            </SimpleGrid>
-
-            </>
+                <SimpleGrid cols={3} spacing={4} mt="xs">
+                  {KEYS.map(key => (
+                    <Button
+                      key={key}
+                      variant="default"
+                      size="compact-md"
+                      onClick={() => setNumber(n => n + key)}>
+                      {key}
+                    </Button>
+                  ))}
+                </SimpleGrid>
+              </>
             )}
 
             {/* Ненастроенный SIP-канал книжку не показывает: звонить с него
                 всё равно нельзя, а клик по контакту молча ничего не делал бы. */}
             {(!viaSip || ready) && (
-            <>
-            <Divider
-              my="sm"
-              label={viaSip ? 'Записная книжка' : 'Сотрудники'}
-              labelPosition="center"
-            />
+              <>
+                <Divider
+                  my="sm"
+                  label={viaSip ? 'Записная книжка' : 'Сотрудники'}
+                  labelPosition="center"
+                />
 
-            <Group gap="xs" wrap="nowrap">
-              <TextInput
-                flex={1}
-                size="xs"
-                value={search}
-                onChange={e => setSearch(e.currentTarget.value)}
-                placeholder={viaSip ? 'Поиск по номеру' : 'Поиск по имени'}
-                leftSection={<IconSearch size={14} />}
-              />
-              <Tooltip label="Обновить список">
-                <ActionIcon
-                  variant="subtle"
-                  size="md"
-                  onClick={() =>
-                    viaSip ? refetchContacts() : refetchEmployees()
-                  }>
-                  <IconRefresh size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-            <ScrollArea.Autosize mah={180} mt="xs">
-              {/* Внутренним звонком можно достать только того, кто сейчас в
-                  сети: приглашение уходит по его же веб-сокету. */}
-              {!viaSip &&
-                employeeList.map(user => {
-                  const online = isUserOnline(user.id);
-                  return (
-                    <Group
-                      key={user.id}
-                      justify="space-between"
-                      wrap="nowrap"
-                      gap="xs"
-                      py={4}
-                      style={{
-                        cursor: online ? 'pointer' : 'default',
-                        opacity: online ? 1 : 0.5,
-                      }}
+                <Group gap="xs" wrap="nowrap">
+                  <TextInput
+                    flex={1}
+                    size="xs"
+                    value={search}
+                    onChange={e => setSearch(e.currentTarget.value)}
+                    placeholder={viaSip ? 'Поиск по номеру' : 'Поиск по имени'}
+                    leftSection={<IconSearch size={14} />}
+                  />
+                  <Tooltip label="Обновить список">
+                    <ActionIcon
+                      variant="subtle"
+                      size="md"
                       onClick={() =>
-                        online &&
-                        dialUser({ id: user.id, name: user.name })
+                        viaSip ? refetchContacts() : refetchEmployees()
                       }>
-                      <Text size="sm" lineClamp={1}>
-                        {user.name}
-                      </Text>
-                      <Tooltip label={online ? 'В сети' : 'Не в сети'}>
-                        <Box
-                          w={8}
-                          h={8}
-                          style={{
-                            borderRadius: '50%',
-                            flexShrink: 0,
-                            background: online
-                              ? 'var(--mantine-color-green-6)'
-                              : 'var(--mantine-color-gray-4)',
-                          }}
-                        />
-                      </Tooltip>
-                    </Group>
-                  );
-                })}
-              {!viaSip && !employeeList.length && (
-                <Text size="xs" c="dimmed" ta="center" py="sm">
-                  Сотрудники не найдены
-                </Text>
-              )}
-
-              {viaSip &&
-                contacts.map(contact => (
-                <Group
-                  key={contact.id}
-                  justify="space-between"
-                  wrap="nowrap"
-                  gap="xs"
-                  py={4}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => dialContact(contact)}>
-                  <Box style={{ minWidth: 0 }}>
-                    <Text size="sm" lineClamp={1}>
-                      {contact.partner_id?.name ||
-                        contact.user_id?.name ||
-                        contact.value}
-                    </Text>
-                    <Text size="xs" c="dimmed">
-                      {contact.value}
-                    </Text>
-                  </Box>
-                  {contact.user_id && (
-                    <Badge size="xs" variant="light">
-                      сотрудник
-                    </Badge>
-                  )}
+                      <IconRefresh size={16} />
+                    </ActionIcon>
+                  </Tooltip>
                 </Group>
-              ))}
-              {viaSip && !contacts.length && (
-                <Text size="xs" c="dimmed" ta="center" py="sm">
-                  Ничего не найдено
-                </Text>
-              )}
-            </ScrollArea.Autosize>
-            </>
+                <ScrollArea.Autosize mah={180} mt="xs">
+                  {/* Внутренним звонком можно достать только того, кто сейчас в
+                  сети: приглашение уходит по его же веб-сокету. */}
+                  {!viaSip &&
+                    employeeList.map(user => {
+                      const online = isUserOnline(user.id);
+                      return (
+                        <Group
+                          key={user.id}
+                          justify="space-between"
+                          wrap="nowrap"
+                          gap="xs"
+                          py={4}
+                          style={{
+                            cursor: online ? 'pointer' : 'default',
+                            opacity: online ? 1 : 0.5,
+                          }}
+                          onClick={() =>
+                            online && dialUser({ id: user.id, name: user.name })
+                          }>
+                          <Text size="sm" lineClamp={1}>
+                            {user.name}
+                          </Text>
+                          <Tooltip label={online ? 'В сети' : 'Не в сети'}>
+                            <Box
+                              w={8}
+                              h={8}
+                              style={{
+                                borderRadius: '50%',
+                                flexShrink: 0,
+                                background: online
+                                  ? 'var(--mantine-color-green-6)'
+                                  : 'var(--mantine-color-gray-4)',
+                              }}
+                            />
+                          </Tooltip>
+                        </Group>
+                      );
+                    })}
+                  {!viaSip && !employeeList.length && (
+                    <Text size="xs" c="dimmed" ta="center" py="sm">
+                      Сотрудники не найдены
+                    </Text>
+                  )}
+
+                  {viaSip &&
+                    contacts.map(contact => (
+                      <Group
+                        key={contact.id}
+                        justify="space-between"
+                        wrap="nowrap"
+                        gap="xs"
+                        py={4}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => dialContact(contact)}>
+                        <Box style={{ minWidth: 0 }}>
+                          <Text size="sm" lineClamp={1}>
+                            {contact.partner_id?.name ||
+                              contact.user_id?.name ||
+                              contact.value}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {contact.value}
+                          </Text>
+                        </Box>
+                        {contact.user_id && (
+                          <Badge size="xs" variant="light">
+                            сотрудник
+                          </Badge>
+                        )}
+                      </Group>
+                    ))}
+                  {viaSip && !contacts.length && (
+                    <Text size="xs" c="dimmed" ta="center" py="sm">
+                      Ничего не найдено
+                    </Text>
+                  )}
+                </ScrollArea.Autosize>
+              </>
             )}
           </Box>
         </Popover.Dropdown>

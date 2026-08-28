@@ -22,6 +22,7 @@ import type { RootState } from '@/store/store';
 import { useChatWebSocketContext } from '@/fara_chat/context/ChatWebSocketContext';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
 import { useIceConfig } from '@/services/api/ice';
+import { startRinging, stopRinging } from '@/fara_chat/utils/ringtone';
 
 /**
  * Идентификатор ЭТОЙ вкладки.
@@ -162,6 +163,18 @@ export function useWebRTCCall(): UseWebRTCCallResult {
       if (tickRef.current) clearInterval(tickRef.current);
     };
   }, [state, session?.startedAt]);
+
+  // Звонок входящего. Без него карточка появляется молча, и звонок замечают,
+  // только если смотрят в экран. Останавливаем на ЛЮБОМ другом состоянии —
+  // приняли, отклонили, собеседник отменил.
+  useEffect(() => {
+    if (state === 'incoming') startRinging();
+    else stopRinging();
+  }, [state]);
+
+  // На размонтировании (выход из CRM, закрытие вкладки) гудок не должен
+  // пережить сам компонент.
+  useEffect(() => stopRinging, []);
 
   // ──────────────────────────── WebRTC helpers ────────────────────────────
 
