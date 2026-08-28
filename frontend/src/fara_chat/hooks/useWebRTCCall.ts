@@ -23,6 +23,19 @@ import { useChatWebSocketContext } from '@/fara_chat/context/ChatWebSocketContex
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
 import { useIceConfig } from '@/services/api/ice';
 
+/**
+ * Идентификатор ЭТОЙ вкладки.
+ *
+ * Сигналинг бэкенд адресует пользователю, а не соединению: invite и следом
+ * offer приходят на все устройства сотрудника разом. Без пометки «кому» на
+ * один звонок отвечали и компьютер, и телефон — каждый своим SDP, и второй
+ * ответ ронял уже собравшийся разговор. Живёт в модуле, а не в состоянии:
+ * должен пережить любое перемонтирование хука и не меняться за сеанс.
+ */
+const CLIENT_ID =
+  globalThis.crypto?.randomUUID?.() ??
+  `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+
 export type CallState =
   | 'idle'
   | 'calling'
@@ -126,6 +139,11 @@ export function useWebRTCCall(): UseWebRTCCallResult {
   // Буфер ICE-кандидатов, которые пришли до установки remoteDescription.
   // Пробуем их применить позже.
   const pendingRemoteIceRef = useRef<RTCIceCandidateInit[]>([]);
+  // Вкладка собеседника, с которой идёт разговор. Звонящий узнаёт её из
+  // call.accepted (какое устройство сняло трубку), принимающий — из offer.
+  // Пока не известна, кадры уходят без адреса и принимаются всеми — так
+  // работает старый фронт на той стороне.
+  const peerClientRef = useRef<string | null>(null);
 
   // Таймер длительности
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -182,6 +200,8 @@ export function useWebRTCCall(): UseWebRTCCallResult {
             type: 'call.ice',
             call_id: callId,
             to_user_id: toUserId,
+            from_client_id: CLIENT_ID,
+            to_client_id: peerClientRef.current,
             candidate: event.candidate.toJSON(),
           });
         }
@@ -295,6 +315,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
   const finishCall = useCallback(
     (reason: EndReason) => {
       cleanupMedia();
+      peerClientRef.current = null;
       setEndReason(reason);
       setState('ended');
       setDurationSec(0);
@@ -315,6 +336,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
         return;
       }
       warmRemoteAudio();
+      peerClientRef.current = null;
       setEndReason(null);
       setState('calling');
       try {
@@ -362,6 +384,9 @@ export function useWebRTCCall(): UseWebRTCCallResult {
     try {
       const res = await apiCall(`/calls/${session.callId}/accept`, {
         method: 'POST',
+        // Говорим бэкенду, КАКАЯ вкладка сняла трубку: дальше сигналинг
+        // адресуется ей, а остальные устройства получат call.taken.
+        body: JSON.stringify({ client_id: CLIENT_ID }),
       });
       if (!res.ok) {
         finishCall('failed');
@@ -421,6 +446,12 @@ export function useWebRTCCall(): UseWebRTCCallResult {
     const unsubscribe = addMessageListener(async (msg: any) => {
       if (!msg || typeof msg !== 'object' || !msg.type) return;
 
+      // Кадр, адресованный другой вкладке того же пользователя, — не наш.
+      // Одна проверка на весь сигналинг: без неё на offer отвечали все
+      // устройства сотрудника сразу. Кадр без адреса принимаем — его шлёт
+      // сторона, которая про адресацию ещё не знает (старая вкладка).
+      if (msg.to_client_id && msg.to_client_id !== CLIENT_ID) return;
+
       switch (msg.type) {
         // ── invite: мы callee ──
         case 'call.invite': {
@@ -444,6 +475,9 @@ export function useWebRTCCall(): UseWebRTCCallResult {
         case 'call.accepted': {
           if (!session || !session.isCaller || session.callId !== msg.call_id)
             return;
+          // Запоминаем, какая вкладка собеседника сняла трубку: дальше SDP и
+          // кандидаты адресуем только ей.
+          peerClientRef.current = msg.callee_client_id || null;
           setState('connecting');
           try {
             const pc = createPeerConnection(session.callId, session.peer.id);
@@ -454,6 +488,8 @@ export function useWebRTCCall(): UseWebRTCCallResult {
               type: 'call.offer',
               call_id: session.callId,
               to_user_id: session.peer.id,
+              from_client_id: CLIENT_ID,
+              to_client_id: peerClientRef.current,
               sdp: offer,
             });
           } catch (err) {
@@ -466,6 +502,9 @@ export function useWebRTCCall(): UseWebRTCCallResult {
         // ── offer: мы callee, получили от caller — отвечаем answer ──
         case 'call.offer': {
           if (!session || session.callId !== msg.call_id) return;
+          // Обратный адрес: звонящий у нас один, но пометить ответ надо —
+          // так он отличит наш SDP от SDP второго устройства.
+          peerClientRef.current = msg.from_client_id || null;
           try {
             const pc = createPeerConnection(session.callId, session.peer.id);
             await attachLocalMedia(pc);
@@ -486,6 +525,8 @@ export function useWebRTCCall(): UseWebRTCCallResult {
               type: 'call.answer',
               call_id: session.callId,
               to_user_id: session.peer.id,
+              from_client_id: CLIENT_ID,
+              to_client_id: peerClientRef.current,
               sdp: answer,
             });
           } catch (err) {
@@ -497,9 +538,24 @@ export function useWebRTCCall(): UseWebRTCCallResult {
 
         // ── answer: мы caller, получили ответ от callee ──
         case 'call.answer': {
-          if (!session || !session.isCaller) return;
+          if (!session || !session.isCaller || session.callId !== msg.call_id)
+            return;
           const pc = pcRef.current;
           if (!pc) return;
+          // Ответов может прийти НЕСКОЛЬКО: сигналинг адресуется юзеру, а не
+          // сокету, поэтому offer получают все устройства собеседника и
+          // каждое отвечает своим SDP. Первый ответ переводит соединение в
+          // 'stable', и повторный setRemoteDescription бросает
+          // InvalidStateError — а catch ниже гасил из-за этого уже живой
+          // разговор («ошибка соединения» сразу после ответа). Дубликат
+          // молча игнорируем: звонок держится на первом ответе.
+          if (pc.signalingState !== 'have-local-offer') {
+            console.warn(
+              '[call] лишний answer в состоянии %s — игнорирую',
+              pc.signalingState,
+            );
+            return;
+          }
           try {
             await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
             for (const c of pendingRemoteIceRef.current) {
@@ -534,6 +590,21 @@ export function useWebRTCCall(): UseWebRTCCallResult {
           break;
         }
 
+        // ── трубку сняли на другом устройстве ──
+        case 'call.taken': {
+          if (!session || session.callId !== msg.call_id) return;
+          // Себя узнаём по client_id: ответившей вкладке гасить нечего.
+          if (msg.client_id && msg.client_id === CLIENT_ID) return;
+          // Не ошибка и не пропущенный — просто разговор идёт не здесь.
+          // Поэтому тихо в 'idle', без карточки «звонок завершён».
+          cleanupMedia();
+          peerClientRef.current = null;
+          setSession(null);
+          setEndReason(null);
+          setState('idle');
+          break;
+        }
+
         // ── терминальные события ──
         case 'call.rejected':
           if (session?.callId === msg.call_id) finishCall('rejected');
@@ -555,6 +626,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
     createPeerConnection,
     attachLocalMedia,
     finishCall,
+    cleanupMedia,
     currentUserId,
   ]);
 

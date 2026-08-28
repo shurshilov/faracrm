@@ -60,6 +60,23 @@ class CallEndPayload(BaseModel):
     duration_seconds: int | None = None
 
 
+class CallAcceptPayload(BaseModel):
+    """
+    client_id — идентификатор ВКЛАДКИ, в которой сняли трубку.
+
+    Нужен потому, что сигналинг адресуется пользователю, а не соединению:
+    call.invite и следом call.offer приходят на все устройства сотрудника, и
+    каждое отвечало своим SDP. Звонящий применял первый пришедший ответ, а
+    второй ронял уже живой разговор. Здесь мы узнаём, КТО именно ответил, и
+    дальше сигналинг адресуется этой вкладке.
+
+    Необязательный: старый фронт (открытая вкладка, которую не перезагрузили)
+    просто не пришлёт его, и всё продолжит работать как раньше.
+    """
+
+    client_id: str | None = None
+
+
 # ─── Helpers ──────────────────────────────────────────────────────
 
 
@@ -300,10 +317,16 @@ async def start_call(req: Request, payload: CallStartPayload):
 
 
 @router_private.post("/calls/{call_id}/accept")
-async def accept_call(req: Request, call_id: int):
+async def accept_call(
+    req: Request, call_id: int, payload: CallAcceptPayload | None = None
+):
     """
     Callee принял звонок. Обновляет disposition='answered',
     уведомляет caller через WebSocket.
+
+    Здесь же решается, какое из устройств callee ведёт разговор: caller
+    получает client_id ответившей вкладки и дальше шлёт SDP/ICE только ей, а
+    остальные устройства получают call.taken и гасят карточку входящего.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
@@ -331,10 +354,29 @@ async def accept_call(req: Request, call_id: int):
         )
     )
 
-    # Уведомляем caller.
+    client_id = payload.client_id if payload else None
+
+    # Уведомляем caller — вместе с тем, какая вкладка callee сняла трубку.
     await env.apps.chat.chat_manager.send_to_user(
         caller_id,
-        {"type": "call.accepted", "call_id": call_id},
+        {
+            "type": "call.accepted",
+            "call_id": call_id,
+            "callee_client_id": client_id,
+        },
+    )
+
+    # Остальным устройствам callee: трубку сняли не здесь. Они гасят карточку
+    # входящего и, главное, не отвечают на offer своим SDP. Шлём тому же
+    # пользователю — сообщение получат все его сокеты, включая ответивший;
+    # он узнаёт себя по client_id и не реагирует.
+    await env.apps.chat.chat_manager.send_to_user(
+        user_id,
+        {
+            "type": "call.taken",
+            "call_id": call_id,
+            "client_id": client_id,
+        },
     )
 
     return {"ok": True}
