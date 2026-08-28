@@ -56,6 +56,18 @@ const STATUS_COLOR: Record<CheckStatus, string> = {
 /** Результаты проверки без того, что берётся из хуков. */
 type ProbeState = Omit<TurnCheckInput, 't' | 'config'>;
 
+/**
+ * Команды длинные (STUN-проба — целая строка кода), а переносить их нельзя:
+ * скопированный кусок должен вставляться в терминал целиком и работать.
+ * Поэтому не перенос, а прокрутка внутри блока — страница при этом не едет
+ * вбок (см. maxWidth: '100%').
+ */
+const SCROLLABLE = {
+  overflowX: 'auto' as const,
+  whiteSpace: 'pre' as const,
+  maxWidth: '100%',
+};
+
 function CheckRow({ check }: { check: TurnCheck }) {
   const Icon = STATUS_ICON[check.status];
   const color = STATUS_COLOR[check.status];
@@ -77,16 +89,16 @@ function CheckRow({ check }: { check: TurnCheck }) {
             {check.fix}
           </Text>
         )}
-        {check.command && <Code block>{check.command}</Code>}
+        {check.command && <Code block style={SCROLLABLE}>{check.command}</Code>}
         {check.diagnose && (
-          <Group gap={6} align="flex-start" wrap="nowrap">
-            <Text size="xs" c="dimmed" style={{ whiteSpace: 'nowrap' }}>
-              {'посмотреть руками:'}
+          <Stack gap={2}>
+            <Text size="xs" c="dimmed">
+              посмотреть руками:
             </Text>
-            <Code block style={{ flex: 1, minWidth: 0 }}>
+            <Code block style={SCROLLABLE}>
               {check.diagnose}
             </Code>
-          </Group>
+          </Stack>
         )}
       </Stack>
     </Group>
@@ -173,7 +185,7 @@ export function TurnSettingsPage() {
   };
 
   return (
-    <Stack p="md" gap="md" maw={900}>
+    <Stack p="md" gap="md" maw={900} mx="auto" w="100%">
       <Group gap="xs">
         <IconRouter size={22} />
         <Title order={3}>{t('turn.title', 'Релей звонков (TURN)')}</Title>
