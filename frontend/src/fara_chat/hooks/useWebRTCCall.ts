@@ -46,11 +46,11 @@ interface CallSession {
 
 // Причины завершения — для UI-сообщения юзеру.
 export type EndReason =
-  | 'hangup'         // кто-то сам положил трубку
-  | 'rejected'       // callee отклонил invite
-  | 'timeout'        // callee не ответил в отведённое время
-  | 'offline'        // callee офлайн (ответ /calls/start с delivered=false)
-  | 'failed'         // ошибка WebRTC или сеть
+  | 'hangup' // кто-то сам положил трубку
+  | 'rejected' // callee отклонил invite
+  | 'timeout' // callee не ответил в отведённое время
+  | 'offline' // callee офлайн (ответ /calls/start с delivered=false)
+  | 'failed' // ошибка WebRTC или сеть
   | 'unknown';
 
 export interface UseWebRTCCallResult {
@@ -77,9 +77,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
   // Токен нужен в Authorization: Bearer ... для всех HTTP-запросов.
   // Куки идут через credentials: 'include', но бэк требует ОБЕ формы
   // (double-token pattern).
-  const authToken = useSelector(
-    (s: RootState) => s.auth.session?.token ?? '',
-  );
+  const authToken = useSelector((s: RootState) => s.auth.session?.token ?? '');
   const authTokenRef = useRef(authToken);
   useEffect(() => {
     authTokenRef.current = authToken;
@@ -169,6 +167,12 @@ export function useWebRTCCall(): UseWebRTCCallResult {
    */
   const createPeerConnection = useCallback(
     (callId: number, toUserId: number) => {
+      // Прежнее соединение здесь НЕ закрываем, хотя перетирать ссылку и
+      // оставлять его жить — некрасиво. Пробовали закрывать: если сигналинг
+      // продублировался (два устройства пользователя, повтор по шине),
+      // второе создание убивало соединение, к которому вот-вот применят
+      // пришедший answer, и звонок падал с InvalidStateError сразу после
+      // ответа собеседника. Чинить надо на уровне дублей, а не здесь.
       const pc = new RTCPeerConnection(iceConfigRef.current);
 
       pc.onicecandidate = event => {
@@ -184,9 +188,26 @@ export function useWebRTCCall(): UseWebRTCCallResult {
       };
 
       pc.ontrack = event => {
+        // Событие от уже брошенного соединения писать в общий элемент нельзя:
+        // <audio> один на весь хук, и опоздавший ontrack отвязал бы живой
+        // поток от динамика.
+        if (pcRef.current && pcRef.current !== pc) return;
+
+        // streams[0] может не прийти, если в удалённом SDP нет msid — тогда
+        // собираем поток из самого трека. Без этого srcObject молча получал
+        // бы undefined → null, то есть тишину без единой ошибки.
+        const stream = event.streams[0] || new MediaStream([event.track]);
         const audio = ensureRemoteAudio();
-        // event.streams[0] — готовый MediaStream, просто навешиваем.
-        audio.srcObject = event.streams[0];
+        audio.srcObject = stream;
+
+        // play() обязателен, одного autoplay мало. У ЗВОНЯЩЕГО этот момент
+        // отстоит от его клика на всё время дозвона (плюс бэкенд держит
+        // /calls/start до 3 секунд), вкладка к тому времени часто свёрнута —
+        // и политика автоплея гасит воспроизведение. Снаружи это неотличимо
+        // от «медиа не дошло»: соединение установлено, таймер идёт, звука нет.
+        void audio.play().catch(error => {
+          console.warn('[call] браузер не дал проиграть входящий звук', error);
+        });
       };
 
       pc.onconnectionstatechange = () => {
@@ -214,6 +235,20 @@ export function useWebRTCCall(): UseWebRTCCallResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [send, ensureRemoteAudio],
   );
+
+  /**
+   * Разблокировать динамик, пока мы внутри клика пользователя.
+   *
+   * Браузеры разрешают звук элементу, которому дали play() по жесту. Медиа
+   * приедет позже — к тому времени жеста уже не будет, особенно у звонящего:
+   * между его «Позвонить» и первым пакетом проходит весь дозвон. Отказ здесь
+   * ожидаем (источника ещё нет) и ни на что не влияет — важен сам факт
+   * вызова из обработчика клика.
+   */
+  const warmRemoteAudio = useCallback(() => {
+    const audio = ensureRemoteAudio();
+    void audio.play().catch(() => undefined);
+  }, [ensureRemoteAudio]);
 
   /** Захватить микрофон и добавить треки в pc. */
   const attachLocalMedia = useCallback(async (pc: RTCPeerConnection) => {
@@ -279,6 +314,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
         // Уже в звонке — игнорируем.
         return;
       }
+      warmRemoteAudio();
       setEndReason(null);
       setState('calling');
       try {
@@ -317,18 +353,16 @@ export function useWebRTCCall(): UseWebRTCCallResult {
         finishCall('failed');
       }
     },
-    [state, finishCall, apiCall],
+    [state, finishCall, apiCall, warmRemoteAudio],
   );
 
   const acceptCall = useCallback(async () => {
     if (state !== 'incoming' || !session) return;
+    warmRemoteAudio();
     try {
-      const res = await apiCall(
-        `/calls/${session.callId}/accept`,
-        {
-          method: 'POST',
-        },
-      );
+      const res = await apiCall(`/calls/${session.callId}/accept`, {
+        method: 'POST',
+      });
       if (!res.ok) {
         finishCall('failed');
         return;
@@ -340,7 +374,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
       console.error('acceptCall failed', err);
       finishCall('failed');
     }
-  }, [state, session, finishCall, apiCall]);
+  }, [state, session, finishCall, apiCall, warmRemoteAudio]);
 
   const rejectCall = useCallback(async () => {
     if (!session) return;
@@ -435,9 +469,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
           try {
             const pc = createPeerConnection(session.callId, session.peer.id);
             await attachLocalMedia(pc);
-            await pc.setRemoteDescription(
-              new RTCSessionDescription(msg.sdp),
-            );
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
             // Применяем буферизованные ICE.
             for (const c of pendingRemoteIceRef.current) {
               try {
@@ -469,9 +501,7 @@ export function useWebRTCCall(): UseWebRTCCallResult {
           const pc = pcRef.current;
           if (!pc) return;
           try {
-            await pc.setRemoteDescription(
-              new RTCSessionDescription(msg.sdp),
-            );
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
             for (const c of pendingRemoteIceRef.current) {
               try {
                 await pc.addIceCandidate(c);
