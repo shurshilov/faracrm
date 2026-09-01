@@ -37,7 +37,7 @@ async def wired_env(app, db_pool):
     same wiring test_incoming_pipeline.py relies on. Connector.create reaches
     ``env`` (the module-global one) for chat_external_account / chat_folder, so
     bind the Postgres service pool at the class level to the test pool."""
-    DotormDatabasesPostgresService.fara = db_pool
+    DotormDatabasesPostgresService().set_pool(db_pool)
     return app.state.env
 
 

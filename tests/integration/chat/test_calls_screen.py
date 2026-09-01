@@ -34,7 +34,7 @@ from tests.conftest import auto
 async def wired_env(app, db_pool):
     """Тот же wiring, что в остальных chat-тестах: модельные внутренности
     ходят в env.apps.db.get_transaction() модуль-глобального env."""
-    DotormDatabasesPostgresService.fara = db_pool
+    DotormDatabasesPostgresService().set_pool(db_pool)
     return app.state.env
 
 

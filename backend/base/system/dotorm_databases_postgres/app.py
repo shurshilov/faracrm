@@ -1,5 +1,6 @@
 """PostgreSQL database service — pool management and model binding."""
 
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 import asyncpg
@@ -29,6 +30,17 @@ if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Settings, Models
 
 
+class DatabaseAlias(StrEnum):
+    """Логические имена подключений — по ним адресуются пулы и модели.
+
+    Физическое имя базы задаётся только в настройках:
+    dotorm_databases_postgres__<имя подключения>__database. Поэтому смена
+    базы — правка окружения, а не кода.
+    """
+
+    MAIN = "fara"
+
+
 class DotormDatabasesPostgresService(Service):
     """
     Паттерн фасад, данный класс обьединяет пул и транзакции.
@@ -47,12 +59,15 @@ class DotormDatabasesPostgresService(Service):
         "service": True,
     }
 
-    # TODO: dynamyc
-    fara: asyncpg.Pool
+    def get_pool(self, alias: str = DatabaseAlias.MAIN) -> asyncpg.Pool:
+        """Пул по имени подключения: они кладутся setattr'ом при старте."""
+        return getattr(self, alias)
 
-    def __init__(self, default_database="fara") -> None:
-        super().__init__()
-        self.default_database = default_database
+    def set_pool(
+        self, pool: asyncpg.Pool, alias: str = DatabaseAlias.MAIN
+    ) -> None:
+        """Привязать готовый пул к подключению — нужно тестам."""
+        setattr(self, alias, pool)
 
     async def create_pools(
         self,
@@ -62,7 +77,7 @@ class DotormDatabasesPostgresService(Service):
         models_list = models._get_models()
         # установить базу данных по умолчанию
         for model in models_list:
-            model.__database__ = self.default_database
+            model.__database__ = DatabaseAlias.MAIN
 
         if settings.dotorm_databases_postgres:
 
@@ -106,7 +121,7 @@ class DotormDatabasesPostgresService(Service):
                         [
                             model
                             for model in models_list
-                            if model.__database__ == pool_settings.database
+                            if model.__database__ == db_name
                         ]
                     )
 
@@ -136,7 +151,7 @@ class DotormDatabasesPostgresService(Service):
         Returns:
             db session from pool without transaction
         """
-        db_pool = self.fara
+        db_pool = self.get_pool()
         db_session = NoTransactionSession(db_pool)
         return db_session
 
@@ -145,7 +160,7 @@ class DotormDatabasesPostgresService(Service):
         Returns:
             db session from pool with transaction, as context manager
         """
-        db_pool = self.fara
+        db_pool = self.get_pool()
         ContainerTransaction.default_pool = db_pool
         db_transaction = ContainerTransaction()
         return db_transaction
@@ -187,16 +202,14 @@ class DotormDatabasesPostgresService(Service):
         await self.create_pools(settings, models)
         # сразу присваиваем пул по умолчанию, чтобы не передавать каждый раз
         # несмотря на то что пулов может быть несколько, конкретно в данном проекте
-        # подразумевается пул по умолчанию fara как наиболее часто используемый
-        NoTransactionSession.default_pool = self.fara
+        # подразумевается пул по умолчанию как наиболее часто используемый
+        NoTransactionSession.default_pool = self.get_pool()
 
         # Регистрируем глобальные обработчики ошибок
         self.handler_errors(app)
 
     async def shutdown(self, app):
         """Отключение сервиса"""
-        # assert isinstance(self.fara, asyncpg.Pool)
-        # await self.fara.close()
         for pool_name in self.__dict__:
             pool = getattr(self, pool_name)
             if isinstance(pool, asyncpg.Pool):

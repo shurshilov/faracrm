@@ -108,7 +108,7 @@ class ChatApp(Service):
             )
         else:
             # PostgreSQL — нужен asyncpg pool
-            pool = env.apps.db.fara
+            pool = env.apps.db.get_pool()
             if not pool:
                 logger.error(
                     "ChatApp: no asyncpg pool — pub/sub will not work"

@@ -66,12 +66,12 @@ async def wired_env(app, db_pool):
 
     Model internals reached from the pipeline — e.g.
     chat.get_or_create_partner_chat — call `env.apps.db.get_transaction()` on
-    the *module-global* env, whose Postgres service never gets its `.fara` pool
+    the *module-global* env, whose Postgres service never gets its pool
     wired in the test harness (only model `_pool` is bound). get_transaction()
-    reads `self.fara`, so bind it at the service-class level to the session test
+    reads the pool by connection name, so bind it at the service-class level to the session test
     pool — every db-service instance then transacts against the test database.
     """
-    DotormDatabasesPostgresService.fara = db_pool
+    DotormDatabasesPostgresService().set_pool(db_pool)
     env = app.state.env
 
     # Persisting attachment *content* needs a storage route. The app fixture

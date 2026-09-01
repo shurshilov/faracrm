@@ -89,12 +89,8 @@ class CronProcess:
             await self._shutdown()
 
     def _find_pool(self) -> "asyncpg.Pool | None":
-        """Находит asyncpg Pool из инициализированных сервисов."""
-        for svc in self.env.services_before:
-            pool = getattr(svc, "fara", None)
-            if isinstance(pool, asyncpg.Pool):
-                return pool
-        return None
+        """Пул основного подключения."""
+        return self.env.apps.db.get_pool()
 
     def _handle_signal(self) -> None:
         logger.info("Received shutdown signal")
