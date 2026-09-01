@@ -26,6 +26,20 @@
 
         def calculate_score(self) -> int:
             return self.priority * 10
+
+Вычисляемые (stored computed) поля тоже поддерживаются — поле объявляется
+с compute="_имя_метода", метод помечается @depends, как в обычной модели:
+
+    @extend(Lead)
+    class LeadScore:
+        score = Integer(default=0, compute="_compute_score")
+
+        @depends(
+            triggers=[Lead.stage_id],
+            prefetch=[(Lead.stage_id, "sequence")],
+        )
+        async def _compute_score(self):
+            self.score = (self.stage_id.sequence or 0) if self.stage_id else 0
 """
 
 from typing import (
@@ -155,14 +169,54 @@ class ExtensionRegistry:
             model_class._build_field_cache()
             log.debug("  Rebuilt field cache for %s", model_class.__name__)
 
+        # Пересобрать compute-кэш: @depends-методы и поля compute="...",
+        # пришедшие из @extend, иначе движку @depends о них неизвестно.
+        # Кэш строится один раз в DotModel.__init_subclass__ — то есть ДО
+        # применения расширений. Строго ПОСЛЕ _build_field_cache: список
+        # полей, которые пишет каждый compute-метод, определяется по
+        # объявлению compute=... в самих полях (_cache_all_fields).
+        #
+        # Таблицы триггеров (_depends_local_triggers / _depends_prefetch)
+        # строятся позже — в ModelsCore._build_table_mapping, уже после
+        # применения расширений, так что отдельного пересбора не требуют.
+        if hasattr(model_class, "_build_compute_cache"):
+            model_class._build_compute_cache()
+            log.debug("  Rebuilt compute cache for %s", model_class.__name__)
+
+        # Пересобрать query-builder: он получает СНИМОК словаря полей
+        # (DotModel.__init_subclass__), а _build_field_cache создаёт новый
+        # словарь — иначе SELECT/INSERT/UPDATE не знают о полях из @extend.
+        # На старте билдер пересоздаётся ещё раз (create_pools — там же
+        # проставляется настоящий диалект), но правильным он должен быть
+        # сразу после применения расширений, а не только после старта БД.
+        self._rebuild_builder(model_class)
+
         return model_class
+
+    @staticmethod
+    def _rebuild_builder(model_class: Type) -> None:
+        """Пересоздать _builder модели по актуальному набору полей."""
+        if "__table__" not in model_class.__dict__:
+            return
+
+        from backend.base.system.dotorm.dotorm.builder.builder import Builder
+
+        model_class._builder = Builder(
+            table=model_class.__table__,
+            fields=model_class.get_fields(),
+            dialect=model_class._dialect,
+        )
 
     def _apply_extension(self, model: Type, namespace: dict[str, Any]) -> None:
         """Применить namespace расширения к модели."""
         from backend.base.system.dotorm.dotorm.fields import Field, Selection
 
         for name, value in namespace.items():
-            if name.startswith("_"):
+            # Отбрасываем только dunder. Одинарное подчёркивание — обычное
+            # имя для compute-обработчиков (_compute_*) и приватных хелперов
+            # расширения; отбрасывать их нельзя. Сам namespace уже очищен от
+            # dunder'ов в декораторе extend(), проверка здесь — страховка.
+            if name.startswith("__"):
                 continue
 
             if isinstance(value, Field):

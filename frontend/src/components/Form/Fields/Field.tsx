@@ -20,6 +20,7 @@ import { FieldPolymorphicOne2many } from './FieldPolymorphicOne2many';
 import { FieldSelection } from './FieldSelection';
 import { FieldContacts } from '@/components/ContactsWidget';
 import { FieldColor } from './FieldColor';
+import { FieldProgress } from './FieldProgress';
 import { FieldX2mButton } from './FieldX2mButton';
 import {
   FieldPatternRoot,
@@ -66,6 +67,9 @@ export const FieldComponents: Record<string, React.FC<any>> = {
   FieldSelection,
   FieldContacts, // Кастомный виджет для контактов
   FieldColor,
+  // Прогресс-бар для процентных полей (widget="progress"), напр.
+  // вычисляемый progress лида/заказа по стадии.
+  FieldProgress,
   FieldX2mButton,
   // Конструкторы шаблонов имён папок маршрутов вложений (widget="patternRoot"
   // / widget="patternRecord"). Собирают шаблон из валидных тегов вместо

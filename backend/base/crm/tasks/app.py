@@ -84,22 +84,17 @@ class TasksApp(App):
             ],
         )
 
-        # Начальные стадии задач
-        for stage_data in INITIAL_TASK_STAGES:
-            existing = await env.models.task_stage.search(
-                filter=[("name", "=", stage_data["name"])],
-            )
-            if not existing:
+        # Начальные стадии и теги задач
+        existing = await env.models.task_stage.search(fields=["id"], limit=1)
+        if not existing:
+            for stage_data in INITIAL_TASK_STAGES:
                 await env.models.task_stage.create(
                     payload=TaskStage(**stage_data),
                 )
 
-        # Начальные теги
-        for tag_data in INITIAL_TASK_TAGS:
-            existing = await env.models.task_tag.search(
-                filter=[("name", "=", tag_data["name"])],
-            )
-            if not existing:
+        existing = await env.models.task_tag.search(fields=["id"], limit=1)
+        if not existing:
+            for tag_data in INITIAL_TASK_TAGS:
                 await env.models.task_tag.create(
                     payload=TaskTag(
                         name=tag_data["name"], color=tag_data["color"]

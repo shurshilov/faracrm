@@ -63,6 +63,16 @@ export function ViewFormSales(props: ViewFormProps) {
           <Field name="date_order" label="Дата заказа" />
           <Field name="user_id" label="Менеджер" />
         </FormRow>
+        {/* progress — вычисляемое поле (Sale._compute_progress по стадии),
+            только для чтения: обновляется через /onchange при смене стадии. */}
+        <FormRow cols={2}>
+          <Field
+            name="progress"
+            label="Прогресс"
+            widget="progress"
+            editable={false}
+          />
+        </FormRow>
       </FormSection>
 
       {/* Вкладки */}

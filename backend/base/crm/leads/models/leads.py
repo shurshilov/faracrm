@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 import logging
 
 from ...partners.models.contact import Contact
-from backend.base.system.dotorm.dotorm.decorators import hybridmethod
+from backend.base.system.dotorm.dotorm.decorators import depends, hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
@@ -29,6 +29,31 @@ from backend.base.crm.security.polymorphic_parent import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def _stage_progress(stage) -> int:
+    """Процент прохождения воронки по стадии (0–100).
+
+    Отдельного «процента» у стадии нет: её вес — это sequence, а 100 %
+    соответствует последней активной стадии. Так шкала подстраивается под
+    любой набор стадий, включая пользовательские. Лид без стадии — 0 %.
+    """
+    if stage is None:
+        return 0
+
+    sequence = int(getattr(stage, "sequence", 0) or 0)
+    if sequence <= 0:
+        return 0
+
+    last = await env.models.lead_stage.search(
+        filter=[("active", "=", True)],
+        fields=["sequence"],
+        sort="sequence",
+        order="DESC",
+        limit=1,
+    )
+    top = int(last[0].sequence or 0) if last else 0
+    return min(100, round(sequence * 100 / top)) if top > 0 else 0
 
 
 class Lead(AuditMixin, PolymorphicParentMixin):
@@ -100,6 +125,24 @@ class Lead(AuditMixin, PolymorphicParentMixin):
         relation_table_field="partner_id",
         description="Контакты",
     )
+
+    # Прогресс по воронке (0–100 %) — вычисляется из стадии.
+    progress: int = Integer(
+        string="Progress %",
+        default=0,
+        compute="_compute_progress",
+    )
+
+    @depends(triggers=[stage_id], prefetch=[(stage_id, "sequence")])
+    async def _compute_progress(self) -> None:
+        """Прогресс лида по стадии воронки.
+
+        stage_id со свежим sequence уже подгружен движком @depends
+        (prefetch), так что внутри остаётся только нормировка.
+        Пересчитывается и в форме: stage_id — триггер @depends, поэтому
+        попадает в get_onchange_fields() и уезжает в POST /onchange.
+        """
+        self.progress = await _stage_progress(self.stage_id)
 
     @hybridmethod
     async def update(

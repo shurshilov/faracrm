@@ -20,6 +20,7 @@ export const FieldColor = ({
 }: FieldColorProps) => {
   const form = useFormContext();
   const displayLabel = label ?? name;
+  const inputProps = form.getInputProps(name);
 
   return (
     <FieldWrapper
@@ -28,10 +29,14 @@ export const FieldColor = ({
       required={required}>
       <ColorInput
         {...props}
-        {...form.getInputProps(name)}
-        // Mantine ColorInput внутри делает value.trim() и падает на null.
-        // Перебиваем value после спреда: null/undefined → ''.
-        value={form.getValues()?.[name] ?? ''}
+        {...inputProps}
+        // Форма работает в mode: 'uncontrolled' — getInputProps отдаёт
+        // defaultValue, а не value. Прокинутый value делал ColorInput
+        // controlled: setFieldValue пишет в ref без ре-рендера, поэтому
+        // клик по квадрату (saturation/value) визуально не сохранялся —
+        // работал только ползунок оттенка. Оставляем поле uncontrolled и
+        // только защищаем от null (внутри ColorInput делается value.trim()).
+        defaultValue={inputProps.defaultValue ?? ''}
         key={form.key(name)}
         required={required}
         // Опционально: формат вывода (hex, rgb, rgba)

@@ -88,16 +88,16 @@ class SalesApp(App):
         await self._init_sale_rules(env)
 
     async def _init_sale_stages(self, env: "Environment"):
-        """Создаёт начальные стадии продаж."""
+        """Создаёт начальные стадии продаж"""
+
+        existing = await env.models.sale_stage.search(fields=["id"], limit=1)
+        if existing:
+            return
 
         for stage_data in INITIAL_SALE_STAGES:
-            existing = await env.models.sale_stage.search(
-                filter=[("name", "=", stage_data["name"])]
+            await env.models.sale_stage.create(
+                payload=SaleStage(**stage_data),
             )
-            if not existing:
-                await env.models.sale_stage.create(
-                    payload=SaleStage(**stage_data),
-                )
 
     async def _init_sale_roles(self, env: "Environment"):
         """Создаёт роли модуля продаж: user → manager → admin."""

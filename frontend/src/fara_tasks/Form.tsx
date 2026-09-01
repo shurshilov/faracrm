@@ -83,7 +83,13 @@ export function ViewFormTask(props: ViewFormProps) {
           <FormRow cols={3}>
             <Field name="planned_hours" label={t('fields.planned_hours')} />
             <Field name="effective_hours" label={t('fields.effective_hours')} />
-            <Field name="progress" label={t('fields.progress')} />
+            {/* Процент выполнения задачи ставит человек (в отличие от
+                вычисляемого progress лида/заказа) → ползунок. */}
+            <Field
+              name="progress"
+              label={t('fields.progress')}
+              widget="progress"
+            />
           </FormRow>
         </FormTab>
 

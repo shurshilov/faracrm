@@ -60,6 +60,16 @@ export function ViewFormLeads(props: ViewFormProps) {
           <Field name="stage_id" label="Стадия" />
           <Field name="user_id" label="Ответственный" />
         </FormRow>
+        {/* progress — вычисляемое поле (Lead._compute_progress по стадии),
+            только для чтения: обновляется через /onchange при смене стадии. */}
+        <FormRow cols={2}>
+          <Field
+            name="progress"
+            label="Прогресс"
+            widget="progress"
+            editable={false}
+          />
+        </FormRow>
       </FormSection>
 
       {/* Вкладки */}

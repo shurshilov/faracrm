@@ -77,12 +77,11 @@ class LeadsApp(App):
             ],
         )
 
-        # Создание начальных стадий лидов
-        for stage_data in INITIAL_LEAD_STAGES:
-            existing_stages = await env.models.lead_stage.search(
-                filter=[("name", "=", stage_data["name"])]
-            )
-            if not existing_stages:
+        existing_stages = await env.models.lead_stage.search(
+            fields=["id"], limit=1
+        )
+        if not existing_stages:
+            for stage_data in INITIAL_LEAD_STAGES:
                 await env.models.lead_stage.create(
                     payload=LeadStage(**stage_data),
                 )
