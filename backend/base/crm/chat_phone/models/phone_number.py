@@ -11,6 +11,7 @@
 
 import json
 import logging
+from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.fields import (
@@ -174,6 +175,74 @@ class PhoneNumber(AuditMixin, DotModel):
             limit=1,
         )
         return rows[0] if rows else None
+
+    # ==================== cron-точки телефонии ====================
+    # Реализация прямо здесь (методы модели), вызываются cron'ом по имени.
+    # Провайдер приходит в strategy_type из kwargs задачи; env — глобальный
+    # синглтон, как везде в коде.
+
+    @classmethod
+    async def _cron_connectors(cls, strategy_type):
+        """Активные коннекторы типа — как их грузит webhook-роутер
+        (contact_type_id нужен резолву клиента, иначе импорт не заведёт
+        партнёра)."""
+        return await env.models.chat_connector.search(
+            filter=[("type", "=", strategy_type), ("active", "=", True)],
+            fields_nested={
+                "contact_type_id": ["id", "name", "is_phone_format"]
+            },
+        )
+
+    @classmethod
+    async def cron_fetch_call_history(cls, strategy_type=None) -> dict:
+        """Cron: бэкофилл истории звонков за последнее окно — тихо (без карточек
+        и лидов): живой звонок ведёт webhook-поток, дубли гасит upsert по
+        uniqueid."""
+        total = 0
+        connectors = await cls._cron_connectors(strategy_type)
+        for connector in connectors:
+            strategy = connector.strategy
+            end = datetime.now() - timedelta(
+                minutes=strategy.HISTORY_WAIT_MINUTES
+            )
+            start = end - timedelta(minutes=strategy.HISTORY_WINDOW_MINUTES)
+            try:
+                result = await strategy.import_history(
+                    connector, start.astimezone(), end.astimezone(), env
+                )
+                total += result.get("imported", 0)
+            except Exception as e:  # noqa: BLE001
+                logger.error("[%s] cron history failed: %s", strategy_type, e)
+
+        logger.info(
+            "[%s] cron imported %s calls from %s connectors",
+            strategy_type,
+            total,
+            len(connectors),
+        )
+        return {"connectors": len(connectors), "calls": total}
+
+    @classmethod
+    async def cron_sync_numbers(cls, strategy_type=None) -> dict:
+        """Cron: периодическая синхронизация номеров (то же, что кнопка в форме)."""
+        total = 0
+        connectors = await cls._cron_connectors(strategy_type)
+        for connector in connectors:
+            try:
+                result = await connector.strategy.sync_numbers(connector, env)
+                total += (result.get("details") or {}).get("synced", 0)
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    "[%s] cron sync_numbers failed: %s", strategy_type, e
+                )
+
+        logger.info(
+            "[%s] cron synced numbers for %s connectors (%s lines)",
+            strategy_type,
+            len(connectors),
+            total,
+        )
+        return {"connectors": len(connectors), "lines": total}
 
     # ==================== синхронизация с провайдером ====================
 

@@ -508,6 +508,18 @@ class ChatConnector(AuditMixin, DotModel):
                     f"Failed to refresh token for {connector.id}: {result}"
                 )
 
+    @classmethod
+    async def cron_fetch_emails(cls) -> dict:
+        """Cron-точка: фетч входящей почты по активным email-коннекторам.
+
+        Обёртка над EmailStrategy.cron_fetch_emails — чтобы cron вызывал метод
+        модели (chat_connector), а не произвольный код. env берём из глобального
+        синглтона (как весь код). Ленивый импорт: против циклов на загрузке.
+        """
+        from backend.base.crm.chat_email.strategies import EmailStrategy
+
+        return await EmailStrategy.cron_fetch_emails(env)
+
     def generate_webhook_url(self, api_url: str) -> str:
         """
         Генерирует webhook URL для коннектора.

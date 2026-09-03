@@ -63,7 +63,8 @@ class ActivityApp(App):
         await CronJob.create_or_update(
             env=env,
             name="Activity: check deadlines",
-            code="await env.models.activity.check_deadlines()",
+            model_name="activity",
+            method_name="check_deadlines",
             interval_number=1,
             interval_type="minutes",
             active=True,

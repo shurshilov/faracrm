@@ -22,7 +22,6 @@ from typing import TYPE_CHECKING
 
 from backend.base.system.core.service import Service
 from backend.base.crm.security.acl_post_init_mixin import ACL
-from .models.cron_job import CronJob
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -31,20 +30,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-TEST_CREATE_USER_CODE = """
-# Создаём тестового пользователя
-user=env.models.user(
-    name=f"test_cron",
-    login=f"cron@test.local")
-user_id = await env.models.user.create(user)
+# TEST_CREATE_USER_CODE = """
+# # Создаём тестового пользователя
+# user=env.models.user(
+#     name=f"test_cron",
+#     login=f"cron@test.local")
+# user_id = await env.models.user.create(user)
 
-result = {
-    "action": "created",
-    "user_id": user_id,
-    "username": user.name,
-    "login": user.login,
-}
-"""
+# result = {
+#     "action": "created",
+#     "user_id": user_id,
+#     "username": user.name,
+#     "login": user.login,
+# }
+# """
 
 # Интервал проверки жизни subprocess (секунды)
 WATCHDOG_INTERVAL = 10
@@ -168,18 +167,23 @@ class CronApp(Service):
             logger.info("Cron subprocess stopped")
 
     async def post_init(self, app: "FastAPI"):
-        """Создание тестовой cron задачи."""
+        """Гасит устаревшие cron-задачи с кодом (исполнение кода отключено)."""
         await super().post_init(app)
         env = app.state.env
 
-        await CronJob.create_or_update(
-            env=env,
-            name="[TEST] Создать тестового пользователя",
-            code=TEST_CREATE_USER_CODE,
-            interval_number=1,
-            interval_type="hours",
-            active=False,
-            priority=99,
+        # Разово деактивируем ВСЕ задачи со старым кодом. Исполнение произвольного
+        # кода отключено (RCE) → работать они не могут, а воркер каждую минуту
+        # пытается их запустить и валит ошибку в лог. Штатные задачи к этому
+        # моменту переведены на «модель+метод» (create_or_update) и кода не
+        # содержат, поэтому под деактивацию не попадают. Гасим одним update_bulk.
+        jobs = await env.models.cron_job.search(
+            filter=[("active", "=", True)], fields=["id", "code"]
         )
-
-        logger.info("Cron test task created (inactive by default)")
+        code_job_ids = [job.id for job in jobs if (job.code or "").strip()]
+        if code_job_ids:
+            await env.models.cron_job.update_bulk(
+                code_job_ids, env.models.cron_job(active=False)
+            )
+            logger.info(
+                "Cron: disabled %s legacy code job(s)", len(code_job_ids)
+            )

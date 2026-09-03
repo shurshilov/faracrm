@@ -28,6 +28,7 @@ from backend.base.system.dotorm.dotorm.access import (
     set_access_session,
     clear_access_session,
 )
+from backend.base.system.core.exceptions.environment import FaraException
 from backend.base.crm.security.models.sessions import SystemSession
 from backend.base.crm.users.models.users import SYSTEM_USER_ID
 
@@ -35,6 +36,19 @@ if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
 logger = logging.getLogger("cron.jobs")
+
+
+_FORBIDDEN_CRON_METHODS: frozenset[str] = frozenset(
+    {
+        "create",
+        "create_bulk",
+        "update",
+        "update_bulk",
+        "delete",
+        "delete_bulk",
+        "sudo",
+    }
+)
 
 
 class CronJob(DotModel):
@@ -48,10 +62,13 @@ class CronJob(DotModel):
     name: str = Char(size=255, required=True, string="Название")
     active: bool = Boolean(default=True, string="Активна")
 
-    # Вариант 1: Код напрямую
+    # Вариант 1: Код напрямую.
+    # ВНИМАНИЕ: исполнение этого поля ОТКЛЮЧЕНО (exec = RCE). Поле оставлено в
+    # модели для обратной совместимости со старыми записями, но НЕ выполняется.
+    # См. execute() и закомментированный _execute_code.
     code: str = Text(string="Код (Python)")
 
-    # Вариант 2: Метод модели
+    # Вариант 2: Метод модели (единственный рабочий способ)
     model_name: str = Char(size=255, string="Модель")
     method_name: str | None = Char(size=255, string="Метод")
     args: str = Text(string="Аргументы (JSON)", default="[]")
@@ -212,37 +229,55 @@ class CronJob(DotModel):
         """
         set_access_session(SystemSession(user_id=SYSTEM_USER_ID))
         try:
-            if self.code:
-                return await self._execute_code(env)
+            # if self.code:
+            #     return await self._execute_code(env)
             if self.model_name and self.method_name:
                 return await self._execute_method(env)
             raise ValueError(
-                "Either 'code' or 'model_name'+'method_name' must be "
-                "specified"
+                "cron: требуется model_name + method_name "
+                "(выполнение произвольного кода отключено)"
             )
         finally:
             clear_access_session()
 
-    async def _execute_code(self, env: "Environment") -> Any:
-        """Выполняет Python код."""
-        local_vars = {
-            "env": env,
-            "datetime": datetime,
-            "timedelta": timedelta,
-            "json": json,
-            "result": {},
-        }
-
-        wrapped_code = f"""
-async def __cron_task__():
-    {self.code.replace(chr(10), chr(10) + '    ')}
-    return result
-"""
-        exec(compile(wrapped_code, f"<cron:{self.name}>", "exec"), local_vars)
-        return await local_vars["__cron_task__"]()
+    # async def _execute_code(self, env: "Environment") -> Any:
+    #     """Выполняет Python код."""
+    #     local_vars = {
+    #         "env": env,
+    #         "datetime": datetime,
+    #         "timedelta": timedelta,
+    #         "json": json,
+    #         "result": {},
+    #     }
+    #
+    #     wrapped_code = f'''
+    # async def __cron_task__():
+    #     {self.code}
+    #     return result
+    # '''
+    #     exec(compile(wrapped_code, f"<cron:{self.name}>", "exec"), local_vars)
+    #     return await local_vars["__cron_task__"]()
 
     async def _execute_method(self, env: "Environment") -> Any:
-        """Выполняет метод модели."""
+        """Выполняет метод модели.
+
+        Запрещены CRUD-примитивы (_FORBIDDEN_CRON_METHODS) и приватные методы
+        (имена с «_») — чтобы cron не сносил/не менял данные напрямую. Методы
+        берут env из глобального синглтона (как весь код); из задачи передаём
+        только её kwargs (например strategy_type у телефонии).
+        """
+        method_name = self.method_name or ""
+        if (
+            method_name.startswith("_")
+            or method_name in _FORBIDDEN_CRON_METHODS
+        ):
+            raise FaraException(
+                {
+                    "content": "CRON_METHOD_FORBIDDEN",
+                    "status_code": 403,
+                }
+            )
+
         model = getattr(env.models, self.model_name, None)
         if model is None:
             raise ValueError(f"Model '{self.model_name}' not found")
@@ -253,9 +288,8 @@ async def __cron_task__():
                 f"Method '{self.method_name}' not found in '{self.model_name}'"
             )
 
-        args = json.loads(self.args or "[]")
-        kwargs = json.loads(self.kwargs or "{}")
-        return await method(env, *args, **kwargs)
+        call_kwargs = json.loads(self.kwargs or "{}")
+        return await method(**call_kwargs)
 
     # ==================== Утилиты ====================
 
@@ -302,34 +336,26 @@ async def __cron_task__():
 
         if existing:
             job = existing[0]
-            # Обновляем ТОЛЬКО определение задачи (код/метод/интервал + kwargs
-            # вроде priority), но НЕ рантайм-состояние. active и nextcall в
-            # payload НЕ кладём → они не попадают в assigned_fields → update их
-            # не трогает, и значение из БД сохраняется.
-            #
-            # Почему так. Раньше здесь был полный job.update со всеми полями,
-            # включая active/nextcall. post_init зовёт create_or_update на
-            # КАЖДОМ старте, поэтому включённый в UI крон выключался обратно на
-            # active=False (это была исходная жалоба «письма не приходят»).
-            # «Лечение» — закомментировать update целиком — остановило и
-            # легитимный апдейт: интервал/код существующей задачи не обновлялись
-            # (это ловит test_update_existing_job: interval остаётся 1 вместо 5).
-            # Точечное обновление определения чинит и то, и другое.
-            # await job.update(
-            #     env.models.cron_job(
-            #         code=code,
-            #         model_name=model_name,
-            #         method_name=method_name,
-            #         interval_number=interval_number,
-            #         interval_type=interval_type,
-            #         **kwargs,
-            #     )
-            # )
+            # Штатную задачу в старой форме «code» переводим на «модель+метод»
+            # (НЕ гасим: это наши задачи, они должны работать и на уже
+            # существующих базах). Разово — только пока метода нет; иначе не
+            # трогаем, чтобы не сбрасывать настройки/включённость админа.
+            # Остальные code-задачи (мусор/кастом) гасит проход в CronApp.post_init.
+            if not (job.method_name or "").strip():
+                payload = CronJob(
+                    code="",
+                    model_name=model_name,
+                    method_name=method_name,
+                    active=active,
+                )
+                if "kwargs" in kwargs:
+                    payload.kwargs = kwargs["kwargs"]
+                await job.update(payload)
             return job
 
         cron_job_new = CronJob(
             name=name,
-            code=code,
+            code="",  # поле code не исполняется — штатные задачи идут методами
             model_name=model_name,
             method_name=method_name,
             interval_number=interval_number,

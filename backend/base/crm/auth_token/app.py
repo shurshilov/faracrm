@@ -91,7 +91,8 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         await env.models.cron_job.create_or_update(
             env=env,
             name="Auth: deactivate expired sessions",
-            code=("result = await env.models.session.cron_expire_sessions()"),
+            model_name="session",
+            method_name="cron_expire_sessions",
             interval_number=1,
             interval_type="hours",
             active=True,

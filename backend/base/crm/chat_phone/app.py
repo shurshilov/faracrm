@@ -46,26 +46,20 @@ async def register_phone_crons(
     По умолчанию НЕАКТИВНЫ — включаются вручную в списке cron-задач.
     """
     for suffix, func, interval_number, interval_type in PHONE_CRONS:
-        code = (
-            f"\nfrom backend.base.crm.chat_phone.cron import {func}\n"
-            f'result = await {func}(env, "{strategy_type}")\n'
-        )
-        job = await env.models.cron_job.create_or_update(
+        # cron вызывает метод модели phone_number (не произвольный код).
+        # Провайдер передаётся в kwargs задачи (strategy_type). Определение
+        # (метод/kwargs) синхронизируется create_or_update и на старых базах.
+        await env.models.cron_job.create_or_update(
             env=env,
             name=f"{label}: {suffix}",
-            code=code,
+            model_name="phone_number",
+            method_name=f"cron_{func}",
+            kwargs=json.dumps({"strategy_type": strategy_type}),
             interval_number=interval_number,
             interval_type=interval_type,
             active=False,
             priority=20,
         )
-        # create_or_update существующую задачу НЕ обновляет (там намеренно не
-        # трогают рантайм-состояние), а код задачи хранится в БД и исполняется
-        # оттуда. После переезда кронов на chat_phone.cron в старых базах остался
-        # бы вызов удалённого метода → AttributeError на каждом тике. Правим
-        # ТОЛЬКО код: active/nextcall не трогаем, иначе включённый крон выключится.
-        if job and job.code != code:
-            await job.update(env.models.cron_job(code=code))
 
 
 class ChatPhoneApp(App):

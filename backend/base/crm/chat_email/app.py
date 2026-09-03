@@ -46,10 +46,8 @@ class ChatEmailApp(App):
         await env.models.cron_job.create_or_update(
             env=env,
             name="Email: Fetch new messages",
-            code="""
-from backend.base.crm.chat_email.strategies import EmailStrategy
-result = await EmailStrategy.cron_fetch_emails(env)
-""",
+            model_name="chat_connector",
+            method_name="cron_fetch_emails",
             interval_number=5,
             interval_type="minutes",
             active=False,  # По умолчанию выключен

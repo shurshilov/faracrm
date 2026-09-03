@@ -82,14 +82,16 @@ export function ViewFormCronJob(props: ViewFormProps) {
       </FormSection>
 
       {/* Вкладки */}
-      <FormTabs defaultTab="code">
-        {/* Код */}
+      <FormTabs defaultTab="method">
+        {/* Код — ОТКЛЮЧЕНО: исполнение произвольного кода = RCE.
+            Оставлено закомментированным намеренно; задачи задаются методом.
         <FormTab
           name="code"
           label={t('cron:sections.code')}
           icon={<IconCode size={16} />}>
           <Field name="code" />
         </FormTab>
+        */}
 
         {/* Метод модели */}
         <FormTab
