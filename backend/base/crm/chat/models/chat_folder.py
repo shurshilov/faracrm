@@ -129,12 +129,17 @@ class ChatFolder(AuditMixin, DotModel):
         )
 
 
-# Встроенные глобальные папки (user_id IS NULL). Домены — обычные над chat.
+# Встроенные глобальные папки. user_id=None задан ЯВНО: иначе create()
+# подставит default поля — текущего пользователя сессии (в post_init это
+# системный), папка перестанет быть глобальной, и проверка «уже есть?» выше
+# (user_id IS NULL) будет сеять её заново при каждом старте.
+# Домены — обычные над chat.
 # ВНУТРЕННИЕ папки фильтруют is_internal=true: без этого условия внешние
 # (клиентские) чаты — chat_type='group', is_internal=false — попадали и во
 # внутренние «Все»/«Группы» (они уже показаны в секции «Внешние»).
 DEFAULT_GLOBAL_FOLDERS = [
     ChatFolder(
+        user_id=None,
         kind="all",
         name="Все",
         icon="all",
@@ -142,6 +147,7 @@ DEFAULT_GLOBAL_FOLDERS = [
         sequence=0,
     ),
     ChatFolder(
+        user_id=None,
         kind="direct",
         name="Личные",
         icon="direct",
@@ -149,6 +155,7 @@ DEFAULT_GLOBAL_FOLDERS = [
         sequence=10,
     ),
     ChatFolder(
+        user_id=None,
         kind="group",
         name="Группы",
         icon="group",
@@ -164,6 +171,7 @@ DEFAULT_GLOBAL_FOLDERS = [
     #                    команды) — team-scoped обзор;
     #   - external_mine: is_internal=false + только где я участник.
     ChatFolder(
+        user_id=None,
         kind="external_all",
         name="Все",
         icon="external_all",
@@ -171,6 +179,7 @@ DEFAULT_GLOBAL_FOLDERS = [
         sequence=30,
     ),
     ChatFolder(
+        user_id=None,
         kind="external_mine",
         name="Мои",
         icon="external_mine",

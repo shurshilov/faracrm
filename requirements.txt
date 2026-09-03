@@ -1,21 +1,21 @@
 aiofiles==25.1.0
 aioimaplib==2.0.1
-aiomysql==0.2.0
-aiosmtplib==5.1.0
+aiomysql==0.3.2
+aiosmtplib==5.1.2
 asyncpg==0.31.0
 docxtpl==0.20.2
-fastapi==0.136.0
-httptools==0.7.1
+fastapi==0.141.1
+httptools==0.8.0
 httpx==0.28.1
 phonenumbers==9.0.37
 Pillow==12.1.0
-pydantic==2.13.2
-pydantic-settings==2.13.1
+pydantic==2.13.5
+pydantic-settings==2.15.0
 python-dotenv==1.2.1
 pytz==2025.2
 pywebpush==2.3.0
 PyYAML==6.0.1
-uvicorn==0.40.0
+uvicorn==0.52.4
 uvloop==0.22.1; sys_platform != 'win32'
-websockets==16.0
+websockets==17.1
 

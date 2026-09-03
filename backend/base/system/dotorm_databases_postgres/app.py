@@ -1,5 +1,8 @@
 """PostgreSQL database service — pool management and model binding."""
 
+import asyncio
+import logging
+from contextlib import asynccontextmanager
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -28,6 +31,11 @@ from backend.base.system.dotorm.dotorm.databases.abstract.types import (
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Settings, Models
+
+log = logging.getLogger(__name__)
+
+# Пауза между попытками взять занятый advisory-лок (см. advisory_lock).
+ADVISORY_LOCK_POLL_SECONDS = 0.5
 
 
 class DatabaseAlias(StrEnum):
@@ -68,6 +76,48 @@ class DotormDatabasesPostgresService(Service):
     ) -> None:
         """Привязать готовый пул к подключению — нужно тестам."""
         setattr(self, alias, pool)
+
+    @asynccontextmanager
+    async def advisory_lock(
+        self, lock_id: int, alias: str = DatabaseAlias.MAIN
+    ):
+        """
+        Межпроцессная блокировка на время блока — session-level advisory
+        lock Postgres. Нужна там, где несколько воркеров (WEB_WORKERS)
+        выполняют один и тот же код «проверил — создал» на старте: лок
+        пускает их по одному, и следующий заходит уже на готовые данные.
+
+        Лок держится на ВЫДЕЛЕННОМ соединении из пула: session-level лок
+        принадлежит соединению, а какие соединения возьмёт ORM внутри
+        блока — не наше дело. Транзакция внутри блока не открывается,
+        поэтому ошибка одного шага не отравляет остальные (в отличие от
+        xact-лока на DDL в dotorm/databases/postgres/pool.py).
+
+        Ждём опросом через pg_try_advisory_lock, а не блокирующим
+        pg_advisory_lock: тот упёрся бы в command_timeout пула (60 с),
+        а первый воркер на пустой базе сеет данные дольше, чем хочется
+        закладывать в таймаут одного запроса.
+        """
+        pool = self.get_pool(alias)
+        conn = await pool.acquire()
+        try:
+            waiting = False
+            while not await conn.fetchval(
+                "SELECT pg_try_advisory_lock($1)", lock_id
+            ):
+                if not waiting:
+                    waiting = True
+                    log.info(
+                        "Advisory lock %#x занят — ждём другой воркер",
+                        lock_id,
+                    )
+                await asyncio.sleep(ADVISORY_LOCK_POLL_SECONDS)
+            try:
+                yield
+            finally:
+                await conn.execute("SELECT pg_advisory_unlock($1)", lock_id)
+        finally:
+            await pool.release(conn)
 
     async def create_pools(
         self,

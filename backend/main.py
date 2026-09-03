@@ -10,7 +10,7 @@ from starlette.status import (
     HTTP_401_UNAUTHORIZED,
     HTTP_403_FORBIDDEN,
     HTTP_404_NOT_FOUND,
-    HTTP_422_UNPROCESSABLE_ENTITY,
+    HTTP_422_UNPROCESSABLE_CONTENT,
     HTTP_500_INTERNAL_SERVER_ERROR,
 )
 
@@ -49,7 +49,7 @@ app = FastAPI(
         HTTP_404_NOT_FOUND: {"description": "запись не найдена"},
         HTTP_401_UNAUTHORIZED: {"description": "ошибка аутентификации"},
         HTTP_403_FORBIDDEN: {"description": "ошибка доступа"},
-        HTTP_422_UNPROCESSABLE_ENTITY: {"description": "ошибка валидации"},
+        HTTP_422_UNPROCESSABLE_CONTENT: {"description": "ошибка валидации"},
         HTTP_500_INTERNAL_SERVER_ERROR: {"description": "ошибка сервера"},
     },
 )

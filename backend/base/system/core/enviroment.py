@@ -13,6 +13,11 @@ if TYPE_CHECKING:
 from .exceptions import environment
 from .service import Service
 
+# Advisory-лок сидеров post_init (см. start_post_init). Ключ отличается от
+# DDL_LOCK_ID (dotorm/databases/postgres/pool.py): там сериализуется схема,
+# здесь — данные.
+POST_INIT_LOCK_ID = 0xFA4A5EED
+
 
 class Environment:
     """
@@ -156,22 +161,23 @@ class Environment:
             name="static",
         )
 
-        # Устанавливаем системную сессию для post_init операций
-        set_access_session(SystemSession(user_id=SYSTEM_USER_ID))
+        async with self.apps.db.advisory_lock(POST_INIT_LOCK_ID):
+            # Устанавливаем системную сессию для post_init операций
+            set_access_session(SystemSession(user_id=SYSTEM_USER_ID))
 
-        try:
-            # Выполняем post_init всех приложений
-            for service in self.apps.get_list():
-                if service.info.get("post_init"):
-                    await service.post_init(app)
-            from backend.base.system.core.system_settings import (
-                SystemSettings,
-            )
+            try:
+                # Выполняем post_init всех приложений
+                for service in self.apps.get_list():
+                    if service.info.get("post_init"):
+                        await service.post_init(app)
+                from backend.base.system.core.system_settings import (
+                    SystemSettings,
+                )
 
-            await SystemSettings.warm_cache()
-        finally:
-            # Очищаем системную сессию после инициализации
-            clear_access_session()
+                await SystemSettings.warm_cache()
+            finally:
+                # Очищаем системную сессию после инициализации
+                clear_access_session()
 
     def add_handlers_errors(self, app_server: FastAPI):
         async def catch_exception_handler_500(
