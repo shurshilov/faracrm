@@ -43,23 +43,32 @@ export function mergeFilters(
   return groups;
 }
 
+/**
+ * X2m-префильтр «показать связанные» из location.state.initialFilter
+ * (его кладёт FieldX2mButton; кнопка «К списку» на форме возвращает его
+ * обратно, см. RecordNav). undefined — префильтра нет.
+ */
+export function readInitialFilter(state: unknown): FilterExpression | undefined {
+  const raw = (state as { initialFilter?: unknown } | null)?.initialFilter;
+  return Array.isArray(raw) ? (raw as FilterExpression) : undefined;
+}
+
 export function useFilteredSearchQuery(
   params: GetListParams,
   options?: Parameters<typeof useSearchQuery>[1],
 ) {
   const contextFilters = useFilters();
-  // X2m-навигация «показать связанные» (FieldX2mButton) передаёт префильтр
-  // через location.state.initialFilter. Раньше его читал только <List> —
-  // теперь здесь, поэтому ВСЕ вью (list/kanban/gantt) его уважают.
+  // X2m-префильтр раньше читал только <List> — теперь здесь, поэтому ВСЕ
+  // вью (list/kanban/gantt) его уважают.
   const location = useLocation();
-  const stateFilter = useMemo<FilterExpression>(() => {
-    const raw = (location.state as { initialFilter?: FilterExpression } | null)
-      ?.initialFilter;
-    return Array.isArray(raw) ? raw : [];
-  }, [location.state]);
   const filter = useMemo(
-    () => mergeFilters(params.filter, stateFilter, contextFilters),
-    [params.filter, stateFilter, contextFilters],
+    () =>
+      mergeFilters(
+        params.filter,
+        readInitialFilter(location.state),
+        contextFilters,
+      ),
+    [params.filter, location.state, contextFilters],
   );
   return useSearchQuery({ ...params, filter }, options);
 }

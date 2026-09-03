@@ -76,6 +76,12 @@
     "callEvents": "Events",
     "callSources": "Sources"
   },
+  "recordNav": {
+    "backToList": "Back to list",
+    "prev": "Previous record",
+    "next": "Next record",
+    "position": "{{index}} of {{total}}"
+  },
   "viewSwitcher": {
     "list": "List",
     "kanban": "Kanban",

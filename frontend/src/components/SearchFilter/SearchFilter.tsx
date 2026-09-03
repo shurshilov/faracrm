@@ -22,13 +22,17 @@ import {
   FilterTriplet,
   isTextFieldType,
 } from './types';
+import { SearchUiState, searchUiKey } from './searchUiState';
+import {
+  loadViewState,
+  saveViewState,
+} from '@/components/ViewWrapper/viewStateStore';
 import { useGetFieldsQuery } from '@/services/api/crudApi';
 
 export function SearchFilter({
   model,
   onFiltersChange,
   presetFilters = [],
-  initialFilters = [],
   showQuickSearch = true,
   quickSearchField,
 }: SearchFilterProps) {
@@ -67,9 +71,19 @@ export function SearchFilter({
     return textField?.name || 'name';
   }, [fields, quickSearchField]);
 
+  // Снимок состояния строки поиска этой модели (см. searchUiState.ts).
+  // Непустой, когда к списку ВОЗВРАЩАЮТСЯ (кнопка «К списку» на форме,
+  // браузерное «назад») или панель поиска открывают повторно; при новом
+  // заходе <ViewWrapper> сбрасывает его ещё до нашего монтирования.
+  const [restored] = useState(() =>
+    loadViewState<SearchUiState>(searchUiKey(model)),
+  );
+
   // Состояние UI
   const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
-  const [quickSearchValue, setQuickSearchValue] = useState('');
+  const [quickSearchValue, setQuickSearchValue] = useState(
+    restored?.quickSearch ?? '',
+  );
   const [debouncedSearch] = useDebouncedValue(quickSearchValue, 300);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +92,7 @@ export function SearchFilter({
   const {
     activeFilters,
     appliedSavedFilters,
+    dismissedDefaults,
     hasFilters,
     addFilters,
     removeFilter,
@@ -96,9 +111,27 @@ export function SearchFilter({
   } = useSearchFilter({
     model,
     fields,
-    initialFilters,
+    initialState: restored,
     onFiltersChange,
   });
+
+  // Запоминаем состояние при каждом изменении — чтобы вернуться к списку
+  // из формы с теми же чипсами и текстом поиска (см. viewStateStore).
+  useEffect(() => {
+    const snapshot: SearchUiState = {
+      activeFilters,
+      appliedSavedFilters,
+      dismissedDefaults: Array.from(dismissedDefaults),
+      quickSearch: quickSearchValue,
+    };
+    saveViewState(searchUiKey(model), snapshot);
+  }, [
+    model,
+    activeFilters,
+    appliedSavedFilters,
+    dismissedDefaults,
+    quickSearchValue,
+  ]);
 
   // Применяем быстрый поиск при изменении debounced значения
   useEffect(() => {

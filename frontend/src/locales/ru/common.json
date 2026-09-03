@@ -76,6 +76,12 @@
     "callEvents": "События",
     "callSources": "Источники"
   },
+  "recordNav": {
+    "backToList": "К списку",
+    "prev": "Предыдущая запись",
+    "next": "Следующая запись",
+    "position": "{{index}} из {{total}}"
+  },
   "viewSwitcher": {
     "list": "Список",
     "kanban": "Канбан",

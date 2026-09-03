@@ -11,6 +11,7 @@ import {
   generateFilterId,
   formatFilterLabel,
 } from './types';
+import type { SearchUiState } from './searchUiState';
 import { FilterExpression, Triplet } from '@/services/api/crudTypes';
 import {
   useGetSavedFiltersQuery,
@@ -80,8 +81,34 @@ function resolvePlaceholder(value: any, userId: number | undefined): any {
 interface UseSearchFilterOptions {
   model: string;
   fields: FieldInfo[];
-  initialFilters?: FilterTriplet[];
+  /** Снимок UI-состояния для восстановления (возврат к списку из формы). */
+  initialState?: SearchUiState | null;
   onFiltersChange: (filters: FilterExpression) => void;
+}
+
+/**
+ * Сборка FilterExpression: сначала все триплеты из applied saved-фильтров,
+ * потом одиночные. Все соединяются через AND. Чистая функция — ей же
+ * <ViewWrapper> синхронно считает стартовый фильтр из восстановленного
+ * снимка, чтобы список сразу отрисовался отфильтрованным.
+ */
+export function buildFilterExpression(
+  saved: SavedFilter[],
+  singles: ActiveFilter[],
+): FilterExpression {
+  const result: FilterExpression = [];
+  const pushTriplet = (t: { field: string; operator: any; value: any }) => {
+    if (result.length > 0) result.push('and');
+    result.push([t.field, t.operator, t.value] as Triplet);
+  };
+  saved.forEach(sf => sf.filters.forEach(pushTriplet));
+  singles.forEach((f, index) => {
+    if (result.length > 0) {
+      result.push(index === 0 ? 'and' : (f.combineWithPrev ?? 'and'));
+    }
+    result.push([f.field, f.operator, f.value] as Triplet);
+  });
+  return result;
 }
 
 /**
@@ -124,18 +151,14 @@ function dtoToSavedFilter(
 export function useSearchFilter({
   model,
   fields,
-  initialFilters = [],
+  initialState,
   onFiltersChange,
 }: UseSearchFilterOptions) {
   // Активные фильтры (одиночные триплеты, добавленные через билдер).
-  const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>(() => {
-    return initialFilters.map((f, index) => ({
-      ...f,
-      id: generateFilterId(),
-      label: formatFilterLabel(f, fields),
-      combineWithPrev: index === 0 ? undefined : 'and',
-    }));
-  });
+  // Из снимка — при возврате к списку; подписи обновит эффект ниже.
+  const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>(
+    () => initialState?.activeFilters ?? [],
+  );
 
   // Применённые сохранённые фильтры. Хранятся отдельно от activeFilters,
   // чтобы в UI каждый показывался ОДНОЙ чипсой с именем (не разворачиваясь
@@ -143,7 +166,7 @@ export function useSearchFilter({
   // saved-фильтр. Для бэка обе очереди склеиваются через AND
   // (см. buildFilterExpression).
   const [appliedSavedFilters, setAppliedSavedFilters] = useState<SavedFilter[]>(
-    [],
+    () => initialState?.appliedSavedFilters ?? [],
   );
 
   // API для сохранённых фильтров. Запрашиваем БЕЗ параметра, чтобы
@@ -197,9 +220,10 @@ export function useSearchFilter({
   // рендеры savedFilters (RTK кеш отдаёт новый массив при инвалидации).
   // Если пользователь сам убрал default крестиком — он остался
   // в БД с is_default, но НЕ в applied; чтобы не возвращать его сразу,
-  // запоминаем «отменённые» по id (живёт только до перезагрузки страницы
+  // запоминаем «отменённые» по id (живёт до перезагрузки страницы; при
+  // возврате к списку из формы восстанавливается из снимка).
   const [dismissedDefaults, setDismissedDefaults] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set(initialState?.dismissedDefaults),
   );
   useEffect(() => {
     const defaults = savedFilters.filter(
@@ -215,32 +239,11 @@ export function useSearchFilter({
     });
   }, [savedFilters, dismissedDefaults]);
 
-  // Сборка FilterExpression: сначала все триплеты из applied saved-фильтров,
-  // потом одиночные. Все соединяются через AND.
-  const buildFilterExpression = useCallback(
-    (saved: SavedFilter[], singles: ActiveFilter[]): FilterExpression => {
-      const result: FilterExpression = [];
-      const pushTriplet = (t: { field: string; operator: any; value: any }) => {
-        if (result.length > 0) result.push('and');
-        result.push([t.field, t.operator, t.value] as Triplet);
-      };
-      saved.forEach(sf => sf.filters.forEach(pushTriplet));
-      singles.forEach((f, index) => {
-        if (result.length > 0) {
-          result.push(index === 0 ? 'and' : (f.combineWithPrev ?? 'and'));
-        }
-        result.push([f.field, f.operator, f.value] as Triplet);
-      });
-      return result;
-    },
-    [],
-  );
-
   // Уведомляем об изменении фильтров
   useEffect(() => {
     onFiltersChange(buildFilterExpression(appliedSavedFilters, activeFilters));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeFilters, appliedSavedFilters, buildFilterExpression]);
+  }, [activeFilters, appliedSavedFilters]);
 
   // Добавить фильтр
   const addFilter = useCallback(
@@ -447,6 +450,17 @@ export function useSearchFilter({
     (searchText: string, fieldName: string = 'name') => {
       console.log('quickSearch called:', { searchText, fieldName });
       setActiveFilters(prev => {
+        const current = prev.filter(
+          f => f.field === fieldName && f.operator === 'ilike',
+        );
+        // Уже в нужном состоянии (в т.ч. повторный вызов при монтировании
+        // с восстановленным текстом) — state не трогаем: иначе переизлучим
+        // те же фильтры новым массивом и сбросим страницу списка.
+        const unchanged = searchText.trim()
+          ? current.length === 1 && current[0].value === searchText
+          : current.length === 0;
+        if (unchanged) return prev;
+
         const filtered = prev.filter(
           f => !(f.field === fieldName && f.operator === 'ilike'),
         );
@@ -484,6 +498,7 @@ export function useSearchFilter({
   return {
     activeFilters,
     appliedSavedFilters,
+    dismissedDefaults,
     recentFilters,
     savedFilters,
     hasFilters,

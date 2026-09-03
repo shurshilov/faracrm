@@ -1,11 +1,15 @@
 import { Flex, Group, Text, ThemeIcon } from '@mantine/core';
-import { useNavigate } from 'react-router-dom';
 import { FaraRecord } from '@/services/api/crudTypes';
 import { ButtonUpdate } from './ButtonUpdate';
 import { ButtonCreate } from './ButtonCreate';
 import { useFormContext } from './FormContext';
 import { UseFormReturnType } from '@mantine/form';
 import { ViewSwitcher, ViewType } from '@/components/ViewSwitcher';
+import {
+  BackToListButton,
+  RecordPager,
+  useBackToList,
+} from '@/components/RecordNav';
 import { useCallback, useMemo, useState, useRef, ReactNode } from 'react';
 import { FormPanelsBadges, PanelType } from './Panels';
 import { IconCheck } from '@tabler/icons-react';
@@ -42,7 +46,7 @@ export const Toolbar = ({
 }) => {
   const { t } = useTranslation('common');
   const form = useFormContext();
-  const navigate = useNavigate();
+  const backToList = useBackToList(model);
   const [showSaved, setShowSaved] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,14 +69,16 @@ export const Toolbar = ({
     return ['list', 'form'];
   }, [model]);
 
+  // Переключение вида с формы: запоминаем выбранный вид и возвращаемся к
+  // нему с восстановлением состояния (фильтры, страница) — так же, как
+  // кнопка «К списку».
   const handleViewChange = useCallback(
     (newView: ViewType) => {
-      if (newView === 'list' || newView === 'kanban') {
-        localStorage.setItem(`viewType_${model}`, newView);
-        navigate(`/${model}`);
-      }
+      if (newView === 'form') return;
+      localStorage.setItem(`viewType_${model}`, newView);
+      backToList();
     },
-    [navigate, model],
+    [model, backToList],
   );
 
   // Не показываем ViewSwitcher если это модальная форма или вложенная форма
@@ -92,6 +98,16 @@ export const Toolbar = ({
       wrap="nowrap"
       px="xs">
       <Group gap="xs">
+        {/* Навигация по записям: «К списку» и пейджер по выборке, из
+            которой открыта форма (без контекста пейджер не рендерится).
+            Только у самостоятельной формы — не в попапе и не во вложенной. */}
+        {showViewSwitcher && (
+          <>
+            <BackToListButton model={model} />
+            <RecordPager />
+          </>
+        )}
+
         {form.isDirty() ? (
           !!isCreateForm ? (
             <ButtonCreate

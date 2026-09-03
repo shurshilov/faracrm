@@ -94,8 +94,6 @@ export interface SearchFilterProps {
   onFiltersChange: (filters: any[]) => void; // FilterExpression
   /** Предустановленные фильтры из кода */
   presetFilters?: PresetFilter[];
-  /** Начальные активные фильтры */
-  initialFilters?: FilterTriplet[];
   /** Показывать ли быстрый поиск */
   showQuickSearch?: boolean;
   /** Поле для быстрого поиска (по умолчанию 'name') */

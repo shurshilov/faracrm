@@ -16,7 +16,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   FaraRecord,
@@ -26,16 +26,33 @@ import {
 } from '@/services/api/crudTypes';
 import { useGetFieldsQuery } from '@/services/api/crudApi';
 import { useFilters } from '@/components/SearchFilter/FilterContext';
-import { useFilteredSearchQuery } from '@/components/SearchFilter/useFilteredSearchQuery';
+import {
+  readInitialFilter,
+  useFilteredSearchQuery,
+} from '@/components/SearchFilter/useFilteredSearchQuery';
 import { BooleanCell } from '@/components/ListCells';
+import { buildRecordNav, RecordNavState } from '@/components/RecordNav';
 import { Field } from './Field';
 import { Toolbar } from './Toolbar';
 import { ColumnsMenu } from './ColumnsMenu';
 import { useColumnConfig } from './useColumnConfig';
 import { useHeaderSlot } from '@/components/ViewWrapper/HeaderSlotContext';
+import {
+  loadViewState,
+  saveViewState,
+  useIsReturningToView,
+} from '@/components/ViewWrapper/viewStateStore';
 import listClasses from './List.module.css';
 
 const PAGE_SIZES = [10, 20, 40, 500, 1000, 2000];
+
+/** UI-состояние списка, восстанавливаемое при возврате из формы. */
+interface ListUiState<RecordType> {
+  page: number;
+  pageSize: number;
+  sort: DataTableSortStatus<RecordType>;
+}
+const listUiKey = (model: string) => `list:${model}`;
 
 interface ListProps<RecordType extends FaraRecord>
   extends Omit<GetListParams, 'fields' | 'sort'> {
@@ -61,6 +78,7 @@ export const List = <RecordType extends FaraRecord>({
   ...props
 }: ListProps<RecordType>) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Общий фильтр вью из FilterContext. Здесь он нужен только для сброса
   // страницы при его изменении (см. эффект ниже). В сам запрос его —
@@ -75,27 +93,46 @@ export const List = <RecordType extends FaraRecord>({
   //   propsFilter: props.filter,
   // });
 
-  // pagination
-  const [pageSize, setPageSize] = useState(PAGE_SIZES[1]);
-  const [page, setPage] = useState(1);
-  useEffect(() => {
-    if (page !== 1) setPage(1);
-  }, [pageSize]);
+  // Страница/размер/сортировка: при ВОЗВРАТЕ к списку («К списку» на форме,
+  // браузерное «назад») — из снимка, иначе с начала. Снимок обновляется при
+  // каждом изменении (эффект ниже), см. viewStateStore.
+  const isReturning = useIsReturningToView();
+  const [restored] = useState(() =>
+    isReturning
+      ? loadViewState<ListUiState<RecordType>>(listUiKey(props.model))
+      : null,
+  );
 
-  // Сбрасываем страницу при изменении фильтров
+  // pagination
+  const [pageSize, setPageSize] = useState(restored?.pageSize ?? PAGE_SIZES[1]);
+  const [page, setPage] = useState(restored?.page ?? 1);
+
+  // Сбрасываем страницу при РЕАЛЬНОМ изменении фильтров. Сравниваем по
+  // значению, а не по ссылке: SearchFilter переизлучает структурно тот же
+  // массив (обновление подписей чипсов после загрузки полей), а при
+  // возврате из формы восстановленная страница должна уцелеть.
+  const filtersKey = JSON.stringify(contextFilters);
+  const prevFiltersKey = useRef(filtersKey);
   useEffect(() => {
-    setPage(prev => (prev !== 1 ? 1 : prev));
-  }, [contextFilters]);
+    if (prevFiltersKey.current === filtersKey) return;
+    prevFiltersKey.current = filtersKey;
+    setPage(1);
+  }, [filtersKey]);
 
   const [selectedRecords, setSelectedRecords] = useState<RecordType[]>([]);
 
   // sort
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<RecordType>>(
-    {
+    restored?.sort ?? {
       columnAccessor: props.sort || 'id',
       direction: props.order || 'asc',
     },
   );
+
+  useEffect(() => {
+    const snapshot: ListUiState<RecordType> = { page, pageSize, sort: sortStatus };
+    saveViewState(listUiKey(props.model), snapshot);
+  }, [props.model, page, pageSize, sortStatus]);
 
   // Собираем поля для запроса, дефолтные видимые колонки и виртуальные
   const virtualColumns: Array<{
@@ -213,7 +250,7 @@ export const List = <RecordType extends FaraRecord>({
     new Set([...fieldsList, ...(knownFieldNames ? selectedColumns : [])]),
   );
 
-  const { data, refetch } = useFilteredSearchQuery({
+  const { data, refetch, originalArgs } = useFilteredSearchQuery({
     ...props,
     start: (page - 1) * pageSize,
     end: (page - 1) * pageSize + pageSize,
@@ -398,9 +435,26 @@ export const List = <RecordType extends FaraRecord>({
         storeColumnsKey={props.model}
         selectedRecords={selectedRecords}
         onSelectedRecordsChange={setSelectedRecords}
-        onRowClick={({ record }: { record: RecordType }) =>
-          navigate(`${record.id}`)
-        }
+        onRowClick={({
+          record,
+          index,
+        }: {
+          record: RecordType;
+          index: number;
+        }) => {
+          // Форме — контекст навигации по этой выборке: параметры запроса
+          // как ушли на бэк (originalArgs), позиция записи и total. По нему
+          // форма листает соседей и возвращается сюда (см. RecordNav).
+          const state: RecordNavState | undefined = originalArgs && {
+            recordNav: buildRecordNav(
+              originalArgs,
+              (page - 1) * pageSize + index,
+              data.total,
+              readInitialFilter(location.state),
+            ),
+          };
+          navigate(`${record.id}`, { state });
+        }}
         rowClassName={rowClassName as ((record: unknown) => string) | undefined}
         // pagination — показываем только если total > минимального pageSize,
         // иначе нет смысла (всё помещается на одну страницу).
@@ -411,7 +465,10 @@ export const List = <RecordType extends FaraRecord>({
               page,
               onPageChange: (p: number) => setPage(p),
               recordsPerPageOptions: PAGE_SIZES,
-              onRecordsPerPageChange: setPageSize,
+              onRecordsPerPageChange: (size: number) => {
+                setPageSize(size);
+                setPage(1);
+              },
             }
           : {}) as any)}
         // sort

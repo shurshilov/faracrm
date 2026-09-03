@@ -8,7 +8,7 @@ import {
   ComponentType,
 } from 'react';
 import { Group, Loader, Center, ActionIcon, Tooltip, Box } from '@mantine/core';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 import { ViewSwitcher, ViewType } from '@/components/ViewSwitcher';
@@ -18,7 +18,22 @@ import {
   FilterContext,
 } from '@/components/SearchFilter';
 import { useGetSavedFiltersQuery } from '@/components/SearchFilter/savedFiltersApi';
+import { buildFilterExpression } from '@/components/SearchFilter/useSearchFilter';
+import {
+  mergeFilters,
+  readInitialFilter,
+} from '@/components/SearchFilter/useFilteredSearchQuery';
+import {
+  SearchUiState,
+  searchUiKey,
+} from '@/components/SearchFilter/searchUiState';
+import { buildRecordNav, RecordNavState } from '@/components/RecordNav';
 import { HeaderSlotContext } from './HeaderSlotContext';
+import {
+  clearViewState,
+  loadViewState,
+  useIsReturningToView,
+} from './viewStateStore';
 import { useLazySearchQuery } from '@/services/api/crudApi';
 import { FilterExpression } from '@/services/api/crudTypes';
 import classes from './ViewWrapper.module.css';
@@ -43,12 +58,34 @@ export function ViewWrapper({
   hideSearch = false,
 }: ViewWrapperProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isReturning = useIsReturningToView();
+
+  // Снимок строки поиска — если к виду ВОЗВРАЩАЮТСЯ («К списку» на форме,
+  // браузерное «назад»). При новом заходе (меню) снимок прошлого визита
+  // сбрасываем прямо здесь, в инициализаторе: <SearchFilter> читает его в
+  // своём инициализаторе, т.е. раньше любого нашего эффекта. Из снимка
+  // синхронно считаем стартовый фильтр — список сразу рисуется
+  // отфильтрованным, без мигания «полный → отфильтрованный».
+  const [restoredSearch] = useState<SearchUiState | null>(() => {
+    if (hideSearch) return null;
+    if (isReturning) return loadViewState<SearchUiState>(searchUiKey(model));
+    clearViewState(searchUiKey(model));
+    return null;
+  });
 
   // Состояние фильтров (теперь FilterExpression поддерживает AND/OR)
-  const [filters, setFilters] = useState<FilterExpression>([]);
+  const [filters, setFilters] = useState<FilterExpression>(() =>
+    restoredSearch
+      ? buildFilterExpression(
+          restoredSearch.appliedSavedFilters,
+          restoredSearch.activeFilters,
+        )
+      : [],
+  );
 
-  // Состояние открытия поиска
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  // Состояние открытия поиска (сразу открыт, если восстанавливаем чипсы)
+  const [isSearchOpen, setIsSearchOpen] = useState(!!restoredSearch);
 
   // DOM-узел слота в шапке: активный вид (список) телепортирует сюда свои
   // контролы («шестерёнку» настройки колонок). Пусто для канбана/гантта/
@@ -105,10 +142,13 @@ export function ViewWrapper({
     // переходе (иначе промежуточный не-suspend-ящийся лоадер закоммитился бы
     // раньше и удержание бы сорвалось).
     //   - hideSearch: фильтры не актуальны → сразу.
+    //   - возврат со снимком: стартовый фильтр уже посчитан из снимка
+    //     (в т.ч. снятые дефолты — они в снимке), ждать нечего.
     //   - saved_filters прогреты <SavedFiltersPreloader> (в кеше уже на 1-м
     //     рендере); если у модели нет дефолт-фильтра — список можно сразу.
     //   - есть дефолт: ждём его применения (filters непустой) — эффект ниже.
     if (hideSearch) return true;
+    if (restoredSearch) return true;
     if (savedFiltersReady && !hasDefaultForModel) return true;
     return false;
   });
@@ -180,16 +220,28 @@ export function ViewWrapper({
   const handleViewChange = useCallback(
     async (newView: ViewType) => {
       if (newView === 'form') {
-        const result = await triggerFirstRecord({
+        // Открываем ПЕРВУЮ запись текущей выборки (фильтры вида +
+        // x2m-префильтр) и передаём форме контекст навигации — дальше по
+        // выборке листает пейджер формы (см. RecordNav).
+        const initialFilter = readInitialFilter(location.state);
+        const query = {
           model,
-          fields: ['id'],
-          limit: 1,
-          order: 'desc',
           sort: 'id',
+          order: 'desc' as const,
+          filter: mergeFilters(initialFilter, filters),
+        };
+        const result = await triggerFirstRecord({
+          ...query,
+          fields: ['id'],
+          start: 0,
+          end: 1,
         }).unwrap();
         const firstId = result?.data?.[0]?.id;
         if (firstId) {
-          navigate(`${firstId}`);
+          const state: RecordNavState = {
+            recordNav: buildRecordNav(query, 0, result.total, initialFilter),
+          };
+          navigate(`${firstId}`, { state });
         } else {
           navigate('create');
         }
@@ -197,7 +249,7 @@ export function ViewWrapper({
         setViewType(newView);
       }
     },
-    [navigate, model, triggerFirstRecord],
+    [navigate, model, triggerFirstRecord, filters, location.state],
   );
 
   // Мемоизируем контент чтобы не пересоздавать Suspense обёртку при каждом рендере ViewWrapper

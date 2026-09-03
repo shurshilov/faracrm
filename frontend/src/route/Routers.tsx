@@ -1,10 +1,17 @@
 import { lazy, Suspense, useDeferredValue } from 'react';
 import { Model } from './RouteModel';
 import { Fara } from './Fara';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import {
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  useNavigationType,
+} from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { modelsConfig } from '@/config/models';
 import { GenericList, GenericForm } from '@/components/Generic';
+import { NavigationTypeContext } from '@/components/ViewWrapper/viewStateStore';
 import { Loader, Center } from '@mantine/core';
 import type { RootState } from '@/store/store';
 
@@ -134,6 +141,12 @@ const FaraRouters = () => {
   const deferredLocation = useDeferredValue(location);
   const isStale = location !== deferredLocation;
 
+  // Тип навигации снимаем ЗДЕСЬ, снаружи <Routes location>: внутри него
+  // react-router подменяет LocationContext и useNavigationType() всегда
+  // отдаёт "POP". Видам (ViewWrapper/List) он нужен, чтобы отличить возврат
+  // «назад» (восстановить фильтры/страницу) от захода через меню.
+  const navigationType = useNavigationType();
+
   return (
     <div
       style={{
@@ -143,19 +156,21 @@ const FaraRouters = () => {
         // затемнённый старый экран не должен ловить клики во время перехода
         pointerEvents: isStale ? 'none' : undefined,
       }}>
-      <Suspense fallback={<PageLoader />}>
-        <Routes location={deferredLocation}>
-          {/* Домашняя страница пользователя */}
-          <Route path="/" element={<HomeRedirect />} />
+      <NavigationTypeContext.Provider value={navigationType}>
+        <Suspense fallback={<PageLoader />}>
+          <Routes location={deferredLocation}>
+            {/* Домашняя страница пользователя */}
+            <Route path="/" element={<HomeRedirect />} />
 
-          {/* Кастомные страницы */}
-          <Route path="chat/*" element={<ChatPage />} />
-          <Route path="turn" element={<TurnSettingsPageComponent />} />
+            {/* Кастомные страницы */}
+            <Route path="chat/*" element={<ChatPage />} />
+            <Route path="turn" element={<TurnSettingsPageComponent />} />
 
-          {/* Все остальные роуты - модели */}
-          <Route path="*" element={<ModelRoutes />} />
-        </Routes>
-      </Suspense>
+            {/* Все остальные роуты - модели */}
+            <Route path="*" element={<ModelRoutes />} />
+          </Routes>
+        </Suspense>
+      </NavigationTypeContext.Provider>
     </div>
   );
 };

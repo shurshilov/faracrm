@@ -1,12 +1,24 @@
-import { Route, Routes } from 'react-router-dom';
+import { ComponentType } from 'react';
+import { Route, Routes, useParams } from 'react-router-dom';
 
 import { RouteModelProps } from './type';
 import { ViewWrapper } from '@/components/ViewWrapper';
 
-export const Model = ({ 
-  name, 
-  list: List, 
-  form: Form, 
+/**
+ * Форма записи, перемонтируемая при смене id. Пейджер формы (RecordNav)
+ * листает соседние записи по тому же маршруту :id — без key React
+ * переиспользовал бы инстанс формы вместе с состоянием предыдущей записи
+ * (useForm инициализируется один раз, панели, локальный state полей).
+ */
+const RecordForm = ({ Form }: { Form: ComponentType }) => {
+  const { id } = useParams<{ id: string }>();
+  return <Form key={id} />;
+};
+
+export const Model = ({
+  name,
+  list: List,
+  form: Form,
   kanban: Kanban,
   gantt: Gantt,
 }: RouteModelProps) => {
@@ -17,7 +29,7 @@ export const Model = ({
           удерживался затемнённым, пока форма грузится (а не подменялся
           локальным полноэкранным спиннером). */}
       <Route path="create/*" element={Form ? <Form /> : null} />
-      <Route path=":id/*" element={Form ? <Form /> : null} />
+      <Route path=":id/*" element={Form ? <RecordForm Form={Form} /> : null} />
       <Route
         path="/*"
         element={
