@@ -30,6 +30,8 @@ class UserApp(App):
         "license": "FARA CRM License v1.0",
         "post_init": True,
         "depends": ["security", "languages"],
+        # Без пользователей нет входа — удалить из интерфейса нельзя.
+        "core": True,
         # sequence=3 — стартует после security (sequence=1) и languages
         # (sequence=2), но ДО всех бизнес-модулей (default sequence=10).
         # Причина: бизнес-модули в своём post_init создают записи

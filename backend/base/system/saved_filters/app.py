@@ -24,6 +24,8 @@ class SavedFiltersApp(App):
         "license": "FARA CRM License v1.0",
         "post_init": True,
         "depends": ["security"],
+        # Инфраструктура всех списков — удалить из интерфейса нельзя.
+        "core": True,
     }
 
     BASE_USER_ACL = {

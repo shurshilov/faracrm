@@ -90,6 +90,9 @@ class PublicConfig(BaseModel):
     version: str
     demo_mode: bool
     branding: BrandingConfig
+    # Коды установленных приложений: странице входа нужно знать, есть ли
+    # регистрация, ещё до сессии. Полный каталог — приватный /apps/catalog.
+    apps: list[str] = []
 
 
 async def _get_first_company():
@@ -279,7 +282,10 @@ async def public_config():
         )
     )
     return PublicConfig(
-        version=VERSION, demo_mode=bool(demo), branding=branding
+        version=VERSION,
+        demo_mode=bool(demo),
+        branding=branding,
+        apps=sorted(env.installed),
     )
 
 

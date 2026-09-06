@@ -24,7 +24,9 @@ class PartnersApp(App):
         "version": "1.0.0.0",
         "license": "FARA CRM License v1.0",
         "post_init": True,
-        "depends": ["security"],
+        "depends": ["security", "users", "company"],
+        # Партнёры и контакты — база лидов, продаж, чатов; удалить нельзя.
+        "core": True,
     }
 
     # contact_type — конфигурационный справочник, а не пользовательские данные,

@@ -54,6 +54,9 @@ export interface PublicConfig {
   version: string;
   demo_mode: boolean;
   branding: BrandingConfig;
+  /** Коды установленных приложений — нужны до входа (ссылка на регистрацию).
+   *  Полный каталог с описаниями — приватный GET /apps/catalog (fara_apps). */
+  apps: string[];
 }
 
 export type BrandingFileField =

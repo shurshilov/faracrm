@@ -44,9 +44,138 @@ class Environment:
 
         return file_path.removesuffix(".py").replace(self.spliter, ".")[2:]
 
-    def is_installed(self, module_name: str):
-        """Установлен модуль или нет."""
-        return module_name in self.apps.get_names()
+    # ── Установка / удаление приложений ──────────────────────────────
+    #
+    # Код всех модулей загружен всегда (модели, стратегии, таблицы), а вот
+    # РОУТЫ есть только у установленных: установка монтирует роутеры модуля
+    # прямо в работающий процесс, удаление их вырезает. У каждого воркера
+    # свои роуты, поэтому «что установлено» решает БД (apps.installed), а
+    # воркеры узнают об изменении по шине (apps_changed) и приводят свои
+    # роуты в соответствие — sync_routers. Удаление — только флаг: данные и
+    # роли остаются, повторная установка возвращает всё как было.
+
+    def is_installed(self, code: str) -> bool:
+        """Установлено ли приложение (по коду = имени в Apps)."""
+        return code in self.installed
+
+    async def load_installed(self) -> set[str]:
+        """Перечитать из БД, какие приложения установлены.
+
+        Core — всегда. Со строкой в apps — как в БД. Без строки (первый
+        старт, новый модуль в коде) — auto_install из info, по умолчанию
+        True. Сырой SQL: вызывается до регистрации AccessChecker и вне сессии.
+        """
+        db = self.models.app._get_db_session()
+        try:
+            rows = await db.execute(
+                "SELECT code, installed FROM apps", [], cursor="fetch"
+            )
+        except Exception:
+            rows = []  # таблицы ещё нет (sync_db выключен)
+        known = {r["code"]: r["installed"] is not False for r in rows}
+        self.installed = {
+            code
+            for code in self.apps.get_names()
+            if self.apps.is_core(code)
+            or known.get(
+                code, self.apps.get(code).info.get("auto_install", True)
+            )
+        }
+        return self.installed
+
+    def sync_routers(self, app: FastAPI) -> None:
+        """Привести роуты процесса к env.installed: смонтировать роутеры
+        новых установленных, вырезать роутеры удалённых. Идемпотентно."""
+        for code in self.apps.get_names():
+            if code in self.installed and code not in self._routes:
+                self._mount(app, code)
+            elif code not in self.installed and code in self._routes:
+                self._unmount(app, code)
+
+    def _mount(self, app: FastAPI, code: str) -> None:
+        """Подключить роутеры пакета приложения и запомнить, какие роуты
+        его — по ним же они потом вырезаются."""
+        app_module = self.apps.get(code).__class__.__module__
+        # app_module например "backend.base.system.administration.app"
+        package_import_path = app_module.rsplit(".", 1)[0] + ".routers"
+        before = len(app.router.routes)
+        self._include_routers_from_package(app, package_import_path)
+        self._routes[code] = app.router.routes[before:]
+        app.openapi_schema = None
+
+    def _unmount(self, app: FastAPI, code: str) -> None:
+        gone = self._routes.pop(code)
+        # Новый список, а не правка старого: запрос, который сейчас
+        # перебирает роуты, дочитает свой снимок.
+        app.router.routes = [
+            route
+            for route in app.router.routes
+            if not any(route is g for g in gone)
+        ]
+        app.openapi_schema = None
+
+    async def install_apps(self, codes: list[str], app: FastAPI) -> list[str]:
+        """Установить приложения (с недостающими зависимостями).
+
+        Для каждого: флаг installed → post_init (сидеры идемпотентны, это
+        тот же код, что на старте). Под системной сессией и тем же
+        advisory-локом, что и стартовые сидеры.
+        """
+        from backend.base.system.dotorm.dotorm.access import system_access
+
+        order = self.apps.install_order(codes, self.installed)
+        if not order:
+            return []
+        async with self.apps.db.advisory_lock(POST_INIT_LOCK_ID):
+            async with system_access():
+                for code in order:
+                    await self._set_installed(code, True)
+                    self.installed.add(code)
+                    service = self.apps.get(code)
+                    if service.info.get("post_init"):
+                        await service.post_init(app)
+        await self.apps_changed(app)
+        return order
+
+    async def uninstall_apps(
+        self, codes: list[str], app: FastAPI
+    ) -> list[str]:
+        """Удалить приложения вместе с установленными зависимыми.
+
+        Только флаг. Таблицы, роли, ACL и настройки не трогаем: роуты
+        вырезаются, меню прячется, а повторная установка возвращает всё
+        без потерь.
+        """
+        from backend.base.system.dotorm.dotorm.access import system_access
+
+        order = self.apps.uninstall_order(codes, self.installed)
+        if not order:
+            return []
+        async with system_access():
+            for code in order:
+                await self._set_installed(code, False)
+                self.installed.discard(code)
+        await self.apps_changed(app)
+        return order
+
+    async def _set_installed(self, code: str, value: bool) -> None:
+        rows = await self.models.app.search(
+            filter=[("code", "=", code)], fields=["id"], limit=1
+        )
+        if rows:
+            await rows[0].update(payload=self.models.app(installed=value))
+
+    async def apps_changed(self, app: FastAPI) -> None:
+        """Флаги изменились: свои роуты — сразу, остальным воркерам — событие
+        в шину chat pub/sub (обработчик там перечитывает флаги и зовёт
+        sync_routers). Без шины меняется только этот процесс."""
+        self.sync_routers(app)
+        try:
+            pubsub = self.apps.chat.chat_manager.pubsub
+        except Exception:
+            pubsub = None
+        if pubsub is not None:
+            await pubsub.publish("apps_changed", {})
 
     def _include_routers_from_package(
         self, app: FastAPI, package_import_path: str
@@ -90,13 +219,16 @@ class Environment:
         Правила:
           1. Роуты фреймворка (`core.routers`) грузятся всегда —
              это инфраструктурные endpoints поверх dotorm (onchange и т.п.).
-          2. Роуты прикладных приложений грузятся только для тех,
-             что зарегистрированы в Apps. Имя пакета берётся из класса
-             самого App через __module__, а не из пути файла.
+          2. Роуты прикладных приложений — только у установленных
+             (sync_routers); установка из интерфейса домонтирует остальные
+             без рестарта.
 
         Соглашение: в файле должна быть переменная router_public,
         router_private или router_content типа APIRouter.
         """
+        # Флаги «установлено» нужны и HTTP-воркерам, и cron-процессу.
+        await self.load_installed()
+
         if self.cron_mode:
             return
 
@@ -105,12 +237,8 @@ class Environment:
             app, "backend.base.system.core.routers"
         )
 
-        # 2. Роуты прикладных приложений — по списку Apps
-        for installed_app in self.apps.get_list():
-            app_module = installed_app.__class__.__module__
-            # app_module например "backend.base.system.administration.app"
-            package_import_path = app_module.rsplit(".", 1)[0] + ".routers"
-            self._include_routers_from_package(app, package_import_path)
+        # 2. Роуты прикладных приложений — по флагам
+        self.sync_routers(app)
 
     async def setup_services(self):
         for app in self.apps.get_list():
@@ -166,10 +294,18 @@ class Environment:
             set_access_session(SystemSession(user_id=SYSTEM_USER_ID))
 
             try:
-                # Выполняем post_init всех приложений
-                for service in self.apps.get_list():
-                    if service.info.get("post_init"):
+                # post_init — только установленных приложений: сидеры
+                # неустановленного (роли, ACL, настройки) выполнит установка.
+                for code in self.apps.get_names():
+                    service = self.apps.get(code)
+                    if service.info.get("post_init") and self.is_installed(
+                        code
+                    ):
                         await service.post_init(app)
+                # Сидер security создал строки apps новым приложениям —
+                # дальше источник правды только БД.
+                await self.load_installed()
+                self.sync_routers(app)
                 from backend.base.system.core.system_settings import (
                     SystemSettings,
                 )
@@ -219,6 +355,10 @@ class Environment:
         self.services_after: list[Service] = []
         self.post_init = []
         self.cron_mode: bool = False
+        # Коды установленных приложений (см. load_installed) и роуты,
+        # смонтированные в этом процессе, по кодам (см. sync_routers).
+        self.installed: set[str] = set()
+        self._routes: dict[str, list] = {}
 
     # def __new__(cls):
     #     if not hasattr(cls, "instance"):

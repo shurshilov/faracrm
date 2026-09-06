@@ -40,7 +40,8 @@ class TasksApp(App):
         "version": "1.0.0.0",
         "license": "FARA CRM License v1.0",
         "post_init": True,
-        "depends": ["security"],
+        # Task.user_id / partner_id, участники проектов.
+        "depends": ["security", "users", "partners"],
     }
 
     BASE_USER_ACL = {

@@ -23,6 +23,16 @@ class AppInfo(TypedDict):
     sequence: NotRequired[int]
     post_init: NotRequired[bool]
     cron_skip: NotRequired[bool]
+    # Установка/удаление из интерфейса (см. Environment.install_apps).
+    # auto_install (по умолчанию True) — ставить приложение само, когда оно
+    # впервые появилось в коде и все его depends установлены. False —
+    # ждать, пока админ установит его руками (маркетплейс, оплата и т.п.).
+    # Правило работает один раз: у приложения со строкой в apps
+    # состояние берётся из БД.
+    auto_install: NotRequired[bool]
+    # core — удалить нельзя (users, auth, company…). Сервисы (service=True)
+    # считаются core автоматически: это инфраструктура, а не функционал.
+    core: NotRequired[bool]
 
 
 # Импортируем после определения AppInfo чтобы избежать циклических импортов

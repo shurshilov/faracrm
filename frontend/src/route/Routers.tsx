@@ -22,6 +22,9 @@ const ChatPageComponent = lazy(() => import('@/fara_chat/components/ChatPage'));
 const TurnSettingsPageComponent = lazy(
   () => import('@/fara_chat/components/TurnSettingsPage'),
 );
+// Страница установки/удаления приложений. Путь /apps совпадает с моделью
+// apps: точный маршрут ниже перекрывает её список, форма /apps/:id остаётся.
+const AppsPageComponent = lazy(() => import('@/fara_apps/AppsPage'));
 
 // Wrapper для ChatPage с props из Redux
 const ChatPage = () => {
@@ -165,6 +168,7 @@ const FaraRouters = () => {
             {/* Кастомные страницы */}
             <Route path="chat/*" element={<ChatPage />} />
             <Route path="turn" element={<TurnSettingsPageComponent />} />
+            <Route path="apps" element={<AppsPageComponent />} />
 
             {/* Все остальные роуты - модели */}
             <Route path="*" element={<ModelRoutes />} />

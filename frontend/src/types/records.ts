@@ -366,6 +366,8 @@ export interface AppRecord extends BaseRecord {
   name: string;
   active: boolean;
   sequence: number;
+  /** Установлено: роуты, меню, CRUD и cron приложения работают. */
+  installed: boolean;
 }
 
 export interface SessionRecord extends BaseRecord {

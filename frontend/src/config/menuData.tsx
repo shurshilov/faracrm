@@ -28,6 +28,7 @@ import {
   buildMenu,
   getVisibleMenuItems as _getVisibleMenuItems,
   type GroupConfig,
+  type InstalledAppsFilter,
   type MenuGroup,
   type MenuCategory,
   type MenuSimple,
@@ -37,7 +38,7 @@ import { RoleRecord } from '@/types/records';
 
 // Реэкспорт типов и type-guards — чтобы существующие импорты из menuData
 // продолжали работать без изменений.
-export type { MenuGroup, MenuCategory, MenuSimple };
+export type { MenuGroup, MenuCategory, MenuSimple, InstalledAppsFilter };
 export {
   isMenuGroup,
   isMenuCategory,
@@ -270,7 +271,14 @@ const menuTree: GroupConfig[] = [
         label: 'Прочее',
         labelKey: 'security:menu.other',
         submenus: [
-          { model: 'apps' },
+          // Страница установки/удаления приложений (fara_apps), а не
+          // generic-список модели apps.
+          {
+            id: 'menu_apps',
+            to: '/apps',
+            label: 'Приложения',
+            labelKey: 'security:menu.apps',
+          },
           { model: 'language' },
           { model: 'models' },
           { model: 'cron_job' },
@@ -295,6 +303,13 @@ export function getVisibleMenuItems(
   userRoles: RoleRecord[] = [],
   isAdmin: boolean = false,
   workspaceAppKeys: string[] | null = null,
+  installed: InstalledAppsFilter | null = null,
 ): MenuGroup[] {
-  return _getVisibleMenuItems(items, userRoles, isAdmin, workspaceAppKeys);
+  return _getVisibleMenuItems(
+    items,
+    userRoles,
+    isAdmin,
+    workspaceAppKeys,
+    installed,
+  );
 }

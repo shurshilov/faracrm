@@ -1,0 +1,28 @@
+{
+  "title": "Applications",
+  "subtitle": "{{installed}} of {{total}} installed",
+  "search": "Find an application…",
+  "empty": "Nothing found",
+  "scope": {
+    "all": "All",
+    "installed": "Installed",
+    "available": "Available"
+  },
+  "actions": {
+    "install": "Install",
+    "uninstall": "Uninstall"
+  },
+  "badge": {
+    "core": "System",
+    "installed": "Installed",
+    "notInstalled": "Not installed"
+  },
+  "uninstall": {
+    "title": "Uninstall “{{name}}”?",
+    "text": "The application will stop responding and disappear from the menu; installed applications that depend on it will be uninstalled with it. Data and settings are kept — installing it again brings everything back."
+  },
+  "notify": {
+    "installed": "Installed: {{names}}",
+    "uninstalled": "Uninstalled: {{names}}"
+  }
+}

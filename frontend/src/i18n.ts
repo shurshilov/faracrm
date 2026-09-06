@@ -78,6 +78,10 @@ import ruReports from './fara_report_docx/locales/ru.json';
 import enWorkspace from './fara_workspace/locales/en.json';
 import ruWorkspace from './fara_workspace/locales/ru.json';
 
+// fara_apps — установка/удаление приложений
+import enApps from './fara_apps/locales/en.json';
+import ruApps from './fara_apps/locales/ru.json';
+
 // components/Docs — пользовательская документация (справка)
 import enDocs from './components/Docs/locales/en.json';
 import ruDocs from './components/Docs/locales/ru.json';
@@ -105,6 +109,7 @@ const resources = {
     saved_filters: enSavedFilters,
     reports: enReports,
     workspace: enWorkspace,
+    apps: enApps,
     docs: enDocs,
   },
   ru: {
@@ -126,6 +131,7 @@ const resources = {
     saved_filters: ruSavedFilters,
     reports: ruReports,
     workspace: ruWorkspace,
+    apps: ruApps,
     docs: ruDocs,
   },
 };
@@ -156,6 +162,7 @@ i18n
       'saved_filters',
       'reports',
       'workspace',
+      'apps',
       'docs',
     ],
 

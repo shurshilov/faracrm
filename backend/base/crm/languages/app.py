@@ -23,6 +23,8 @@ class LanguageApp(App):
         "license": "FARA CRM License v1.0",
         "post_init": True,
         "depends": ["security"],
+        # Язык обязателен у каждого пользователя — удалить нельзя.
+        "core": True,
         # sequence=2 — должен отработать раньше users (sequence=3),
         # т.к. User.lang_id required и берёт default из таблицы languages.
         "sequence": 2,

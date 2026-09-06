@@ -32,6 +32,7 @@ import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import type { MenuGroup } from '@config/menuData';
 import { getVisibleMenuItems } from '@config/menuData';
+import { useInstalledApps } from '@/fara_apps/useInstalledApps';
 
 export function ModernLayout() {
   const [activeGroup, setActiveGroup] = useState<MenuGroup | null>(null);
@@ -41,17 +42,22 @@ export function ModernLayout() {
   const { t } = useTranslation('workspace');
 
   const session = useSelector((state: any) => state.auth.session);
+  // Установленные приложения: неустановленные скрываются из лаунчера/меню и
+  // из шапки (их виджеты били бы в закрытые роуты).
+  const { installed, isInstalled } = useInstalledApps();
   const menuItems = useMemo(
     () =>
       getVisibleMenuItems(
         session?.user_id?.role_ids || [],
         session?.user_id?.is_admin || false,
         session?.user_id?.workspace_id?.app_keys ?? null,
+        installed,
       ),
     [
       session?.user_id?.role_ids,
       session?.user_id?.is_admin,
       session?.user_id?.workspace_id,
+      installed,
     ],
   );
 
@@ -182,15 +188,20 @@ export function ModernLayout() {
               {/* В шапке — только то, что сообщает о СОБЫТИЯХ: активности,
                   чаты, звонки. Тема и документация переехали в меню
                   пользователя: они нужны редко и не требуют внимания. */}
-              <Box visibleFrom="lg">
-                <ActivityNotification />
-              </Box>
+              {isInstalled('activity') && (
+                <Box visibleFrom="lg">
+                  <ActivityNotification />
+                </Box>
+              )}
               <ChatNotification />
               {/* Звонилка: лист в шапке и под своей границей ошибок — упасть
-                  может только она сама, история и карточки живут на бэкенде. */}
-              <SipErrorBoundary>
-                <SipPhoneButton />
-              </SipErrorBoundary>
+                  может только она сама, история и карточки живут на бэкенде.
+                  Её конфиг отдаёт телефония (chat_phone) — без неё не рисуем. */}
+              {isInstalled('chat_phone') && (
+                <SipErrorBoundary>
+                  <SipPhoneButton />
+                </SipErrorBoundary>
+              )}
               <UserMenu />
             </Group>
           </Flex>

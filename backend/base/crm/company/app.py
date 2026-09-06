@@ -23,7 +23,9 @@ class CompanyApp(App):
         "version": "1.0.0.0",
         "license": "FARA CRM License v1.0",
         "post_init": True,
-        "depends": ["security"],
+        "depends": ["security", "users"],
+        # Брендинг и компания у всех записей — удалить нельзя.
+        "core": True,
     }
 
     BASE_USER_ACL = {

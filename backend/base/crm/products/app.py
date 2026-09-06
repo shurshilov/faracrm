@@ -27,7 +27,8 @@ class ProductsApp(App):
         "version": "1.0.0.0",
         "license": "FARA CRM License v1.0",
         "post_init": True,
-        "depends": ["security", "users"],
+        # Product.company_id.
+        "depends": ["security", "users", "company"],
     }
 
     BASE_USER_ACL = {

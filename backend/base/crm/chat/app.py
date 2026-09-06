@@ -45,7 +45,8 @@ class ChatApp(Service):
             "attachments",
             "db",
             "leads",
-            "tasks",
+            "task",
+            "partners",
         ],
         "sequence": 90,
     }
@@ -130,6 +131,11 @@ class ChatApp(Service):
             etype = event.get("type")
             if etype in ("session_revoked", "session_roles_changed"):
                 await env.models.session.handle_pubsub_event(event)
+            elif etype == "apps_changed":
+                # Приложение установили/удалили в другом воркере —
+                # перечитать флаги и домонтировать/вырезать его роуты здесь.
+                await env.load_installed()
+                env.sync_routers(app)
             else:
                 await self.chat_manager.handle_pubsub_event(event)
 

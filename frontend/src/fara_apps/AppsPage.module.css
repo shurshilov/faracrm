@@ -1,0 +1,20 @@
+.page {
+  height: 100%;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: box-shadow 150ms ease;
+}
+
+.card:hover {
+  box-shadow: var(--mantine-shadow-sm);
+}
+
+/* Установленное — с цветным акцентом слева, чтобы состояние читалось
+   без чтения кнопок. */
+.card[data-installed] {
+  border-left: 3px solid var(--mantine-primary-color-filled);
+}

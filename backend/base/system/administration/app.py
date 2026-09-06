@@ -19,6 +19,8 @@ class AdministrationApp(App):
         "license": "FARA CRM License v1.0",
         "depends": [],
         "post_init": True,
+        # Публичный конфиг и брендинг — удалить из интерфейса нельзя.
+        "core": True,
     }
 
     # BASE_USER_ACL = {

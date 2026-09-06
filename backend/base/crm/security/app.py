@@ -231,6 +231,10 @@ class SecurityApp(Service):
         (плиткой лаунчера). Флаги переносятся сюда и для НОВЫХ, и для уже
         существующих строк (идемпотентно), чтобы после обновления кода
         объявления подхватывались без пересоздания apps.
+
+        installed у новой строки — из env.installed (правило auto_install,
+        см. Environment.load_installed); дальше его меняет только установка
+        и удаление. Core установлено всегда.
         """
         app_codes = env.apps.get_names()
 
@@ -239,12 +243,12 @@ class SecurityApp(Service):
 
         exist_apps = await env.models.app.search(
             filter=[("code", "in", app_codes)],
-            fields=["id", "code"],
+            fields=["id", "code", "installed"],
         )
-        exist_by_code = {a.code: a.id for a in exist_apps}
+        exist_by_code = {a.code: a for a in exist_apps}
 
         for code in app_codes:
-            app_instance: App | None = getattr(env.apps, code, None)
+            app_instance: App | None = env.apps.get(code)
             info = (
                 app_instance.info if app_instance and app_instance.info else {}
             )
@@ -252,25 +256,28 @@ class SecurityApp(Service):
             ui_menu = bool(info.get("ui_menu", False))
             ui_menu_name = info.get("ui_menu_name")
 
-            if code in exist_by_code:
-                # Обновляем ТОЛЬКО UI-флаги у объявленных приложений; имя и
-                # прочее у существующих строк не трогаем.
-                if ui_menu or ui_menu_name:
-                    app = await env.models.app.get(exist_by_code[code])
-                    await app.update(
-                        payload=AppModel(
-                            ui_menu=ui_menu, ui_menu_name=ui_menu_name
-                        )
-                    )
-            else:
+            existing = exist_by_code.get(code)
+            if existing is None:
                 await env.models.app.create(
                     payload=AppModel(
                         code=code,
                         name=name,
                         ui_menu=ui_menu,
                         ui_menu_name=ui_menu_name,
+                        installed=env.is_installed(code),
                     )
                 )
+                continue
+
+            changed = {}
+            # Обновляем ТОЛЬКО UI-флаги у объявленных приложений; имя и
+            # прочее у существующих строк не трогаем.
+            if ui_menu or ui_menu_name:
+                changed.update(ui_menu=ui_menu, ui_menu_name=ui_menu_name)
+            if env.apps.is_core(code) and not existing.installed:
+                changed["installed"] = True
+            if changed:
+                await existing.update(payload=AppModel(**changed))
 
     async def _init_default_workspaces(self, env: Environment):
         """Сидит два «Рабочих места» и раздаёт базовое.

@@ -35,6 +35,8 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         # TODO: добавить зависимость сессии
         "depends": ["security"],
         "post_init": True,
+        # Аутентификация всех роутов — удалить из интерфейса нельзя.
+        "core": True,
     }
 
     session_cache: SessionCache = SessionCache()

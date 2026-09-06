@@ -303,6 +303,15 @@ function isVisible(
   return node.visibleForRoles.some(role => userRolesSet.has(role));
 }
 
+/**
+ * Что установлено на бэкенде (GET /apps/catalog): ключи групп меню
+ * установленных UI-приложений. null — каталог ещё не загружен: не
+ * фильтруем ничего.
+ */
+export interface InstalledAppsFilter {
+  app_keys: string[];
+}
+
 /* ============================================================
  * PUBLIC API
  * ============================================================ */
@@ -324,12 +333,19 @@ export function getVisibleMenuItems(
   userRoles: RoleRecord[] = [],
   isAdmin: boolean = false,
   workspaceAppKeys: string[] | null = null,
+  installed: InstalledAppsFilter | null = null,
 ): MenuGroup[] {
   const userRolesSet = new Set(userRoles.map(item => item.code));
 
   const result: MenuGroup[] = [];
 
   for (const group of items) {
+    // Неустановленное приложение не видит никто, включая суперпользователя:
+    // его роутов на бэкенде сейчас нет.
+    if (installed && group.appKey && !installed.app_keys.includes(group.appKey)) {
+      continue;
+    }
+
     // Видимость приложения (группы) определяет ТОЛЬКО «Рабочее место», не роли.
     // Суперпользователь (is_admin) видит все приложения; у остальных нет РМ →
     // приложений не видно (упрощённая логика). Курирование презентационное —
