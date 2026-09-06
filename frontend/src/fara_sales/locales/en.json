@@ -23,7 +23,8 @@
     "notes": "Notes",
     "active": "Active",
     "order_line_ids": "Order Lines",
-    "contact_ids": "Contacts"
+    "contact_ids": "Contacts",
+    "lead_id": "Lead"
   },
   "sale_line": {
     "title": "Order Lines",

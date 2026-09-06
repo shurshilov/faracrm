@@ -305,7 +305,8 @@ export const modelsConfig: Record<string, ModelConfig> = {
       import('@/fara_sales/Form').then(m => ({ default: m.ViewFormSales })),
     kanban: () =>
       import('@/fara_sales/Kanban').then(m => ({ default: m.ViewKanbanSales })),
-    extensions: [() => import('@/fara_contract')],
+    // fara_leads — блок «Исходный лид» в форме заказа (Sale.lead_id).
+    extensions: [() => import('@/fara_contract'), () => import('@/fara_leads')],
   },
   sale_stage: {
     menu: MenuGroups.sales,

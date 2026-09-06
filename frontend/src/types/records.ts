@@ -72,6 +72,9 @@ export interface SaleRecord extends BaseRecord {
   notes: string | null;
   date_order: string | null;
   origin: string | null;
+  // Исходный лид (Sale.lead_id добавлен модулем leads через @extend) —
+  // заполнен только у заказов, созданных из лида
+  lead_id: RelationRecord | null;
   // Денежные итоги (вычисляются бэкендом через @depends)
   amount_undiscounted: number;
   amount_untaxed: number;

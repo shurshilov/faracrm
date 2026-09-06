@@ -10,6 +10,11 @@ from backend.base.crm.security.acl_post_init_mixin import ACL
 from backend.base.crm.security.utils import init_module_roles
 from .models.lead_stage import LeadStage, INITIAL_LEAD_STAGES
 
+# Sale.lead_id объявлен здесь (@extend), а не в sales: продажи не должны знать
+# о лидах. Пакет leads без __init__.py — автодискавер *_ext в него не заходит,
+# поэтому импорт явный.
+from .models import sale_ext  # noqa: F401
+
 
 class LeadsApp(App):
     """
@@ -37,7 +42,8 @@ class LeadsApp(App):
         "license": "FARA CRM License v1.0",
         "post_init": True,
         # Lead.partner_id / company_id — без партнёров и компании нет лида.
-        "depends": ["security", "users", "partners", "company"],
+        # sales — Sale.lead_id (models/sale_ext.py) и Lead.create_sale.
+        "depends": ["security", "users", "partners", "company", "sales"],
     }
 
     BASE_USER_ACL = {

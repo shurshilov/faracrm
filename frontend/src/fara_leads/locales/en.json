@@ -32,5 +32,11 @@
     "id": "Id",
     "title": "CRM Teams",
     "name": "Team Name"
+  },
+  "sale_link": {
+    "create_sale": "Create order",
+    "create_failed": "Failed to create order",
+    "source_lead": "Source lead",
+    "lead": "Lead"
   }
 }

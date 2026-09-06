@@ -28,6 +28,11 @@ export function ViewListSales() {
         render={value => <RelationCell value={value} model="partners" />}
       />
       <Field
+        name="lead_id"
+        label={t('sales.lead_id')}
+        render={value => <RelationCell value={value} model="leads" />}
+      />
+      <Field
         name="user_id"
         label={t('sales.user_id')}
         render={value => <RelationCell value={value} model="users" />}

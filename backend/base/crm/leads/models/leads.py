@@ -212,6 +212,48 @@ class Lead(AuditMixin, PolymorphicParentMixin):
             )
         return result
 
+    async def create_sale(self) -> int:
+        """Создать продажу из лида: копия базовых полей + ссылка lead_id.
+
+        Копируем то, что менеджер продаж будет менять у себя (клиент,
+        ответственный, компания, заметки), в origin — имя лида; остальное
+        продажа читает по lead_id (поле добавлено в Sale расширением
+        leads/models/sale_ext.py). Один лид → много продаж: каждый вызов
+        создаёт новую (повторные заказы клиента).
+
+        Права: у ролей CRM нет ACL на sale, продажу создаёт система (.sudo());
+        user_id = ответственный лида, чтобы правило «свои заказы» показало
+        продажу ему. Стадия — первая по порядку активная: дефолт Sale берёт
+        первую найденную без сортировки.
+        """
+        stages = await env.models.sale_stage.sudo().search(
+            filter=[("active", "=", True)],
+            fields=["id"],
+            sort="sequence",
+            order="ASC",
+            limit=1,
+        )
+        values = {
+            "partner_id": self.partner_id,
+            "user_id": self.user_id,
+            "company_id": self.company_id,
+            "notes": self.notes,
+            "origin": self.name,
+            "lead_id": env.models.lead(id=self.id),
+        }
+        if stages:
+            values["stage_id"] = stages[0]
+        payload = env.models.sale(
+            **{
+                name: value
+                for name, value in values.items()
+                if value is not None
+            }
+        )
+        sale_id = await env.models.sale.sudo().create(payload)
+        logger.info("Lead %s: created sale %s", self.id, sale_id)
+        return sale_id
+
     @classmethod
     async def find_last_for_chat(cls, partner_id: int, connector_id: int):
         """
