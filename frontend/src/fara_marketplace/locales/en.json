@@ -1,0 +1,92 @@
+{
+  "menu": {
+    "title": "Marketplace",
+    "catalog": "Catalog",
+    "marketplace_app": "My apps",
+    "marketplace_purchase": "My purchases",
+    "stats": "Statistics",
+    "vendor": "Payout account"
+  },
+  "fields": {
+    "id": "ID",
+    "name": "Name",
+    "summary": "Summary",
+    "description": "Description",
+    "category": "Category",
+    "version": "Version",
+    "price": "Price, ₽",
+    "published": "Published",
+    "downloads": "Downloads",
+    "app": "App",
+    "amount": "Amount",
+    "state": "Status",
+    "date": "Date",
+    "action": "Action"
+  },
+  "tabs": {
+    "main": "General",
+    "files": "Files"
+  },
+  "sections": {
+    "app": "App"
+  },
+  "files": {
+    "hint": "Upload screenshots (png/jpg — the first one becomes the cover) and the module zip archive. Publishing requires the archive.",
+    "saveFirst": "Save the app to upload files."
+  },
+  "purchases": {
+    "download": "Download",
+    "pay": "Pay"
+  },
+  "stats": {
+    "title": "App statistics",
+    "apps": "Apps",
+    "downloads": "Downloads",
+    "purchases": "Sales",
+    "revenue": "Revenue",
+    "published": "Published",
+    "draft": "Draft",
+    "empty": "You have no apps yet"
+  },
+  "vendor": {
+    "title": "Payout account",
+    "hint": "Shop code (ShopCode) issued by T-Bank for split payments. Payments for your apps are credited to it minus the marketplace commission.",
+    "payoutAccount": "Payee account (ShopCode)",
+    "save": "Save",
+    "saved": "Account saved"
+  },
+  "categories": {
+    "crm": "CRM",
+    "communication": "Communication",
+    "telephony": "Telephony",
+    "integration": "Integrations",
+    "reports": "Reports",
+    "other": "Other"
+  },
+  "public": {
+    "badge": "Marketplace",
+    "title": "Apps for FARA CRM",
+    "subtitle": "Ready-made modules from developers and partners: extend your CRM without coding.",
+    "searchPlaceholder": "Search by name and description",
+    "allCategories": "All categories",
+    "all": "All",
+    "free": "Free",
+    "paid": "Paid",
+    "sortPopular": "Popular",
+    "sortNew": "New",
+    "sortPrice": "By price",
+    "empty": "Nothing found",
+    "notFound": "App not found",
+    "price": "{{price}} ₽",
+    "downloads": "{{count}} downloads",
+    "signIn": "Sign in",
+    "register": "Sign up",
+    "cabinet": "My account",
+    "signInToBuy": "Sign in to get it",
+    "buy": "Buy",
+    "getFree": "Get for free",
+    "download": "Download",
+    "purchasesHint": "After payment the app appears in “My purchases”",
+    "backToCatalog": "Back to catalog"
+  }
+}

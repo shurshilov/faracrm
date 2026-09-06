@@ -23,7 +23,11 @@
   flex-direction: column;
   justify-content: center;
   position: relative;
-  overflow: hidden;
+  /* По вертикали — прокрутка: на телефоне с открытой клавиатурой (и на
+     регистрации, где полей больше) контент выше карточки, а обёртка
+     .wrapper прокрутку страницы не даёт. */
+  overflow-x: hidden;
+  overflow-y: auto;
   width: rem(520px);
   flex-shrink: 0;
   z-index: 2;
@@ -92,7 +96,9 @@
      кнопку, соцсети и версию без скролла */
   padding: rem(24px) rem(48px);
   max-width: rem(420px);
-  margin: 0 auto;
+  /* auto по вертикали (а не justify-content) — когда контент выше
+     карточки, верх не обрезается и доступен прокруткой. */
+  margin: auto;
   width: 100%;
   /* Уменьшаем расстояние между секциями (было gap="xl" = ~32px) */
   gap: rem(20px) !important;

@@ -1,0 +1,266 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   market.module.css — публичный каталог маркетплейса.
+   Стиль — по мотивам лендинга (fara_landing): фирменный бирюзовый акцент,
+   «стеклянная» шапка, карточки со скруглением 18px и подъёмом на hover.
+   Цвета фона/текста — переменные Mantine, чтобы работала тёмная тема.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.root {
+  --mp-accent: #009982;
+  --mp-accent-glow: rgba(0, 153, 130, 0.25);
+  --mp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  min-height: 100vh;
+  background: var(--mantine-color-body);
+  color: var(--mantine-color-text);
+}
+
+/* ── Шапка ─────────────────────────────────────────────────────────────── */
+/* Сетка «логотип | язык | кнопки». На телефоне кнопки переезжают во вторую
+   строку на всю ширину — так им не приходится тесниться с логотипом. */
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: rem(12px);
+  min-height: rem(64px);
+  padding: rem(8px) clamp(16px, 4vw, 40px);
+  backdrop-filter: blur(20px) saturate(1.5);
+  border-bottom: 1px solid var(--mantine-color-default-border);
+
+  @mixin light {
+    background: rgba(255, 255, 255, 0.88);
+  }
+
+  @mixin dark {
+    background: rgba(26, 27, 30, 0.88);
+  }
+}
+
+/* Логомарк «F» (public/logo-mark.svg) + подпись, как в шапке лендинга. */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: rem(8px);
+  text-decoration: none;
+  color: var(--mp-accent);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.mark {
+  display: block;
+  width: rem(36px);
+  height: rem(36px);
+}
+
+.lang {
+  justify-self: end;
+}
+
+.actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  align-items: center;
+  gap: rem(8px);
+}
+
+/* Телефон: логотип и язык в первой строке, кнопки поровну во второй. */
+@media (max-width: $mantine-breakpoint-xs) {
+  .topnav {
+    grid-template-columns: 1fr auto;
+    row-gap: rem(10px);
+    padding: rem(10px) rem(12px);
+  }
+
+  .actions {
+    grid-column: 1 / -1;
+    grid-auto-columns: 1fr;
+  }
+
+  .container {
+    padding-top: rem(16px);
+  }
+
+  .hero {
+    padding: rem(16px) 0 rem(8px);
+  }
+}
+
+.btnPrimary {
+  background: var(--mp-accent);
+  box-shadow: 0 4px 20px var(--mp-accent-glow);
+  transition:
+    transform 0.3s var(--mp-ease),
+    box-shadow 0.3s var(--mp-ease);
+
+  &:hover {
+    background: var(--mp-accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px var(--mp-accent-glow);
+  }
+}
+
+/* ── Контент ───────────────────────────────────────────────────────────── */
+.container {
+  max-width: rem(1200px);
+  margin: 0 auto;
+  padding: rem(32px) clamp(16px, 4vw, 40px) rem(64px);
+}
+
+.hero {
+  text-align: center;
+  padding: rem(40px) 0 rem(24px);
+}
+
+.heroBadge {
+  display: inline-block;
+  padding: rem(6px) rem(16px);
+  border-radius: rem(20px);
+  font-size: rem(12px);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--mp-accent);
+  border: 1px solid rgba(0, 153, 130, 0.35);
+  margin-bottom: rem(16px);
+}
+
+.heroTitle {
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -1px;
+  margin: 0 0 rem(12px);
+}
+
+.heroSubtitle {
+  color: var(--mantine-color-dimmed);
+  max-width: rem(600px);
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ── Карточки ──────────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(rem(280px), 1fr));
+  gap: rem(20px);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  border-radius: rem(18px);
+  border: 1px solid var(--mantine-color-default-border);
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.3s var(--mp-ease),
+    box-shadow 0.3s var(--mp-ease),
+    border-color 0.3s var(--mp-ease);
+
+  @mixin light {
+    background: var(--mantine-color-white);
+  }
+
+  @mixin dark {
+    background: var(--mantine-color-dark-6);
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: var(--mp-accent);
+    box-shadow: 0 10px 30px -12px var(--mp-accent-glow);
+  }
+}
+
+.cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+
+  @mixin light {
+    background: var(--mantine-color-gray-1);
+  }
+
+  @mixin dark {
+    background: var(--mantine-color-dark-5);
+  }
+}
+
+/* Нет скриншота — первая буква названия на градиенте акцента */
+.coverPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16 / 9;
+  font-size: rem(48px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--mp-accent);
+  background: linear-gradient(150deg, var(--mp-accent-glow), transparent 75%);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: rem(8px);
+  padding: rem(18px) rem(20px) rem(20px);
+}
+
+.cardTitle {
+  font-size: rem(17px);
+  font-weight: 700;
+  margin: 0;
+}
+
+.cardText {
+  flex: 1;
+  font-size: rem(14px);
+  line-height: 1.5;
+  color: var(--mantine-color-dimmed);
+  margin: 0;
+}
+
+.price {
+  font-weight: 700;
+  color: var(--mp-accent);
+}
+
+/* ── Страница приложения ───────────────────────────────────────────────── */
+/* Цена и кнопка: на телефоне под заголовком слева, на десктопе — справа. */
+.buyBox {
+  align-items: flex-start;
+
+  @media (min-width: $mantine-breakpoint-md) {
+    align-items: flex-end;
+  }
+}
+
+.screenshot {
+  display: block;
+  width: 100%;
+  max-height: rem(360px);
+  object-fit: contain;
+  border-radius: rem(12px);
+  border: 1px solid var(--mantine-color-default-border);
+
+  @mixin light {
+    background: var(--mantine-color-gray-0);
+  }
+
+  @mixin dark {
+    background: var(--mantine-color-dark-6);
+  }
+}
+
+.description {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}

@@ -1,0 +1,20 @@
+{
+  "title": "Sign up",
+  "description": "Create an account — a confirmation code will be emailed to you",
+  "codeSent": "We sent a confirmation code to {{login}}",
+  "name": "Name",
+  "email": "Email",
+  "password": "Password",
+  "sendCode": "Send code",
+  "confirm": "Confirm",
+  "changeEmail": "Edit details",
+  "haveAccount": "Already have an account?",
+  "signIn": "Sign in",
+  "errors": {
+    "nameRequired": "Enter your name",
+    "emailInvalid": "Enter a valid email",
+    "passwordRequired": "Enter a password",
+    "passwordPolicy": "Password does not meet the requirements",
+    "unknown": "Registration failed. Please try again"
+  }
+}

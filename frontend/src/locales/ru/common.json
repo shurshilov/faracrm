@@ -104,7 +104,9 @@
     "password": "Пароль",
     "passwordRequired": "Введите пароль",
     "signIn": "Войти",
-    "community": "Сообщество"
+    "community": "Сообщество",
+    "noAccount": "Нет аккаунта?",
+    "register": "Зарегистрироваться"
   },
   "selectDateTime": "Выберите дату и время",
   "contacts": {

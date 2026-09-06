@@ -25,6 +25,13 @@ const TurnSettingsPageComponent = lazy(
 // Страница установки/удаления приложений. Путь /apps совпадает с моделью
 // apps: точный маршрут ниже перекрывает её список, форма /apps/:id остаётся.
 const AppsPageComponent = lazy(() => import('@/fara_apps/AppsPage'));
+// Маркетплейс: страницы кабинета без своей модели (статистика, счёт).
+const MarketplaceStatsPage = lazy(
+  () => import('@/fara_marketplace/cabinet/StatsPage'),
+);
+const MarketplaceVendorPage = lazy(
+  () => import('@/fara_marketplace/cabinet/VendorSettings'),
+);
 
 // Wrapper для ChatPage с props из Redux
 const ChatPage = () => {
@@ -169,6 +176,11 @@ const FaraRouters = () => {
             <Route path="chat/*" element={<ChatPage />} />
             <Route path="turn" element={<TurnSettingsPageComponent />} />
             <Route path="apps" element={<AppsPageComponent />} />
+            <Route path="marketplace/stats" element={<MarketplaceStatsPage />} />
+            <Route
+              path="marketplace/vendor"
+              element={<MarketplaceVendorPage />}
+            />
 
             {/* Все остальные роуты - модели */}
             <Route path="*" element={<ModelRoutes />} />

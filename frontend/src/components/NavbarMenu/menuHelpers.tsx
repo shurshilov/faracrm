@@ -170,6 +170,8 @@ const modelToNamespace: Record<string, string> = {
   task_tag: 'tasks',
   activity: 'activity',
   activity_type: 'activity',
+  marketplace_app: 'marketplace',
+  marketplace_purchase: 'marketplace',
 };
 
 const modelLabels: Record<string, string> = {

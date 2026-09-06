@@ -93,6 +93,17 @@ class PublicConfig(BaseModel):
     # Коды установленных приложений: странице входа нужно знать, есть ли
     # регистрация, ещё до сессии. Полный каталог — приватный /apps/catalog.
     apps: list[str] = []
+    # Куда отправить гостя с корня сайта: public_home первого установленного
+    # модуля, который её объявил (маркетплейс → /market). Нет — форма входа.
+    public_home: str | None = None
+
+
+def _public_home() -> str | None:
+    for code in env.apps.get_names():
+        home = env.apps.get(code).info.get("public_home")
+        if home and env.is_installed(code):
+            return home
+    return None
 
 
 async def _get_first_company():
@@ -286,6 +297,7 @@ async def public_config():
         demo_mode=bool(demo),
         branding=branding,
         apps=sorted(env.installed),
+        public_home=_public_home(),
     )
 
 

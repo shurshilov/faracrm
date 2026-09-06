@@ -644,6 +644,28 @@ export const modelsConfig: Record<string, ModelConfig> = {
         default: m.ViewFormReportTemplate,
       })),
   },
+
+  // === Marketplace (личный кабинет поставщика и покупателя) ===
+  marketplace_app: {
+    menu: MenuGroups.marketplace,
+    list: () =>
+      import('@/fara_marketplace/cabinet/AppList').then(m => ({
+        default: m.ViewListMarketplaceApp,
+      })),
+    form: () =>
+      import('@/fara_marketplace/cabinet/AppForm').then(m => ({
+        default: m.ViewFormMarketplaceApp,
+      })),
+  },
+  marketplace_purchase: {
+    menu: MenuGroups.marketplace,
+    list: () =>
+      import('@/fara_marketplace/cabinet/PurchaseList').then(m => ({
+        default: m.ViewListMarketplacePurchase,
+      })),
+    // Форма покупки — generic (только просмотр).
+    fields: ['id', 'app_id', 'amount', 'state', 'payment_id', 'create_datetime'],
+  },
 };
 
 // Хелпер для получения конфига

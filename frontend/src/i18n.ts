@@ -82,6 +82,14 @@ import ruWorkspace from './fara_workspace/locales/ru.json';
 import enApps from './fara_apps/locales/en.json';
 import ruApps from './fara_apps/locales/ru.json';
 
+// fara_registration
+import enRegistration from './fara_registration/locales/en.json';
+import ruRegistration from './fara_registration/locales/ru.json';
+
+// fara_marketplace
+import enMarketplace from './fara_marketplace/locales/en.json';
+import ruMarketplace from './fara_marketplace/locales/ru.json';
+
 // components/Docs — пользовательская документация (справка)
 import enDocs from './components/Docs/locales/en.json';
 import ruDocs from './components/Docs/locales/ru.json';
@@ -110,6 +118,8 @@ const resources = {
     reports: enReports,
     workspace: enWorkspace,
     apps: enApps,
+    registration: enRegistration,
+    marketplace: enMarketplace,
     docs: enDocs,
   },
   ru: {
@@ -132,6 +142,8 @@ const resources = {
     reports: ruReports,
     workspace: ruWorkspace,
     apps: ruApps,
+    registration: ruRegistration,
+    marketplace: ruMarketplace,
     docs: ruDocs,
   },
 };
@@ -163,6 +175,8 @@ i18n
       'reports',
       'workspace',
       'apps',
+      'registration',
+      'marketplace',
       'docs',
     ],
 

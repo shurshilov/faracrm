@@ -61,6 +61,14 @@ export function ModernLayout() {
     ],
   );
 
+  // Виджеты шапки (уведомления из системного чата, чаты, звонилка) — часть
+  // приложения «Общение». Пользователю, у которого его нет в РМ (например,
+  // портальному из маркетплейса), их не показываем: их запросы упёрлись бы
+  // в отказ доступа к чатам и коннекторам.
+  const hasCommunication =
+    !!session?.user_id?.is_admin ||
+    !!session?.user_id?.workspace_id?.app_keys?.includes('communication');
+
   // Определяем активную группу по текущему URL
   useEffect(() => {
     const currentPath = location.pathname;
@@ -188,19 +196,24 @@ export function ModernLayout() {
               {/* В шапке — только то, что сообщает о СОБЫТИЯХ: активности,
                   чаты, звонки. Тема и документация переехали в меню
                   пользователя: они нужны редко и не требуют внимания. */}
-              {isInstalled('activity') && (
-                <Box visibleFrom="lg">
-                  <ActivityNotification />
-                </Box>
-              )}
-              <ChatNotification />
-              {/* Звонилка: лист в шапке и под своей границей ошибок — упасть
-                  может только она сама, история и карточки живут на бэкенде.
-                  Её конфиг отдаёт телефония (chat_phone) — без неё не рисуем. */}
-              {isInstalled('chat_phone') && (
-                <SipErrorBoundary>
-                  <SipPhoneButton />
-                </SipErrorBoundary>
+              {hasCommunication && (
+                <>
+                  {isInstalled('activity') && (
+                    <Box visibleFrom="lg">
+                      <ActivityNotification />
+                    </Box>
+                  )}
+                  <ChatNotification />
+                  {/* Звонилка: лист в шапке и под своей границей ошибок —
+                      упасть может только она сама, история и карточки живут
+                      на бэкенде. Её конфиг отдаёт телефония (chat_phone) —
+                      без неё не рисуем. */}
+                  {isInstalled('chat_phone') && (
+                    <SipErrorBoundary>
+                      <SipPhoneButton />
+                    </SipErrorBoundary>
+                  )}
+                </>
               )}
               <UserMenu />
             </Group>

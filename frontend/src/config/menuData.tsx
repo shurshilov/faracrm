@@ -230,6 +230,34 @@ const menuTree: GroupConfig[] = [
   },
 
   {
+    // Личный кабинет маркетплейса: каталог (публичная страница), свои
+    // приложения, покупки, статистика поставщика, счёт для выплат.
+    group: 'marketplace',
+    submenus: [
+      {
+        id: 'menu_marketplace_catalog',
+        to: '/market',
+        label: 'Каталог',
+        labelKey: 'marketplace:menu.catalog',
+      },
+      { model: 'marketplace_app' },
+      { model: 'marketplace_purchase' },
+      {
+        id: 'menu_marketplace_stats',
+        to: '/marketplace/stats',
+        label: 'Статистика',
+        labelKey: 'marketplace:menu.stats',
+      },
+      {
+        id: 'menu_marketplace_vendor',
+        to: '/marketplace/vendor',
+        label: 'Счёт для выплат',
+        labelKey: 'marketplace:menu.vendor',
+      },
+    ],
+  },
+
+  {
     group: 'files',
     submenus: [
       { model: 'attachments' },

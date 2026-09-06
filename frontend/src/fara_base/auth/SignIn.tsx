@@ -10,11 +10,12 @@ import {
   Stack,
   Divider,
   Menu,
+  Anchor,
 } from '@mantine/core';
 import * as yup from 'yup';
 import { useForm } from '@mantine/form';
 import { useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   IconBrandTelegram,
@@ -165,6 +166,9 @@ export default function SignIn() {
   // Если demo_mode=true — префилим форму логина admin/admin.
   const { data: publicConfig } = useGetPublicConfigQuery();
   const demoMode = !!publicConfig?.demo_mode;
+  // Ссылка на регистрацию есть только пока установлен модуль registration:
+  // его публичные роуты иначе закрыты (404 #APP_NOT_INSTALLED).
+  const canRegister = !!publicConfig?.apps?.includes('registration');
 
   useEffect(() => {
     if (demoMode) {
@@ -316,6 +320,16 @@ export default function SignIn() {
             {loginError && (
               <Text c="red" size="sm" ta="center" data-testid="login-error">
                 {loginError}
+              </Text>
+            )}
+
+            {/* Самостоятельная регистрация (модуль registration) */}
+            {canRegister && (
+              <Text ta="center" size="sm" c="dimmed">
+                {t('auth.noAccount')}{' '}
+                <Anchor component={Link} to="/register" size="sm">
+                  {t('auth.register')}
+                </Anchor>
               </Text>
             )}
 

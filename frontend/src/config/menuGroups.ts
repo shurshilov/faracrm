@@ -9,6 +9,7 @@ import {
   IconMessage,
   IconPhoneCall,
   IconCheckupList,
+  IconBuildingStore,
 } from '@tabler/icons-react';
 
 export const MenuGroups = {
@@ -92,6 +93,13 @@ export const MenuGroups = {
     labelKey: 'common:menu.files',
     Icon: IconFiles,
     order: 70,
+  },
+  marketplace: {
+    id: 'category_marketplace',
+    label: 'Маркетплейс',
+    labelKey: 'marketplace:menu.title',
+    Icon: IconBuildingStore,
+    order: 80,
   },
   settings: {
     id: 'category_settings',

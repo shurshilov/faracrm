@@ -203,6 +203,21 @@ from backend.base.crm.chat_phone_asterisk.models.asterisk_log import (
     AsteriskLog,
 )
 
+# Registration / Payment / Marketplace
+from backend.base.crm.registration.models.registration import Registration
+from backend.base.crm.payment.models.payment import Payment
+from backend.base.crm.marketplace.models.marketplace_app import (
+    MarketplaceApplication,
+)
+from backend.base.crm.marketplace.models.marketplace_purchase import (
+    MarketplacePurchase,
+)
+
+# @extend(User): счёт для выплат поставщику маркетплейса (payout_account)
+from backend.base.crm.marketplace.models.user_ext import (  # noqa: F401
+    UserMarketplaceMixin,
+)
+
 # apps
 from backend.base.system.cron.app import CronApp
 from backend.base.crm.languages.app import LanguageApp
@@ -236,6 +251,11 @@ from backend.base.crm.tasks.app import TasksApp
 from backend.base.crm.activity.app import ActivityApp
 from backend.base.crm.report_docx.app import ReportDocxApp
 from backend.base.crm.contract.app import ContractApp
+from backend.base.crm.registration.app import RegistrationApp
+from backend.base.crm.registration_email.app import RegistrationEmailApp
+from backend.base.crm.payment.app import PaymentApp
+from backend.base.crm.payment_tinkoff.app import PaymentTinkoffApp
+from backend.base.crm.marketplace.app import MarketplaceApp
 
 # services
 from backend.base.system.logger.app import LoggerService
@@ -334,6 +354,11 @@ class Models(ModelsCore, ExtensibleMixin):
     activity_type = ActivityType
     report_template = ReportTemplate
     contract = Contract
+    # registration / payment / marketplace
+    registration = Registration
+    payment = Payment
+    marketplace_app = MarketplaceApplication
+    marketplace_purchase = MarketplacePurchase
 
 
 class Apps(AppsCore):
@@ -371,6 +396,11 @@ class Apps(AppsCore):
     activity = ActivityApp()
     report_docx = ReportDocxApp()
     contract = ContractApp()
+    registration = RegistrationApp()
+    registration_email = RegistrationEmailApp()
+    payment = PaymentApp()
+    payment_tinkoff = PaymentTinkoffApp()
+    marketplace = MarketplaceApp()
 
     dotorm_crud_auto = DotormCrudAutoService()
     # alise

@@ -57,6 +57,9 @@ export interface PublicConfig {
   /** Коды установленных приложений — нужны до входа (ссылка на регистрацию).
    *  Полный каталог с описаниями — приватный GET /apps/catalog (fara_apps). */
   apps: string[];
+  /** Куда отправить гостя с корня сайта (маркетплейс → /market).
+   *  null — форма входа, как раньше. */
+  public_home?: string | null;
 }
 
 export type BrandingFileField =

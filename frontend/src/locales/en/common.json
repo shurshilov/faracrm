@@ -104,7 +104,9 @@
     "password": "Password",
     "passwordRequired": "Password is required",
     "signIn": "Sign In",
-    "community": "Community"
+    "community": "Community",
+    "noAccount": "No account yet?",
+    "register": "Sign up"
   },
   "selectDateTime": "Select date and time",
   "contacts": {
