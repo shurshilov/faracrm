@@ -534,8 +534,8 @@ class TestMany2manyRelations:
         values = [(user_id, role_id) for role_id in role_ids]
         await User.link_many2many(role_field, values)
 
-        # Then unlink first role
-        await User.unlink_many2many(role_field, [role_ids[0]])
+        # Then unlink first role (scoped to this user via owner_id)
+        await User.unlink_many2many(role_field, [role_ids[0]], user_id)
 
         # Verify
         linked_roles = await User.get_many2many(

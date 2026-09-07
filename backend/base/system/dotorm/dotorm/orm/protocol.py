@@ -132,6 +132,7 @@ class DotModelProtocol(Protocol):
         cls,
         field: Any,
         ids: list,
+        owner_id: int,
         session: Any = None,
     ) -> Any: ...
 

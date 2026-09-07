@@ -153,8 +153,15 @@ class FilterParser:
         # Simple triplet: ("field", "op", value)
         if self._is_triplet(filter_expr):
             name, op, value = filter_expr
-            model_field = self.fields.get(name)
-            if model_field is not None:
+            if self.fields:
+                # Имя подставляется в SQL как идентификатор, поэтому ОБЯЗАНО
+                # быть не-private полем модели (единая проверка для всех
+                # фильтров: API, rules-домены, домены папок чата).
+                model_field = self.fields.get(name)
+                if model_field is None or model_field.private:
+                    raise ValueError(
+                        f"Unknown or private filter field: {name!r}"
+                    )
                 value = model_field.to_sql_filter(value)
             field = f"{escape}{name}{escape}"
             assert isinstance(op, str)

@@ -4,16 +4,28 @@
 
 ## Генерируемые эндпоинты
 
-Для модели с `__route__ = "products"`:
+Для модели с `__route__ = "products"`. Все авто-роуты монтируются под общим
+префиксом `/auto` (исключает конфликт с кастомными роутерами).
 
 | Метод | URL | Описание |
 |-------|-----|----------|
-| <span class="method-post">POST</span> | `/products/search` | Поиск с фильтрами и пагинацией |
-| <span class="method-post">POST</span> | `/products/create` | Создание записи |
-| <span class="method-get">GET</span> | `/products/read/{id}` | Чтение записи по ID |
-| <span class="method-patch">PATCH</span> | `/products/update/{id}` | Обновление записи |
-| <span class="method-delete">DELETE</span> | `/products/delete` | Удаление записей |
-| <span class="method-get">GET</span> | `/products/read_default_values` | Значения по умолчанию |
+| <span class="method-post">POST</span> | `/auto/products/search` | Поиск с фильтрами и пагинацией |
+| <span class="method-post">POST</span> | `/auto/products` | Создание записи |
+| <span class="method-post">POST</span> | `/auto/products/{id}` | Чтение записи по ID (тело: `{fields:[...]}`) |
+| <span class="method-put">PUT</span> | `/auto/products/{id}` | Обновление записи |
+| <span class="method-put">PUT</span> | `/auto/products/bulk` | Массовое обновление (`{ids, values}`) |
+| <span class="method-delete">DELETE</span> | `/auto/products/{id}` | Удаление записи |
+| <span class="method-delete">DELETE</span> | `/auto/products/bulk` | Массовое удаление (тело: `[ids]`) |
+| <span class="method-get">GET</span> | `/auto/products/fields` | Список полей модели |
+| <span class="method-get">GET</span> | `/auto/products/search_many2many` | Чтение M2M-связей записи |
+| <span class="method-post">POST</span> | `/auto/products/default_values` | Значения по умолчанию |
+
+!!! warning "Безопасность фильтров"
+    Имена полей в `filter` и параметр `sort` в `search_many2many`
+    валидируются по реальным (не `private`) полям модели. Неизвестное или
+    приватное поле → `400 #FIELDS_NOT_FOUND`; идентификаторы дополнительно
+    экранируются в SQL-билдере. Схемы create/update не содержат `private`-полей
+    (`password_hash` и т.п.).
 
 ## Как это работает
 
@@ -36,7 +48,7 @@ graph LR
 ## Search API
 
 ```http
-POST /products/search
+POST /auto/products/search
 Content-Type: application/json
 
 {
@@ -68,7 +80,7 @@ Content-Type: application/json
 ## Create API
 
 ```http
-POST /products/create
+POST /auto/products
 Content-Type: application/json
 
 {
@@ -90,7 +102,12 @@ Content-Type: application/json
 ## Read API
 
 ```http
-GET /products/read/43?fields=id,name,price,category_id
+POST /auto/products/43
+Content-Type: application/json
+
+{
+    "fields": ["id", "name", "price", "category_id"]
+}
 ```
 
 **Ответ:**
@@ -109,7 +126,7 @@ GET /products/read/43?fields=id,name,price,category_id
 ## Update API
 
 ```http
-PATCH /products/update/43
+PUT /auto/products/43
 Content-Type: application/json
 
 {

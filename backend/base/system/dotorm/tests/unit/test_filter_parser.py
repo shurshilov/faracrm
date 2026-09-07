@@ -625,8 +625,14 @@ class TestValueCoercionByFieldType:
 
         assert values[0] == "2026-08-16"
 
-    def test_unknown_field_keeps_value(self):
-        """Поля нет в схеме (rules-домен по чужой колонке) — не трогаем."""
-        _, values = self.parser.parse(("whatever", "=", "2026-08-16"))
+    def test_unknown_field_rejected(self):
+        """Имя не из карты полей → ValueError.
 
-        assert values[0] == "2026-08-16"
+        Белый список имён — защита от инъекции через имя поля (оно попадает
+        в SQL как идентификатор). Проверено по коду: все боевые фильтры,
+        включая rules-домены, ссылаются только на собственные колонки
+        модели, а Builder всегда передаёт полную карту полей. «Поле не из
+        модели» может прийти только из недоверенного ввода.
+        """
+        with pytest.raises(ValueError):
+            self.parser.parse(("whatever", "=", "2026-08-16"))

@@ -110,12 +110,25 @@ class OrmMany2manyMixin(_Base):
         return await session.execute(stmt, [values], cursor="executemany")
 
     @classmethod
-    async def unlink_many2many(cls, field: Many2many, ids: list, session=None):
-        """Unlink records from M2M relation."""
+    async def unlink_many2many(
+        cls, field: Many2many, ids: list, owner_id: int, session=None
+    ):
+        """Отвязать записи M2M ТОЛЬКО у конкретного владельца (owner_id).
+
+        owner_id обязателен: без условия по column2 (сторона владельца)
+        DELETE снимал связь у ВСЕХ записей. Например
+        `user.update(role_ids={"unselected":[r]})` удалял роль r у всех
+        пользователей, а не только у этого (column1=related, column2=owner —
+        см. link_many2many, кладущий self.id в column2)."""
+        if not ids:
+            return None
         session = cls._get_db_session(session)
         args: str = ",".join(["%s"] * len(ids))
-        stmt = f"DELETE FROM {field.many2many_table} WHERE {field.column1} in ({args})"
-        return await session.execute(stmt, ids)
+        stmt = (
+            f"DELETE FROM {field.many2many_table} "
+            f"WHERE {field.column1} in ({args}) AND {field.column2} = %s"
+        )
+        return await session.execute(stmt, [*ids, owner_id])
 
     @classmethod
     async def _records_list_get_relation(

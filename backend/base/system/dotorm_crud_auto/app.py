@@ -1,10 +1,9 @@
 """
 DotORM CRUD Auto Service - автоматическая генерация CRUD роутеров.
 
-Оптимизированная версия с использованием SchemaRegistry:
+Использует SchemaRegistry:
 - Все схемы генерируются за один проход при старте
 - Кэширование предотвращает повторную генерацию
-- Значительно быстрее старой версии с миксинами
 """
 
 from typing import TYPE_CHECKING
@@ -57,7 +56,7 @@ class DotormCrudAutoService(Service):
 
     async def create_autocrud(self, app, env: "Environment") -> None:
         """Создание CRUD роутов для всех моделей."""
-        from .crud_routers_v2 import CRUDRouterGenerator
+        from .crud_routers import CRUDRouterGenerator
 
         start_time = time.perf_counter()
 

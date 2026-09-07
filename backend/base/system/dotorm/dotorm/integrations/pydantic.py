@@ -83,14 +83,10 @@ def dotorm_to_pydantic_nested_one(cls):
     fields_store = []
     fields_relation = []
 
-    # Используем get_all_fields() чтобы получить поля включая добавленные через @extend
-    for field_name, field in cls.get_all_fields().items():
+    # get_public_fields(): все поля (включая @extend) кроме private —
+    # единая точка правды, что модель показывает наружу.
+    for field_name, field in cls.get_public_fields().items():
         if isinstance(field, DotField):
-            # private=True — поле скрыто из API-схемы (нельзя запрашивать
-            # через fields=... в GET-запросе, нельзя получить в response)
-            if getattr(field, "private", False):
-                continue
-
             fields_store.append(field_name)
 
             if isinstance(field, (Many2many, One2many)):
@@ -98,11 +94,7 @@ def dotorm_to_pydantic_nested_one(cls):
                 # {field_name: [nested_field, ...]}, чтобы клиент мог
                 # запросить вложенные поля связанной модели одним
                 # запросом.
-                allowed_fields = [
-                    fname
-                    for fname, fobj in field.relation_table.get_all_fields().items()
-                    if not getattr(fobj, "private", False)
-                ]
+                allowed_fields = list(field.relation_table.get_public_fields())
                 # TODO: по идее должно быть так
                 # relation_table = field.relation_table
                 # if callable(relation_table):
@@ -222,8 +214,11 @@ def generate_pydantic_models(
     for cls in classes:
         cls_name = cls.__name__
 
-        # Используем get_all_fields() для получения всех полей включая @extend
-        all_fields = cls.get_all_fields()
+        # get_public_fields(): все поля (включая @extend) кроме private.
+        # Базовая схема — корень всех auto-CRUD схем (create/update/read/
+        # search), поэтому private отрезается здесь один раз и не попадает
+        # ни во вход, ни в ответ API.
+        all_fields = cls.get_public_fields()
 
         # Собираем аннотации из всех классов в MRO + добавленные через @extend
         annotations = {}

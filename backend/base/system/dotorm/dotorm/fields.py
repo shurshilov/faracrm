@@ -627,9 +627,16 @@ class TranslatedChar(JSONField):
 
         Контракт: session должен реализовать метод get_lang() -> str.
         Если сессии нет (фон, post_init, cron) — возвращает 'en'.
+
+        Код языка попадает в SQL-путь jsonb_set (to_sql_update) как литерал,
+        поэтому валидируем: только буквы/цифры/-/_ , иначе 'en'. Защита от
+        инъекции через language.code (значение правит админ).
         """
         session = get_access_session()
-        return session.get_lang() if session else "en"
+        code = session.get_lang() if session else "en"
+        if code and code.replace("-", "").replace("_", "").isalnum():
+            return code
+        return "en"
 
     def deserialization(self, value):
         """JSON-строка из БД → строка для текущего языка пользователя.

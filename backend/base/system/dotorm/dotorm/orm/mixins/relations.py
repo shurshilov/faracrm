@@ -517,7 +517,7 @@ class OrmRelationsMixin(_Base):
                     if field_obj.get("unselected"):
                         request_list.append(
                             self.unlink_many2many(
-                                field, field_obj["unselected"]
+                                field, field_obj["unselected"], self.id
                             )
                         )
 

@@ -79,11 +79,8 @@ async def attachment_route_model_fields(req: Request, model_name: str):
 
     model_cls = env.models._get_model(model_name)
 
-    field_names = [
-        name
-        for name, field in model_cls.get_fields().items()
-        if not field.private
-    ]
+    # private отрезается в одном месте — DotModel.get_public_fields()
+    field_names = list(model_cls.get_public_fields())
 
     return model_cls.get_fields_info_list(field_names)
 

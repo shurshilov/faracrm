@@ -265,7 +265,7 @@ from backend.base.system.dotorm_databases_postgres.app import (
     DotormDatabasesPostgresService,
 )
 
-from backend.base.system.dotorm_crud_auto.app_v2 import DotormCrudAutoService
+from backend.base.system.dotorm_crud_auto.app import DotormCrudAutoService
 
 
 class Settings(SettingsCore):

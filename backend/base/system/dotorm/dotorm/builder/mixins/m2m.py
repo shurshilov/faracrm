@@ -27,8 +27,12 @@ class Many2ManyMixin:
         limit: int | None = 10,
     ) -> tuple[str, tuple]:
         """Build SELECT for M2M relation."""
+        store_fields = relation_table.get_store_fields()
         if not fields:
-            fields = relation_table.get_store_fields()
+            fields = store_fields
+
+        if sort not in store_fields:
+            sort = "id"
 
         # явно указать для sql запроса что эти поля относятся
         # к связанной таблице

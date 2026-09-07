@@ -445,26 +445,20 @@ class SchemaRegistry:
     def _build_search_input_schema(
         self, name: str, base: type[BaseModel], model: type
     ) -> type[BaseModel]:
-        """Схема для ввода поиска."""
-        # Исключаем private-поля — их нельзя запрашивать через API.
-        # Поле помечается private=True если оно нужно только серверу
-        # (например password_hash, password_salt).
-        allowed_fields = [
-            fname
-            for fname, fobj in model.get_all_fields().items()
-            if not getattr(fobj, "private", False)
-        ]
-        # Защита от пустых списков
+        """Схема для ввода поиска.
+
+        fields и sort — Literal по публичным полям модели
+        (DotModel.get_public_fields). Имена полей в filter схема не разбирает:
+        их проверяет FilterParser — единственная точка для всех фильтров,
+        ValueError → роут search отвечает 400.
+        """
+        allowed_fields = list(model.get_public_fields())
+        # Literal требует хотя бы одно значение
         if not allowed_fields:
             allowed_fields = ["id"]
 
-        # Literal требует хотя бы одно значение
-        fields_literal = (
-            Literal[tuple(allowed_fields)] if len(allowed_fields) > 0 else str
-        )
-        sort_literal = (
-            Literal[tuple(allowed_fields)] if len(allowed_fields) > 0 else str
-        )
+        fields_literal = Literal[tuple(allowed_fields)]
+        sort_literal = Literal[tuple(allowed_fields)]
 
         return create_model(
             f"{name}SearchInput",

@@ -230,6 +230,12 @@ class DotModel(
         cls._cache_store_fields_dict = {
             name: field for name, field in fields.items() if field.store
         }
+        # Поля, видимые снаружи (API-схемы, роуты): всё кроме private.
+        # ЕДИНСТВЕННОЕ место, где решается «private наружу не отдаём».
+        # Потребители не проверяют .private сами, а берут get_public_fields().
+        cls._cache_public_fields = {
+            name: field for name, field in fields.items() if not field.private
+        }
         cls._cache_relation_fields = [
             (name, field) for name, field in fields.items() if field.relation
         ]
@@ -669,6 +675,14 @@ class DotModel(
         По умолчанию все поля store = True, кроме One2many и Many2many
         """
         return cls._cache_store_fields
+
+    @classmethod
+    def get_public_fields(cls) -> dict[str, Field]:
+        """Поля, видимые снаружи: все кроме private (password_hash и т.п.).
+
+        Единая точка правды для API-схем и роутов auto-CRUD. Кешируется.
+        """
+        return cls._cache_public_fields
 
     @classmethod
     def get_store_fields_omit_m2o(cls) -> list[str]:

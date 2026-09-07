@@ -10,7 +10,7 @@ from typing import Any, Callable, Literal, Type
 
 from fastapi import APIRouter, Body, Depends, Query
 from fastapi.responses import JSONResponse
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
+from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
 from backend.base.system.dotorm_crud_auto.crud_pydantic_schemas import (
     SchemaCreateOutput,
@@ -23,8 +23,9 @@ from backend.base.system.dotorm.dotorm.fields import (
     PolymorphicOne2many,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel, JsonMode
+from backend.base.system.dotorm.dotorm.access import Operation
 from backend.base.crm.auth_token.app import AuthTokenApp
-from backend.base.system.schemas.base_schema import Id
+from backend.base.system.schemas.base_schema import Id, Limit
 
 from .schema_registry import SchemaRegistry
 
@@ -187,18 +188,18 @@ class CRUDRouterGenerator(APIRouter):
         schema_input = self._schema_search_input
 
         async def route(payload: schema_input):  # type: ignore
-            allowed_fields = Model.get_all_fields().keys()
-            for field in payload.fields:
-                if field not in allowed_fields:
-                    return JSONResponse(
-                        content={"error": "#FIELDS_NOT_FOUND"},
-                        status_code=HTTP_400_BAD_REQUEST,
-                    )
-
-            records, count_total = await asyncio.gather(
-                Model.search(**payload.model_dump()),
-                Model.search_count(filter=payload.filter),
-            )
+            try:
+                records, count_total = await asyncio.gather(
+                    Model.search(**payload.model_dump()),
+                    Model.search_count(filter=payload.filter),
+                )
+            except ValueError as e:
+                # FilterParser: неизвестное/private поле, неверный оператор
+                # или значение в filter — ошибка клиента, не сервера.
+                return JSONResponse(
+                    content={"error": "#FILTER_INVALID", "detail": str(e)},
+                    status_code=HTTP_400_BAD_REQUEST,
+                )
 
             if not payload.raw:
                 records = [rec.json(include=payload.fields) for rec in records]
@@ -231,18 +232,41 @@ class CRUDRouterGenerator(APIRouter):
             start: int | None = None,
             end: int | None = None,
             sort: str = Query("id"),
-            limit: int = 40,
+            limit: Limit = 40,
         ):
             field_class = getattr(Model, name)
+            comodel = field_class.relation_table
+
+            # ACL: доступ к самой записи-владельцу и к связанной таблице.
+            # get_many2many минует _check_access (в отличие от search/get),
+            # поэтому проверяем здесь — иначе токена с доступом к одной модели
+            # хватало бы, чтобы читать любую связанную (напр. хэши юзеров
+            # через roles/search_many2many?name=user_ids).
+            await Model._check_access(Operation.READ, record_ids=[id])
+            await comodel._check_access(Operation.READ)
+
+            # Запрашивать можно только публичные поля связанной модели
+            # (private отрезается в одном месте — get_public_fields).
+            comodel_public = comodel.get_public_fields()
+            safe_fields = [f for f in fields if f in comodel_public] or ["id"]
+
+            # sort — только по публичному store-полю: иначе инъекция в
+            # ORDER BY или side-channel по private-колонке. Билдер дублирует
+            # проверку по store-полям уже на уровне SQL.
+            if (
+                sort not in comodel_public
+                or sort not in comodel.get_store_fields()
+            ):
+                sort = "id"
 
             records, count_total = await asyncio.gather(
                 Model.get_many2many(
                     id,
-                    field_class.relation_table,
+                    comodel,
                     field_class.many2many_table,
                     field_class.column1,
                     field_class.column2,
-                    fields,
+                    safe_fields,
                     order,
                     start,
                     end,
@@ -251,7 +275,7 @@ class CRUDRouterGenerator(APIRouter):
                 ),
                 Model.get_many2many(
                     id,
-                    field_class.relation_table,
+                    comodel,
                     field_class.many2many_table,
                     field_class.column1,
                     field_class.column2,
@@ -264,9 +288,7 @@ class CRUDRouterGenerator(APIRouter):
                 ),
             )
 
-            fields_info = field_class.relation_table.get_fields_info_list(
-                fields
-            )
+            fields_info = comodel.get_fields_info_list(safe_fields)
             return {
                 "data": records,
                 "total": str(len(count_total)),
@@ -478,12 +500,7 @@ class CRUDRouterGenerator(APIRouter):
         Model = self.Model
 
         async def route():
-            all_fields = [
-                name
-                for name, field in Model.get_fields().items()
-                if not getattr(field, "private", False)
-            ]
-            return Model.get_fields_info_list(all_fields)
+            return Model.get_fields_info_list(list(Model.get_public_fields()))
 
         return route
 
