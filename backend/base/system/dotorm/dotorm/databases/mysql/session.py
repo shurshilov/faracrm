@@ -55,6 +55,8 @@ class MysqlSession(SessionAbstract):
         # lastrowid special case
         if cursor_type == "lastrowid":
             return cursor.lastrowid
+        if cursor_type == "rowcount":
+            return cursor.rowcount
 
         # fetch operations
         method = getattr(cursor, _dialect.get_cursor_method(cursor_type))

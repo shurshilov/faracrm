@@ -11,6 +11,7 @@ CursorType = Literal[
     "fetchval",
     "executemany",
     "lastrowid",  # MySQL-specific
+    "rowcount",  # MySQL-specific: сколько строк затронул UPDATE/DELETE
     "void",  # Execute without returning results
 ]
 
@@ -89,7 +90,12 @@ class MySQLDialect(Dialect):
 
     def convert_result(self, rows: Any, cursor: CursorType) -> Any:
         """Convert MySQL results."""
-        if rows is None or cursor in ("void", "executemany", "lastrowid"):
+        if rows is None or cursor in (
+            "void",
+            "executemany",
+            "lastrowid",
+            "rowcount",
+        ):
             return rows
 
         if cursor == "fetchval":

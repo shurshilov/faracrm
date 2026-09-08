@@ -84,6 +84,10 @@ class Field[FieldType]:
     relation_table_field: str | None = None
     _relation_table: Type["DotModel"] | None = None
 
+    # Позволяет подменить тип для всех полей класса в API-схемах
+    # (integrations/*). Переопределяет тип из аннотации. None — не меняется.
+    schema_type: type | None = None
+
     # Field-level access (см. required_roles). Карта операция → коды ролей,
     # которым разрешена операция над полем. Пусто = без ограничений.
     # Заполняется из kwargs role_read/role_create/role_update.

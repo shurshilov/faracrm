@@ -128,13 +128,14 @@ class OrmRelationsMixin(_Base):
             stmt, values, prepare=prepare
         )
 
-        # если есть хоть одна запись и вообще нужно читать поля связей
+        # если есть хоть одна запись и вообще нужно читать поля связей;
+        # raw — сырые словари из SQL, связи на них не догружаются
         fields_relation = [
             (name, field)
             for name, field in cls.get_relation_fields()
             if name in fields
         ]
-        if records and fields_relation:
+        if records and fields_relation and not raw:
             await cls._records_list_get_relation(
                 session, fields_relation, records, fields_nested
             )
@@ -254,6 +255,9 @@ class OrmRelationsMixin(_Base):
                     fields_select.append("name")
                 if isinstance(field, PolymorphicMany2one):
                     fields_select = relation_table.get_store_fields_omit_m2o()
+                # O2O продолжение записи: по умолчанию все её поля
+                if isinstance(field, One2one):
+                    fields_select = relation_table.get_store_fields()
             else:
                 continue
 
@@ -409,6 +413,10 @@ class OrmRelationsMixin(_Base):
                 field_obj = getattr(payload, name)
 
                 if isinstance(field, One2one):
+                    # из API связь приходит словарём полей связанной записи,
+                    # как created у One2many
+                    if isinstance(field_obj, dict):
+                        field_obj = field.relation_table(**field_obj)
                     params = {
                         "limit": 1,
                         "fields": ["id"],

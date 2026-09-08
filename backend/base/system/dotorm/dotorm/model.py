@@ -1000,7 +1000,15 @@ class DotModel(
                 if isinstance(field, DotModel):
                     # развёрнутая связь → форма зависит от режима
                     if mode == JsonMode.LIST or mode == JsonMode.NESTED_LIST:
-                        fields_json[field_name] = field.json_list()
+                        # O2O — продолжение записи, а не справочник: отдаём
+                        # загруженные поля целиком, а не {id, name}
+                        fields_json[field_name] = (
+                            field.json(
+                                exclude_unset=True, mode=JsonMode.NESTED_LIST
+                            )
+                            if kind == FieldKind.O2O
+                            else field.json_list()
+                        )
                     elif mode == JsonMode.FORM:
                         fields_json[field_name] = field.json(
                             exclude_unset=True, mode=JsonMode.FORM

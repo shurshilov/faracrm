@@ -6,7 +6,14 @@ if TYPE_CHECKING:
     from ..protocol import BuilderProtocol
 
 from ..request_builder import RequestBuilder
-from ...fields import PolymorphicMany2one, Field, Many2many, Many2one, One2many
+from ...fields import (
+    PolymorphicMany2one,
+    Field,
+    Many2many,
+    Many2one,
+    One2many,
+    One2one,
+)
 
 
 class RelationsMixin:
@@ -47,7 +54,8 @@ class RelationsMixin:
 
             req: RequestBuilder | None = None
 
-            if isinstance(field, One2many):
+            # One2one читается как One2many: одна строка на запись, по FK
+            if isinstance(field, (One2many, One2one)):
                 stmt, val = field.relation_table._builder.build_search(
                     fields=list(set([*fields, field.relation_table_field])),
                     filter=[(field.relation_table_field, "in", ids)],

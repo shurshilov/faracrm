@@ -12,6 +12,7 @@ from ..fields import (
     Many2many,
     Many2one,
     One2many,
+    One2one,
 )
 
 
@@ -50,6 +51,7 @@ class RequestBuilder:
     _PREPARE_FUNCS: ClassVar[dict[type, str]] = {
         Many2many: "prepare_list_ids",
         One2many: "prepare_list_ids",
+        One2one: "prepare_list_ids",
         Many2one: "prepare_list_ids",
         PolymorphicMany2one: "prepare_list_ids",
         PolymorphicOne2many: "prepare_list_ids",

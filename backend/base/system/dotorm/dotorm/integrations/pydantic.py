@@ -169,6 +169,11 @@ def convert_field_type(
     if isinstance(field_value, Binary):
         final_type = Base64DecodedBytes
 
+    # Если класс поля переопределяет тип в схеме (Field.schema_type),
+    # используем его
+    if field_value.schema_type is not None:
+        final_type = field_value.schema_type
+
     # --- определяем, допускает ли поле None ---
     allows_none = False
 
