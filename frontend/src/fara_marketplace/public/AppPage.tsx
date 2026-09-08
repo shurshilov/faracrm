@@ -12,7 +12,7 @@ import {
   Text,
   Title,
 } from '@mantine/core';
-import { IconDownload } from '@tabler/icons-react';
+import { IconBrandGithub, IconDownload } from '@tabler/icons-react';
 import { Link, useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +23,7 @@ import {
   useBuyMarketAppMutation,
   useGetMarketAppQuery,
 } from '../api';
-import { formatPrice } from './AppCard';
+import { VendorCheck, VerifiedBadge, formatPrice } from './AppCard';
 import { MarketHeader } from './MarketHeader';
 import classes from './market.module.css';
 
@@ -80,13 +80,28 @@ export default function AppPage() {
             </Title>
             {app.summary && <Text c="dimmed">{app.summary}</Text>}
             <Group gap="xs" mt="xs">
+              {app.verified && <VerifiedBadge />}
               <Badge variant="light" color="gray">
                 {t(`categories.${app.category}`, app.category)}
               </Badge>
               <Text size="sm" c="dimmed">
-                {app.vendor?.name} · v{app.version} ·{' '}
+                {app.vendor?.name} {app.vendor?.verified && <VendorCheck />} · v
+                {app.version} ·{' '}
                 {t('public.downloads', { count: app.downloads })}
               </Text>
+              {app.source_url && (
+                <Anchor
+                  href={app.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="sm">
+                  <IconBrandGithub
+                    size={14}
+                    style={{ verticalAlign: 'middle' }}
+                  />{' '}
+                  {t('public.github')}
+                </Anchor>
+              )}
             </Group>
           </Grid.Col>
 

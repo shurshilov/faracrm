@@ -21,7 +21,10 @@
     "amount": "Amount",
     "state": "Status",
     "date": "Date",
-    "action": "Action"
+    "action": "Action",
+    "code": "Module code",
+    "verified": "Verified by administration",
+    "vendor_verified": "Verified vendor"
   },
   "tabs": {
     "main": "General",
@@ -29,6 +32,17 @@
   },
   "sections": {
     "app": "App"
+  },
+  "git": {
+    "title": "Archive from GitHub",
+    "ref": "Branch / tag",
+    "modules": "Modules (comma-separated)",
+    "modulesHint": "Folders are found by name anywhere in the repository: “module” with app.py and “fara_module”",
+    "add": "Add archive",
+    "added": "Repository archive added",
+    "sync": "Import from GitHub",
+    "synced": "Modules added: {{count}}",
+    "noStorage": "No attachment storage of type GitHub: create one in “Files → Storages”."
   },
   "files": {
     "hint": "Upload screenshots (png/jpg — the first one becomes the cover) and the module zip archive. Publishing requires the archive.",
@@ -87,6 +101,9 @@
     "getFree": "Get for free",
     "download": "Download",
     "purchasesHint": "After payment the app appears in “My purchases”",
-    "backToCatalog": "Back to catalog"
+    "backToCatalog": "Back to catalog",
+    "verified": "Verified",
+    "verifiedVendor": "Verified vendor",
+    "github": "Source on GitHub"
   }
 }

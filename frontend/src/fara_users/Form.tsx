@@ -134,6 +134,11 @@ export default function ViewFormUsers(props: ViewFormProps) {
                 name="is_admin"
                 label={t('fields.is_admin', 'Суперпользователь')}
               />
+              {/* Маркетплейс: отметка продавца (ставит system_admin) */}
+              <Field
+                name="verified"
+                label={t('marketplace:fields.vendor_verified')}
+              />
             </FormCol>
             <Field
               name="contact_ids"

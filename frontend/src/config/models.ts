@@ -382,6 +382,7 @@ export const modelsConfig: Record<string, ModelConfig> = {
     extensions: [
       () => import('@/fara_attachments_google'),
       () => import('@/fara_attachments_yandex'),
+      () => import('@/fara_attachments_git'),
     ],
   },
   attachments_route: {

@@ -64,6 +64,8 @@ class MarketplaceApp(App):
             "payment",
             "payment_tinkoff",
             "attachments",
+            # Архив модуля из GitHub — вложение в git-хранилище.
+            "attachments_git",
         ],
         "sequence": 130,
         "post_init": True,

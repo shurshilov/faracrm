@@ -14,6 +14,10 @@ from backend.base.system.dotorm.dotorm.fields import (
     Selection,
     Text,
 )
+from backend.base.crm.attachments_git.strategies.strategy import (
+    fetch_archive,
+    list_modules,
+)
 from backend.base.crm.security.polymorphic_parent import (
     PolymorphicParentMixin,
 )
@@ -33,7 +37,8 @@ CATEGORIES = [
 
 # Файлы приложения — обычные вложения записи (res_model/res_id): картинки —
 # скриншоты (первая — обложка), zip — архив модуля. Отдельного поля под архив
-# нет: скачивается последний загруженный zip.
+# нет: скачивается последний загруженный zip. Архив из репозитория — такое же
+# вложение, только в хранилище типа git (модуль attachments_git).
 ARCHIVE_MIMETYPES = ["application/zip", "application/x-zip-compressed"]
 IMAGE_MIMETYPE_PATTERN = "image/%"
 
@@ -49,6 +54,20 @@ ATTACHMENT_CONTENT_FIELDS = [
 ]
 
 
+def _category_for(code: str, info: dict) -> str:
+    """Категория каталога по коду модуля и категории из его info."""
+    text = f"{code} {info.get('category', '')}".lower()
+    if "phone" in text or "telephony" in text:
+        return "telephony"
+    if "chat" in text:
+        return "communication"
+    if "report" in text:
+        return "reports"
+    if "lead" in text or "sales" in text or "partner" in text:
+        return "crm"
+    return "other"
+
+
 class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
     """
     Приложение в каталоге маркетплейса.
@@ -60,6 +79,9 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
     __table__ = "marketplace_app"
 
     id: int = Integer(primary_key=True)
+    code: str | None = Char(
+        max_length=64, index=True, description="Код модуля (имя папки)"
+    )
     name: str = Char(max_length=128, required=True, description="Название")
     summary: str | None = Char(
         max_length=255, description="Краткое описание (в карточке)"
@@ -74,6 +96,13 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
         default=False, description="Опубликовано в каталоге"
     )
     downloads: int = Integer(default=0, description="Скачиваний")
+    # Ставит только system_admin (или суперпользователь) — тот, кто проверял.
+    verified: bool = Boolean(
+        default=False,
+        role_create="system_admin",
+        role_update="system_admin",
+        description="Проверено администрацией",
+    )
 
     @staticmethod
     def _archive_required() -> FaraException:
@@ -131,3 +160,77 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
             order="asc",
             limit=1000,
         )
+
+    @classmethod
+    async def sync_from_git(cls) -> int:
+        """
+        Импорт модулей из git-хранилища: по записи на каждый модуль
+        репозитория (папка с app.py и словарём info; сервисы —
+        инфраструктура, пропускаются) + архив-вложение «:код» на ветке
+        хранилища. Известные коды не трогаются — повторный запуск добавляет
+        только новые модули. Записи не публикуются: админ смотрит и
+        публикует сам.
+        """
+        storages = await env.models.attachment_storage.search(
+            fields=["id", "git_repo_url", "git_ref", "git_token"],
+            filter=[("type", "=", "git")],
+            sort="id",
+            order="asc",
+            limit=1,
+        )
+        if not storages:
+            raise FaraException(
+                {
+                    "content": "MARKETPLACE_GIT_STORAGE_MISSING",
+                    "detail": "Нет хранилища вложений типа GitHub",
+                    "status_code": 400,
+                }
+            )
+        storage = storages[0]
+        ref = storage.git_ref or "HEAD"
+        archive = await fetch_archive(storage, ref)
+        if archive is None:
+            raise FaraException(
+                {
+                    "content": "MARKETPLACE_GIT_UNAVAILABLE",
+                    "detail": (
+                        "GitHub не отдал архив репозитория: проверьте "
+                        "адрес, ветку и токен хранилища"
+                    ),
+                    "status_code": 502,
+                }
+            )
+        existing = {
+            row.code
+            for row in await cls.search(fields=["id", "code"], limit=1000)
+        }
+
+        created = 0
+        for code, info in list_modules(archive).items():
+            if info.get("service") or code in existing:
+                continue
+            app_id = await cls.create(
+                payload=cls(
+                    code=code,
+                    name=info.get("name", code),
+                    summary=info.get("summary"),
+                    category=_category_for(code, info),
+                    version=str(info.get("version", "1.0.0")),
+                    price=0,
+                    verified=True,
+                )
+            )
+            await env.models.attachment.create(
+                payload=env.models.attachment(
+                    name=f"{code}.zip",
+                    mimetype="application/zip",
+                    res_model=cls.__table__,
+                    res_id=app_id,
+                    storage_id=storage.id,
+                    storage_file_id=f":{code}",
+                    storage_file_url=f"{storage.git_repo_url}/tree/{ref}",
+                    show_preview=False,
+                )
+            )
+            created += 1
+        return created

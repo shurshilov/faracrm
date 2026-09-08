@@ -14,6 +14,8 @@ export const CATEGORIES = [
 export interface MarketVendor {
   id: number;
   name: string;
+  /** Подтверждённый продавец (ставит администратор). */
+  verified: boolean;
 }
 
 export interface MarketApp {
@@ -24,6 +26,8 @@ export interface MarketApp {
   version: string;
   price: number;
   downloads: number;
+  /** Модуль проверен администрацией. */
+  verified: boolean;
   vendor: MarketVendor | null;
   /** Первый скриншот — обложка карточки. */
   cover_id: number | null;
@@ -32,6 +36,8 @@ export interface MarketApp {
 export interface MarketAppDetail extends MarketApp {
   description: string | null;
   screenshots: { id: number; name: string }[];
+  /** Ссылка на исходники, если архив модуля — из git-хранилища. */
+  source_url: string | null;
 }
 
 export interface MarketListArgs {
@@ -107,6 +113,11 @@ const marketplaceApi = api.injectEndpoints({
     getMarketStats: build.query<{ data: VendorStat[] }, void>({
       query: () => '/marketplace/my/stats',
     }),
+
+    // Импорт модулей репозитория git-хранилища (только суперпользователь).
+    syncGitApps: build.mutation<{ data: { created: number } }, void>({
+      query: () => ({ url: '/marketplace/git-sync', method: 'POST' }),
+    }),
   }),
 });
 
@@ -115,4 +126,5 @@ export const {
   useGetMarketAppQuery,
   useBuyMarketAppMutation,
   useGetMarketStatsQuery,
+  useSyncGitAppsMutation,
 } = marketplaceApi;

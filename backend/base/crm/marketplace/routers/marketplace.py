@@ -63,9 +63,10 @@ APP_FIELDS = [
     "version",
     "price",
     "downloads",
+    "verified",
     "create_user_id",
 ]
-VENDOR_NESTED = {"create_user_id": ["id", "name"]}
+VENDOR_NESTED = {"create_user_id": ["id", "name", "verified"]}
 SORTS = {
     "popular": ("downloads", "desc"),
     "new": ("id", "desc"),
@@ -89,7 +90,16 @@ def _serialize(app: MarketplaceApplication, cover_id: int | None) -> dict:
         "version": app.version,
         "price": float(Decimal.to_decimal(app.price)),
         "downloads": app.downloads or 0,
-        "vendor": {"id": vendor.id, "name": vendor.name} if vendor else None,
+        "verified": bool(app.verified),
+        "vendor": (
+            {
+                "id": vendor.id,
+                "name": vendor.name,
+                "verified": bool(vendor.verified),
+            }
+            if vendor
+            else None
+        ),
         "cover_id": cover_id,
     }
 
@@ -159,6 +169,14 @@ async def get_app(req: Request, app_id: Id):
     data = _serialize(app, screenshots[0].id if screenshots else None)
     data["description"] = app.description
     data["screenshots"] = [{"id": s.id, "name": s.name} for s in screenshots]
+    # Архив из git-хранилища — ссылка на исходники. У файлового хранилища
+    # storage_file_url — путь на диске, его наружу не отдаём.
+    archive = await app.get_archive()
+    data["source_url"] = (
+        archive.storage_file_url
+        if archive and getattr(archive.storage_id, "type", None) == "git"
+        else None
+    )
     return {"data": data}
 
 
@@ -229,6 +247,24 @@ async def buy_app(req: Request, app_id: Id):
     }
 
 
+@router_private.post("/marketplace/git-sync")
+async def git_sync(req: Request):
+    """Импорт модулей репозитория в каталог (суперпользователь). Записи не
+    опубликованы — админ проверяет карточки и публикует сам."""
+    env: "Environment" = req.app.state.env
+    if not req.state.session.user_id.is_admin:
+        raise FaraException(
+            {
+                "content": "MARKETPLACE_ADMIN_ONLY",
+                "detail": "Только для администратора",
+                "status_code": 403,
+            }
+        )
+    async with env.apps.db.get_transaction():
+        created = await env.models.marketplace_app.sync_from_git()
+    return {"data": {"created": created}}
+
+
 @router_private.get("/marketplace/my/stats")
 async def my_stats(req: Request):
     """Статистика поставщика по его приложениям."""
@@ -294,6 +330,7 @@ async def download_app(req: Request, app_id: Id):
                 }
             )
 
+    # Архив из git-хранилища сервер собирает прямо здесь (read_content).
     archive = await app.get_archive()
     content = await archive.read_content() if archive else None
     if content is None:
