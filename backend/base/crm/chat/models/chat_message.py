@@ -26,6 +26,11 @@ from backend.base.crm.users.audit_mixin import AuditMixin
 
 _log = logging.getLogger(__name__)
 
+# Тело в WS-событии режем: pg_notify принимает ~8 КБ на событие, длинное
+# письмо в него не влезало и раньше терялось целиком. Символов, не байт:
+# кириллица в UTF-8 занимает два, запас до лимита остаётся.
+WS_BODY_LIMIT = 2000
+
 if TYPE_CHECKING:
     from backend.base.crm.users.models.users import User
     from backend.base.crm.partners.models.partners import Partner
@@ -228,45 +233,34 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         return None
 
     def serialize_for_ws(
-        self,
-        *,
-        author: dict,
-        attachments: list[dict],
-        connector_type: str | None = None,
-        author_user_id: int | None = None,
-        author_partner_id: int | None = None,
-        partner_id: int | None = None,
-        lead_id: int | None = None,
-        body_limit: int | None = None,
+        self, *, author: dict, attachments: list[dict], **tags
     ) -> dict:
-        """Форма сообщения для WS-события `new_message` (входящий путь).
+        """Форма сообщения для WS-события `new_message` — одна для всех путей
+        (исходящее, пересылка, системное, входящее).
 
-        Часть данных не выводится из самого сообщения и передаётся явно:
-        author (у входящего имя — контрагента, а не автора-стаба),
-        attachments (уже сериализованы, см. Attachment.serialize_for_chat),
-        partner_id/lead_id — теги «ленты». body_limit обрезает тело (входящий
-        шлёт превью в 200 символов; пустое тело → None, 1:1 с прежним
-        `body[:200] if body else None`).
+        Совпадает с REST serialize_for_chat, чтобы фронт клал событие в тот же
+        кэш без пересборки. Явно передаются: author (у только что созданной
+        записи связанный пользователь несёт один id, а у входящего это
+        контрагент, не автор-стаб), attachments (уже сериализованы, см.
+        Attachment.serialize_for_chat) и tags — теги «ленты»
+        (partner_id/lead_id/task_id и т.п.). Тело длиннее WS_BODY_LIMIT
+        обрезается и помечается body_truncated: фронт дочитает его из REST.
         """
-        body = self.body
-        if body_limit is not None:
-            body = body[:body_limit] if body else None
-        return {
-            "id": self.id,
-            "body": body,
-            "author": author,
-            "author_user_id": author_user_id,
-            "author_partner_id": author_partner_id,
-            "partner_id": partner_id,
-            "lead_id": lead_id,
-            "create_datetime": (
-                self.create_datetime.isoformat()
-                if self.create_datetime
-                else None
-            ),
-            "connector_type": connector_type,
-            "attachments": attachments,
-        }
+        data = self.serialize_for_chat(
+            is_read=False, attachments=attachments, reactions=[]
+        )
+        data["author"] = author
+        # Связи у свежей записи — объекты с одним id; в событие идут id.
+        data["parent_id"] = getattr(self.parent_id, "id", self.parent_id)
+        data["connector_id"] = getattr(
+            self.connector_id, "id", self.connector_id
+        )
+        data.update(tags)
+        body = data["body"] or ""
+        if len(body) > WS_BODY_LIMIT:
+            data["body"] = body[:WS_BODY_LIMIT]
+            data["body_truncated"] = True
+        return data
 
     def serialize_for_chat(
         self,
@@ -448,22 +442,14 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
                 message={
                     "type": "new_message",
                     "chat_id": chat_id,
-                    "message": {
-                        "id": message.id,
-                        "body": body,
-                        "message_type": "system",
-                        "author": {
+                    "message": message.serialize_for_ws(
+                        author={
                             "id": SYSTEM_USER_ID,
                             "name": None,
                             "type": "user",
                         },
-                        "create_datetime": message.create_datetime.isoformat(),
-                        "starred": False,
-                        "pinned": False,
-                        "is_edited": False,
-                        "is_read": False,
-                        "attachments": [],
-                    },
+                        attachments=[],
+                    ),
                 },
             )
         except Exception as exc:

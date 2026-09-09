@@ -86,17 +86,8 @@ export class WSClient {
     this.ws.send(JSON.stringify(data));
   }
 
-  /** Подписаться на чат */
-  async subscribe(chatId: number): Promise<WSEvent> {
-    this.send({ type: 'subscribe', chat_id: chatId });
-    return this.waitFor((msg) => msg.type === 'subscribed' && msg.chat_id === chatId);
-  }
-
-  /** Подписаться на несколько чатов */
-  async subscribeAll(chatIds: number[]): Promise<WSEvent> {
-    this.send({ type: 'subscribe_all', chat_ids: chatIds });
-    return this.waitFor((msg) => msg.type === 'subscribed_all');
-  }
+  // Подписок на чаты нет: события чата приходят участникам (chat_member)
+  // сразу после connect, заявлять чаты клиенту не нужно.
 
   /** Отправить typing */
   sendTyping(chatId: number): void {

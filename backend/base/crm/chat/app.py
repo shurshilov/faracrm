@@ -87,7 +87,10 @@ class ChatApp(Service):
         )
 
         env: "Environment" = app.state.env
-        self.chat_manager = ConnectionManager()
+        # Адресаты событий чата — участники из chat_member, не подписки клиента.
+        self.chat_manager = ConnectionManager(
+            env.models.chat_member.active_user_ids
+        )
 
         # Жнец залипших соединений. Мобильный клиент уходит молча (сон
         # вкладки, NAT оператора, WiFi↔LTE рвут TCP без close-кадра), и без

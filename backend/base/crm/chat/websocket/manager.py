@@ -5,7 +5,7 @@ import asyncio
 from enum import Enum
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Set
+from typing import TYPE_CHECKING, Awaitable, Callable, Iterable, Set
 
 from fastapi import WebSocket
 from starlette.websockets import WebSocketState
@@ -25,12 +25,12 @@ logger = logging.getLogger(__name__)
 WS_IDLE_TIMEOUT_SECONDS = 120
 WS_REAP_INTERVAL_SECONDS = 60
 
+# chat_id -> id пользователей, которым адресованы события этого чата.
+RecipientsResolver = Callable[[int], Awaitable[list[int]]]
+
 
 class WebsocketCommand(str, Enum):
     ping = "ping"
-    subscribe = "subscribe"
-    subscribe_all = "subscribe_all"
-    unsubscribe = "unsubscribe"
     typing = "typing"
     read = "read"
 
@@ -45,8 +45,10 @@ class WebsocketCommand(str, Enum):
 
 
 class PubSubCommand(str, Enum):
-    SEND_CHAT = "send_to_chat"
-    SEND_USER = "send_to_user"
+    # Единственный способ доставки: событие адресовано СПИСКУ пользователей.
+    # Кому — решает публикующая сторона (участники чата или один адресат),
+    # а каждый воркер доставляет тем из списка, кто подключён к нему.
+    SEND_USERS = "send_to_users"
     NEW_CHAT = "notify_new_chat"
     # Cross-worker уведомление "callee получил invite с ack'нулся".
     # Будит asyncio.Event в HTTP /calls/start на любом воркере.
@@ -68,20 +70,21 @@ class ConnectionManager:
 
     Управляет:
     - Подключениями пользователей (1 user → N websockets)
-    - Подписками на чаты
-    - Рассылкой сообщений участникам чата
+    - Рассылкой событий участникам чата (адресаты — по членству, см.
+      resolve_recipients; подписок на чаты нет)
     - Статусами онлайн/оффлайн
     """
 
-    def __init__(self):
+    def __init__(self, resolve_recipients: RecipientsResolver):
+        # Кто получает события чата. Источник истины — chat_member (в бою
+        # ChatMember.active_user_ids), а не подписки клиента: клиент знал
+        # только чаты из первой сотни своего списка, поэтому record-чаты,
+        # старые чаты и свежие добавления участника оставались без событий,
+        # а подписаться можно было на любой чужой чат.
+        self._resolve_recipients = resolve_recipients
+
         # user_id -> set of WebSocket connections
         self._connections: dict[int, Set[WebSocket]] = {}
-
-        # chat_id -> set of user_ids subscribed to this chat
-        self._chat_subscriptions: dict[int, Set[int]] = {}
-
-        # user_id -> set of chat_ids user is subscribed to
-        self._user_subscriptions: dict[int, Set[int]] = {}
 
         # websocket -> время последнего кадра ОТ КЛИЕНТА. Именно посокетно,
         # а не по юзеру: у юзера с двумя устройствами живые пинги одного
@@ -96,7 +99,10 @@ class ConnectionManager:
         # Про отсутствие шины говорим один раз, а не на каждое событие.
         self._warned_no_pubsub = False
 
-    def set_pubsub(self, backend: "PubSubBackend") -> None:
+        # call_id -> Event: HTTP /calls/start ждёт invite_ack (см. ниже).
+        self._pending_invites: dict[int, asyncio.Event] = {}
+
+    def set_pubsub(self, backend: "PubSubBackend | None") -> None:
         """Установить pub/sub backend. Вызывается из ChatApp.startup()."""
         self._pubsub = backend
 
@@ -120,15 +126,8 @@ class ConnectionManager:
         try:
             now = datetime.now(timezone.utc)
             async with self._lock:
-                if user_id not in self._connections:
-                    self._connections[user_id] = set()
-
-                if user_id not in self._user_subscriptions:
-                    self._user_subscriptions[user_id] = set()
-
-                self._connections[user_id].add(websocket)
+                self._connections.setdefault(user_id, set()).add(websocket)
                 self._ws_activity[websocket] = now
-
                 total_connections = len(self._connections[user_id])
 
             logger.info(
@@ -163,9 +162,9 @@ class ConnectionManager:
         """
         Отключить конкретное WebSocket соединение пользователя.
 
-        Под локом снимаем сокет и, если живых соединений не осталось, чистим
-        подписки. Рассылка presence=offline идёт вне лока и ЧЕРЕЗ ШИНУ
-        (PRESENCE_BYE): остальные сотрудники сидят на других воркерах.
+        Под локом снимаем сокет. Рассылка presence=offline идёт вне лока и
+        ЧЕРЕЗ ШИНУ (PRESENCE_BYE): остальные сотрудники сидят на других
+        воркерах.
 
         Args:
             websocket: WebSocket соединение для отключения
@@ -188,10 +187,6 @@ class ConnectionManager:
                 remaining = len(conns)
             else:
                 del self._connections[user_id]
-                for chat_id in self._user_subscriptions.pop(user_id, set()):
-                    subs = self._chat_subscriptions.get(chat_id)
-                    if subs is not None:
-                        subs.discard(user_id)
                 gone = True
 
         logger.info(
@@ -204,48 +199,6 @@ class ConnectionManager:
         # переподтвердит присутствие — см. _presence_dispatch.
         if gone:
             await self._presence_publish(PubSubCommand.PRESENCE_BYE, user_id)
-
-    async def subscribe_to_chats(self, user_id: int, chat_ids: list[int]):
-        """
-        Подписать пользователя на несколько чатов одной операцией.
-
-        Только адресация сообщений: по этим подпискам решается, кому на
-        ЭТОМ воркере доставлять события чата. К присутствию отношения не
-        имеет — оно объявляется на самом соединении (см. секцию PRESENCE).
-
-        Args:
-            user_id: ID пользователя
-            chat_ids: Список ID чатов
-        """
-        if not chat_ids:
-            return
-
-        async with self._lock:
-            subscriptions = self._user_subscriptions.setdefault(user_id, set())
-            for chat_id in chat_ids:
-                self._chat_subscriptions.setdefault(chat_id, set()).add(
-                    user_id
-                )
-                subscriptions.add(chat_id)
-
-        logger.info("User %s subscribed to %s chats", user_id, len(chat_ids))
-
-    async def unsubscribe_from_chat(self, user_id: int, chat_id: int):
-        """
-        Отписать пользователя от чата.
-
-        Args:
-            user_id: ID пользователя
-            chat_id: ID чата
-        """
-        async with self._lock:
-            if chat_id in self._chat_subscriptions:
-                self._chat_subscriptions[chat_id].discard(user_id)
-
-            if user_id in self._user_subscriptions:
-                self._user_subscriptions[user_id].discard(chat_id)
-
-        logger.debug("User %s unsubscribed from chat %s", user_id, chat_id)
 
     async def _publish(self, command: str, payload: dict) -> bool:
         """
@@ -269,30 +222,51 @@ class ConnectionManager:
             )
         return False
 
+    async def _publish_to_users(
+        self, user_ids: Iterable[int], message: dict
+    ) -> None:
+        """Событие адресатам на всех воркерах (CROSS-PROCESS)."""
+        user_ids = list(user_ids)
+        if user_ids:
+            await self._publish(
+                PubSubCommand.SEND_USERS,
+                {"user_ids": user_ids, "message": message},
+            )
+
     async def send_to_chat(
         self, chat_id: int, message: dict, exclude_user: int | None = None
     ):
         """
-        Отправить сообщение всем участникам чата (CROSS-PROCESS).
-        Проходит через pg_notify → все workers.
+        Отправить событие всем участникам чата (CROSS-PROCESS).
+
+        Адресаты считаются здесь, в момент публикации. Внутри транзакции
+        список читается её же соединением, поэтому участник, добавленный в
+        этой же транзакции, событие получит.
         """
-        await self._publish(
-            PubSubCommand.SEND_CHAT,
-            {
-                "chat_id": chat_id,
-                "message": message,
-                "exclude_user": exclude_user,
-            },
+        recipients = await self._resolve_recipients(chat_id)
+        await self._publish_to_users(
+            (uid for uid in recipients if uid != exclude_user), message
         )
 
     async def send_to_user(self, user_id: int, message: dict):
+        """Отправить событие одному пользователю (CROSS-PROCESS)."""
+        await self._publish_to_users([user_id], message)
+
+    async def _send_from_member(
+        self, chat_id: int, user_id: int, message: dict
+    ) -> None:
         """
-        Отправить сообщение пользователю (CROSS-PROCESS).
-        Проходит через pg_notify → все workers.
+        Событие участника остальным участникам чата.
+
+        chat_id в кадре называет клиент, поэтому членство отправителя
+        проверяем тем же списком адресатов: не участник — молча игнорируем
+        (раньше любой авторизованный мог слать typing/read в чужой чат).
         """
-        await self._publish(
-            PubSubCommand.SEND_USER,
-            {"user_id": user_id, "message": message},
+        recipients = await self._resolve_recipients(chat_id)
+        if user_id not in recipients:
+            return
+        await self._publish_to_users(
+            (uid for uid in recipients if uid != user_id), message
         )
 
     async def notify_new_chat(self, user_id: int, chat_id: int):
@@ -337,9 +311,8 @@ class ConnectionManager:
     # Присутствие — про СОТРУДНИКОВ, а не про чаты: в сети видно всех, с кем
     # ты можешь связаться (список сотрудников, звонилка), независимо от того,
     # переписывались вы когда-нибудь или нет. Поэтому событию нужен только
-    # user_id, и объявляется оно на самом соединении, не дожидаясь
-    # subscribe_all (у нового сотрудника чатов может не быть вовсе — раньше
-    # он молча оставался невидимым для всех).
+    # user_id, и объявляется оно на самом соединении (у нового сотрудника
+    # чатов может не быть вовсе — раньше он молча оставался невидимым).
     #
     # Кто онлайн — состояние ПРОЦЕССА: _connections живёт в памяти воркера, а
     # воркеров несколько (uvicorn --workers). Поэтому воркер-инициатор только
@@ -478,34 +451,21 @@ class ConnectionManager:
         """Обработчик event-ов от pubsub."""
         event_type = event.get("type")
 
-        if event_type == PubSubCommand.SEND_CHAT:
-            chat_id = event["chat_id"]
-            message = event["message"]
-            exclude_user = event.get("exclude_user")
-            async with self._lock:
-                subscribers = self._chat_subscriptions.get(
-                    chat_id, set()
-                ).copy()
-            for user_id in subscribers:
-                if exclude_user and user_id == exclude_user:
-                    continue
-                await self._send_to_user(user_id, message)
-
-        elif event_type == PubSubCommand.SEND_USER:
-            await self._send_to_user(event["user_id"], event["message"])
+        if event_type == PubSubCommand.SEND_USERS:
+            # Доставляем тем из списка, кто подключён к этому воркеру;
+            # для остальных _send_to_user — no-op.
+            await asyncio.gather(
+                *(
+                    self._send_to_user(uid, event["message"])
+                    for uid in event["user_ids"]
+                )
+            )
 
         elif event_type == PubSubCommand.NEW_CHAT:
-            user_id = event["user_id"]
-            chat_id = event["chat_id"]
-            # Только за своих. Подписывать юзера, которого на этом воркере
-            # нет, незачем — свои чаты он пришлёт в subscribe_all при входе.
-            # А осевшая подписка потом ВРЁТ: его вход выглядит «не первым»
-            # для этого чата, и присутствие не объявляется вовсе.
-            if not self._connections.get(user_id):
-                return
-            await self.subscribe_to_chats(user_id, [chat_id])
+            # Данные чата клиент дочитает рефетчем списка.
             await self._send_to_user(
-                user_id, {"type": "chat_created", "chat_id": chat_id}
+                event["user_id"],
+                {"type": "chat_created", "chat_id": event["chat_id"]},
             )
 
         elif event_type in (
@@ -550,7 +510,7 @@ class ConnectionManager:
 
     async def _send_to_user(self, user_id: int, message: dict):
         """
-        Отправить сообщение во все соединения пользователя.
+        Отправить сообщение во все соединения пользователя на ЭТОМ воркере.
 
         Args:
             user_id: ID пользователя
@@ -584,67 +544,24 @@ class ConnectionManager:
             # Heartbeat — отвечаем только в этот websocket
             await self._send_to_websocket(websocket, {"type": "pong"})
 
-        elif message_type == WebsocketCommand.subscribe:
-            # Подписка на чат
+        elif message_type in (WebsocketCommand.typing, WebsocketCommand.read):
+            # Индикатор набора / отметка о прочтении — остальным участникам.
             chat_id = data.get("chat_id")
-            if chat_id:
-                await self.subscribe_to_chats(user_id, [chat_id])
-                await self._send_to_websocket(
-                    websocket, {"type": "subscribed", "chat_id": chat_id}
-                )
-
-        elif message_type == WebsocketCommand.subscribe_all:
-            # Подписка на несколько чатов одним запросом
-            chat_ids = data.get("chat_ids", [])
-            if chat_ids:
-                await self.subscribe_to_chats(user_id, chat_ids)
-                await self._send_to_websocket(
-                    websocket,
-                    {
-                        "type": "subscribed_all",
-                        "chat_ids": chat_ids,
-                        "count": len(chat_ids),
-                    },
-                )
-
-        elif message_type == WebsocketCommand.unsubscribe:
-            # Отписка от чата
-            chat_id = data.get("chat_id")
-            if chat_id:
-                await self.unsubscribe_from_chat(user_id, chat_id)
-                await self._send_to_websocket(
-                    websocket, {"type": "unsubscribed", "chat_id": chat_id}
-                )
-
-        elif message_type == WebsocketCommand.typing:
-            # Индикатор набора текста
-            chat_id = data.get("chat_id")
-            if chat_id:
-                await self.send_to_chat(
-                    chat_id,
-                    {
-                        "type": "typing",
-                        "chat_id": chat_id,
-                        "user_id": user_id,
-                    },
-                    exclude_user=user_id,
-                )
-
-        elif message_type == WebsocketCommand.read:
-            # Отметка о прочтении
-            chat_id = data.get("chat_id")
-            message_id = data.get("message_id")
-            if chat_id:
-                await self.send_to_chat(
-                    chat_id,
-                    {
-                        "type": "messages_read",
-                        "chat_id": chat_id,
-                        "user_id": user_id,
-                        "message_id": message_id,
-                    },
-                    exclude_user=user_id,
-                )
+            if not isinstance(chat_id, int):
+                return
+            event: dict = {
+                "type": "typing",
+                "chat_id": chat_id,
+                "user_id": user_id,
+            }
+            if message_type == WebsocketCommand.read:
+                event = {
+                    "type": "messages_read",
+                    "chat_id": chat_id,
+                    "user_id": user_id,
+                    "message_id": data.get("message_id"),
+                }
+            await self._send_from_member(chat_id, user_id, event)
 
         # ── WebRTC call signaling ─────────────────────────────────────
         # Тупая пересылка второму участнику звонка: адресата клиент уже
@@ -695,12 +612,9 @@ class ConnectionManager:
     #   2. Тот же handler регистрирует pending event для call_id
     #   3. Клиент callee получает invite, тут же шлёт `call.invite_ack`
     #   4. Тот воркер где сидит callee обрабатывает ack и...
-    #      → публикует cross-process событие `call.invite_ack_cross`
+    #      → публикует cross-process событие CALL_ACK
     #        (чтобы ЛЮБОЙ воркер мог разбудить pending event)
     #   5. /calls/start просыпается, возвращает успех
-    #
-    # Чтобы не изобретать ещё один PubSub канал, мы пересылаем invite_ack
-    # обратно инициатору через send_to_user (он же ждёт событие).
 
     def _register_pending_invite(self, call_id: int) -> "asyncio.Event":
         """
@@ -709,20 +623,16 @@ class ConnectionManager:
 
         Вызывается из HTTP /calls/start.
         """
-        if not hasattr(self, "_pending_invites"):
-            self._pending_invites: dict[int, asyncio.Event] = {}
         ev = asyncio.Event()
         self._pending_invites[call_id] = ev
         return ev
 
     def _notify_invite_ack_local(self, call_id: int) -> None:
         """Разбудить ожидающий /calls/start (если он в этом же воркере)."""
-        pending = getattr(self, "_pending_invites", {})
-        ev = pending.get(call_id)
+        ev = self._pending_invites.get(call_id)
         if ev:
             ev.set()
 
     def _cleanup_pending_invite(self, call_id: int) -> None:
         """Убрать запись из pending после выхода из /calls/start."""
-        pending = getattr(self, "_pending_invites", {})
-        pending.pop(call_id, None)
+        self._pending_invites.pop(call_id, None)

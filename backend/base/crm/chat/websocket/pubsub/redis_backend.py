@@ -40,9 +40,9 @@ class RedisPubSubBackend(PubSubBackend):
     """Redis Pub/Sub backend."""
 
     def __init__(self) -> None:
+        super().__init__()
         self._redis: Any = None
         self._pubsub: Any = None
-        self._callback: Callable[[dict], Awaitable[None]] | None = None
         self._listener_task: asyncio.Task | None = None
         self._running: bool = False
 
@@ -128,8 +128,9 @@ class RedisPubSubBackend(PubSubBackend):
                         )
                         continue
 
-                    if self._callback:
-                        await self._safe_callback(data)
+                    # Отдельной задачей, а не await здесь: иначе один
+                    # зависший сокет тормозил бы доставку всему воркеру.
+                    self._dispatch(data)
 
             except asyncio.CancelledError:
                 break
@@ -154,15 +155,6 @@ class RedisPubSubBackend(PubSubBackend):
             logger.info("RedisPubSubBackend: reconnected")
         except Exception:
             logger.error("RedisPubSubBackend: reconnect failed", exc_info=True)
-
-    async def _safe_callback(self, data: dict) -> None:
-        """Обёртка callback с обработкой ошибок."""
-        try:
-            await self._callback(data)
-        except Exception:
-            logger.error(
-                "RedisPubSubBackend: error in callback", exc_info=True
-            )
 
     async def publish(self, event_type: str, data: dict) -> None:
         """Опубликовать событие в Redis канал."""

@@ -11,6 +11,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
 import {
   chatApi,
+  GetChatsResponse,
+  GetMessagesResponse,
   WSMessage,
   WSNewMessage,
   WSReactionChanged,
@@ -43,11 +45,47 @@ const PONG_TIMEOUT_MS = PING_INTERVAL_MS * 2.5;
 // и пробуем заново: повторная попытка обычно проходит.
 const CONNECT_TIMEOUT_MS = 10_000;
 
+/**
+ * Правка ВСЕХ закэшированных вариантов списка чатов.
+ *
+ * Ключ кэша RTK Query — эндпоинт плюс аргументы: {limit:100}, папка, scope,
+ * include_* — это разные записи, а событие одно. Раньше правился только
+ * вариант {limit:100}, поэтому в папках список не обновлялся живьём.
+ */
+function patchChatLists(
+  dispatch: AppDispatch,
+  recipe: (draft: GetChatsResponse) => void,
+) {
+  dispatch((d, getState) => {
+    for (const args of chatApi.util.selectCachedArgsForQuery(
+      getState(),
+      'getChats',
+    )) {
+      d(chatApi.util.updateQueryData('getChats', args, recipe));
+    }
+  });
+}
+
+/** То же для истории одного чата: limit 50 / 20 / includeDeleted — один чат. */
+function patchChatMessages(
+  dispatch: AppDispatch,
+  chatId: number,
+  recipe: (draft: GetMessagesResponse) => void,
+) {
+  dispatch((d, getState) => {
+    for (const args of chatApi.util.selectCachedArgsForQuery(
+      getState(),
+      'getChatMessages',
+    )) {
+      if (args.chatId === chatId) {
+        d(chatApi.util.updateQueryData('getChatMessages', args, recipe));
+      }
+    }
+  });
+}
+
 interface ChatWebSocketContextValue {
   isConnected: boolean;
-  subscribe: (chatId: number) => void;
-  subscribeAll: (chatIds: number[]) => void;
-  unsubscribe: (chatId: number) => void;
   sendTyping: (chatId: number) => void;
   sendRead: (chatId: number, messageId?: number) => void;
   addMessageListener: (listener: (message: WSMessage) => void) => () => void;
@@ -116,9 +154,7 @@ export function ChatWebSocketProvider({
         }
       });
 
-      // Новый чат. Подписку на него и presence по нему сервер делает сам,
-      // до отправки события (см. handle_pubsub_event/NEW_CHAT), поэтому
-      // здесь остаётся только перечитать список — за данными чата.
+      // Новый чат. Данных чата в событии нет — перечитать список.
       if ((message.type as string) === 'chat_created') {
         console.log('New chat created:', (message as any).chat_id);
         dispatch(chatApi.util.invalidateTags([{ type: 'Chat', id: 'LIST' }]));
@@ -139,60 +175,62 @@ export function ChatWebSocketProvider({
         }
       }
 
-      // Глобальное обновление кэша RTK Query
+      // Единственное место, где событие ложится в кэш RTK Query: и страница
+      // чата, и панели на формах рендерят его оттуда.
       if (message.type === 'new_message') {
         const wsMsg = message as WSNewMessage;
         const isOwnMessage =
           wsMsg.message.author?.type === 'user' &&
           wsMsg.message.author?.id === currentUserId;
 
-        if (wsMsg.chat_id) {
-          // Обновляем базовый кэш чатов { limit: 100 } для ChatNotification
-          dispatch(
-            chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
-              const chat = draft.data.find(c => c.id === wsMsg.chat_id);
-              if (chat) {
-                // Увеличиваем unread только если не своё сообщение
-                if (!isOwnMessage) {
-                  chat.unread_count = (chat.unread_count || 0) + 1;
-                }
-                chat.last_message = {
-                  id: wsMsg.message.id,
-                  body: wsMsg.message.body,
-                  author_id: wsMsg.message.author?.id || 0,
-                  create_datetime: wsMsg.message.create_datetime,
-                };
-                chat.last_message_date = wsMsg.message.create_datetime;
-              }
-            }),
-          );
-
-          // Обновляем счётчики непрочитанных у папок в сайдбаре (считаются
-          // на бэке на лету). Только чужое сообщение меняет unread.
+        // Список чатов: unread + last_message. Чата нет ни в одном варианте
+        // кэша (за пределами первой сотни или список ещё не грузился) —
+        // перечитать, иначе он в списке так и не появится.
+        let listed = false;
+        patchChatLists(dispatch, draft => {
+          const chat = draft.data.find(c => c.id === wsMsg.chat_id);
+          if (!chat) return;
+          listed = true;
           if (!isOwnMessage) {
-            dispatch(
-              chatApi.util.invalidateTags([
-                { type: 'Chat', id: 'FOLDER_UNREAD' },
-              ]),
-            );
+            chat.unread_count = (chat.unread_count || 0) + 1;
           }
-
-          // Добавляем сообщение в кэш сообщений чата
-          // Это нужно чтобы сообщения появлялись когда ChatPage не открыт
+          chat.last_message = {
+            id: wsMsg.message.id,
+            body: wsMsg.message.body,
+            author_id: wsMsg.message.author?.id || 0,
+            create_datetime: wsMsg.message.create_datetime,
+          };
+          chat.last_message_date = wsMsg.message.create_datetime;
+        });
+        if (!listed) {
           dispatch(
-            chatApi.util.updateQueryData(
-              'getChatMessages',
-              { chatId: wsMsg.chat_id, limit: 50 },
-              draft => {
-                // Проверяем что сообщение ещё не добавлено
-                if (!draft.data.find(m => m.id === wsMsg.message.id)) {
-                  draft.data.unshift(wsMsg.message);
-                }
-              },
-            ),
+            chatApi.util.invalidateTags([{ type: 'Chat', id: 'LIST' }]),
           );
-          // Панель чата партнёра рендерит тот же getChatMessages(chatId), что и
-          // основной чат — отдельного feed-кэша больше нет (модель 1:1).
+        }
+
+        // Счётчики непрочитанных у папок сайдбара считаются на бэке на лету.
+        if (!isOwnMessage) {
+          dispatch(
+            chatApi.util.invalidateTags([
+              { type: 'Chat', id: 'FOLDER_UNREAD' },
+            ]),
+          );
+        }
+
+        if (wsMsg.message.body_truncated) {
+          // Бэк обрезал тело под лимит шины. Превью годится списку и тосту,
+          // но не ленте — дочитываем сообщение из REST.
+          dispatch(
+            chatApi.util.invalidateTags([
+              { type: 'ChatMessage', id: wsMsg.chat_id },
+            ]),
+          );
+        } else {
+          patchChatMessages(dispatch, wsMsg.chat_id, draft => {
+            if (!draft.data.find(m => m.id === wsMsg.message.id)) {
+              draft.data.unshift(wsMsg.message);
+            }
+          });
         }
       }
 
@@ -217,14 +255,12 @@ export function ChatWebSocketProvider({
         const userId = (message as any).user_id;
 
         if (chatId !== undefined && userId === currentUserId) {
-          dispatch(
-            chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
-              const chat = draft.data.find(c => c.id === chatId);
-              if (chat) {
-                chat.unread_count = 0;
-              }
-            }),
-          );
+          patchChatLists(dispatch, draft => {
+            const chat = draft.data.find(c => c.id === chatId);
+            if (chat) {
+              chat.unread_count = 0;
+            }
+          });
           // Мы сами прочитали чат → пересчитать бейджи папок.
           dispatch(
             chatApi.util.invalidateTags([
@@ -237,85 +273,57 @@ export function ChatWebSocketProvider({
       // Обработка reaction_changed — обновляем реакции в кэше сообщений
       if (message.type === 'reaction_changed') {
         const wsMsg = message as WSReactionChanged;
-        dispatch(
-          chatApi.util.updateQueryData(
-            'getChatMessages',
-            { chatId: wsMsg.chat_id, limit: 50 },
-            draft => {
-              const msg = draft.data.find(m => m.id === wsMsg.message_id);
-              if (msg) {
-                msg.reactions = wsMsg.reactions;
-              }
-            },
-          ),
-        );
+        patchChatMessages(dispatch, wsMsg.chat_id, draft => {
+          const msg = draft.data.find(m => m.id === wsMsg.message_id);
+          if (msg) {
+            msg.reactions = wsMsg.reactions;
+          }
+        });
       }
 
       // Обработка message_edited — обновляем текст сообщения в кэше
       if (message.type === 'message_edited') {
         const wsMsg = message as WSMessageEdited;
-        dispatch(
-          chatApi.util.updateQueryData(
-            'getChatMessages',
-            { chatId: wsMsg.chat_id, limit: 50 },
-            draft => {
-              const msg = draft.data.find(m => m.id === wsMsg.message_id);
-              if (msg) {
-                msg.body = wsMsg.body;
-                msg.is_edited = true;
-              }
-            },
-          ),
-        );
+        patchChatMessages(dispatch, wsMsg.chat_id, draft => {
+          const msg = draft.data.find(m => m.id === wsMsg.message_id);
+          if (msg) {
+            msg.body = wsMsg.body;
+            msg.is_edited = true;
+          }
+        });
         // Обновляем last_message если это было последнее сообщение
-        dispatch(
-          chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
-            const chat = draft.data.find(c => c.id === wsMsg.chat_id);
-            if (chat && chat.last_message && chat.last_message.id === wsMsg.message_id) {
-              chat.last_message.body = wsMsg.body;
-            }
-          }),
-        );
+        patchChatLists(dispatch, draft => {
+          const chat = draft.data.find(c => c.id === wsMsg.chat_id);
+          if (chat && chat.last_message && chat.last_message.id === wsMsg.message_id) {
+            chat.last_message.body = wsMsg.body;
+          }
+        });
       }
 
       // Обработка message_deleted — удаляем сообщение из кэша
       if (message.type === 'message_deleted') {
         const wsMsg = message as WSMessageDeleted;
-        dispatch(
-          chatApi.util.updateQueryData(
-            'getChatMessages',
-            { chatId: wsMsg.chat_id, limit: 50 },
-            draft => {
-              draft.data = draft.data.filter(m => m.id !== wsMsg.message_id);
-            },
-          ),
-        );
+        patchChatMessages(dispatch, wsMsg.chat_id, draft => {
+          draft.data = draft.data.filter(m => m.id !== wsMsg.message_id);
+        });
         // Обновляем last_message в списке чатов — если удалённое сообщение было последним
-        dispatch(
-          chatApi.util.updateQueryData('getChats', { limit: 100 }, draft => {
-            const chat = draft.data.find(c => c.id === wsMsg.chat_id);
-            if (chat && chat.last_message?.id === wsMsg.message_id) {
-              chat.last_message = undefined as any;
-            }
-          }),
-        );
+        patchChatLists(dispatch, draft => {
+          const chat = draft.data.find(c => c.id === wsMsg.chat_id);
+          if (chat && chat.last_message?.id === wsMsg.message_id) {
+            chat.last_message = undefined as any;
+          }
+        });
       }
 
       // Обработка message_pinned — обновляем статус закрепления
       if (message.type === 'message_pinned') {
         const wsMsg = message as WSMessagePinned;
-        dispatch(
-          chatApi.util.updateQueryData(
-            'getChatMessages',
-            { chatId: wsMsg.chat_id, limit: 50 },
-            draft => {
-              const msg = draft.data.find(m => m.id === wsMsg.message_id);
-              if (msg) {
-                msg.pinned = wsMsg.pinned;
-              }
-            },
-          ),
-        );
+        patchChatMessages(dispatch, wsMsg.chat_id, draft => {
+          const msg = draft.data.find(m => m.id === wsMsg.message_id);
+          if (msg) {
+            msg.pinned = wsMsg.pinned;
+          }
+        });
       }
     },
     [currentUserId, dispatch],
@@ -327,9 +335,9 @@ export function ChatWebSocketProvider({
    * Важно, что она приводит состояние к тому же виду, что и onclose: сокет
    * мы рвём и сами (сторож pong, пробуждение вкладки), а onclose на мёртвом
    * TCP приходит только по таймауту браузера — или не приходит вовсе. Без
-   * setIsConnected(false) переход true→false→true не случается, и
-   * ChatNotification не переотправляет subscribe_all на новый сокет: клиент
-   * выглядит подключённым, но сервер не знает ни одной его подписки.
+   * setIsConnected(false) переход true→false→true не случается, и догрузка
+   * после разрыва (см. эффект ниже) не срабатывает: клиент выглядит
+   * подключённым, а всё, что пришло за время разрыва, так и не появится.
    */
   const teardown = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -460,33 +468,6 @@ export function ChatWebSocketProvider({
     }
   }, []);
 
-  const subscribe = useCallback(
-    (chatId: number) => {
-      sendMessage({ type: 'subscribe', chat_id: chatId });
-    },
-    [sendMessage],
-  );
-
-  const subscribeAll = useCallback(
-    (chatIds: number[]) => {
-      if (chatIds.length === 0) return;
-      console.log(
-        'ChatWebSocketProvider: Subscribing to',
-        chatIds.length,
-        'chats',
-      );
-      sendMessage({ type: 'subscribe_all', chat_ids: chatIds });
-    },
-    [sendMessage],
-  );
-
-  const unsubscribe = useCallback(
-    (chatId: number) => {
-      sendMessage({ type: 'unsubscribe', chat_id: chatId });
-    },
-    [sendMessage],
-  );
-
   const sendTyping = useCallback(
     (chatId: number) => {
       sendMessage({ type: 'typing', chat_id: chatId });
@@ -519,6 +500,26 @@ export function ChatWebSocketProvider({
       teardown();
     };
   }, [token]);
+
+  // Догрузка после разрыва. Шина fire-and-forget: всё, что пришло, пока
+  // сокета не было (сон ноутбука, фон вкладки, смена сети, выброшенное
+  // событие), потеряно безвозвратно. На повторном коннекте перечитываем
+  // список, бейджи папок и истории чатов — RTK перезапросит только те, у
+  // кого есть живой подписчик, остальные при следующем открытии.
+  const hadSessionRef = useRef(false);
+  useEffect(() => {
+    if (!isConnected) return;
+    if (hadSessionRef.current) {
+      dispatch(
+        chatApi.util.invalidateTags([
+          { type: 'Chat', id: 'LIST' },
+          { type: 'Chat', id: 'FOLDER_UNREAD' },
+          'ChatMessage',
+        ]),
+      );
+    }
+    hadSessionRef.current = true;
+  }, [isConnected, dispatch]);
 
   // Heartbeat. Интервал один на весь провайдер и смотрит на текущий сокет
   // через ref — так он не может осиротеть при пересоздании соединения.
@@ -578,9 +579,6 @@ export function ChatWebSocketProvider({
 
   const value: ChatWebSocketContextValue = {
     isConnected,
-    subscribe,
-    subscribeAll,
-    unsubscribe,
     sendTyping,
     sendRead,
     addMessageListener,

@@ -680,8 +680,8 @@ async def mock_chat_ws(test_env):
 
     После рефакторинга chat_manager живёт на экземпляре ChatApp
     (test_env.apps.chat.chat_manager), а не как модульный синглтон.
-    Эта фикстура патчит send_to_chat / send_to_user / send_to_user_in_chat
-    на реальном инстансе, чтобы тесты не уходили в PubSub.
+    Эта фикстура патчит send_to_chat / send_to_user на реальном инстансе,
+    чтобы тесты не уходили в PubSub.
 
     Использование:
         async def test_something(self, authenticated_client, mock_chat_ws):
@@ -693,14 +693,9 @@ async def mock_chat_ws(test_env):
     chat_manager = test_env.apps.chat.chat_manager
 
     originals = {}
-    for method_name in (
-        "send_to_chat",
-        "send_to_user",
-        "send_to_user_in_chat",
-    ):
-        if hasattr(chat_manager, method_name):
-            originals[method_name] = getattr(chat_manager, method_name)
-            setattr(chat_manager, method_name, AsyncMock())
+    for method_name in ("send_to_chat", "send_to_user"):
+        originals[method_name] = getattr(chat_manager, method_name)
+        setattr(chat_manager, method_name, AsyncMock())
 
     yield chat_manager
 

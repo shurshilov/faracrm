@@ -21,7 +21,6 @@ test.describe("WebSocket — reconnection", () => {
     // Первое подключение
     const ws1 = new WSClient(WS_URL, user2Token);
     await ws1.connect();
-    await ws1.subscribe(chat.id);
     await ws1.close();
 
     // Даём серверу обработать disconnect
@@ -30,7 +29,6 @@ test.describe("WebSocket — reconnection", () => {
     // Переподключение
     const ws2 = new WSClient(WS_URL, user2Token);
     await ws2.connect();
-    await ws2.subscribe(chat.id);
     ws2.clearMessages();
 
     await api.sendMessage(adminSession, chat.id, "После переподключения");
@@ -57,11 +55,9 @@ test.describe("WebSocket — reconnection", () => {
     // Два подключения одного user2
     const ws1 = new WSClient(WS_URL, user2Token);
     await ws1.connect();
-    await ws1.subscribe(chat.id);
 
     const ws2 = new WSClient(WS_URL, user2Token);
     await ws2.connect();
-    await ws2.subscribe(chat.id);
 
     ws1.clearMessages();
     ws2.clearMessages();
@@ -135,8 +131,6 @@ test.describe("WebSocket — множественные чаты", () => {
 
     const ws = new WSClient(WS_URL, user2Token);
     await ws.connect();
-    await ws.subscribe(chat1.id);
-    await ws.subscribe(chat2.id);
     ws.clearMessages();
 
     await api.sendMessage(adminSession, chat1.id, "В чат 1");
@@ -168,7 +162,6 @@ test.describe("WebSocket — burst", () => {
 
     const ws = new WSClient(WS_URL, user2Token);
     await ws.connect();
-    await ws.subscribe(chat.id);
     ws.clearMessages();
 
     // Отправляем 10 сообщений
@@ -215,7 +208,6 @@ test.describe("WebSocket — reaction events", () => {
 
     const ws = new WSClient(WS_URL, user2Token);
     await ws.connect();
-    await ws.subscribe(chat.id);
     ws.clearMessages();
 
     const res = await fetch(

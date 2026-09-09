@@ -83,10 +83,8 @@ e2e/
 | Событие | Тест |
 |---------|------|
 | `ping/pong` | chat-websocket: heartbeat |
-| `subscribe/subscribed` | chat-websocket: подписка |
-| `subscribe_all` | chat-websocket: массовая подписка |
-| `unsubscribe` | chat-edge-cases: отписка |
 | `new_message` | chat-websocket: 4 теста (отправка, порядок, exclude) |
+| адресация по членству | chat-websocket: изоляция (не участник, вышедший из чата) |
 | `message_edited` | chat-websocket: редактирование |
 | `message_deleted` | chat-websocket: удаление |
 | `typing` | chat-websocket: индикатор набора |

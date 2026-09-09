@@ -90,6 +90,22 @@ class ChatMember(AuditMixin, MemberMixin):
         description="Коннектор по умолчанию (per-user, null=internal)",
     )
 
+    @classmethod
+    async def active_user_ids(cls, chat_id: int) -> list[int]:
+        """Пользователи-участники чата — адресаты его WS-событий.
+
+        Сырой SQL через _get_db_session(): внутри транзакции это ЕЁ соединение,
+        поэтому участник, добавленный в этой же транзакции, событие получит.
+        И без правил доступа — список адресатов не должен зависеть от того,
+        что видит текущий пользователь. Партнёры сокетов не держат, их не берём.
+        """
+        rows = await cls._get_db_session().execute(
+            "SELECT user_id FROM chat_member "
+            "WHERE chat_id = %s AND user_id IS NOT NULL AND is_active = true",
+            (chat_id,),
+        )
+        return [row["user_id"] for row in rows]
+
     # Поскольку роутеры используют эти имена в 15+ местах, сохраняем их
     # как тонкие обёртки над check_permission().
     # TODO: удалить и использовать стандартный метод из миксина

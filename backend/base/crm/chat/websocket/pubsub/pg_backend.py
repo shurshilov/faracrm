@@ -20,6 +20,10 @@ import json
 import logging
 from typing import Any, Awaitable, Callable
 
+from backend.base.system.dotorm.dotorm.databases.postgres import (
+    get_current_session,
+)
+
 from .base import PubSubBackend
 
 logger = logging.getLogger(__name__)
@@ -30,15 +34,17 @@ PG_NOTIFY_MAX_PAYLOAD = 7900  # ~8KB minus overhead
 # Как часто проверять, живо ли LISTEN-соединение. 15 секунд — компромисс:
 # столько максимум длится «слепота» воркера после обрыва.
 _HEALTH_INTERVAL = 15
+# Сколько ждать ответа на пробный запрос по LISTEN-соединению.
+_HEALTH_PROBE_TIMEOUT = 5
 
 
 class PgPubSubBackend(PubSubBackend):
     """PostgreSQL NOTIFY/LISTEN pub/sub."""
 
     def __init__(self) -> None:
+        super().__init__()
         self._listener_conn: Any = None
         self._pool: Any = None
-        self._callback: Callable[[dict], Awaitable[None]] | None = None
         self._running: bool = False
         self._supervisor: Any = None
 
@@ -83,6 +89,26 @@ class PgPubSubBackend(PubSubBackend):
         self._listener_conn = conn
         return True
 
+    async def _probe(self, conn: Any) -> bool:
+        """
+        Живо ли LISTEN-соединение на самом деле.
+
+        is_closed() знает только про обрыв, который дошёл до клиента (рестарт
+        postgres, RST). Полуоткрытый TCP — NAT/фаервол/VPN забыл бездействующее
+        соединение — так не виден: соединение «открыто», а событий по нему уже
+        не будет. Единственный способ проверить — спросить сервер. Запросы на
+        соединении со слушателями разрешены, уведомления приходят между ними.
+        """
+        if conn is None or conn.is_closed():
+            return False
+        try:
+            await asyncio.wait_for(
+                conn.execute("SELECT 1"), timeout=_HEALTH_PROBE_TIMEOUT
+            )
+        except Exception:  # noqa: BLE001
+            return False
+        return True
+
     async def _supervise(self) -> None:
         """
         Пересоздавать LISTEN, если соединение умерло.
@@ -99,7 +125,7 @@ class PgPubSubBackend(PubSubBackend):
             await asyncio.sleep(_HEALTH_INTERVAL)
 
             conn = self._listener_conn
-            if conn is not None and not conn.is_closed():
+            if await self._probe(conn):
                 continue
 
             logger.warning(
@@ -108,7 +134,10 @@ class PgPubSubBackend(PubSubBackend):
             )
             if conn is not None:
                 self._listener_conn = None
+                # Зависшее соединение сначала рвём: release на мёртвом сокете
+                # сам может зависнуть.
                 try:
+                    conn.terminate()
                     await self._pool.release(conn)
                 except Exception:  # noqa: BLE001
                     pass  # мёртвое соединение пул выбросит сам
@@ -123,25 +152,25 @@ class PgPubSubBackend(PubSubBackend):
         _channel: str,
         payload: str,
     ) -> None:
-        """Callback от asyncpg — синхронный, создаём asyncio task."""
+        """Callback от asyncpg — синхронный, событие уходит в задачу."""
         try:
             data = json.loads(payload)
         except json.JSONDecodeError:
             logger.error("PgPubSubBackend: invalid JSON: %s", payload[:100])
             return
 
-        if self._callback:
-            asyncio.get_event_loop().create_task(self._safe_callback(data))
-
-    async def _safe_callback(self, data: dict) -> None:
-        """Обёртка callback с обработкой ошибок."""
-        try:
-            await self._callback(data)
-        except Exception:
-            logger.error("PgPubSubBackend: error in callback", exc_info=True)
+        self._dispatch(data)
 
     async def publish(self, event_type: str, data: dict) -> None:
-        """Отправить событие через pg_notify."""
+        """
+        Отправить событие через pg_notify.
+
+        Внутри транзакции (get_transaction) NOTIFY уходит через ЕЁ соединение:
+        Postgres доставит его ровно на COMMIT, в порядке коммитов, а при
+        ROLLBACK не доставит вовсе. Так клиент никогда не получает событие
+        раньше, чем данные видны в БД. Вне транзакции — обычное соединение
+        из пула, уходит сразу.
+        """
         payload = json.dumps(
             {"type": event_type, **data},
             ensure_ascii=False,
@@ -158,12 +187,18 @@ class PgPubSubBackend(PubSubBackend):
             )
             return
 
-        async with self._pool.acquire() as conn:
-            await conn.execute(
-                "SELECT pg_notify($1, $2)",
-                PG_CHANNEL,
-                payload,
+        session = get_current_session()
+        if session is not None:
+            await session.connection.execute(
+                "SELECT pg_notify($1, $2)", PG_CHANNEL, payload
             )
+            return
+
+        conn = await self._pool.acquire()
+        try:
+            await conn.execute("SELECT pg_notify($1, $2)", PG_CHANNEL, payload)
+        finally:
+            await self._pool.release(conn)
 
     async def stop(self) -> None:
         """Остановить LISTEN и освободить соединение."""

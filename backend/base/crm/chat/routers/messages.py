@@ -411,18 +411,9 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                 payload.id = record["id"]
                 attachments_content_data.append(payload)
 
+        # Та же форма, что в GET /messages и во входящем WS-пуше.
         attachments_response = [
-            {
-                "id": a.id,
-                "name": a.name,
-                "mimetype": a.mimetype,
-                "size": a.size,
-                "is_voice": a.is_voice,
-                "storage_file_url": a.storage_file_url,
-                "checksum": a.checksum,
-                "show_preview": a.show_preview,
-            }
-            for a in attachments_content_data
+            a.serialize_for_chat() for a in attachments_content_data
         ]
 
         # Если указан connector_id - отправляем во внешний сервис
@@ -511,41 +502,27 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                 recipients_ids=recipients_ids,
             )
 
-        # Отправляем через WebSocket
+        # Отправляем через WebSocket. Внутри транзакции событие уйдёт на
+        # COMMIT (см. PgPubSubBackend.publish) — получатель не увидит его
+        # раньше, чем сообщение появится в БД.
         await env.apps.chat.chat_manager.send_to_chat(
             chat_id=chat_id,
             message={
                 "type": "new_message",
                 "chat_id": chat_id,
-                "message": {
-                    "id": message.id,
-                    "body": message.body,
-                    "message_type": message.message_type or "comment",
-                    "connector_type": message.connector_type,
-                    # Тег «ленты»: фронт роутит событие в ленту лида по lead_id.
-                    # partner_id тут НЕ шлём (потребовал бы лишний запрос);
-                    # партнёр-лента живёт по членству и обновляется рефетчем/
-                    # оптимистично из своей же панели (см. ревью, «честный
-                    # real-time»). Во входящем пути partner_id есть даром — там
-                    # он в пейлоаде (strategies/strategy.py).
-                    "lead_id": body.lead_id,
-                    "task_id": body.task_id,
-                    "author": {
+                "message": message.serialize_for_ws(
+                    author={
                         "id": user_id,
                         "name": auth_session.user_id.name,
                         "type": "user",
                     },
-                    "create_datetime": (
-                        message.create_datetime.isoformat()
-                        if message.create_datetime
-                        else None
-                    ),
-                    "starred": False,
-                    "pinned": False,
-                    "is_edited": False,
-                    "is_read": False,
-                    "attachments": attachments_response,
-                },
+                    attachments=attachments_response,
+                    # Теги «ленты»: фронт роутит событие в ленту лида/задачи.
+                    # partner_id тут НЕ шлём (потребовал бы лишний запрос);
+                    # во входящем пути он есть даром и идёт в пейлоаде.
+                    lead_id=body.lead_id,
+                    task_id=body.task_id,
+                ),
             },
             exclude_user=user_id,
         )
@@ -969,25 +946,14 @@ async def forward_message(
         message={
             "type": "new_message",
             "chat_id": body.target_chat_id,
-            "message": {
-                "id": new_message.id,
-                "body": forwarded_body,
-                "message_type": "comment",
-                "author": {
+            "message": new_message.serialize_for_ws(
+                author={
                     "id": user_id,
                     "name": auth_session.user_id.name,
                     "type": "user",
                 },
-                "create_datetime": (
-                    new_message.create_datetime.isoformat()
-                    if new_message.create_datetime
-                    else None
-                ),
-                "starred": False,
-                "pinned": False,
-                "is_edited": False,
-                "is_read": False,
-            },
+                attachments=[],
+            ),
         },
         exclude_user=user_id,
     )

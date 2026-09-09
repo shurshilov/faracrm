@@ -7,41 +7,15 @@ const WS_URL = API_URL.replace("http", "ws");
 // Все WS тесты — последовательно, чтобы не конфликтовать по 1-WS-per-user
 test.describe.configure({ mode: "serial" });
 
+// Подписок на чаты нет: события чата приходят его участникам (chat_member)
+// сразу после connect. Кому доставлять — решает сервер, клиент ничего не
+// заявляет (и не может подписаться на чужой чат).
+
 test.describe("WebSocket — подключение и heartbeat", () => {
   test("подключение и получение pong на ping", async ({ adminWS }) => {
     adminWS.send({ type: "ping" });
     const pong = await adminWS.waitFor((msg) => msg.type === "pong", 5_000);
     expect(pong.type).toBe("pong");
-  });
-
-  test("подписка на чат через WS", async ({
-    adminWS,
-    api,
-    adminToken,
-    adminSession,
-  }) => {
-    const chat = await api.createChat(adminSession, { name: "WS Sub Test" });
-    adminWS.clearMessages();
-    const result = await adminWS.subscribe(chat.id);
-    expect(result.type).toBe("subscribed");
-    expect(result.chat_id).toBe(chat.id);
-    await api.deleteChat(adminSession, chat.id);
-  });
-
-  test("subscribe_all на несколько чатов", async ({
-    adminWS,
-    api,
-    adminToken,
-    adminSession,
-  }) => {
-    const chat1 = await api.createChat(adminSession, { name: "WS Multi 1" });
-    const chat2 = await api.createChat(adminSession, { name: "WS Multi 2" });
-    adminWS.clearMessages();
-    const result = await adminWS.subscribeAll([chat1.id, chat2.id]);
-    expect(result.type).toBe("subscribed_all");
-    expect(result.count).toBe(2);
-    await api.deleteChat(adminSession, chat1.id);
-    await api.deleteChat(adminSession, chat2.id);
   });
 });
 
@@ -66,7 +40,6 @@ test.describe("WebSocket — new_message", () => {
     user2WS,
     api,
   }) => {
-    await user2WS.subscribe(chatId);
     user2WS.clearMessages();
     await api.sendMessage(adminSession, chatId, "Привет от admin!");
     const event = await user2WS.waitForNewMessage(chatId);
@@ -81,7 +54,6 @@ test.describe("WebSocket — new_message", () => {
     user2Session,
     api,
   }) => {
-    await adminWS.subscribe(chatId);
     adminWS.clearMessages();
     await api.sendMessage(user2Session, chatId, "Привет от user2!");
     const event = await adminWS.waitForNewMessage(chatId);
@@ -94,7 +66,6 @@ test.describe("WebSocket — new_message", () => {
     adminSession,
     api,
   }) => {
-    await adminWS.subscribe(chatId);
     adminWS.clearMessages();
     await api.sendMessage(adminSession, chatId, "Моё сообщение");
     await adminWS.expectNoEvent(
@@ -109,7 +80,6 @@ test.describe("WebSocket — new_message", () => {
     user2WS,
     api,
   }) => {
-    await user2WS.subscribe(chatId);
     user2WS.clearMessages();
     await api.sendMessage(adminSession, chatId, "Msg 1");
     await api.sendMessage(adminSession, chatId, "Msg 2");
@@ -146,8 +116,6 @@ test.describe("WebSocket — typing", () => {
     user2WS,
     adminSession,
   }) => {
-    await adminWS.subscribe(chatId);
-    await user2WS.subscribe(chatId);
     user2WS.clearMessages();
     adminWS.sendTyping(chatId);
     const event = await user2WS.waitForTyping(chatId);
@@ -155,7 +123,6 @@ test.describe("WebSocket — typing", () => {
   });
 
   test("отправитель typing НЕ получает свой", async ({ adminWS }) => {
-    await adminWS.subscribe(chatId);
     adminWS.clearMessages();
     adminWS.sendTyping(chatId);
     await adminWS.expectNoEvent(
@@ -186,7 +153,6 @@ test.describe("WebSocket — edit/delete", () => {
     user2WS,
     api,
   }) => {
-    await user2WS.subscribe(chatId);
     const { data: msg } = await api.sendMessage(
       adminSession,
       chatId,
@@ -212,7 +178,6 @@ test.describe("WebSocket — edit/delete", () => {
     user2WS,
     api,
   }) => {
-    await user2WS.subscribe(chatId);
     const { data: msg } = await api.sendMessage(adminSession, chatId, "Удали");
     user2WS.clearMessages();
     await fetch(`${API_URL}/chats/${chatId}/messages/${msg.id}`, {
@@ -250,8 +215,6 @@ test.describe("WebSocket — messages_read", () => {
     user2Session,
     api,
   }) => {
-    await adminWS.subscribe(chatId);
-    await user2WS.subscribe(chatId);
     await api.sendMessage(adminSession, chatId, "Прочитай это");
     adminWS.clearMessages();
     user2WS.sendRead(chatId);
@@ -317,7 +280,7 @@ test.describe("WebSocket — chat_created", () => {
 });
 
 test.describe("WebSocket — изоляция", () => {
-  test("user2 НЕ получает из чата без подписки", async ({
+  test("user2 НЕ получает из чата, где не участник", async ({
     adminWS,
     user2WS,
     adminToken,
@@ -327,7 +290,6 @@ test.describe("WebSocket — изоляция", () => {
     const chat = await api.createChat(adminSession, {
       name: `Isolated ${Date.now()}`,
     });
-    await adminWS.subscribe(chat.id);
     user2WS.clearMessages();
     await api.sendMessage(adminSession, chat.id, "Секрет");
     await user2WS.expectNoEvent(
@@ -337,23 +299,29 @@ test.describe("WebSocket — изоляция", () => {
     await api.deleteChat(adminSession, chat.id);
   });
 
-  test("после unsubscribe сообщения не приходят", async ({
-    adminWS,
+  test("после выхода из чата сообщения не приходят", async ({
     user2WS,
     adminToken,
     adminSession,
+    user2Token,
     user2Session,
     api,
   }) => {
     const chat = await api.createChat(adminSession, {
-      name: `Unsub ${Date.now()}`,
+      name: `Left ${Date.now()}`,
       user_ids: [user2Session.user_id.id],
     });
-    await user2WS.subscribe(chat.id);
-    user2WS.send({ type: "unsubscribe", chat_id: chat.id });
-    await user2WS.waitFor((msg) => msg.type === "unsubscribed");
+    // Членство — единственный источник адресатов: вышел из чата, событий нет.
+    const res = await fetch(`${API_URL}/chats/${chat.id}/leave`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${user2Token}`,
+        Cookie: `session_cookie=${user2Session.cookieToken}`,
+      },
+    });
+    expect(res.ok).toBeTruthy();
     user2WS.clearMessages();
-    await api.sendMessage(adminSession, chat.id, "После отписки");
+    await api.sendMessage(adminSession, chat.id, "После выхода");
     await user2WS.expectNoEvent(
       (msg) => msg.type === "new_message" && msg.chat_id === chat.id,
       3_000,

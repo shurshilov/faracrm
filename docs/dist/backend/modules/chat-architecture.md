@@ -36,24 +36,22 @@ graph TB
 
 ## ConnectionManager
 
-`ChatConnectionManager` (в `chat/websocket/manager.py`) — центральный объект чата на каждом воркере. Его задачи:
+`ConnectionManager` (в `chat/websocket/manager.py`) — центральный объект чата на каждом воркере. Его задачи:
 
 1. **Локальные подключения** — словарь `dict[user_id, set[WebSocket]]`. Один пользователь может иметь несколько вкладок.
-2. **Подписки на чаты** — `dict[user_id, set[chat_id]]`. По какому чату пушить сообщения юзеру.
+2. **Адресация по членству** — `send_to_chat` берёт участников чата из `chat_member` (`ChatMember.active_user_ids`) и кладёт их id в событие; каждый воркер доставляет тем из списка, кто подключён к нему. Подписок на чаты у клиента нет: он не может ни забыть подписаться (record-чаты, старые чаты, свежее добавление в группу), ни подписаться на чужой чат.
 3. **Presence** — кто сейчас онлайн.
 4. **Pending invites** — для звонков (см. [Звонки](calls.md)).
 5. **Pub/Sub bridge** — отправляет события в кросс-процессный канал и слушает входящие.
 
 ```python
-class ChatConnectionManager:
-    def __init__(self):
+class ConnectionManager:
+    def __init__(self, resolve_recipients):        # chat_id -> [user_id]
         self._connections: dict[int, set[WebSocket]] = {}
-        self._user_subscriptions: dict[int, set[int]] = {}
-        self._pubsub: PubSubBackend = create_pubsub_backend(...)
+        self._resolve_recipients = resolve_recipients
 
     async def send_to_user(self, user_id: int, message: dict): ...
-    async def send_to_chat(self, chat_id: int, message: dict): ...
-    async def subscribe_to_chats(self, user_id: int, chat_ids: list[int]): ...
+    async def send_to_chat(self, chat_id: int, message: dict, exclude_user=None): ...
 ```
 
 ## Cross-process через PubSub
@@ -68,7 +66,9 @@ FastAPI обычно запускается в нескольких воркер
     PUBSUB__BACKEND=pg
     ```
 
-    Использует `LISTEN/NOTIFY`. Один поток на каждом воркере держит отдельный коннект к Postgres и подписывается на канал `chat_pubsub`. Каждое сообщение `send_to_user/send_to_chat` уходит сначала в `pg_notify('chat_pubsub', json)`, и все воркеры (включая отправителя) получают это в LISTEN-callback.
+    Использует `LISTEN/NOTIFY`. Один поток на каждом воркере держит отдельный коннект к Postgres и подписывается на канал `ws_events`. Каждое сообщение `send_to_user/send_to_chat` уходит сначала в `pg_notify('ws_events', json)`, и все воркеры (включая отправителя) получают это в LISTEN-callback.
+
+    Внутри `async with env.apps.db.get_transaction()` NOTIFY идёт через соединение самой транзакции и доставляется ровно на COMMIT (при ROLLBACK не доставляется): клиент никогда не получает событие раньше, чем данные видны в БД. Живость LISTEN-соединения супервизор проверяет пробным `SELECT 1` с таймаутом — полуоткрытый TCP `is_closed()` не показывает.
 
     **Плюсы**: ничего не нужно ставить дополнительно — PG уже есть.
     **Минусы**: занимает 1 коннект на воркер из пула; при очень высокой нагрузке (>1000 событий/сек) может стать узким местом.
@@ -109,14 +109,15 @@ sequenceDiagram
     U1->>CM1: POST /chats/17/messages<br/>body: "Hello"
     CM1->>DB: INSERT chat_message
     DB-->>CM1: msg_id
-    CM1->>PS: publish {<br/>type:"new_message", chat:17, msg:{...}<br/>}
+    CM1->>DB: user_ids участников chat:17 (chat_member)
+    CM1->>PS: publish {<br/>type:"send_to_users", user_ids, message<br/>} — уходит на COMMIT
     PS-->>CM1: (echo)
     PS-->>CM2: (push)
 
     par Worker #1 (отправитель)
         CM1->>U1: WS new_message (echo)
     and Worker #3 (получатель)
-        CM2->>CM2: кто подписан на chat:17?
+        CM2->>CM2: кто из user_ids подключён ко мне?
         CM2->>U2: WS new_message
     end
 ```
@@ -125,7 +126,7 @@ sequenceDiagram
 
 ## Presence
 
-Присутствие — про СОТРУДНИКОВ, а не про чаты: в сети видно всех, с кем можно связаться (список сотрудников, звонилка), независимо от того, переписывались вы когда-нибудь или нет. Поэтому событию нужен только `user_id`, и объявляется оно на самом соединении — до всякого `subscribe_all`.
+Присутствие — про СОТРУДНИКОВ, а не про чаты: в сети видно всех, с кем можно связаться (список сотрудников, звонилка), независимо от того, переписывались вы когда-нибудь или нет. Поэтому событию нужен только `user_id`, и объявляется оно на самом соединении — чаты для этого не нужны.
 
 Кто онлайн — состояние ПРОЦЕССА (`_connections` живёт в памяти воркера, а воркеров несколько: `uvicorn --workers`), поэтому факт едет по шине, а отвечает на него каждый воркер за своих подключённых:
 
@@ -133,7 +134,7 @@ sequenceDiagram
 2. Каждый воркер шлёт своим подключённым `{type: "presence_update", add: [user_id]}`, а вошедшему — встречный кадр со списком СВОИХ онлайн-юзеров.
 3. При disconnect последнего соединения публикуется `presence_bye`, и те же воркеры рассылают `{remove: [user_id]}`.
 
-Подписки на чаты (`subscribe_all`) к присутствию отношения не имеют — они решают только, кому доставлять события конкретного чата.
+Доставка событий чата к присутствию отношения не имеет — адресаты событий считаются по членству в `chat_member` (см. выше).
 
 !!! info "Множественные вкладки"
     Если у юзера 2 открытые вкладки, presence остаётся `online` пока хоть одна жива. Disconnect второй вкладки только убирает её из `_connections[user_id]`, но если множество не пусто — presence не меняется.

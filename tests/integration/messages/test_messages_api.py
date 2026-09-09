@@ -19,7 +19,10 @@ import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.api]
 from backend.base.crm.chat.models.chat import Chat
-from backend.base.crm.chat.models.chat_message import ChatMessage
+from backend.base.crm.chat.models.chat_message import (
+    ChatMessage,
+    WS_BODY_LIMIT,
+)
 from backend.base.crm.chat.models.chat_member import ChatMember
 from backend.base.crm.users.models.users import User
 from backend.base.crm.languages.models.language import Language
@@ -133,6 +136,63 @@ class TestPostMessageAPI:
         data = response.json()
         assert data["data"]["body"] == "Hello, World!"
         assert "id" in data["data"]
+
+    async def test_ws_payload_matches_rest_shape(
+        self, authenticated_client, mock_chat_ws
+    ):
+        """WS-событие new_message собирает тот же serialize_for_ws, что и
+        остальные пути (пересылка, системное, входящее), и по форме оно
+        совпадает с REST GET /messages — фронт кладёт его в тот же кэш."""
+        client, chat_id, user_id = await self._setup_chat(authenticated_client)
+
+        response = await client.post(
+            f"/chats/{chat_id}/messages",
+            json={"body": "Hello", "attachments": []},
+        )
+        assert response.status_code == 200
+
+        mock_chat_ws.send_to_chat.assert_called_once()
+        call = mock_chat_ws.send_to_chat.call_args
+        event = call.kwargs["message"]
+        payload = event["message"]
+
+        assert event["type"] == "new_message"
+        assert event["chat_id"] == chat_id
+        assert call.kwargs["exclude_user"] == user_id
+        assert payload["body"] == "Hello"
+        assert "body_truncated" not in payload
+        assert payload["author"]["id"] == user_id
+        assert payload["author"]["type"] == "user"
+        assert payload["message_type"] == "comment"
+
+        rest = await client.get(f"/chats/{chat_id}/messages")
+        rest_item = rest.json()["data"][0]
+        assert rest_item["id"] == payload["id"]
+        # Все поля REST есть и в событии (плюс теги ленты lead_id/task_id).
+        assert set(rest_item) <= set(payload)
+
+    async def test_long_body_is_truncated_in_ws_payload_only(
+        self, authenticated_client, mock_chat_ws
+    ):
+        """Длинное тело режется под лимит шины (pg_notify ~8 КБ) и помечается
+        флагом — фронт дочитает его из REST. В БД и в HTTP-ответе оно полное.
+        Раньше такое событие выбрасывалось целиком, и получатели не видели
+        сообщение до перезагрузки."""
+        client, chat_id, user_id = await self._setup_chat(authenticated_client)
+        body = "я" * (WS_BODY_LIMIT + 100)
+
+        response = await client.post(
+            f"/chats/{chat_id}/messages",
+            json={"body": body, "attachments": []},
+        )
+        assert response.status_code == 200
+        assert response.json()["data"]["body"] == body
+
+        payload = mock_chat_ws.send_to_chat.call_args.kwargs["message"][
+            "message"
+        ]
+        assert payload["body_truncated"] is True
+        assert payload["body"] == body[:WS_BODY_LIMIT]
 
     async def test_send_empty_message_fails(
         self, authenticated_client, mock_chat_ws

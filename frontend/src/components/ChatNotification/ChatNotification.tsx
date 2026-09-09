@@ -1,10 +1,8 @@
-import { useEffect, useRef } from 'react';
 import { ActionIcon, Indicator, Tooltip } from '@mantine/core';
 import { IconMessageCircle } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useGetChatsQuery } from '@/services/api/chat';
-import { useChatWebSocketContext } from '@/fara_chat/context';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store/store';
 
@@ -15,8 +13,10 @@ export function ChatNotification() {
   const session = useSelector((state: RootState) => state.auth.session);
   const token = session?.token || '';
 
-  // Получаем список чатов для подсчета непрочитанных
-  // Используем { limit: 100 } без фильтров - этот кэш обновляется глобально в контексте
+  // Список чатов для подсчёта непрочитанных. Обновляется живьём из
+  // ChatWebSocketContext вместе с остальными вариантами кэша getChats.
+  // Подписок на чаты здесь больше нет: адресатов событий сервер берёт из
+  // участников чата (chat_member), клиенту заявлять их не нужно.
   const { data: chatsData } = useGetChatsQuery(
     { limit: 100 },
     { skip: !token },
@@ -26,28 +26,6 @@ export function ChatNotification() {
   const totalUnread =
     chatsData?.data?.reduce((sum, chat) => sum + (chat.unread_count || 0), 0) ||
     0;
-
-  // Используем общий WebSocket контекст
-  const { isConnected, subscribeAll } = useChatWebSocketContext();
-
-  // Подписываемся на все чаты при загрузке
-  const hasSubscribedRef = useRef(false);
-
-  useEffect(() => {
-    if (isConnected && chatsData?.data && !hasSubscribedRef.current) {
-      const chatIds = chatsData.data.map(chat => chat.id);
-      if (chatIds.length > 0) {
-        subscribeAll(chatIds);
-        hasSubscribedRef.current = true;
-      }
-    }
-  }, [isConnected, chatsData?.data, subscribeAll]);
-
-  useEffect(() => {
-    if (!isConnected) {
-      hasSubscribedRef.current = false;
-    }
-  }, [isConnected]);
 
   const handleClick = () => {
     navigate('/chat');

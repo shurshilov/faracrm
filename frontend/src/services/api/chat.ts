@@ -824,6 +824,11 @@ export interface ChatMessage {
   is_deleted?: boolean;
   id: number;
   body?: string;
+  /**
+   * Только в WS-событии new_message: бэк обрезал body под лимит шины
+   * (WS_BODY_LIMIT). Такое сообщение в кэш не кладём, а дочитываем из REST.
+   */
+  body_truncated?: boolean;
   message_type: string;
   create_datetime?: string;
   author?: MessageAuthor;

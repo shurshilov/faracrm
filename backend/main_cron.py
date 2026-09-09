@@ -4,8 +4,11 @@
 Запуск cron worker как отдельного процесса.
 
 Лёгкий startup: env.cron_mode = True пропускает сервисы
-с cron_skip=True (auto_crud, chat, docs, сам cron app).
+с cron_skip=True (auto_crud, docs, сам cron app).
 Это предотвращает рекурсию и экономит ~5-7с на старте.
+
+Chat НЕ пропускается намеренно: email-крон публикует WS-события через
+его chat_manager, а тот без startup остаётся без шины.
 """
 
 import asyncio

@@ -14,9 +14,7 @@ import { IconMessageCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import {
   Chat,
-  ChatMessage,
   WSMessage,
-  WSNewMessage,
   chatApi,
   useMarkChatAsReadMutation,
   useGetChatsQuery,
@@ -64,9 +62,6 @@ export function ChatPage({
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [pinnedModalOpen, setPinnedModalOpen] = useState(false);
-  const [newMessages, setNewMessages] = useState<Record<number, ChatMessage[]>>(
-    {},
-  );
   const [typingUsers, setTypingUsers] = useState<Record<number, string[]>>({});
   const selectedChatRef = useRef<Chat | null>(null);
   const refetchChatsRef = useRef<(() => void) | null>(null);
@@ -231,133 +226,34 @@ export function ChatPage({
     setPinnedModalOpen(true);
   };
 
-  // WebSocket connection
-  const handleWSMessage = useCallback(
-    (message: WSMessage) => {
-      console.log('WebSocket message received:', message);
+  // WebSocket. Кэш сообщений и списков правит сам контекст
+  // (ChatWebSocketContext) — для всех вариантов аргументов запросов. Здесь
+  // остаётся только UI-состояние страницы: индикатор набора.
+  const handleWSMessage = useCallback((message: WSMessage) => {
+    if (message.type !== 'typing') return;
+    const { chat_id: chatId, user_id: userId } = message;
 
-      switch (message.type) {
-        case 'new_message': {
-          const wsMsg = message as WSNewMessage;
-          console.log('New message for chat:', wsMsg.chat_id, wsMsg.message);
+    setTimeout(() => {
+      setTypingUsers(prev => {
+        const chatTyping = prev[chatId] || [];
+        return {
+          ...prev,
+          [chatId]: chatTyping.filter(id => id !== String(userId)),
+        };
+      });
+    }, 3000);
 
-          // Добавляем сообщение в локальный стейт для отображения
-          setNewMessages(prev => ({
-            ...prev,
-            [wsMsg.chat_id]: [...(prev[wsMsg.chat_id] || []), wsMsg.message],
-          }));
-
-          const isOwnMessage = wsMsg.message.author?.id === currentUserId;
-
-          // Обновляем кэш с фильтрами getChatsArgs (если есть фильтры)
-          // Контекст уже обновил базовый кэш { limit: 100 }
-          const hasFilters =
-            getChatsArgs.is_internal !== undefined ||
-            getChatsArgs.chat_type !== undefined ||
-            getChatsArgs.connector_type !== undefined;
-
-          if (hasFilters && !isOwnMessage) {
-            dispatch(
-              chatApi.util.updateQueryData('getChats', getChatsArgs, draft => {
-                const chat = draft.data.find(c => c.id === wsMsg.chat_id);
-                if (chat) {
-                  chat.unread_count = (chat.unread_count || 0) + 1;
-                  // Обновляем последнее сообщение
-                  chat.last_message = {
-                    id: wsMsg.message.id,
-                    body: wsMsg.message.body,
-                    author_id: wsMsg.message.author?.id || 0,
-                    create_datetime: wsMsg.message.create_datetime,
-                  };
-                  chat.last_message_date = wsMsg.message.create_datetime;
-                }
-              }),
-            );
-          }
-          break;
-        }
-        case 'typing': {
-          // Handle typing indicator
-          setTimeout(() => {
-            setTypingUsers(prev => {
-              const chatTyping = prev[message.chat_id] || [];
-              return {
-                ...prev,
-                [message.chat_id]: chatTyping.filter(
-                  id => id !== String(message.user_id),
-                ),
-              };
-            });
-          }, 3000);
-
-          setTypingUsers(prev => {
-            const chatTyping = prev[message.chat_id] || [];
-            if (!chatTyping.includes(String(message.user_id))) {
-              return {
-                ...prev,
-                [message.chat_id]: [...chatTyping, String(message.user_id)],
-              };
-            }
-            return prev;
-          });
-          break;
-        }
-        case 'message_deleted': {
-          const chatId = (message as any).chat_id;
-          const messageId = (message as any).message_id;
-          if (chatId && messageId) {
-            setNewMessages(prev => ({
-              ...prev,
-              [chatId]: (prev[chatId] || []).filter(m => m.id !== messageId),
-            }));
-          }
-          break;
-        }
-        case 'message_edited': {
-          const editChatId = (message as any).chat_id;
-          const editMessageId = (message as any).message_id;
-          const newBody = (message as any).body;
-          if (editChatId && editMessageId) {
-            setNewMessages(prev => ({
-              ...prev,
-              [editChatId]: (prev[editChatId] || []).map(m =>
-                m.id === editMessageId
-                  ? { ...m, body: newBody, is_edited: true }
-                  : m,
-              ),
-            }));
-          }
-          break;
-        }
-        case 'messages_read': {
-          const readByUserId = (message as any).user_id;
-
-          // Watermark-модель: не отслеживаем "кто именно прочитал каждое
-          // сообщение". Если это мы прочитали — сбрасываем свой unread_count.
-          if (readByUserId === currentUserId) {
-            dispatch(
-              chatApi.util.updateQueryData('getChats', getChatsArgs, draft => {
-                const chat = draft.data.find(c => c.id === message.chat_id);
-                if (chat) {
-                  chat.unread_count = 0;
-                }
-              }),
-            );
-          }
-          break;
-        }
+    setTypingUsers(prev => {
+      const chatTyping = prev[chatId] || [];
+      if (!chatTyping.includes(String(userId))) {
+        return { ...prev, [chatId]: [...chatTyping, String(userId)] };
       }
-    },
-    [currentUserId, dispatch, markChatAsRead, getChatsArgs],
-  );
+      return prev;
+    });
+  }, []);
 
-  const {
-    isConnected,
-    subscribe,
-    sendTyping,
-    addMessageListener,
-    isUserOnline,
-  } = useChatWebSocketContext();
+  const { sendTyping, addMessageListener, isUserOnline } =
+    useChatWebSocketContext();
 
   // Подписываемся на сообщения WebSocket
   useEffect(() => {
@@ -371,13 +267,6 @@ export function ChatPage({
     if (isMobile) {
       setShowSidebar(false);
     }
-
-    // Clear new messages for this chat when selected
-    // (они уже в кэше getChatMessages благодаря контексту)
-    setNewMessages(prev => ({
-      ...prev,
-      [chat.id]: [],
-    }));
 
     // НЕ помечаем как прочитанное автоматически при выборе чата
     // Прочтение происходит только при явном действии:
@@ -437,10 +326,6 @@ export function ChatPage({
 
   const handleChatCreated = (chat: Chat) => {
     setSelectedChat(chat);
-    // Подписываемся на новый чат
-    if (isConnected) {
-      subscribe(chat.id);
-    }
     // Обновляем список чатов
     if (refetchChatsRef.current) {
       refetchChatsRef.current();
@@ -527,7 +412,6 @@ export function ChatPage({
               <ChatMessages
                 chat={selectedChat}
                 currentUserId={currentUserId}
-                newMessages={newMessages[selectedChat.id] || []}
                 onChatUpdate={updates =>
                   setSelectedChat(prev =>
                     prev ? { ...prev, ...updates } : null,

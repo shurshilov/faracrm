@@ -60,8 +60,14 @@ async def assign_ticket(req: Request, ticket_id: int, body: AssignBody):
 
 | Метод | Описание |
 |-------|----------|
-| `send_to_chat(chat_id, message)` | Всем участникам чата |
+| `send_to_chat(chat_id, message, exclude_user=None)` | Всем участникам чата — активным пользователям из `chat_member`, на любом воркере. Подписываться клиенту не нужно. |
 | `send_to_user(user_id, message)` | Конкретному пользователю |
+
+!!! note "Транзакции"
+    Вызов внутри `async with env.apps.db.get_transaction()` доставляется на COMMIT: `pg_notify` идёт через соединение транзакции, поэтому клиент никогда не получит событие раньше, чем увидит данные, а откат транзакции отменит и событие. Вне транзакции событие уходит сразу.
+
+!!! note "Размер события"
+    Лимит `pg_notify` — около 8 КБ, событие больше выбрасывается с ошибкой в лог. Для `new_message` тело режет `ChatMessage.serialize_for_ws` (флаг `body_truncated`, фронт дочитывает сообщение из REST); своим событиям держите payload маленьким — id и короткие поля.
 
 ## Frontend — обработка события
 
@@ -109,17 +115,11 @@ export function useTicketEvents() {
 
 ## Тестирование
 
-В тестах мокай `send_to_chat` / `send_to_user`:
+В тестах мокай `send_to_chat` / `send_to_user` фикстурой `mock_chat_ws` (`tests/conftest.py`) — она подменяет методы на реальном `chat_manager` приложения:
 
 ```python
-from unittest.mock import AsyncMock, patch
-
-@patch(
-    "backend.base.crm.chat.websocket.chat_manager.send_to_user",
-    new_callable=AsyncMock,
-)
 async def test_assign_ticket_sends_notification(
-    self, mock_ws, authenticated_client
+    self, authenticated_client, mock_chat_ws
 ):
     client, user_id, token = authenticated_client
     ticket_id = await self._create_ticket()
@@ -132,7 +132,7 @@ async def test_assign_ticket_sends_notification(
     assert response.status_code == 200
 
     # Проверяем что WS-уведомление отправлено
-    mock_ws.assert_called_once_with(
+    mock_chat_ws.send_to_user.assert_called_once_with(
         user_id=user_id,
         message={
             "type": "ticket_assigned",

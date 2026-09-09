@@ -411,7 +411,10 @@ class IncomingMessagePipeline:
 
         partner_id/lead_id едут в пейлоаде тегами «ленты» — по ним фронт роутит
         событие в ленты партнёра/лида (помимо кэша чата). partner_id тут
-        известен даром (contact.partner_id), поэтому кладём оба тега.
+        известен даром (contact.partner_id), поэтому кладём оба тега. Тело
+        режет сам serialize_for_ws (с флагом body_truncated), канал берётся из
+        message.connector_type. Публикация идёт внутри транзакции вызывающего
+        и доставится на её COMMIT (см. PgPubSubBackend.publish).
         """
         ctx = self.ctx
         author_data = {
@@ -422,14 +425,12 @@ class IncomingMessagePipeline:
         payload = ctx.message.serialize_for_ws(
             author=author_data,
             attachments=ctx.attachments_payload,
-            connector_type=ctx.connector.type,
             author_user_id=ctx.author_user_id,
             author_partner_id=ctx.author_partner_id,
             partner_id=(
                 ctx.contact.partner_id.id if ctx.contact.partner_id else None
             ),
             lead_id=ctx.lead_id,
-            body_limit=200,
         )
         await ctx.env.apps.chat.chat_manager.send_to_chat(
             chat_id=ctx.chat_id,

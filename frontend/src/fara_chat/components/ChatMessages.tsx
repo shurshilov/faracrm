@@ -97,7 +97,6 @@ const hasBubbleContent = (m: ChatMessage): boolean => {
 interface ChatMessagesProps {
   chat: Chat;
   currentUserId: number;
-  newMessages?: ChatMessage[];
   onChatUpdate?: (updatedChat: Partial<Chat>) => void;
   onMarkUnread?: () => void;
   showDeletedMessages?: boolean;
@@ -106,7 +105,6 @@ interface ChatMessagesProps {
 export function ChatMessages({
   chat,
   currentUserId,
-  newMessages = [],
   onChatUpdate,
   onMarkUnread,
   showDeletedMessages = false,
@@ -174,16 +172,13 @@ export function ChatMessages({
   const [forwardMessage] = useForwardMessageMutation();
   const [addReaction] = useAddReactionMutation();
 
-  const fetchedMessages = data?.data || [];
-  const fetchedIds = new Set(fetchedMessages.map(m => m.id));
-  const uniqueNewMessages = newMessages.filter(m => !fetchedIds.has(m.id));
-  const allMessages = [...fetchedMessages, ...uniqueNewMessages].sort(
-    (a, b) => {
-      const dateA = a.create_datetime ? new Date(a.create_datetime).getTime() : 0;
-      const dateB = b.create_datetime ? new Date(b.create_datetime).getTime() : 0;
-      return dateA - dateB;
-    },
-  );
+  // Единственный источник — кэш getChatMessages: живые события в него кладёт
+  // ChatWebSocketContext (для всех вариантов аргументов), REST отдаёт id DESC.
+  const allMessages = [...(data?.data || [])].sort((a, b) => {
+    const dateA = a.create_datetime ? new Date(a.create_datetime).getTime() : 0;
+    const dateB = b.create_datetime ? new Date(b.create_datetime).getTime() : 0;
+    return dateA - dateB;
+  });
 
   useEffect(() => {
     if (isAtBottom && viewportRef.current) {

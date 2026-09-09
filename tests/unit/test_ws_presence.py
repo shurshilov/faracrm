@@ -1,9 +1,9 @@
 # Copyright 2025 FARA CRM
-# Unit tests for cross-process presence — чистая логика, без БД и без сети.
+# Unit tests for the WebSocket ConnectionManager — чистая логика, без БД и сети.
 """
-Присутствие сотрудников.
+Присутствие сотрудников и доставка событий чата.
 
-Два свойства, ради которых всё это существует:
+Свойства, ради которых всё это существует:
 
 1. Presence — про СОТРУДНИКОВ, а не про чаты: в сети видно всех, независимо
    от того, есть ли общий чат (иначе новый сотрудник, у которого чатов нет,
@@ -11,9 +11,12 @@
 2. Presence переживает несколько воркеров: бэкенд крутится в нескольких
    процессах (uvicorn --workers), у каждого свои _connections, поэтому факт
    входа/выхода едет через шину.
+3. События чата адресуются УЧАСТНИКАМ (chat_member), а не подписчикам: клиент
+   ничего не заявляет, сервер сам знает, кому доставить, а не участник ничего
+   не получает и не может ничего разослать.
 
 Здесь два ConnectionManager сидят на общей фейковой шине — ровно как два
-воркера на одном pg_notify.
+воркера на одном pg_notify, а членство задаёт словарь members.
 """
 
 import pytest
@@ -24,6 +27,7 @@ from backend.base.crm.chat.websocket.manager import ConnectionManager
 CHAT = 7
 ALICE = 1
 BOB = 2
+CAROL = 3  # не участник CHAT
 
 
 class FakeWS:
@@ -64,11 +68,25 @@ def online_seen_by(ws: FakeWS) -> set[int]:
     return online
 
 
+def events_of(ws: FakeWS, event_type: str) -> list[dict]:
+    return [m for m in ws.sent if m.get("type") == event_type]
+
+
 @pytest.fixture
-def two_workers():
-    """Два менеджера на общей шине."""
+def members() -> dict[int, list[int]]:
+    """chat_id -> участники. Двойник ChatMember.active_user_ids."""
+    return {CHAT: [ALICE, BOB]}
+
+
+@pytest.fixture
+def two_workers(members):
+    """Два менеджера на общей шине с общим справочником участников."""
     bus = FakeBus()
-    workers = (ConnectionManager(), ConnectionManager())
+
+    async def resolve(chat_id: int) -> list[int]:
+        return list(members.get(chat_id, []))
+
+    workers = (ConnectionManager(resolve), ConnectionManager(resolve))
     for manager in workers:
         manager.set_pubsub(bus)
         bus.managers.append(manager)
@@ -82,30 +100,13 @@ class TestPresence:
         """
         Главный сценарий: у сотрудников нет ни одного общего чата.
 
-        Раньше присутствие объявлялось из subscribe_all, поэтому новый
-        сотрудник (чатов нет — клиент не шлёт subscribe_all вовсе) не
-        появлялся в сети ни у кого и сам никого не видел.
+        Присутствие объявляется на самом соединении, чаты для этого не нужны.
         """
         w1, w2 = two_workers
         ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
 
         await w1.connect(ws_a, ALICE)
         await w2.connect(ws_b, BOB)
-
-        assert online_seen_by(ws_b) == {ALICE}
-        assert online_seen_by(ws_a) == {BOB}
-
-    async def test_users_on_different_workers_see_each_other(
-        self, two_workers
-    ):
-        w1, w2 = two_workers
-        ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
-
-        await w1.connect(ws_a, ALICE)
-        await w1.subscribe_to_chats(ALICE, [CHAT])
-
-        await w2.connect(ws_b, BOB)
-        await w2.subscribe_to_chats(BOB, [CHAT])
 
         assert online_seen_by(ws_b) == {ALICE}
         assert online_seen_by(ws_a) == {BOB}
@@ -163,21 +164,108 @@ class TestPresence:
         assert online_seen_by(ws_a) == {BOB}
 
 
-class TestChatSubscriptions:
-    async def test_new_chat_does_not_subscribe_offline_user(self, two_workers):
+class TestChatDelivery:
+    """Адресаты события чата — участники из chat_member, на любом воркере."""
+
+    async def test_message_reaches_members_on_both_workers(self, two_workers):
         """
-        Фан-аут NEW_CHAT ходит по всем воркерам, но подписывать там, где
-        юзера нет, нельзя: свои чаты он пришлёт в subscribe_all при входе,
-        а осевшая подписка потом врёт про его состояние.
+        Никто ничего не подписывал: участник получает событие только потому,
+        что он участник, и на том воркере, где держит сокет.
         """
         w1, w2 = two_workers
-        ws_a = FakeWS("alice")
-
+        ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
         await w1.connect(ws_a, ALICE)
+        await w2.connect(ws_b, BOB)
+
+        await w1.send_to_chat(CHAT, {"type": "new_message", "chat_id": CHAT})
+
+        assert len(events_of(ws_a, "new_message")) == 1
+        assert len(events_of(ws_b, "new_message")) == 1
+
+    async def test_exclude_user_skips_all_his_sockets(self, two_workers):
+        w1, w2 = two_workers
+        ws_desktop, ws_phone, ws_b = (
+            FakeWS("alice-desktop"),
+            FakeWS("alice-phone"),
+            FakeWS("bob"),
+        )
+        await w1.connect(ws_desktop, ALICE)
+        await w2.connect(ws_phone, ALICE)
+        await w2.connect(ws_b, BOB)
+
+        await w1.send_to_chat(
+            CHAT, {"type": "new_message", "chat_id": CHAT}, exclude_user=ALICE
+        )
+
+        assert len(events_of(ws_b, "new_message")) == 1
+        assert events_of(ws_desktop, "new_message") == []
+        assert events_of(ws_phone, "new_message") == []
+
+    async def test_non_member_gets_nothing(self, two_workers):
+        """
+        Раньше любой авторизованный мог прислать subscribe на чужой chat_id и
+        читать его живой трафик. Теперь список адресатов считает сервер.
+        """
+        w1, w2 = two_workers
+        ws_b, ws_c = FakeWS("bob"), FakeWS("carol")
+        await w1.connect(ws_b, BOB)
+        await w2.connect(ws_c, CAROL)
+
+        await w1.send_to_chat(CHAT, {"type": "new_message", "chat_id": CHAT})
+
+        assert len(events_of(ws_b, "new_message")) == 1
+        assert events_of(ws_c, "new_message") == []
+
+    async def test_typing_from_member_reaches_others_not_sender(
+        self, two_workers
+    ):
+        w1, w2 = two_workers
+        ws_a, ws_b = FakeWS("alice"), FakeWS("bob")
+        await w1.connect(ws_a, ALICE)
+        await w2.connect(ws_b, BOB)
+
+        await w1.handle_message(
+            ws_a, ALICE, {"type": "typing", "chat_id": CHAT}
+        )
+
+        assert events_of(ws_b, "typing") == [
+            {"type": "typing", "chat_id": CHAT, "user_id": ALICE}
+        ]
+        assert events_of(ws_a, "typing") == []
+
+    async def test_typing_from_non_member_is_ignored(self, two_workers):
+        """chat_id в кадре называет клиент — не участник ничего не рассылает."""
+        w1, w2 = two_workers
+        ws_a, ws_c = FakeWS("alice"), FakeWS("carol")
+        await w1.connect(ws_a, ALICE)
+        await w2.connect(ws_c, CAROL)
+
+        await w2.handle_message(
+            ws_c, CAROL, {"type": "typing", "chat_id": CHAT}
+        )
+        await w2.handle_message(
+            ws_c, CAROL, {"type": "read", "chat_id": CHAT, "message_id": 1}
+        )
+
+        assert events_of(ws_a, "typing") == []
+        assert events_of(ws_a, "messages_read") == []
+
+    async def test_new_chat_event_reaches_only_connected_user(
+        self, two_workers
+    ):
+        """
+        NEW_CHAT ходит по всем воркерам; получает его тот, кто подключён,
+        остальные — при следующем входе прочитают список чатов сами.
+        """
+        w1, _ = two_workers
+        ws_a = FakeWS("alice")
+        await w1.connect(ws_a, ALICE)
+
         await w1.notify_new_chat_bulk([ALICE, BOB], CHAT)
 
-        assert w2._chat_subscriptions.get(CHAT, set()) == set()
-        assert w1._chat_subscriptions[CHAT] == {ALICE}
+        assert events_of(ws_a, "chat_created") == [
+            {"type": "chat_created", "chat_id": CHAT}
+        ]
 
 
 class TestCallSignaling:
