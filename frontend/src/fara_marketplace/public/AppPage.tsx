@@ -7,7 +7,6 @@ import {
   Grid,
   Group,
   Loader,
-  SimpleGrid,
   Stack,
   Text,
   Title,
@@ -19,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { selectCurrentSession, selectIsLoggedIn } from '@/slices/authSlice';
 import {
   marketDownloadUrl,
+  marketFreeDownloadUrl,
   marketImageUrl,
   useBuyMarketAppMutation,
   useGetMarketAppQuery,
@@ -37,9 +37,11 @@ export default function AppPage() {
 
   const { data, isLoading } = useGetMarketAppQuery(appId, { skip: !appId });
   const [buy, { isLoading: buying }] = useBuyMarketAppMutation();
-  // Покупка состоялась в этой сессии страницы (бесплатное или уже
-  // оплаченное) — показываем кнопку скачивания вместо покупки.
+  // Покупка состоялась в этой сессии страницы (уже оплаченное) —
+  // показываем кнопку скачивания вместо покупки.
   const [bought, setBought] = useState(false);
+  // Активный скриншот в галерее.
+  const [activeShot, setActiveShot] = useState(0);
 
   const app = data?.data;
 
@@ -67,8 +69,14 @@ export default function AppPage() {
       </Text>
     );
   } else {
+    const isFree = app.price <= 0;
     const isVendor = !!app.vendor && session?.user_id?.id === app.vendor.id;
-    const canDownload = bought || isVendor;
+    // Платный архив дают купившему или поставщику; бесплатный — всем.
+    const canDownloadPaid = bought || isVendor;
+    const activeIndex = Math.min(
+      activeShot,
+      Math.max(app.screenshots.length - 1, 0),
+    );
 
     content = (
       <>
@@ -110,7 +118,20 @@ export default function AppPage() {
               <Text className={classes.price} fz={28}>
                 {formatPrice(app.price, t)}
               </Text>
-              {!authenticated && (
+
+              {/* Бесплатный — скачивается сразу, без входа. */}
+              {isFree && (
+                <Button
+                  component="a"
+                  href={marketFreeDownloadUrl(app.id)}
+                  leftSection={<IconDownload size={16} />}
+                  className={classes.btnPrimary}>
+                  {t('public.download')}
+                </Button>
+              )}
+
+              {/* Платный: вход → покупка → скачивание. */}
+              {!isFree && !authenticated && (
                 <Button
                   component={Link}
                   to="/login"
@@ -118,7 +139,7 @@ export default function AppPage() {
                   {t('public.signInToBuy')}
                 </Button>
               )}
-              {authenticated && canDownload && (
+              {!isFree && authenticated && canDownloadPaid && (
                 <Button
                   component="a"
                   href={marketDownloadUrl(app.id)}
@@ -127,35 +148,57 @@ export default function AppPage() {
                   {t('public.download')}
                 </Button>
               )}
-              {authenticated && !canDownload && (
-                <Button
-                  onClick={handleBuy}
-                  loading={buying}
-                  className={classes.btnPrimary}>
-                  {app.price > 0 ? t('public.buy') : t('public.getFree')}
-                </Button>
-              )}
-              {authenticated && !canDownload && app.price > 0 && (
-                <Text size="xs" c="dimmed">
-                  {t('public.purchasesHint')}
-                </Text>
+              {!isFree && authenticated && !canDownloadPaid && (
+                <>
+                  <Button
+                    onClick={handleBuy}
+                    loading={buying}
+                    className={classes.btnPrimary}>
+                    {t('public.buy')}
+                  </Button>
+                  <Text size="xs" c="dimmed">
+                    {t('public.purchasesHint')}
+                  </Text>
+                </>
               )}
             </Stack>
           </Grid.Col>
         </Grid>
 
         {app.screenshots.length > 0 && (
-          <SimpleGrid cols={{ base: 1, sm: 2 }} mt="xl">
-            {app.screenshots.map(shot => (
+          <div className={classes.gallery}>
+            {/* Крупный кадр — клик открывает оригинал в новой вкладке. */}
+            <a
+              href={marketImageUrl(app.id, app.screenshots[activeIndex].id)}
+              target="_blank"
+              rel="noopener noreferrer">
               <img
-                key={shot.id}
-                className={classes.screenshot}
-                src={marketImageUrl(app.id, shot.id, 1200)}
-                alt={shot.name}
-                loading="lazy"
+                className={classes.galleryMain}
+                src={marketImageUrl(
+                  app.id,
+                  app.screenshots[activeIndex].id,
+                  1200,
+                )}
+                alt={app.screenshots[activeIndex].name}
               />
-            ))}
-          </SimpleGrid>
+            </a>
+            {app.screenshots.length > 1 && (
+              <div className={classes.thumbs}>
+                {app.screenshots.map((shot, i) => (
+                  <img
+                    key={shot.id}
+                    className={`${classes.thumb} ${
+                      i === activeIndex ? classes.thumbActive : ''
+                    }`}
+                    src={marketImageUrl(app.id, shot.id, 200, 130)}
+                    alt={shot.name}
+                    onClick={() => setActiveShot(i)}
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {app.description && (

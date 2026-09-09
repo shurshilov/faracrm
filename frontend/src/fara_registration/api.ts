@@ -4,6 +4,9 @@ export interface RegistrationStartArgs {
   name: string;
   login: string;
   password: string;
+  // Капча — только если установлен модуль captcha (иначе не отправляются).
+  captcha_token?: string;
+  captcha_answer?: string;
 }
 
 export interface RegistrationConfirmArgs {

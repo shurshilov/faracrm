@@ -10,6 +10,10 @@
   "changeEmail": "Edit details",
   "haveAccount": "Already have an account?",
   "signIn": "Sign in",
+  "captcha": {
+    "label": "Check: are you human?",
+    "placeholder": "Answer"
+  },
   "errors": {
     "nameRequired": "Enter your name",
     "emailInvalid": "Enter a valid email",

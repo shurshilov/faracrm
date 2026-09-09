@@ -10,6 +10,10 @@
   "changeEmail": "Изменить данные",
   "haveAccount": "Уже есть аккаунт?",
   "signIn": "Войти",
+  "captcha": {
+    "label": "Проверка: вы не робот?",
+    "placeholder": "Ответ"
+  },
   "errors": {
     "nameRequired": "Введите имя",
     "emailInvalid": "Укажите корректный email",

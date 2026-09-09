@@ -21,7 +21,7 @@ class RegistrationApp(App):
         "category": "Base",
         "version": "1.0.0",
         "license": "FARA CRM License v1.0",
-        "depends": ["users", "security"],
+        "depends": ["users", "security", "captcha"],
         # Публичная регистрация включается осознанно (сама или как
         # зависимость маркетплейса), а не при первом старте.
         "auto_install": False,

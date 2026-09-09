@@ -32,6 +32,8 @@ async def registration_start(req: Request, payload: RegistrationStartInput):
             login=payload.login,
             password=payload.password,
             channel=payload.channel,
+            captcha_token=payload.captcha_token,
+            captcha_answer=payload.captcha_answer,
         )
     return {
         "data": {

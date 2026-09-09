@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Center,
+  Group,
   Loader,
+  Pagination,
   SegmentedControl,
   Select,
   SimpleGrid,
@@ -19,6 +21,8 @@ import classes from './market.module.css';
 type Pricing = 'all' | 'free' | 'paid';
 type Sort = 'popular' | 'new' | 'price';
 
+const PAGE_SIZE = 24;
+
 /** Публичный каталог: поиск, категория, платные/бесплатные, сортировка. */
 export default function MarketPage() {
   const { t } = useTranslation('marketplace');
@@ -27,14 +31,23 @@ export default function MarketPage() {
   const [category, setCategory] = useState<string | null>(null);
   const [pricing, setPricing] = useState<Pricing>('all');
   const [sort, setSort] = useState<Sort>('popular');
+  const [page, setPage] = useState(1);
+
+  // Смена фильтра/поиска/сортировки — снова с первой страницы.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, category, pricing, sort]);
 
   const { data, isLoading } = useListMarketAppsQuery({
     search: debouncedSearch.trim() || undefined,
     category: category || undefined,
     free: pricing === 'all' ? undefined : pricing === 'free',
     sort,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
   });
   const apps = data?.data || [];
+  const totalPages = Math.ceil((data?.total || 0) / PAGE_SIZE);
 
   return (
     <div className={classes.root}>
@@ -95,11 +108,23 @@ export default function MarketPage() {
             {t('public.empty')}
           </Text>
         ) : (
-          <div className={classes.grid}>
-            {apps.map(app => (
-              <AppCard key={app.id} app={app} />
-            ))}
-          </div>
+          <>
+            <div className={classes.grid}>
+              {apps.map(app => (
+                <AppCard key={app.id} app={app} />
+              ))}
+            </div>
+            {totalPages > 1 && (
+              <Group justify="center" mt="xl">
+                <Pagination
+                  total={totalPages}
+                  value={page}
+                  onChange={setPage}
+                  color="teal"
+                />
+              </Group>
+            )}
+          </>
         )}
       </div>
     </div>

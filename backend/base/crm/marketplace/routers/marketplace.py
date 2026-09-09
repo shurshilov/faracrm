@@ -125,9 +125,14 @@ async def list_apps(
     category: str = "",
     free: bool | None = None,
     sort: str = "popular",
-    limit: int = Query(60, ge=1, le=200),
+    limit: int = Query(24, ge=1, le=200),
+    offset: int = Query(0, ge=0),
 ):
-    """Опубликованные приложения: поиск по названию/описанию + фильтры."""
+    """Опубликованные приложения: поиск по названию/описанию + фильтры.
+
+    Пагинация: limit — размер страницы, offset — сдвиг; total — общее число
+    подходящих записей (для пейджера на фронте).
+    """
     env: "Environment" = req.app.state.env
 
     filter_: list = [("published", "=", True)]
@@ -144,12 +149,14 @@ async def list_apps(
         )
     sort_field, order = SORTS.get(sort, SORTS["popular"])
 
+    total = await env.models.marketplace_app.search_count(filter=filter_)
     apps = await env.models.marketplace_app.search(
         fields=APP_FIELDS,
         fields_nested=VENDOR_NESTED,
         filter=filter_,
         sort=sort_field,
         order=order,
+        start=offset,
         limit=limit,
     )
     covers: dict[int, int] = {}
@@ -158,7 +165,10 @@ async def list_apps(
     )
     for shot in screenshots:
         covers.setdefault(shot.res_id, shot.id)
-    return {"data": [_serialize(app, covers.get(app.id)) for app in apps]}
+    return {
+        "data": [_serialize(app, covers.get(app.id)) for app in apps],
+        "total": total,
+    }
 
 
 @router_public.get("/marketplace/apps/{app_id}")
@@ -221,6 +231,48 @@ async def app_image(
         content=content,
         media_type=attachment.mimetype,
         headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@router_public.get("/marketplace/apps/{app_id}/download-free")
+async def download_free(req: Request, app_id: Id):
+    """Скачать бесплатный модуль — без входа (платный сюда не отдаём).
+
+    Логин требуется только за платными: их архив за деньги, отдаёт
+    авторизованная ручка download ниже.
+    """
+    env: "Environment" = req.app.state.env
+    rows = await env.models.marketplace_app.search(
+        fields=["id", "name", "price"],
+        filter=[("id", "=", app_id), ("published", "=", True)],
+        limit=1,
+    )
+    if not rows:
+        raise _not_found()
+    app = rows[0]
+    if Decimal.to_decimal(app.price) > 0:
+        raise _not_found()
+
+    archive = await app.get_archive()
+    content = await archive.read_content() if archive else None
+    if content is None:
+        raise _not_found()
+
+    # Счётчик скачиваний — прямым SQL (правила дают править запись только
+    # поставщику; здесь качает аноним). Как в авторизованной download ниже.
+    await env.apps.db.get_session().execute(
+        "UPDATE marketplace_app SET downloads = downloads + 1 WHERE id = %s",
+        [app.id],
+        cursor="void",
+    )
+    return Response(
+        content=content,
+        media_type=archive.mimetype or "application/zip",
+        headers={
+            "Content-Disposition": (
+                f"attachment; filename*=utf-8''{quote(archive.name, safe='')}"
+            )
+        },
     )
 
 

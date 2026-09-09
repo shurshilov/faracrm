@@ -5,7 +5,6 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
-from backend.base.crm import chat_phone_asterisk
 from backend.base.system.core.apps import AppsCore
 from backend.base.system.core.models import ModelsCore
 from backend.base.system.core.extensions import ExtensibleMixin
@@ -208,6 +207,7 @@ from backend.base.crm.chat_phone_asterisk.models.asterisk_log import (
 )
 
 # Registration / Payment / Marketplace
+from backend.base.crm.captcha.models.captcha_challenge import CaptchaChallenge
 from backend.base.crm.registration.models.registration import Registration
 from backend.base.crm.payment.models.payment import Payment
 from backend.base.crm.marketplace.models.marketplace_app import (
@@ -258,6 +258,7 @@ from backend.base.crm.report_docx.app import ReportDocxApp
 from backend.base.crm.contract.app import ContractApp
 from backend.base.crm.registration.app import RegistrationApp
 from backend.base.crm.registration_email.app import RegistrationEmailApp
+from backend.base.crm.captcha.app import CaptchaApp
 from backend.base.crm.payment.app import PaymentApp
 from backend.base.crm.payment_tinkoff.app import PaymentTinkoffApp
 from backend.base.crm.marketplace.app import MarketplaceApp
@@ -361,6 +362,7 @@ class Models(ModelsCore, ExtensibleMixin):
     contract = Contract
     # registration / payment / marketplace
     registration = Registration
+    captcha_challenge = CaptchaChallenge
     payment = Payment
     marketplace_app = MarketplaceApplication
     marketplace_purchase = MarketplacePurchase
@@ -402,6 +404,7 @@ class Apps(AppsCore):
     activity = ActivityApp()
     report_docx = ReportDocxApp()
     contract = ContractApp()
+    captcha = CaptchaApp()
     registration = RegistrationApp()
     registration_email = RegistrationEmailApp()
     payment = PaymentApp()

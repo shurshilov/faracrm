@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Anchor,
   Button,
@@ -20,6 +20,7 @@ import Logo from '@/components/Logo';
 import { LangSwitch } from '@/components/LangSwitch';
 import { useLoginMutation } from '@/services/auth/auth';
 import { storeSession } from '@/slices/authSlice';
+import { CaptchaField, type CaptchaValue } from '@/fara_captcha/Captcha';
 import {
   useConfirmRegistrationMutation,
   useStartRegistrationMutation,
@@ -51,6 +52,18 @@ export default function Register() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
+  // Регистрация зависит от модуля captcha — задачка есть всегда.
+  const [captcha, setCaptcha] = useState<CaptchaValue>({
+    token: '',
+    answer: '',
+  });
+  // Инкремент → CaptchaField берёт новую задачку (после неудачной отправки).
+  const [captchaAttempt, setCaptchaAttempt] = useState(0);
+  const onCaptchaChange = useCallback(
+    (value: CaptchaValue) => setCaptcha(value),
+    [],
+  );
+
   const form = useForm({
     initialValues: { name: '', login: '', password: '' },
     validate: {
@@ -64,10 +77,16 @@ export default function Register() {
   const handleStart = async (values: typeof form.values) => {
     setError(null);
     try {
-      await start(values).unwrap();
+      await start({
+        ...values,
+        captcha_token: captcha.token,
+        captcha_answer: captcha.answer,
+      }).unwrap();
       setStep('code');
     } catch (err) {
       setError(errorMessage(err, t));
+      // Капча одноразовая — после ошибки берём новую задачку.
+      setCaptchaAttempt(attempt => attempt + 1);
     }
   };
 
@@ -132,9 +151,17 @@ export default function Register() {
                   size="md"
                   classNames={{ label: classes.inputLabel }}
                 />
+                <CaptchaField
+                  label={t('captcha.label')}
+                  placeholder={t('captcha.placeholder')}
+                  onChange={onCaptchaChange}
+                  resetSignal={captchaAttempt}
+                  classNames={{ label: classes.inputLabel }}
+                />
                 <Button
                   type="submit"
                   loading={starting}
+                  disabled={!captcha.answer.trim()}
                   fullWidth
                   size="md"
                   className={classes.submitBtn}>

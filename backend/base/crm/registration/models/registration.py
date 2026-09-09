@@ -15,6 +15,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.crm.users.models.users import User
+from backend.base.crm.captcha.models.captcha_challenge import CaptchaChallenge
 from backend.base.crm.registration.strategies import get_channel
 
 # Сколько живёт код подтверждения.
@@ -59,9 +60,22 @@ class Registration(DotModel):
         default=lambda: datetime.now(timezone.utc)
     )
 
+    @staticmethod
+    async def _check_captcha(token: str | None, answer: str | None) -> None:
+        """Проверить капчу. Регистрация зависит от модуля captcha (см. app.py)."""
+        if not await CaptchaChallenge.verify(token, answer):
+            raise _fara_error("REGISTRATION_CAPTCHA_INVALID", "Неверная капча")
+
     @classmethod
     async def start(
-        cls, *, name: str, login: str, password: str, channel: str
+        cls,
+        *,
+        name: str,
+        login: str,
+        password: str,
+        channel: str,
+        captcha_token: str | None = None,
+        captcha_answer: str | None = None,
     ) -> Self:
         """Создать заявку и отправить код выбранным каналом."""
         login = login.strip().lower()
@@ -82,6 +96,11 @@ class Registration(DotModel):
             raise _fara_error(
                 "REGISTRATION_PASSWORD_POLICY", ", ".join(errors)
             )
+
+        # Капчу проверяем последней из валидаций и гасим её здесь: провал
+        # других проверок (почта, пароль) капчу не тратит — можно повторить
+        # с той же задачкой; неверная капча — с новой (фронт перезапросит).
+        await cls._check_captcha(captcha_token, captcha_answer)
 
         # Одна ожидающая заявка на логин: прежние коды перестают действовать.
         pending = await cls.search(

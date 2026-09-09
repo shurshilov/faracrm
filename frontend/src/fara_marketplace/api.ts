@@ -45,6 +45,9 @@ export interface MarketListArgs {
   category?: string;
   free?: boolean;
   sort?: 'popular' | 'new' | 'price';
+  /** Пагинация: размер страницы и сдвиг. */
+  limit?: number;
+  offset?: number;
 }
 
 export interface BuyResult {
@@ -84,9 +87,17 @@ export function marketDownloadUrl(appId: number): string {
   return `${API_BASE_URL}/marketplace/apps/${appId}/download`;
 }
 
+/** Бесплатный модуль — скачивание без входа (платный сюда не отдаётся). */
+export function marketFreeDownloadUrl(appId: number): string {
+  return `${API_BASE_URL}/marketplace/apps/${appId}/download-free`;
+}
+
 const marketplaceApi = api.injectEndpoints({
   endpoints: build => ({
-    listMarketApps: build.query<{ data: MarketApp[] }, MarketListArgs>({
+    listMarketApps: build.query<
+      { data: MarketApp[]; total: number },
+      MarketListArgs
+    >({
       query: args => ({
         url: '/marketplace/apps',
         params: {
@@ -95,6 +106,8 @@ const marketplaceApi = api.injectEndpoints({
           ...(args.category && { category: args.category }),
           ...(args.free !== undefined && { free: args.free }),
           ...(args.sort && { sort: args.sort }),
+          ...(args.limit !== undefined && { limit: args.limit }),
+          ...(args.offset ? { offset: args.offset } : {}),
         },
       }),
     }),

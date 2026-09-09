@@ -178,6 +178,25 @@
   }
 }
 
+/* Кликабельная часть карточки (обложка + текст). Кнопка — в футере ниже,
+   отдельным элементом: ссылку в ссылку вкладывать нельзя. */
+.cardLink {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  text-decoration: none;
+  color: inherit;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: rem(8px);
+  padding: rem(12px) rem(20px) rem(16px);
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
 .cover {
   display: block;
   width: 100%;
@@ -243,13 +262,19 @@
   }
 }
 
-.screenshot {
+/* ── Галерея скриншотов на странице модуля ─────────────────────────────── */
+.gallery {
+  margin-top: rem(28px);
+}
+
+.galleryMain {
   display: block;
   width: 100%;
-  max-height: rem(360px);
+  max-height: rem(460px);
   object-fit: contain;
   border-radius: rem(12px);
   border: 1px solid var(--mantine-color-default-border);
+  cursor: zoom-in;
 
   @mixin light {
     background: var(--mantine-color-gray-0);
@@ -258,6 +283,38 @@
   @mixin dark {
     background: var(--mantine-color-dark-6);
   }
+}
+
+/* Лента миниатюр: горизонтальная прокрутка, активная подсвечена акцентом. */
+.thumbs {
+  display: flex;
+  gap: rem(8px);
+  margin-top: rem(10px);
+  overflow-x: auto;
+  padding-bottom: rem(4px);
+}
+
+.thumb {
+  flex: 0 0 auto;
+  width: rem(96px);
+  height: rem(64px);
+  object-fit: cover;
+  border-radius: rem(8px);
+  border: 2px solid transparent;
+  cursor: pointer;
+  opacity: 0.65;
+  transition:
+    opacity 0.2s var(--mp-ease),
+    border-color 0.2s var(--mp-ease);
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.thumbActive {
+  opacity: 1;
+  border-color: var(--mp-accent);
 }
 
 .description {
