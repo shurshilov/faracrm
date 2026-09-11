@@ -138,12 +138,11 @@ async def sip_ws_proxy(websocket: WebSocket):
         await websocket.close(_CLOSE_UNAUTHORIZED, "Missing token")
         return
 
-    sessions = await env.models.session.search(
+    session = await env.models.session.search_one(
         filter=[("token", "=", token), ("active", "=", True)],
         fields=["id", "user_id"],
-        limit=1,
     )
-    if not sessions:
+    if not session:
         await websocket.accept()
         await websocket.close(_CLOSE_UNAUTHORIZED, "Invalid token")
         return
@@ -152,7 +151,7 @@ async def sip_ws_proxy(websocket: WebSocket):
     # сотрудника в нём действительно есть: иначе через нас можно было бы
     # достучаться до любой чужой АТС.
     connector_id = int(websocket.query_params.get("connector") or 0)
-    lines = await _my_lines(env, sessions[0].user_id.id)
+    lines = await _my_lines(env, session.user_id.id)
     url = None
     if connector_id in lines:
         # Тот же случай: chat_connector в белом списке анонимной сессии нет,

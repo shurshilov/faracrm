@@ -295,15 +295,14 @@ class Call(AuditMixin, DotModel):
                 adapter.talk_duration,
             )
             return
-        existing = await env.models.attachment.search(
+        existing = await env.models.attachment.search_one(
             filter=[("res_model", "=", "call"), ("res_id", "=", call_id)],
             fields=["id"],
-            limit=1,
         )
         if existing:
             # Вложение уже есть — только дотягиваем ссылку (звонки, записанные
             # до появления record_id, иначе остались бы без кнопки «Запись»).
-            await Call._link_record(env, call_id, existing[0].id)
+            await Call._link_record(env, call_id, existing.id)
             return
         try:
             content = await strategy._download_call_record(connector, adapter)

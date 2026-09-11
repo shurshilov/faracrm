@@ -33,6 +33,7 @@ class OrmRelationsMixin(_Base):
 
     Provides:
     - search - search records with relation loading
+    - search_one - first record matching filter or None
     - search_count - count records matching filter
     - exists - have one record or not
     - _get_load_relations - load relations for single record (used by get())
@@ -141,6 +142,45 @@ class OrmRelationsMixin(_Base):
             )
 
         return records
+
+    @hybridmethod
+    async def search_one(
+        self,
+        fields: list[str] | None = None,
+        fields_nested: dict[str, list[str]] | None = None,
+        order: Literal["DESC", "ASC", "desc", "asc"] | None = None,
+        sort: str | None = None,
+        filter: FilterExpression | None = None,
+        raw: bool = False,
+        session=None,
+    ) -> Self | None:
+        """
+        Первая запись по фильтру или None.
+
+        То же, что search(..., limit=1) плюс проверка «список не пуст» на
+        стороне вызывающего: LIMIT 1 ставится здесь, наружу уходит сама
+        запись. Какая запись «первая», задают sort/order (по умолчанию —
+        как у search).
+
+        Example:
+            storage = await AttachmentStorage.search_one(
+                filter=[("active", "=", True)]
+            )
+            if storage is None:
+                ...
+        """
+        cls = self.__class__
+        records = await cls.search(
+            fields=fields,
+            fields_nested=fields_nested,
+            limit=1,
+            order=order,
+            sort=sort,
+            filter=filter,
+            raw=raw,
+            session=session,
+        )
+        return records[0] if records else None
 
     @hybridmethod
     async def search_count(

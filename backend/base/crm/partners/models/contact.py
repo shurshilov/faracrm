@@ -178,7 +178,7 @@ class Contact(AuditMixin, DotModel):
         value = cls._canonicalize(value)
 
         # 1) Точное совпадение по типу (только клиентские контакты).
-        exact = await env.models.contact.search(
+        exact = await env.models.contact.search_one(
             filter=[
                 ("contact_type_id", "=", contact_type.id),
                 ("value", "=", value),
@@ -186,10 +186,9 @@ class Contact(AuditMixin, DotModel):
                 ("active", "=", True),
             ],
             fields=["id", "value", "name", "user_id", "partner_id"],
-            limit=1,
         )
         if exact:
-            return exact[0]
+            return exact
 
         # 2) Fallback по семейству телефонных типов — только если применимо
         if not contact_type.is_phone_format:
@@ -261,13 +260,11 @@ class Contact(AuditMixin, DotModel):
         if contact_type_id:
             filters.append(("contact_type_id", "=", contact_type_id))
 
-        rows = await env.models.contact.search(
+        return await env.models.contact.search_one(
             filter=filters,
             fields=["id", "value", "name", "user_id", "contact_type_id"],
             fields_nested={"user_id": ["id", "name"]},
-            limit=1,
         )
-        return rows[0] if rows else None
 
     @classmethod
     async def create_with_partner(
@@ -339,5 +336,4 @@ class Contact(AuditMixin, DotModel):
         if user_id:
             filter_conditions.append(("user_id", "=", user_id))
 
-        results = await self.search(filter=filter_conditions, limit=1)
-        return results[0] if results else None
+        return await self.search_one(filter=filter_conditions)

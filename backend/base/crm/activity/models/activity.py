@@ -232,13 +232,12 @@ class Activity(AuditMixin, DotModel):
 
         if date_deadline is None:
             # Ищем тип активности, чтобы узнать дефолтный срок
-            activity_types = await env.models.activity_type.search(
+            activity_type = await env.models.activity_type.search_one(
                 filter=[("id", "=", activity_type_id)],
                 fields=["default_days"],
-                limit=1,
             )
             # Безопасно берем default_days или 1
-            days = activity_types[0].default_days if activity_types else 1
+            days = activity_type.default_days if activity_type else 1
             date_deadline = now_utc + timedelta(days=days)
 
         # Определяем статус (сравниваем даты в одном часовом поясе)
@@ -320,18 +319,17 @@ class Activity(AuditMixin, DotModel):
         """
 
         # Ищем существующий системный чат по имени и участнику
-        chats = await env.models.chat.search(
+        existing = await env.models.chat.search_one(
             filter=[
                 ("name", "=", f"__system__{user_id}"),
                 ("chat_type", "=", "direct"),
             ],
             fields=["id", "active"],
-            limit=1,
         )
 
-        if chats:
-            await chats[0].reactivate()
-            return chats[0].id
+        if existing:
+            await existing.reactivate()
+            return existing.id
 
         # Создаём новый системный чат
         now = datetime.now(timezone.utc)

@@ -547,26 +547,24 @@ class Chat(AuditMixin, DotModel):
 
             team = None
             if connector is not None:
-                conns = await env.models.chat_connector.search(
+                conn = await env.models.chat_connector.search_one(
                     filter=[("id", "=", connector.id)],
                     fields=["id", "manager_ids", "team_id"],
-                    limit=1,
                 )
-                if conns:
-                    managers = conns[0].manager_ids or []
-                    team = conns[0].team_id
+                if conn:
+                    managers = conn.manager_ids or []
+                    team = conn.team_id
 
             # Имя чата = имя партнёра (не "partner:id"). Если вызывающий не
             # передал имя (кнопка «Создать чат» из формы вызывает без
             # partner_name) — берём из БД.
             if not partner_name:
-                partner = await env.models.partner.search(
+                partner = await env.models.partner.search_one(
                     filter=[("id", "=", partner_id)],
                     fields=["id", "name"],
-                    limit=1,
                 )
                 if partner:
-                    partner_name = partner[0].name
+                    partner_name = partner.name
 
             default_perms = DEFAULT_PERMISSIONS["group"]
             now = datetime.now(timezone.utc)
@@ -675,16 +673,14 @@ class Chat(AuditMixin, DotModel):
 
     async def remove_member(self, user_id: int) -> bool:
         """Удалить участника из чата (мягкое удаление)."""
-        members = await env.models.chat_member.search(
+        member = await env.models.chat_member.search_one(
             filter=[
                 ("chat_id", "=", self.id),
                 ("user_id", "=", user_id),
                 ("is_active", "=", True),
             ],
-            limit=1,
         )
-        if members:
-            member = members[0]
+        if member:
             now = datetime.now(timezone.utc)
             await member.update(
                 env.models.chat_member(is_active=False, left_at=now)

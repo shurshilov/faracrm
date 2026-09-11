@@ -69,8 +69,8 @@ class Registration(DotModel):
         login = login.strip().lower()
         sender = get_channel(channel)
 
-        existing = await env.models.user.search(
-            filter=[("login", "=", login)], fields=["id"], limit=1
+        existing = await env.models.user.search_one(
+            filter=[("login", "=", login)], fields=["id"]
         )
         if existing:
             raise FaraException(
@@ -129,7 +129,7 @@ class Registration(DotModel):
         login = login.strip().lower()
         code = "".join(ch for ch in code if ch.isdigit())
 
-        rows = await cls.search(
+        registration = await cls.search_one(
             filter=[("login", "=", login), ("confirmed", "=", False)],
             fields=[
                 "id",
@@ -142,9 +142,7 @@ class Registration(DotModel):
             ],
             sort="id",
             order="desc",
-            limit=1,
         )
-        registration = rows[0] if rows else None
         if registration is None or not secrets.compare_digest(
             registration.code or "", code
         ):
@@ -179,22 +177,21 @@ class Registration(DotModel):
         )
         workspace_name = defaults.get("workspace_name")
         if workspace_name:
-            workspace = await env.models.workspace.search(
+            workspace = await env.models.workspace.search_one(
                 filter=[("name", "=", workspace_name)],
                 fields=["id"],
-                limit=1,
             )
             if workspace:
-                payload.workspace_id = workspace[0]
+                payload.workspace_id = workspace
         user_id = await env.models.user.create(payload=payload)
 
         role_code = defaults.get("role_code")
         if role_code:
-            role = await env.models.role.search(
-                filter=[("code", "=", role_code)], fields=["id"], limit=1
+            role = await env.models.role.search_one(
+                filter=[("code", "=", role_code)], fields=["id"]
             )
             if role:
                 user = await env.models.user.get(user_id)
                 # m2m пишется только через update (как в users/app.py).
-                await user.update(User(role_ids={"selected": [role[0].id]}))
+                await user.update(User(role_ids={"selected": [role.id]}))
         return user_id

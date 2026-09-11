@@ -172,16 +172,15 @@ async def fetch_connector_history(
     # коннектор грузим как webhook-роутер: с ВЛОЖЕННЫМ contact_type_id. Через
     # .get() many2one приходит голым id, и резолв клиента падает на
     # contact_type.id — внутренние звонки при этом пишутся, а клиентские нет.
-    connectors = await env.models.chat_connector.search(
+    connector = await env.models.chat_connector.search_one(
         filter=[("id", "=", connector_id)],
         fields_nested={"contact_type_id": ["id", "name", "is_phone_format"]},
-        limit=1,
     )
-    if not connectors:
+    if not connector:
         raise HTTPException(status_code=404, detail="CONNECTOR_NOT_FOUND")
 
-    result = await connectors[0].strategy.import_history(
-        connectors[0], start, end, env, mode=mode
+    result = await connector.strategy.import_history(
+        connector, start, end, env, mode=mode
     )
     return {"data": result}
 

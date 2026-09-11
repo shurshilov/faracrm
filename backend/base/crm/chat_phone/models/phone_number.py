@@ -142,15 +142,13 @@ class PhoneNumber(AuditMixin, DotModel):
         cls, external_id: str, connector_id: int
     ) -> "PhoneNumber | None":
         """Найти номер по external_id + коннектору (ключ upsert синхронизации)."""
-        rows = await env.models.phone_number.search(
+        return await env.models.phone_number.search_one(
             filter=[
                 ("external_id", "=", external_id),
                 ("connector_id", "=", connector_id),
             ],
             fields=["id"],
-            limit=1,
         )
-        return rows[0] if rows else None
 
     @classmethod
     async def find_by_number(cls, connector_id: int, value: str | None):
@@ -164,7 +162,7 @@ class PhoneNumber(AuditMixin, DotModel):
         digits = "".join(ch for ch in str(value or "") if ch.isdigit())
         if not digits:
             return None
-        rows = await env.models.phone_number.search(
+        return await env.models.phone_number.search_one(
             filter=[
                 [("extension", "=", digits), "or", ("number", "=", digits)],
                 "and",
@@ -172,9 +170,7 @@ class PhoneNumber(AuditMixin, DotModel):
             ],
             fields=["id", "user_id", "create_partner"],
             fields_nested={"user_id": ["id"]},
-            limit=1,
         )
-        return rows[0] if rows else None
 
     # ==================== cron-точки телефонии ====================
     # Реализация прямо здесь (методы модели), вызываются cron'ом по имени.

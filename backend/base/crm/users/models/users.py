@@ -55,13 +55,12 @@ ANONYMOUS_USER_ID = 4
 async def _default_roles():
     """Метод для получения ролей по умолчанию"""
 
-    base_user = await env.models.role.search(
+    base_user = await env.models.role.search_one(
         filter=[("code", "=", "base_user")],
         fields=["id", "name", "user_ids"],
         fields_nested={"user_ids": ["id", "name"]},
-        limit=1,
     )
-    return base_user or []
+    return [base_user] if base_user else []
 
 
 # Имя базового «Рабочего места» (сидится в security/app.py вместе с ролью
@@ -74,12 +73,10 @@ async def _default_workspace():
     (Общение/Партнёры/Активности/Файлы). Проставляется НЕ-админам в
     User.create (админу РМ не нужно — он видит всё через байпас); так у
     обычных юзеров не пустой лаунчер (без РМ ничего не видно)."""
-    ws = await env.models.workspace.search(
+    return await env.models.workspace.search_one(
         filter=[("name", "=", DEFAULT_WORKSPACE_NAME)],
         fields=["id", "name"],
-        limit=1,
     )
-    return ws[0] if ws else None
 
 
 async def _default_langs():
@@ -93,11 +90,9 @@ async def _default_langs():
 
 async def _default_lang():
     """Язык по умолчанию для одиночного поля lang_id."""
-    langs = await env.models.language.search(
+    return await env.models.language.search_one(
         filter=[("code", "=", "en"), ("active", "=", True)],
-        limit=1,
     )
-    return langs[0] if langs else None
 
 
 class User(PolymorphicParentMixin):
@@ -336,9 +331,8 @@ class User(PolymorphicParentMixin):
         расширять scope правки за пределы создания.
         """
         if payload.login:
-            existing = await env.models.user.search(
+            existing = await env.models.user.search_one(
                 filter=[("login", "=", payload.login)],
-                limit=1,
                 fields=["id"],
             )
             if existing:

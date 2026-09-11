@@ -49,9 +49,8 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     try:
-        sessions = await env.models.session.search(
+        session = await env.models.session.search_one(
             filter=[("token", "=", token), ("active", "=", True)],
-            limit=1,
             fields=["id", "user_id"],
         )
     except Exception as e:
@@ -62,12 +61,12 @@ async def websocket_endpoint(websocket: WebSocket):
         )
         return
 
-    if not sessions:
+    if not session:
         await websocket.accept()
         await websocket.close(code=_CLOSE_UNAUTHORIZED, reason="Invalid token")
         return
 
-    user_id = sessions[0].user_id.id
+    user_id = session.user_id.id
 
     # accept только после успешной авторизации
     await websocket.accept()

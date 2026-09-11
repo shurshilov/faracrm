@@ -58,13 +58,12 @@ class ChatConnectorMaxBusinessMixin(_Base):
                 "category": "messenger",
             }
 
-            phone_type = await env.models.contact_type.search(
+            phone_type = await env.models.contact_type.search_one(
                 filter=[("name", "=", "max")],
                 fields=["id", "name"],
-                limit=1,
             )
             if phone_type:
-                result["contact_type_id"] = phone_type[0]
+                result["contact_type_id"] = phone_type
 
             return result
         return {}

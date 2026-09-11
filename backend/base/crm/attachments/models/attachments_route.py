@@ -254,15 +254,15 @@ class AttachmentRoute(DotModel):
             # 1. Try specific routes first (model matches)
             # res_model — имя таблицы; в реестре хранится models.table_name,
             # поэтому находим запись реестра напрямую по table_name.
-            model_recs = await env.models.model.search(
-                filter=[("table_name", "=", res_model)], fields=["id"], limit=1
+            model_rec = await env.models.model.search_one(
+                filter=[("table_name", "=", res_model)], fields=["id"]
             )
 
-            if model_recs:
+            if model_rec:
                 specific_routes = await cls.search(
                     filter=[
                         ("active", "=", True),
-                        ("model_id", "=", model_recs[0].id),
+                        ("model_id", "=", model_rec.id),
                     ],
                     # fields_nested={"storage_id": ["id", "type", "active"]},
                     sort="priority",
@@ -501,16 +501,15 @@ class AttachmentRoute(DotModel):
             Default route for the storage
         """
         # Check if default route already exists
-        existing = await cls.search(
+        existing = await cls.search_one(
             filter=[
                 ("storage_id", "=", storage_id.id),
                 ("model_id", "=", None),
             ],
-            limit=1,
         )
 
         if existing:
-            return existing[0]
+            return existing
 
         default_route = AttachmentRoute()
         default_route.name = "Default Route"

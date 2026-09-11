@@ -58,18 +58,15 @@ async def chat_webhook(
     env: "Environment" = req.app.state.env
 
     # 1. Получаем коннектор и валидируем
-    connector = await env.models.chat_connector.search(
+    connector = await env.models.chat_connector.search_one(
         filter=[
             ("id", "=", connector_id),
             ("webhook_hash", "=", webhook_hash),
             ("active", "=", True),
         ],
         fields_nested={"contact_type_id": ["id", "name", "is_phone_format"]},
-        limit=1,
     )
-    if connector:
-        connector = connector[0]
-    else:
+    if not connector:
         return JSONResponse(
             content={"error": "CONNECTOR_NOT_FOUND"},
             status_code=HTTP_404_NOT_FOUND,

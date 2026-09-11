@@ -54,12 +54,10 @@ class CaptchaChallenge(DotModel):
         except (TypeError, ValueError):
             return False
 
-        rows = await cls.search(
+        challenge = await cls.search_one(
             fields=["id", "answer", "expires_at"],
             filter=[("id", "=", challenge_id)],
-            limit=1,
         )
-        challenge = rows[0] if rows else None
         if challenge is None:
             return False
 

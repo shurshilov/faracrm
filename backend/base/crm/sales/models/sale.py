@@ -28,11 +28,7 @@ from backend.base.crm.users.audit_mixin import AuditMixin
 
 async def _default_stage_id():
     """Метод для получения стадии по умолчанию"""
-    first_stage = await env.models.sale_stage.search(
-        fields=["id", "name"],
-        limit=1,
-    )
-    return first_stage[0] if first_stage else None
+    return await env.models.sale_stage.search_one(fields=["id", "name"])
 
 
 async def _default_name():
@@ -62,14 +58,13 @@ async def _stage_progress(stage) -> int:
     if sequence <= 0:
         return 0
 
-    last = await env.models.sale_stage.search(
+    last = await env.models.sale_stage.search_one(
         filter=[("active", "=", True)],
         fields=["sequence"],
         sort="sequence",
         order="DESC",
-        limit=1,
     )
-    top = int(last[0].sequence or 0) if last else 0
+    top = int(last.sequence or 0) if last else 0
     return min(100, round(sequence * 100 / top)) if top > 0 else 0
 
 

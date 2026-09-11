@@ -50,20 +50,18 @@ async def init_module_roles(
     from backend.base.crm.security.models.apps import App as AppModel
 
     # Получаем app_id
-    app_records = await env.models.app.search(
+    app_record = await env.models.app.search_one(
         filter=[("code", "=", app_code)],
         fields=["id"],
-        limit=1,
     )
-    if not app_records:
+    if not app_record:
         return
-    app_id = app_records[0].id
+    app_id = app_record.id
 
     # Получаем base_user
-    base_user = await env.models.role.search(
+    base_user = await env.models.role.search_one(
         filter=[("code", "=", "base_user")],
         fields=["id"],
-        limit=1,
     )
     if not base_user:
         return
@@ -71,10 +69,9 @@ async def init_module_roles(
     prev_code = "base_user"
 
     for code, name in roles_def:
-        existing = await env.models.role.search(
+        existing = await env.models.role.search_one(
             filter=[("code", "=", code)],
             fields=["id"],
-            limit=1,
         )
         if existing:
             prev_code = code
@@ -82,13 +79,12 @@ async def init_module_roles(
 
         # based_role_ids: наследуем от предыдущей роли
         based_role_id = None
-        found = await env.models.role.search(
+        found = await env.models.role.search_one(
             filter=[("code", "=", prev_code)],
             fields=["id"],
-            limit=1,
         )
         if found:
-            based_role_id = found[0].id
+            based_role_id = found.id
 
         role_payload = Role(
             code=code,

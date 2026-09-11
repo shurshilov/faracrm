@@ -222,12 +222,11 @@ class ChatMember(AuditMixin, MemberMixin):
         # ORM применяет правила модели chat (member OR team) для текущей сессии:
         # доступный чат вернётся, недоступный — пусто. Член/админ уже отсечены
         # выше, значит непустой результат = team-доступ (read-only).
-        chats = await env.models.chat.search(
+        accessible = await env.models.chat.search_one(
             filter=[("id", "=", chat_id)],
             fields=["id"],
-            limit=1,
         )
-        if chats:
+        if accessible:
             reader_stub = cls(
                 chat_id=Chat(id=chat_id),
                 user_id=User(id=user_id),

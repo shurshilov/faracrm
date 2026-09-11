@@ -81,10 +81,10 @@ class EmailRegistrationChannel(RegistrationChannelBase):
             filter_ = [("id", "=", int(connector_id))]
         else:
             filter_ = [("type", "=", "email"), ("active", "=", True)]
-        connectors = await env.models.chat_connector.search(
-            filter=filter_, sort="id", order="asc", limit=1
+        connector = await env.models.chat_connector.search_one(
+            filter=filter_, sort="id", order="asc"
         )
-        if not connectors:
+        if not connector:
             raise FaraException(
                 {
                     "content": "REGISTRATION_EMAIL_NOT_CONFIGURED",
@@ -92,4 +92,4 @@ class EmailRegistrationChannel(RegistrationChannelBase):
                     "status_code": 500,
                 }
             )
-        return connectors[0]
+        return connector

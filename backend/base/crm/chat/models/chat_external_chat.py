@@ -92,16 +92,13 @@ class ChatExternalChat(DotModel):
         """
         Найти связь по внешнему ID чата и коннектору.
         """
-        results = await self.search(
+        return await self.search_one(
             filter=[
                 ("external_id", "=", external_id),
                 ("connector_id", "=", connector_id),
             ],
             fields=["chat_id", "item_title", "item_url"],
-            limit=1,
         )
-
-        return results[0] if results else None
 
     @hybridmethod
     async def find_by_id_or_address(self, key: str, connector_id: int):
@@ -114,7 +111,7 @@ class ChatExternalChat(DotModel):
         Совпадение по external_id ЛИБО external_address, И тот же коннектор:
         (external_id = key OR external_address = key) AND connector_id = cid.
         """
-        results = await self.search(
+        return await self.search_one(
             filter=[
                 [
                     ("external_id", "=", key),
@@ -125,10 +122,7 @@ class ChatExternalChat(DotModel):
                 ("connector_id", "=", connector_id),
             ],
             fields=["chat_id", "item_title", "item_url", "external_id"],
-            limit=1,
         )
-
-        return results[0] if results else None
 
     @hybridmethod
     async def create_link(

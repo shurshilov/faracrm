@@ -300,11 +300,11 @@ class SecurityApp(Service):
         async def _ensure_workspace(
             name: str, app_ids: list[int], seq: int
         ) -> int:
-            existing = await env.models.workspace.search(
-                filter=[("name", "=", name)], fields=["id"], limit=1
+            existing = await env.models.workspace.search_one(
+                filter=[("name", "=", name)], fields=["id"]
             )
             if existing:
-                ws_id = existing[0].id
+                ws_id = existing.id
             else:
                 ws_id = await env.models.workspace.create(
                     payload=Workspace(name=name, active=True, sequence=seq)
@@ -347,20 +347,18 @@ class SecurityApp(Service):
 
     async def _init_base_role(self, env: Environment):
         """Создаёт базовую роль base_user и системную роль system_admin."""
-        security_app = await env.models.app.search(
+        security_app = await env.models.app.search_one(
             filter=[("code", "=", "security")],
             fields=["id"],
-            limit=1,
         )
         if not security_app:
             raise ValueError("Not found security app")
-        app_id = security_app[0].id
+        app_id = security_app.id
 
         # base_user — базовая роль для всех пользователей
-        existing_role = await env.models.role.search(
+        existing_role = await env.models.role.search_one(
             filter=[("code", "=", "base_user")],
             fields=["id"],
-            limit=1,
         )
 
         if not existing_role:
@@ -375,18 +373,16 @@ class SecurityApp(Service):
         # system_admin — системная роль для доступа к настройкам.
         # Отличие от is_admin: is_admin обходит ВСЕ проверки (суперпользователь),
         # system_admin — обычная роль с доступом к модулю настроек через меню.
-        existing_system = await env.models.role.search(
+        existing_system = await env.models.role.search_one(
             filter=[("code", "=", "system_admin")],
             fields=["id"],
-            limit=1,
         )
 
         if not existing_system:
             # system_admin наследует base_user
-            base_user = await env.models.role.search(
+            base_user = await env.models.role.search_one(
                 filter=[("code", "=", "base_user")],
                 fields=["id"],
-                limit=1,
             )
 
             new_role_id = await env.models.role.create(
@@ -401,9 +397,7 @@ class SecurityApp(Service):
             if base_user:
                 new_role = await env.models.role.get(new_role_id)
                 await new_role.update(
-                    payload=Role(
-                        based_role_ids={"selected": [base_user[0].id]}
-                    )
+                    payload=Role(based_role_ids={"selected": [base_user.id]})
                 )
 
     async def _init_security_rules(self, env: "Environment"):
@@ -411,22 +405,20 @@ class SecurityApp(Service):
         from backend.base.crm.security.models.rules import Rule
 
         # Правило для chat: можно удалять только свои чаты (creator_id = user_id)
-        session_model = await env.models.model.search(
+        session_model = await env.models.model.search_one(
             filter=[("name", "=", "session")],
-            limit=1,
         )
         if session_model:
             rule_name = "User can read only own sessions"
-            existing = await env.models.rule.search(
+            existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_name)],
-                limit=1,
             )
             if not existing:
                 await env.models.rule.create(
                     payload=Rule(
                         name=rule_name,
                         active=True,
-                        model_id=session_model[0],
+                        model_id=session_model,
                         role_id=None,
                         domain=[["user_id", "=", "{{user_id}}"]],
                         perm_create=False,

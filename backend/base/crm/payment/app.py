@@ -68,11 +68,11 @@ class PaymentApp(App):
         """Плательщик видит свои платежи, system_admin — все."""
         from backend.base.crm.security.models.rules import Rule
 
-        model = await env.models.model.search(
-            filter=[("name", "=", "payment")], limit=1
+        model = await env.models.model.search_one(
+            filter=[("name", "=", "payment")]
         )
-        system_admin = await env.models.role.search(
-            filter=[("code", "=", "system_admin")], fields=["id"], limit=1
+        system_admin = await env.models.role.search_one(
+            filter=[("code", "=", "system_admin")], fields=["id"]
         )
         if not model or not system_admin:
             return
@@ -86,14 +86,14 @@ class PaymentApp(App):
             ),
             (
                 "Payment: system admin sees all payments",
-                system_admin[0],
+                system_admin,
                 BYPASS_DOMAIN,
                 {"read": True, "update": True},
             ),
         ]
         for name, role, domain, perms in rules:
-            existing = await env.models.rule.search(
-                filter=[("name", "=", name)], limit=1
+            existing = await env.models.rule.search_one(
+                filter=[("name", "=", name)]
             )
             if existing:
                 continue
@@ -101,7 +101,7 @@ class PaymentApp(App):
                 payload=Rule(
                     name=name,
                     active=True,
-                    model_id=model[0],
+                    model_id=model,
                     role_id=role,
                     domain=domain,
                     perm_create=perms.get("create", False),

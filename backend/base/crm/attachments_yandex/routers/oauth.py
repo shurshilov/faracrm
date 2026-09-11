@@ -110,12 +110,11 @@ async def oauth2_callback(req: Request):
     env: "Environment" = req.app.state.env
 
     # Ищем storage по verify_code
-    storage_list = await env.models.attachment_storage.search(
+    storage = await env.models.attachment_storage.search_one(
         filter=[
             ("type", "=", "yandex"),
             ("yandex_verify_code", "=", state),
         ],
-        limit=1,
         fields=[
             "id",
             "name",
@@ -125,7 +124,7 @@ async def oauth2_callback(req: Request):
         ],
     )
 
-    if not storage_list:
+    if not storage:
         logger.warning("Yandex storage not found for state: %s", state)
         return HTMLResponse(
             content="""
@@ -140,8 +139,6 @@ async def oauth2_callback(req: Request):
             """,
             status_code=404,
         )
-
-    storage = storage_list[0]
 
     if not (storage.yandex_client_id and storage.yandex_client_secret):
         logger.error("Missing client credentials for storage %s", storage.id)
@@ -272,12 +269,11 @@ async def oauth2_start(req: Request, storage_id: int):
     """
     env: "Environment" = req.app.state.env
 
-    storage_list = await env.models.attachment_storage.search(
+    storage = await env.models.attachment_storage.search_one(
         filter=[
             ("id", "=", storage_id),
             ("type", "=", "yandex"),
         ],
-        limit=1,
         fields=[
             "id",
             "name",
@@ -286,13 +282,11 @@ async def oauth2_start(req: Request, storage_id: int):
         ],
     )
 
-    if not storage_list:
+    if not storage:
         return JSONResponse(
             content={"error": "Storage not found"},
             status_code=404,
         )
-
-    storage = storage_list[0]
 
     if not (storage.yandex_client_id and storage.yandex_client_secret):
         return JSONResponse(

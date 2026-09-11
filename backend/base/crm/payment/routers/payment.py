@@ -31,14 +31,13 @@ async def payment_webhook(req: Request, provider_type: str):
     external_id, state = await provider.handle_notification(payload)
 
     async with env.apps.db.get_transaction():
-        payments = await env.models.payment.search(
+        payment = await env.models.payment.search_one(
             filter=[
                 ("provider", "=", provider_type),
                 ("external_id", "=", external_id),
             ],
-            limit=1,
         )
-        if not payments:
+        if not payment:
             # Неизвестный платёж: отвечаем «принято», иначе провайдер будет
             # слать уведомление повторно.
             logger.warning(
@@ -47,8 +46,8 @@ async def payment_webhook(req: Request, provider_type: str):
                 external_id,
             )
         elif state == "paid":
-            await payments[0].mark_paid()
+            await payment.mark_paid()
         elif state == "failed":
-            await payments[0].mark_failed()
+            await payment.mark_failed()
 
     return PlainTextResponse(provider.notification_response)

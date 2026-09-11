@@ -91,7 +91,7 @@ class SalesApp(App):
     async def _init_sale_stages(self, env: "Environment"):
         """Создаёт начальные стадии продаж"""
 
-        existing = await env.models.sale_stage.search(fields=["id"], limit=1)
+        existing = await env.models.sale_stage.search_one(fields=["id"])
         if existing:
             return
 
@@ -122,24 +122,21 @@ class SalesApp(App):
         from backend.base.crm.security.models.rules import Rule
 
         # Получаем модели
-        sale_model = await env.models.model.search(
-            filter=[("name", "=", "sale")], limit=1
+        sale_model_rec = await env.models.model.search_one(
+            filter=[("name", "=", "sale")]
         )
-        sale_line_model = await env.models.model.search(
-            filter=[("name", "=", "sale_line")], limit=1
+        sale_line_model_rec = await env.models.model.search_one(
+            filter=[("name", "=", "sale_line")]
         )
-        if not sale_model or not sale_line_model:
+        if not sale_model_rec or not sale_line_model_rec:
             return
 
-        sale_model_rec = sale_model[0]
-        sale_line_model_rec = sale_line_model[0]
-
         # Получаем роли
-        role_user = await env.models.role.search(
-            filter=[("code", "=", "sale_user")], limit=1
+        role_user = await env.models.role.search_one(
+            filter=[("code", "=", "sale_user")]
         )
-        role_manager = await env.models.role.search(
-            filter=[("code", "=", "sale_manager")], limit=1
+        role_manager = await env.models.role.search_one(
+            filter=[("code", "=", "sale_manager")]
         )
         if not role_user or not role_manager:
             return
@@ -148,7 +145,7 @@ class SalesApp(App):
             {
                 "name": "Заказы на продажу: только свои",
                 "model_id": sale_model_rec,
-                "role_id": role_user[0],
+                "role_id": role_user,
                 # OR: назначен я, или ответственный не указан
                 "domain": [
                     ["user_id", "=", "{{user_id}}"],
@@ -163,7 +160,7 @@ class SalesApp(App):
             {
                 "name": "Заказы на продажу: все",
                 "model_id": sale_model_rec,
-                "role_id": role_manager[0],
+                "role_id": role_manager,
                 "domain": BYPASS_DOMAIN,
                 "perm_read": True,
                 "perm_create": True,
@@ -173,7 +170,7 @@ class SalesApp(App):
             {
                 "name": "Строки заказов: только свои",
                 "model_id": sale_line_model_rec,
-                "role_id": role_user[0],
+                "role_id": role_user,
                 # Фильтрация через связанное поле sale_id.user_id
                 "domain": [
                     ["sale_id.user_id", "=", "{{user_id}}"],
@@ -188,7 +185,7 @@ class SalesApp(App):
             {
                 "name": "Строки заказов: все",
                 "model_id": sale_line_model_rec,
-                "role_id": role_manager[0],
+                "role_id": role_manager,
                 "domain": BYPASS_DOMAIN,
                 "perm_read": True,
                 "perm_create": True,
@@ -198,9 +195,8 @@ class SalesApp(App):
         ]
 
         for rule_data in rules_to_create:
-            existing = await env.models.rule.search(
+            existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
-                limit=1,
             )
             if existing:
                 continue

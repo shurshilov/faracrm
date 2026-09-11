@@ -143,14 +143,12 @@ async def get_chats(
     # external_all = team-видимость (LEFT JOIN, членство необязательно).
     folder_row = None
     if folder_id is not None:
-        _frows = await env.models.chat_folder.search(
+        folder_row = await env.models.chat_folder.search_one(
             filter=[("id", "=", folder_id)],
             fields=["id", "domain", "connector_id", "kind"],
-            limit=1,
         )
-        if not _frows:
+        if not folder_row:
             return {"data": [], "total": 0}
-        folder_row = _frows[0]
     folder_kind = folder_row.kind if folder_row else None
 
     # «Все» (внешние, team-scoped): из scope=all ИЛИ папки external_all.
@@ -1289,7 +1287,7 @@ async def get_chat_email_subject(req: Request, chat_id: int):
     # Тема хранится внутри body последнего письма (email-формат
     # {subject, html}), поэтому берём body последнего email-сообщения и
     # парсим тему. Если писем нет — имя чата.
-    last = await env.models.chat_message.search(
+    last = await env.models.chat_message.search_one(
         filter=[
             ("chat_id", "=", chat_id),
             ("connector_type", "=", "email"),
@@ -1298,13 +1296,12 @@ async def get_chat_email_subject(req: Request, chat_id: int):
         fields=["id", "body"],
         sort="id",
         order="DESC",
-        limit=1,
     )
 
     subject = None
-    if last and last[0].body:
+    if last and last.body:
         try:
-            data = json.loads(last[0].body)
+            data = json.loads(last.body)
             if isinstance(data, dict):
                 subject = data.get("subject")
         except (ValueError, TypeError):

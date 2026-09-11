@@ -111,18 +111,17 @@ class ChatPhoneApp(App):
 
         for name, placeholder, is_default in CALL_PERIOD_FILTERS:
             filter_data = json.dumps([["started_at", ">=", placeholder]])
-            existing = await env.models.saved_filter.search(
+            existing = await env.models.saved_filter.search_one(
                 filter=[
                     ("model_name", "=", "call"),
                     ("name", "=", name),
                     ("is_global", "=", True),
                 ],
-                limit=1,
             )
             if existing:
-                if existing[0].filter_data == filter_data:
+                if existing.filter_data == filter_data:
                     continue
-                await existing[0].delete()
+                await existing.delete()
 
             await env.models.saved_filter.create(
                 payload=SavedFilter(

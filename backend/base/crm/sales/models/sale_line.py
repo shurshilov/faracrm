@@ -117,15 +117,14 @@ class SaleLine(AuditMixin, DotModel):
         """Значения по умолчанию при выборе product_id."""
         values = {}
         if self.product_id:
-            product_id = await env.models.product.search(
+            product = await env.models.product.search_one(
                 filter=[("id", "=", self.product_id.id)],
                 fields=["id", "uom_id", "list_price"],
-                limit=1,
             )
 
-            if product_id:
-                values: dict = {"price_unit": product_id[0].list_price}
-                if product_id and product_id[0].uom_id:
-                    values.update({"product_uom_id": product_id[0].uom_id})
+            if product:
+                values: dict = {"price_unit": product.list_price}
+                if product.uom_id:
+                    values.update({"product_uom_id": product.uom_id})
 
         return values

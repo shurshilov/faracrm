@@ -33,11 +33,7 @@ def _default_current_user():
 
 async def _default_stage_id():
     """Метод для получения стадии по умолчанию"""
-    first_stage = await env.models.task_stage.search(
-        fields=["id", "name"],
-        limit=1,
-    )
-    return first_stage[0] if first_stage else None
+    return await env.models.task_stage.search_one(fields=["id", "name"])
 
 
 async def _default_name():

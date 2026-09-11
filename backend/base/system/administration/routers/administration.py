@@ -108,11 +108,10 @@ def _public_home() -> str | None:
 
 async def _get_first_company():
     """Первая активная компания или None."""
-    companies = await env.models.company.search(
+    return await env.models.company.search_one(
         filter=[("active", "=", True)],
         order="asc",
         sort="sequence",
-        limit=1,
         fields=[
             "id",
             "logo_id",
@@ -142,7 +141,6 @@ async def _get_first_company():
             "manifest_icon_512_id": ["id"],
         },
     )
-    return companies[0] if companies else None
 
 
 # --- PWA manifest helpers --------------------------------------------------
@@ -372,9 +370,8 @@ async def branding_file(
     attachment_ref = getattr(company, field)
     attachment_id = attachment_ref.id
 
-    attaches = await env.models.attachment.search(
+    attach = await env.models.attachment.search_one(
         filter=[("id", "=", attachment_id)],
-        limit=1,
         fields=[
             "id",
             "name",
@@ -386,10 +383,9 @@ async def branding_file(
         ],
         fields_nested={"storage_id": ["id", "type", "google_credentials"]},
     )
-    if not attaches:
+    if not attach:
         raise HTTPException(status_code=404)
 
-    attach = attaches[0]
     return Response(
         # Без filename* браузер не переведет проценты обратно в буквы
         headers={

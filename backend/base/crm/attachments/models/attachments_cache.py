@@ -73,17 +73,16 @@ class AttachmentCache(DotModel):
             res_model: Модель или '_default'
         """
 
-        cached = await cls.search(
+        cached = await cls.search_one(
             filter=[
                 ("route_id", "=", route_id),
                 ("res_model", "=", res_model),
             ],
-            limit=1,
             fields=["folder_id", "folder_name"],
         )
 
         if cached:
-            return cached[0].folder_id, cached[0].folder_name
+            return cached.folder_id, cached.folder_name
         return None, None
 
     @classmethod
@@ -96,16 +95,15 @@ class AttachmentCache(DotModel):
     ) -> None:
         """Сохранить folder ID в кеш (UPSERT)."""
 
-        existing = await cls.search(
+        existing = await cls.search_one(
             filter=[
                 ("route_id", "=", route_id),
                 ("res_model", "=", res_model),
             ],
-            limit=1,
         )
 
         if existing:
-            await existing[0].update(
+            await existing.update(
                 cls(folder_id=folder_id, folder_name=folder_name)
             )
         else:

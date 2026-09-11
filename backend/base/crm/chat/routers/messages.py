@@ -210,7 +210,7 @@ async def get_messages_count(
     user_id = auth_session.user_id.id
 
     # Если record-чата ещё нет — ни total, ни unread смысла не имеют.
-    chat_record = await env.models.chat.search(
+    chat_record = await env.models.chat.search_one(
         filter=[
             ("res_model", "=", res_model),
             ("res_id", "=", res_id),
@@ -218,12 +218,11 @@ async def get_messages_count(
             ("active", "=", True),
         ],
         fields=["id"],
-        limit=1,
     )
     if not chat_record:
         return {"total": 0, "unread": 0}
 
-    chat_id = chat_record[0].id
+    chat_id = chat_record.id
 
     total = await env.models.chat_message.search_count(
         filter=[
@@ -291,14 +290,13 @@ async def resolve_lead_chat(req: Request, lead_id: int):
     """Как resolve_partner_chat, но партнёр берётся из лида (lead.partner_id).
     Доступ к лиду проверяют штатные правила leads (ORM search)."""
     env: "Environment" = req.app.state.env
-    leads = await env.models.lead.search(
+    lead = await env.models.lead.search_one(
         filter=[("id", "=", lead_id)],
         fields=["id", "partner_id"],
-        limit=1,
     )
-    if not leads or not leads[0].partner_id:
+    if not lead or not lead.partner_id:
         return {"chat_id": None, "partner_id": None}
-    partner_id = leads[0].partner_id.id
+    partner_id = lead.partner_id.id
     chat = await env.models.chat.find_partner_group_chat(partner_id)
     return {
         "chat_id": chat.id if chat else None,
@@ -418,14 +416,12 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
 
         # Если указан connector_id - отправляем во внешний сервис
         if body.connector_id:
-            connector = await env.models.chat_connector.search(
+            connector = await env.models.chat_connector.search_one(
                 filter=[("id", "=", body.connector_id)],
                 fields_nested={"outbox_account_id": ["id", "external_id"]},
-                limit=1,
             )
             if not connector:
                 return False
-            connector = connector[0]
             if not connector.active:
                 return False
 
@@ -712,7 +708,7 @@ async def mark_as_read(req: Request, chat_id: int):
     member = await ChatMember.check_membership(chat_id, user_id)
 
     # Берём id самого последнего сообщения в чате
-    latest = await env.models.chat_message.search(
+    latest = await env.models.chat_message.search_one(
         filter=[
             ("chat_id", "=", chat_id),
             ("is_deleted", "=", False),
@@ -720,12 +716,11 @@ async def mark_as_read(req: Request, chat_id: int):
         fields=["id"],
         sort="id",
         order="DESC",
-        limit=1,
     )
     if not latest:
         return {"success": True, "count": 0}
 
-    latest_id = latest[0].id
+    latest_id = latest.id
     current_watermark = member.last_read_message_id or 0
     if latest_id <= current_watermark:
         return {"success": True, "count": 0}

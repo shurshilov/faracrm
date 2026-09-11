@@ -104,27 +104,24 @@ class ContactType(DotModel):
     @classmethod
     async def get_by_name(cls, name: str) -> "ContactType | None":
         """Найти тип контакта по коду (name)."""
-        results = await cls.search(
+        return await cls.search_one(
             filter=[("name", "=", name), ("active", "=", True)],
-            limit=1,
         )
-        return results[0] if results else None
 
     @classmethod
     async def get_contact_type_id_for_connector(cls, connector_type: str):
         """
         Получить ID типа контакта для данного типа коннектора.
         """
-        connectors = await env.models.chat_connector.search(
+        connector = await env.models.chat_connector.search_one(
             filter=[
                 ("type", "=", connector_type),
                 ("active", "=", True),
             ],
             fields=["id", "contact_type_id"],
-            limit=1,
         )
-        if connectors and connectors[0].contact_type_id:
-            return connectors[0].contact_type_id
+        if connector and connector.contact_type_id:
+            return connector.contact_type_id
         return None
 
     @classmethod

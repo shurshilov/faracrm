@@ -210,11 +210,9 @@ class Attachment(AuditMixin, DotModel):
             model_name = env.models._get_model_name_by_table(res_model)
             model_class = env.models._get_model(model_name)
             if model_class:
-                records = await model_class.search(
-                    filter=[("id", "=", res_id)], limit=1
+                return await model_class.search_one(
+                    filter=[("id", "=", res_id)]
                 )
-                if records:
-                    return records[0]
         except Exception as e:
             logger.debug(
                 "Could not get record %s/%s: %s", res_model, res_id, e

@@ -93,21 +93,21 @@ class MarketplaceApp(App):
         await self._init_settings(env)
 
     async def _app_row_id(self, env: "Environment") -> int | None:
-        rows = await env.models.app.search(
-            filter=[("code", "=", "marketplace")], fields=["id"], limit=1
+        row = await env.models.app.search_one(
+            filter=[("code", "=", "marketplace")], fields=["id"]
         )
-        return rows[0].id if rows else None
+        return row.id if row else None
 
     async def _init_role(self, env: "Environment") -> int:
         """Роль marketplace_user — без наследования base_user."""
         from backend.base.crm.security.models.apps import App as AppModel
         from backend.base.crm.security.models.roles import Role
 
-        existing = await env.models.role.search(
-            filter=[("code", "=", ROLE_CODE)], fields=["id"], limit=1
+        existing = await env.models.role.search_one(
+            filter=[("code", "=", ROLE_CODE)], fields=["id"]
         )
         if existing:
-            return existing[0].id
+            return existing.id
         app_id = await self._app_row_id(env)
         return await env.models.role.create(
             payload=Role(
@@ -124,11 +124,11 @@ class MarketplaceApp(App):
         app_id = await self._app_row_id(env)
         if not app_id:
             return
-        existing = await env.models.workspace.search(
-            filter=[("name", "=", WORKSPACE_NAME)], fields=["id"], limit=1
+        existing = await env.models.workspace.search_one(
+            filter=[("name", "=", WORKSPACE_NAME)], fields=["id"]
         )
         if existing:
-            ws_id = existing[0].id
+            ws_id = existing.id
         else:
             ws_id = await env.models.workspace.create(
                 payload=Workspace(name=WORKSPACE_NAME, active=True, sequence=3)
@@ -139,10 +139,10 @@ class MarketplaceApp(App):
     async def _init_rules(self, env: "Environment", role_id: int):
         from backend.base.crm.security.models.rules import Rule
 
-        system_admin = await env.models.role.search(
-            filter=[("code", "=", "system_admin")], fields=["id"], limit=1
+        system_admin = await env.models.role.search_one(
+            filter=[("code", "=", "system_admin")], fields=["id"]
         )
-        admin_id = system_admin[0].id if system_admin else None
+        admin_id = system_admin.id if system_admin else None
         own_user = [["user_id", "=", "{{user_id}}"]]
 
         # (имя, модель, роль (None — все), домен, права)
@@ -233,13 +233,13 @@ class MarketplaceApp(App):
             ]
 
         for name, model_name, rule_role_id, domain, perms in rules:
-            existing = await env.models.rule.search(
-                filter=[("name", "=", name)], limit=1
+            existing = await env.models.rule.search_one(
+                filter=[("name", "=", name)]
             )
             if existing:
                 continue
-            model = await env.models.model.search(
-                filter=[("name", "=", model_name)], limit=1
+            model = await env.models.model.search_one(
+                filter=[("name", "=", model_name)]
             )
             if not model:
                 continue
@@ -247,7 +247,7 @@ class MarketplaceApp(App):
                 payload=Rule(
                     name=name,
                     active=True,
-                    model_id=model[0],
+                    model_id=model,
                     role_id=rule_role_id,
                     domain=domain,
                     perm_create=perms.get("create", False),

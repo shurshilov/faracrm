@@ -39,7 +39,7 @@ class CompanyApp(App):
         # Дефолтная компания — создаётся при первом старте если в БД нет
         # ни одной записи. Используется как "текущая" для branding и
         # подобных глобальных настроек.
-        existing = await env.models.company.search(limit=1)
+        existing = await env.models.company.search_one()
         if not existing:
             await env.models.company.create(
                 payload=Company(name="FARA CRM"),

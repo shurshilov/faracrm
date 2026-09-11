@@ -145,15 +145,13 @@ class MemberMixin(DotModel):
         Returns:
             Экземпляр класса-наследника или None если не найден.
         """
-        result = await cls.search(
+        return await cls.search_one(
             filter=[
                 (cls._member_res_field, "=", container_id),
                 ("user_id", "=", user_id),
                 ("is_active", "=", True),
             ],
-            limit=1,
         )
-        return result[0] if result else None
 
     @classmethod
     async def check_membership(

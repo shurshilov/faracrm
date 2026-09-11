@@ -82,19 +82,17 @@ class AttachmentsApp(App):
             ["create_user_id", "=", "{{user_id}}"],
         ]
 
-        existing = await env.models.saved_filter.search(
+        current = await env.models.saved_filter.search_one(
             filter=[
                 ("model_name", "=", MODEL_NAME),
                 ("name", "=", FILTER_NAME),
                 ("is_global", "=", True),
             ],
-            limit=1,
         )
 
         expected_filter_data = json.dumps(FILTER_DATA)
 
-        if existing:
-            current = existing[0]
+        if current:
             if current.filter_data == expected_filter_data:
                 # Формат совпадает — ничего не делаем.
                 return
@@ -132,16 +130,14 @@ class AttachmentsApp(App):
         from backend.base.crm.security.models.rules import Rule
 
         async def create_rule_if_missing(name, domain, perms):
-            attachment_model = await env.models.model.search(
+            attachment_model = await env.models.model.search_one(
                 filter=[("name", "=", "attachment")],
-                limit=1,
             )
             if not attachment_model:
                 logger.warning("Model 'attachment' not found")
                 return
-            existing = await env.models.rule.search(
+            existing = await env.models.rule.search_one(
                 filter=[("name", "=", name)],
-                limit=1,
             )
             if existing:
                 return
@@ -149,7 +145,7 @@ class AttachmentsApp(App):
                 payload=Rule(
                     name=name,
                     active=True,
-                    model_id=attachment_model[0],
+                    model_id=attachment_model,
                     role_id=None,
                     domain=domain,
                     perm_create=perms.get("create", False),
@@ -202,8 +198,8 @@ class AttachmentsApp(App):
 
     async def _init_default_storage(self, env: "Environment"):
         """Создаёт дефолтное хранилище типа file (id=1)."""
-        storage = await env.models.attachment_storage.search(
-            filter=[("id", "=", 1)], limit=1
+        storage = await env.models.attachment_storage.search_one(
+            filter=[("id", "=", 1)]
         )
         if not storage:
             from backend.base.crm.attachments.models.attachments_storage import (

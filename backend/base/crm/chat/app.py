@@ -237,9 +237,8 @@ class ChatApp(Service):
 
         # Хелпер для безопасного создания rule (role_id=None → для всех ролей).
         async def create_rule_if_missing(name, model_name, domain, perms):
-            model_rec = await env.models.model.search(
+            model_rec = await env.models.model.search_one(
                 filter=[("name", "=", model_name)],
-                limit=1,
             )
             if not model_rec:
                 logger.warning(
@@ -248,9 +247,8 @@ class ChatApp(Service):
                     name,
                 )
                 return
-            existing = await env.models.rule.search(
+            existing = await env.models.rule.search_one(
                 filter=[("name", "=", name)],
-                limit=1,
             )
             if existing:
                 return
@@ -258,7 +256,7 @@ class ChatApp(Service):
                 payload=Rule(
                     name=name,
                     active=True,
-                    model_id=model_rec[0],
+                    model_id=model_rec,
                     role_id=None,
                     domain=domain,
                     perm_create=perms.get("create", False),

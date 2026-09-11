@@ -131,7 +131,7 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
 
     async def get_archive(self) -> "Attachment | None":
         """Последний загруженный zip приложения."""
-        rows = await env.models.attachment.search(
+        return await env.models.attachment.search_one(
             fields=ATTACHMENT_CONTENT_FIELDS,
             filter=[
                 ("res_model", "=", self.__table__),
@@ -140,9 +140,7 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
             ],
             sort="id",
             order="desc",
-            limit=1,
         )
-        return rows[0] if rows else None
 
     @classmethod
     async def get_screenshots(cls, app_ids: list[int]) -> list["Attachment"]:
@@ -171,14 +169,13 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
         только новые модули. Записи не публикуются: админ смотрит и
         публикует сам.
         """
-        storages = await env.models.attachment_storage.search(
+        storage = await env.models.attachment_storage.search_one(
             fields=["id", "git_repo_url", "git_ref", "git_token"],
             filter=[("type", "=", "git")],
             sort="id",
             order="asc",
-            limit=1,
         )
-        if not storages:
+        if not storage:
             raise FaraException(
                 {
                     "content": "MARKETPLACE_GIT_STORAGE_MISSING",
@@ -186,7 +183,6 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
                     "status_code": 400,
                 }
             )
-        storage = storages[0]
         ref = storage.git_ref or "HEAD"
         archive = await fetch_archive(storage, ref)
         if archive is None:

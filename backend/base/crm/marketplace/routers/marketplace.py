@@ -107,15 +107,14 @@ def _serialize(app: MarketplaceApplication, cover_id: int | None) -> dict:
 async def _published(
     env: "Environment", app_id: int, fields: list[str]
 ) -> MarketplaceApplication:
-    rows = await env.models.marketplace_app.search(
+    row = await env.models.marketplace_app.search_one(
         fields=fields,
         fields_nested=VENDOR_NESTED,
         filter=[("id", "=", app_id), ("published", "=", True)],
-        limit=1,
     )
-    if not rows:
+    if not row:
         raise _not_found()
-    return rows[0]
+    return row
 
 
 @router_public.get("/marketplace/apps")
@@ -202,7 +201,7 @@ async def app_image(
     env: "Environment" = req.app.state.env
     await _published(env, app_id, ["id"])
 
-    rows = await env.models.attachment.search(
+    attachment = await env.models.attachment.search_one(
         fields=ATTACHMENT_CONTENT_FIELDS,
         filter=[
             ("id", "=", attachment_id),
@@ -210,11 +209,9 @@ async def app_image(
             ("res_id", "=", app_id),
             ("mimetype", "like", IMAGE_MIMETYPE_PATTERN),
         ],
-        limit=1,
     )
-    if not rows:
+    if not attachment:
         raise _not_found()
-    attachment = rows[0]
     content = await attachment.read_content()
     if content is None:
         raise _not_found()
@@ -242,14 +239,12 @@ async def download_free(req: Request, app_id: Id):
     авторизованная ручка download ниже.
     """
     env: "Environment" = req.app.state.env
-    rows = await env.models.marketplace_app.search(
+    app = await env.models.marketplace_app.search_one(
         fields=["id", "name", "price"],
         filter=[("id", "=", app_id), ("published", "=", True)],
-        limit=1,
     )
-    if not rows:
+    if not app:
         raise _not_found()
-    app = rows[0]
     if Decimal.to_decimal(app.price) > 0:
         raise _not_found()
 
@@ -364,14 +359,13 @@ async def download_app(req: Request, app_id: Id):
     )
     is_vendor = bool(app.create_user_id and app.create_user_id.id == user.id)
     if not is_vendor and Decimal.to_decimal(app.price) > 0:
-        paid = await env.models.marketplace_purchase.search(
+        paid = await env.models.marketplace_purchase.search_one(
             fields=["id"],
             filter=[
                 ("app_id", "=", app_id),
                 ("user_id", "=", user.id),
                 ("state", "=", "paid"),
             ],
-            limit=1,
         )
         if not paid:
             raise FaraException(

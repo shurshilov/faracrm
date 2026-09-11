@@ -83,16 +83,14 @@ class MarketplacePurchase(AuditMixin, DotModel):
                 }
             )
 
-        existing = await cls.search(
+        current = await cls.search_one(
             fields=["id", "state", "payment_id"],
             fields_nested={"payment_id": ["id", "state", "payment_url"]},
             filter=[("app_id", "=", app_id), ("user_id", "=", user_id)],
             sort="id",
             order="desc",
-            limit=1,
         )
-        if existing:
-            current = existing[0]
+        if current:
             payment = current.payment_id
             # Уже куплено или ссылка на оплату ещё действует — не плодим покупки.
             if current.state == "paid" or (payment and payment.state == "new"):

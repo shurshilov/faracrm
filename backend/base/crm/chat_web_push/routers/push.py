@@ -41,10 +41,9 @@ async def subscribe(req: Request, body: PushSubscriptionData):
         }
     )
 
-    contact_type = await env.models.contact_type.search(
+    contact_type = await env.models.contact_type.search_one(
         filter=[("name", "=", "web_push")],
         fields=["id"],
-        limit=1,
     )
 
     if not contact_type:
@@ -54,7 +53,7 @@ async def subscribe(req: Request, body: PushSubscriptionData):
             message="Web Push contact type not configured",
         )
 
-    contact_type_id = contact_type[0].id
+    contact_type_id = contact_type.id
 
     # Макс подписок на пользователя (разные браузеры/устройства)
     MAX_SUBSCRIPTIONS = 5
@@ -110,7 +109,7 @@ async def subscribe(req: Request, body: PushSubscriptionData):
     await env.models.contact.create(
         env.models.contact(
             user_id=auth_session.user_id,
-            contact_type_id=contact_type[0],
+            contact_type_id=contact_type,
             # value — идентификатор подписки, то есть endpoint: именно по нему
             # мы отличаем браузеры друг от друга (см. цикл поиска выше). Класть
             # сюда весь JSON нельзя: Contact.create канонизирует value, и на
@@ -136,10 +135,9 @@ async def unsubscribe(req: Request, body: PushSubscriptionData):
     auth_session = req.state.session
     user_id = auth_session.user_id.id
 
-    contact_type = await env.models.contact_type.search(
+    contact_type = await env.models.contact_type.search_one(
         filter=[("name", "=", "web_push")],
         fields=["id"],
-        limit=1,
     )
 
     if not contact_type:
@@ -150,7 +148,7 @@ async def unsubscribe(req: Request, body: PushSubscriptionData):
     contacts = await env.models.contact.search(
         filter=[
             ("user_id", "=", user_id),
-            ("contact_type_id", "=", contact_type[0].id),
+            ("contact_type_id", "=", contact_type.id),
             ("active", "=", True),
         ],
     )
@@ -176,19 +174,18 @@ async def unsubscribe(req: Request, body: PushSubscriptionData):
 async def get_vapid_public_key(req: Request):
     env = req.app.state.env
 
-    connector = await env.models.chat_connector.search(
+    connector = await env.models.chat_connector.search_one(
         filter=[
             ("type", "=", "web_push"),
             ("active", "=", True),
         ],
         fields=["client_app_id"],
-        limit=1,
     )
 
     if not connector:
         return {"vapid_public_key": None}
 
-    return {"vapid_public_key": connector[0].client_app_id}
+    return {"vapid_public_key": connector.client_app_id}
 
 
 @router_private.get("/status")
@@ -199,19 +196,17 @@ async def get_push_status(req: Request):
     """
     env = req.app.state.env
 
-    connector = await env.models.chat_connector.search(
+    connector = await env.models.chat_connector.search_one(
         filter=[
             ("type", "=", "web_push"),
             ("active", "=", True),
         ],
         fields=["id", "client_app_id", "access_token"],
-        limit=1,
     )
 
     if not connector:
         return {"available": False}
 
-    c = connector[0]
-    configured = bool(c.client_app_id and c.access_token)
+    configured = bool(connector.client_app_id and connector.access_token)
 
     return {"available": configured}

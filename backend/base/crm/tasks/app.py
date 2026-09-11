@@ -86,14 +86,14 @@ class TasksApp(App):
         )
 
         # Начальные стадии и теги задач
-        existing = await env.models.task_stage.search(fields=["id"], limit=1)
+        existing = await env.models.task_stage.search_one(fields=["id"])
         if not existing:
             for stage_data in INITIAL_TASK_STAGES:
                 await env.models.task_stage.create(
                     payload=TaskStage(**stage_data),
                 )
 
-        existing = await env.models.task_tag.search(fields=["id"], limit=1)
+        existing = await env.models.task_tag.search_one(fields=["id"])
         if not existing:
             for tag_data in INITIAL_TASK_TAGS:
                 await env.models.task_tag.create(
@@ -124,25 +124,23 @@ class TasksApp(App):
         """
         from backend.base.crm.security.models.rules import Rule
 
-        project_model = await env.models.model.search(
-            filter=[("name", "=", "project")], limit=1
+        project_model_rec = await env.models.model.search_one(
+            filter=[("name", "=", "project")]
         )
-        task_model = await env.models.model.search(
-            filter=[("name", "=", "task")], limit=1
+        task_model_rec = await env.models.model.search_one(
+            filter=[("name", "=", "task")]
         )
-        if not project_model or not task_model:
+        if not project_model_rec or not task_model_rec:
             return
-        project_model_rec = project_model[0]
-        task_model_rec = task_model[0]
 
-        role_user = await env.models.role.search(
-            filter=[("code", "=", "project_user")], limit=1
+        role_user = await env.models.role.search_one(
+            filter=[("code", "=", "project_user")]
         )
-        role_manager = await env.models.role.search(
-            filter=[("code", "=", "project_manager")], limit=1
+        role_manager = await env.models.role.search_one(
+            filter=[("code", "=", "project_manager")]
         )
-        role_admin = await env.models.role.search(
-            filter=[("code", "=", "project_admin")], limit=1
+        role_admin = await env.models.role.search_one(
+            filter=[("code", "=", "project_admin")]
         )
         if not role_user or not role_manager or not role_admin:
             return
@@ -166,13 +164,13 @@ class TasksApp(App):
             {
                 "name": "Проекты: мои или где я участник",
                 "model_id": project_model_rec,
-                "role_id": role_user[0],
+                "role_id": role_user,
                 "domain": project_member_domain,
             },
             {
                 "name": "Проекты: все (менеджер)",
                 "model_id": project_model_rec,
-                "role_id": role_manager[0],
+                "role_id": role_manager,
                 "domain": BYPASS_DOMAIN,
             },
             # {
@@ -184,13 +182,13 @@ class TasksApp(App):
             {
                 "name": "Задачи: в проектах где я участник",
                 "model_id": task_model_rec,
-                "role_id": role_user[0],
+                "role_id": role_user,
                 "domain": task_member_domain,
             },
             {
                 "name": "Задачи: все (менеджер)",
                 "model_id": task_model_rec,
-                "role_id": role_manager[0],
+                "role_id": role_manager,
                 "domain": BYPASS_DOMAIN,
             },
             # {
@@ -202,9 +200,8 @@ class TasksApp(App):
         ]
 
         for rule_data in rules_to_create:
-            existing = await env.models.rule.search(
+            existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
-                limit=1,
             )
             if existing:
                 continue

@@ -329,13 +329,12 @@ class CronJob(DotModel):
         **kwargs,
     ):
         """Создаёт или обновляет задачу по имени."""
-        existing = await env.models.cron_job.search(
+        existing = await env.models.cron_job.search_one(
             filter=[("name", "=", name)],
-            limit=1,
         )
 
         if existing:
-            job = existing[0]
+            job = existing
             # Штатную задачу в старой форме «code» переводим на «модель+метод»
             # (НЕ гасим: это наши задачи, они должны работать и на уже
             # существующих базах). Разово — только пока метода нет; иначе не

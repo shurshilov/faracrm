@@ -104,12 +104,11 @@ async def oauth2_callback(req: Request):
     # Ищем storage по verify_code
     # Specify the state when creating the flow in the callback so that it can
     # verified in the authorization server response.
-    storage_list = await env.models.attachment_storage.search(
+    storage = await env.models.attachment_storage.search_one(
         filter=[
             ("type", "=", "google"),
             ("google_verify_code", "=", state),
         ],
-        limit=1,
         fields=[
             "id",
             "name",
@@ -118,7 +117,7 @@ async def oauth2_callback(req: Request):
         ],
     )
 
-    if not storage_list:
+    if not storage:
         logger.warning("Storage not found for state: %s", state)
         return HTMLResponse(
             content="""
@@ -133,8 +132,6 @@ async def oauth2_callback(req: Request):
             """,
             status_code=404,
         )
-
-    storage = storage_list[0]
 
     # Получаем credentials из JSON файла
     if not storage.google_json_credentials:
@@ -297,12 +294,11 @@ async def oauth2_start(req: Request, storage_id: int):
     env: "Environment" = req.app.state.env
 
     # Получаем storage
-    storage_list = await env.models.attachment_storage.search(
+    storage = await env.models.attachment_storage.search_one(
         filter=[
             ("id", "=", storage_id),
             ("type", "=", "google"),
         ],
-        limit=1,
         fields=[
             "id",
             "name",
@@ -310,13 +306,11 @@ async def oauth2_start(req: Request, storage_id: int):
         ],
     )
 
-    if not storage_list:
+    if not storage:
         return JSONResponse(
             content={"error": "Storage not found"},
             status_code=404,
         )
-
-    storage = storage_list[0]
 
     if not storage.google_json_credentials:
         return JSONResponse(

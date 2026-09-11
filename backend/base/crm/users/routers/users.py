@@ -37,7 +37,7 @@ async def copy_user(req: Request, payload: CopyUserInput):
 
     # Получаем исходного пользователя со всеми нужными полями
     async with env.apps.db.get_transaction():
-        source_user = await env.models.user.search(
+        source_user = await env.models.user.search_one(
             filter=[("id", "=", payload.source_user_id)],
             fields=[
                 "id",
@@ -57,12 +57,10 @@ async def copy_user(req: Request, payload: CopyUserInput):
             return JSONResponse(
                 content={"error": "User not found"}, status_code=404
             )
-        source_user = source_user[0]
 
         # Проверяем уникальность логина
-        existing = await env.models.user.search(
+        existing = await env.models.user.search_one(
             filter=[("login", "=", payload.login)],
-            limit=1,
             fields=["id"],
         )
         if existing:
@@ -181,9 +179,8 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
 
     async with env.apps.db.get_transaction():
         # проверить существует ли пользователь по введеному логину
-        user_id = await env.models.user.search(
+        user_id = await env.models.user.search_one(
             filter=[("login", "=", payload.login)],
-            limit=1,
             fields=[
                 "id",
                 "name",
@@ -200,7 +197,6 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
         if not user_id:
             raise AuthException.UserNotExist()
 
-        user_id = user_id[0]
         # сделать хеш из введеного пароля, с использованием старой соли
         password_hash = user_id.generate_password_hash_salt_old(
             password=payload.password
@@ -264,14 +260,12 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
         # видно, кроме is_admin) и показывает бейдж с именем РМ. Курирование
         # презентационное — доступ к данным держат ACL/Rules на сервере.
         if user_id.workspace_id:
-            ws = await env.models.workspace.search(
+            ws = await env.models.workspace.search_one(
                 filter=[("id", "=", user_id.workspace_id.id)],
                 fields=["id", "name", "app_ids"],
                 fields_nested={"app_ids": ["id", "ui_menu_name"]},
-                limit=1,
             )
             if ws:
-                ws = ws[0]
                 result.setdefault("user_id", {})["workspace_id"] = {
                     "id": ws.id,
                     "name": ws.name,

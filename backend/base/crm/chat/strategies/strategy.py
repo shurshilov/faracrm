@@ -627,13 +627,12 @@ class ChatStrategyBase(ABC):
         """
         try:
             # Находим external_chat для этого чата и коннектора
-            external_chat = await env.models.chat_external_chat.search(
+            external_chat = await env.models.chat_external_chat.search_one(
                 filter=[
                     ("chat_id", "=", chat_id),
                     ("connector_id", "=", connector_id.id),
                 ],
                 fields=["id", "external_id"],
-                limit=1,
             )
 
             external_chat_id = None
@@ -645,7 +644,7 @@ class ChatStrategyBase(ABC):
 
             if external_chat:
                 # Есть существующий external_chat - используем его
-                external_chat_id = external_chat[0].external_id
+                external_chat_id = external_chat.external_id
             elif recipients_ids:
                 # Первое сообщение - используем контакты получателей
                 # Пока поддерживаем отправку только одному получателю

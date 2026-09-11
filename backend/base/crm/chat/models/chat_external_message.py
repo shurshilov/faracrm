@@ -100,9 +100,7 @@ class ChatExternalMessage(DotModel):
                 ("external_chat_id", "=", external_chat_id)
             )
 
-        results = await self.search(filter=filter_conditions, limit=1)
-
-        return results[0] if results else None
+        return await self.search_one(filter=filter_conditions)
 
     @hybridmethod
     async def exists(self, external_id: str, connector_id: int) -> bool:

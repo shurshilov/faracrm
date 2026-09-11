@@ -84,13 +84,12 @@ class ChatFolder(AuditMixin, DotModel):
         """Создать глобальные «Все»/«Личные»/«Группы», если их ещё нет."""
 
         for folder in DEFAULT_GLOBAL_FOLDERS:
-            existing = await self.search(
+            existing = await self.search_one(
                 filter=[
                     ("user_id", "=", None),
                     ("kind", "=", folder.kind),
                 ],
                 fields=["id"],
-                limit=1,
             )
             if existing:
                 continue
@@ -105,13 +104,12 @@ class ChatFolder(AuditMixin, DotModel):
     ) -> None:
         """Глобальная папка коннектора (idempotent по connector_id)."""
 
-        existing = await self.search(
+        existing = await self.search_one(
             filter=[
                 ("user_id", "=", None),
                 ("connector_id", "=", connector_id),
             ],
             fields=["id"],
-            limit=1,
         )
 
         if existing:

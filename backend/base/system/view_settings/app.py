@@ -51,22 +51,18 @@ class ViewSettingsApp(App):
         """
         from backend.base.crm.security.models.rules import Rule
 
-        model = await env.models.model.search(
+        model_id = await env.models.model.search_one(
             filter=[("name", "=", "column_setting")],
-            limit=1,
         )
-        if not model:
+        if not model_id:
             return
-        model_id = model[0]
 
-        base_user_role = await env.models.role.search(
+        base_user_role_id = await env.models.role.search_one(
             filter=[("code", "=", "base_user")],
             fields=["id"],
-            limit=1,
         )
-        if not base_user_role:
+        if not base_user_role_id:
             return
-        base_user_role_id = base_user_role[0]
 
         rules = [
             {
@@ -88,9 +84,8 @@ class ViewSettingsApp(App):
         ]
 
         for rule_data in rules:
-            existing = await env.models.rule.search(
+            existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
-                limit=1,
             )
             if existing:
                 continue

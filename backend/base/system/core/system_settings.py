@@ -132,14 +132,13 @@ class SystemSettings(DotModel):
             return cached
 
         # 2. БД
-        records = await cls.search(
+        record = await cls.search_one(
             filter=[("key", "=", key)],
             fields=["value", "cache_ttl"],
-            limit=1,
         )
-        if records:
-            raw = records[0].value
-            ttl = records[0].cache_ttl or 0
+        if record:
+            raw = record.value
+            ttl = record.cache_ttl or 0
 
             # Извлекаем значение
             if raw and isinstance(raw, dict):
@@ -171,14 +170,12 @@ class SystemSettings(DotModel):
         """
         _cache.invalidate(key)
 
-        records = await cls.search(
+        record = await cls.search_one(
             filter=[("key", "=", key)],
             fields=["id"],
-            limit=1,
         )
 
-        if records:
-            record = records[0]
+        if record:
             settings = cls(value=value, description=description)
             if cache_ttl is not None:
                 settings.cache_ttl = cache_ttl
@@ -221,10 +218,9 @@ class SystemSettings(DotModel):
         """
         try:
             for item in defaults:
-                existing = await cls.search(
+                existing = await cls.search_one(
                     filter=[("key", "=", item["key"])],
                     fields=["id"],
-                    limit=1,
                 )
                 if not existing:
                     setting = cls(

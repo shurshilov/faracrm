@@ -83,12 +83,11 @@ class ChatConnectorVkMixin(_Base):
 
             # VK-сообщество адресует клиента по user_id (peer_id), НЕ по номеру →
             # тип контакта `vk` (is_phone_format=False, засеян в contact_type).
-            vk_type = await env.models.contact_type.search(
+            vk_type = await env.models.contact_type.search_one(
                 filter=[("name", "=", "vk")],
                 fields=["id", "name"],
-                limit=1,
             )
             if vk_type:
-                result["contact_type_id"] = vk_type[0]
+                result["contact_type_id"] = vk_type
             return result
         return {}

@@ -42,9 +42,8 @@ class ChatWebPushApp(App):
 
     @staticmethod
     async def _ensure_contact_type(env):
-        existing = await env.models.contact_type.search(
+        existing = await env.models.contact_type.search_one(
             filter=[("name", "=", "web_push")],
-            limit=1,
         )
         if not existing:
             await env.models.contact_type.create(
@@ -95,16 +94,14 @@ class ChatWebPushApp(App):
 
     @staticmethod
     async def _ensure_seed_connector(env):
-        existing = await env.models.chat_connector.search(
+        existing = await env.models.chat_connector.search_one(
             filter=[("type", "=", "web_push")],
-            limit=1,
         )
         if existing:
             return
 
-        ct = await env.models.contact_type.search(
+        ct = await env.models.contact_type.search_one(
             filter=[("name", "=", "web_push")],
-            limit=1,
         )
 
         # Auto-generate VAPID keys
@@ -124,7 +121,7 @@ class ChatWebPushApp(App):
                 notify=True,
                 lead_generation=False,
                 lead_distribution=False,
-                contact_type_id=ct[0] if ct else None,
+                contact_type_id=ct,
                 client_app_id=public_b64,  # VAPID public key
                 access_token=private_b64,  # VAPID private key (raw base64url)
                 last_response=(
@@ -160,9 +157,8 @@ class ChatWebPushApp(App):
         """
         from backend.base.crm.security.models.rules import Rule
 
-        contact_model = await env.models.model.search(
+        contact_model = await env.models.model.search_one(
             filter=[("name", "=", "contact")],
-            limit=1,
         )
         if not contact_model:
             logger.warning(
@@ -170,9 +166,8 @@ class ChatWebPushApp(App):
             )
             return
 
-        web_push_type = await env.models.contact_type.search(
+        web_push_type = await env.models.contact_type.search_one(
             filter=[("name", "=", "web_push")],
-            limit=1,
         )
         if not web_push_type:
             logger.warning(
@@ -181,9 +176,8 @@ class ChatWebPushApp(App):
             return
 
         rule_name = "Only admin can edit/delete web_push contacts"
-        existing = await env.models.rule.search(
+        existing = await env.models.rule.search_one(
             filter=[("name", "=", rule_name)],
-            limit=1,
         )
         if existing:
             return
@@ -192,9 +186,9 @@ class ChatWebPushApp(App):
             payload=Rule(
                 name=rule_name,
                 active=True,
-                model_id=contact_model[0],
+                model_id=contact_model,
                 role_id=None,
-                domain=[["contact_type_id", "!=", web_push_type[0].id]],
+                domain=[["contact_type_id", "!=", web_push_type.id]],
                 perm_create=False,
                 perm_read=False,
                 perm_update=True,

@@ -177,8 +177,7 @@ class AttachmentStorage(DotModel):
 
     @classmethod
     async def get_active_storage(cls):
-        result = await cls.search(filter=[("active", "=", True)], limit=1)
-        return result[0] if result else None
+        return await cls.search_one(filter=[("active", "=", True)])
 
     @classmethod
     async def get_or_create_default(cls):
@@ -186,9 +185,8 @@ class AttachmentStorage(DotModel):
         if storage:
             return storage
 
-        storages = await cls.search(filter=[("type", "=", "file")], limit=1)
-        if storages:
-            storage = storages[0]
+        storage = await cls.search_one(filter=[("type", "=", "file")])
+        if storage:
             await storage.activate()
             return storage
 
@@ -198,8 +196,8 @@ class AttachmentStorage(DotModel):
         new_storage.active = True
 
         storage_id = await cls.create(new_storage)
-        result = await cls.search(filter=[("id", "=", storage_id)], limit=1)
-        return result[0] if result else new_storage
+        created = await cls.search_one(filter=[("id", "=", storage_id)])
+        return created or new_storage
 
     async def get_routes(self):
         """
@@ -254,13 +252,11 @@ class AttachmentStorage(DotModel):
             attachment_ids = await route.get_attachments_to_sync(self.id)
             for attach_id in attachment_ids:
                 try:
-                    attachments = await env.models.attachment.search(
+                    attach = await env.models.attachment.search_one(
                         filter=[("id", "=", attach_id)],
                         fields=["id", "storage_id", "route_id"],
-                        limit=1,
                     )
-                    if attachments:
-                        attach = attachments[0]
+                    if attach:
                         await attach.update(
                             env.models.attachment(
                                 storage_id=self, route_id=route

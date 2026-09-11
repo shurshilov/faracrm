@@ -349,20 +349,19 @@ class IncomingCallPipeline(IncomingMessagePipeline):
             raw=json.dumps(ctx.adapter.raw, ensure_ascii=False, default=str),
         )
 
-        existing = await Call.search(
+        existing = await Call.search_one(
             filter=[
                 ("connector_id", "=", ctx.connector.id),
                 ("uniqueid", "=", uid),
             ],
             fields=["id"],
-            limit=1,
         )
         # Полный payload в обеих ветках: из БД строка приходит только с id, а
         # имени файла записи и логу нужны направление, uniqueid и номера.
         if existing:
-            await existing[0].update(Call(**payload))
+            await existing.update(Call(**payload))
             self.call = Call(**payload)
-            self.call.id = existing[0].id
+            self.call.id = existing.id
         else:
             self.call = Call(**payload)
             self.call.id = await Call.create(payload=self.call)

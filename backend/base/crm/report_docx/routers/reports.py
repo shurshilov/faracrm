@@ -46,9 +46,8 @@ async def generate_report(
     env: "Environment" = req.app.state.env
 
     # 1. Шаблон
-    templates = await env.models.report_template.search(
+    tmpl = await env.models.report_template.search_one(
         filter=[("id", "=", template_id)],
-        limit=1,
         fields=[
             "id",
             "name",
@@ -58,23 +57,21 @@ async def generate_report(
             "output_format",
         ],
     )
-    if not templates:
+    if not tmpl:
         return JSONResponse(
             status_code=HTTP_404_NOT_FOUND,
             content={"error": f"Template #{template_id} not found"},
         )
 
-    tmpl = templates[0]
     attachment = tmpl.template_file
     if attachment is None:
         return JSONResponse(
             status_code=HTTP_404_NOT_FOUND,
             content={"error": f"Template #{template_id} Attachment not found"},
         )
-    attachment = await env.models.attachment.search(
+    attachment = await env.models.attachment.search_one(
         filter=[("id", "=", attachment.id)],
     )
-    attachment = attachment[0]
     model_name = tmpl.model_name or ""
     func_name = tmpl.python_function or ""
     fmt = output_format or tmpl.output_format or "docx"

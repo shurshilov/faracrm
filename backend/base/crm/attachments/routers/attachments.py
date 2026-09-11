@@ -89,9 +89,8 @@ async def attachment_route_model_fields(req: Request, model_name: str):
 async def attachment_content(req: Request, attachment_id: Id):
     """Скачать файл"""
     env: Environment = req.app.state.env
-    attach = await env.models.attachment.search(
+    attach = await env.models.attachment.search_one(
         filter=[("id", "=", attachment_id)],
-        limit=1,
         fields=[
             "id",
             "res_model",
@@ -110,7 +109,6 @@ async def attachment_content(req: Request, attachment_id: Id):
             content={"error": "#NOT_FOUND"}, status_code=HTTP_404_NOT_FOUND
         )
 
-    attach = attach[0]
     attachment_content = await attach.read_content()
 
     return Response(
@@ -139,9 +137,8 @@ async def attachment_preview(
     Если указаны w и/или h, изображение будет уменьшено с сохранением пропорций.
     """
     env: Environment = req.app.state.env
-    attach = await env.models.attachment.search(
+    attach = await env.models.attachment.search_one(
         filter=[("id", "=", attachment_id)],
-        limit=1,
         fields=[
             "id",
             "res_model",
@@ -161,7 +158,6 @@ async def attachment_preview(
             content={"error": "#NOT_FOUND"}, status_code=HTTP_404_NOT_FOUND
         )
 
-    attach = attach[0]
     attachment_content = await attach.read_content()
 
     # Ресайз если указаны размеры и это изображение

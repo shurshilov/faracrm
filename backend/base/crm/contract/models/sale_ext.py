@@ -116,9 +116,8 @@ class SaleContractMixin(_Base):
         Подготовка данных для «Счёт на оплату 2018.docx» (sale).
         Имена переменных точно совпадают с тегами в шаблоне.
         """
-        records = await env.models.sale.search(
+        sale = await env.models.sale.search_one(
             filter=[("id", "=", record_id)],
-            limit=1,
             fields=[
                 "id",
                 "name",
@@ -161,10 +160,8 @@ class SaleContractMixin(_Base):
             },
         )
 
-        if not records:
+        if not sale:
             raise ValueError(f"Sale order #{record_id} not found")
-
-        sale = records[0]
 
         # ── Компания ──
         company = sale.company_id

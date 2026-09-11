@@ -61,12 +61,11 @@ class ChatConnectorMaxBotMixin(_Base):
             # Бот адресует по user_id (НЕ по номеру) → отдельный тип `max_bot`
             # с is_phone_format=False, чтобы не попадать в телефонную группу.
             # Телефонный канал MAX (max_business) сидит на типе `max`.
-            max_bot_type = await env.models.contact_type.search(
+            max_bot_type = await env.models.contact_type.search_one(
                 filter=[("name", "=", "max_bot")],
                 fields=["id", "name"],
-                limit=1,
             )
             if max_bot_type:
-                result["contact_type_id"] = max_bot_type[0]
+                result["contact_type_id"] = max_bot_type
             return result
         return {}

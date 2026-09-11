@@ -84,9 +84,7 @@ class LeadsApp(App):
             ],
         )
 
-        existing_stages = await env.models.lead_stage.search(
-            fields=["id"], limit=1
-        )
+        existing_stages = await env.models.lead_stage.search_one(fields=["id"])
         if not existing_stages:
             for stage_data in INITIAL_LEAD_STAGES:
                 await env.models.lead_stage.create(
@@ -114,19 +112,19 @@ class LeadsApp(App):
 
         TEAM_NAME = "Команда по умолчанию"
 
-        existing = await env.models.team_crm.search(
-            filter=[("name", "=", TEAM_NAME)], fields=["id"], limit=1
+        existing = await env.models.team_crm.search_one(
+            filter=[("name", "=", TEAM_NAME)], fields=["id"]
         )
         team_id = (
-            existing[0].id
+            existing.id
             if existing
             else await env.models.team_crm.create(
                 payload=TeamCrm(name=TEAM_NAME)
             )
         )
 
-        role = await env.models.role.search(
-            filter=[("code", "=", "base_user")], fields=["id"], limit=1
+        role = await env.models.role.search_one(
+            filter=[("code", "=", "base_user")], fields=["id"]
         )
         if not role:
             return
@@ -148,7 +146,7 @@ class LeadsApp(App):
             JOIN user_role_many2many ur ON ur.role_id = inh.role_id
             WHERE ur.user_id != $2
             """,
-            [role[0].id, SYSTEM_USER_ID],
+            [role.id, SYSTEM_USER_ID],
             cursor="fetch",
         )
         member_ids = {r["user_id"] for r in rows}
@@ -186,21 +184,20 @@ class LeadsApp(App):
         """
         from backend.base.crm.security.models.rules import Rule
 
-        lead_model = await env.models.model.search(
-            filter=[("name", "=", "lead")], limit=1
+        lead_model_rec = await env.models.model.search_one(
+            filter=[("name", "=", "lead")]
         )
-        if not lead_model:
+        if not lead_model_rec:
             return
-        lead_model_rec = lead_model[0]
 
-        role_user = await env.models.role.search(
-            filter=[("code", "=", "crm_user")], limit=1
+        role_user = await env.models.role.search_one(
+            filter=[("code", "=", "crm_user")]
         )
-        role_manager = await env.models.role.search(
-            filter=[("code", "=", "crm_manager")], limit=1
+        role_manager = await env.models.role.search_one(
+            filter=[("code", "=", "crm_manager")]
         )
-        role_admin = await env.models.role.search(
-            filter=[("code", "=", "crm_admin")], limit=1
+        role_admin = await env.models.role.search_one(
+            filter=[("code", "=", "crm_admin")]
         )
         if not role_user or not role_manager or not role_admin:
             return
@@ -209,7 +206,7 @@ class LeadsApp(App):
             {
                 "name": "Лиды: только свои или общие",
                 "model_id": lead_model_rec,
-                "role_id": role_user[0],
+                "role_id": role_user,
                 "domain": [
                     ["user_id", "=", "{{user_id}}"],
                     "or",
@@ -223,7 +220,7 @@ class LeadsApp(App):
             {
                 "name": "Лиды: все (менеджер)",
                 "model_id": lead_model_rec,
-                "role_id": role_manager[0],
+                "role_id": role_manager,
                 "domain": BYPASS_DOMAIN,
                 "perm_read": True,
                 "perm_create": True,
@@ -233,7 +230,7 @@ class LeadsApp(App):
             {
                 "name": "Лиды: все (админ)",
                 "model_id": lead_model_rec,
-                "role_id": role_admin[0],
+                "role_id": role_admin,
                 "domain": BYPASS_DOMAIN,
                 "perm_read": True,
                 "perm_create": True,
@@ -243,9 +240,8 @@ class LeadsApp(App):
         ]
 
         for rule_data in rules_to_create:
-            existing = await env.models.rule.search(
+            existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
-                limit=1,
             )
             if existing:
                 continue

@@ -89,15 +89,14 @@ class ACLPostInitMixin:
         from backend.base.crm.security.models.roles import Role
 
         # Получаем роль
-        role = await env.models.role.search(
+        role = await env.models.role.search_one(
             filter=[("code", "=", role_code)],
             fields=["id"],
-            limit=1,
         )
         if not role:
             return
 
-        role_id = role[0].id
+        role_id = role.id
 
         # Получаем модели
         model_names = list(acl_config.keys())

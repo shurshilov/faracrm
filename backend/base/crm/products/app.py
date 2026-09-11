@@ -70,16 +70,14 @@ class ProductsApp(App):
 
         # Дефолтный товар "Брюки" — для демонстрации/первого запуска.
         # Создаётся только если в системе ещё нет ни одного товара.
-        existing_pants = await env.models.product.search(
+        existing_pants = await env.models.product.search_one(
             filter=[("name", "=", "Брюки")],
-            limit=1,
         )
         if not existing_pants:
             # Привязываем к UoM "штуки" если она есть
-            uom_pcs = await env.models.uom.search(
+            uom_pcs = await env.models.uom.search_one(
                 filter=[("name", "=", "штуки")],
                 fields=["id"],
-                limit=1,
             )
             payload = Product(
                 name="Брюки",
@@ -87,5 +85,5 @@ class ProductsApp(App):
                 active=True,
             )
             if uom_pcs:
-                payload.uom_id = uom_pcs[0]
+                payload.uom_id = uom_pcs
             await env.models.product.create(payload=payload)

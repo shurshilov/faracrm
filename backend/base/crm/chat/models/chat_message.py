@@ -348,12 +348,11 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         connector_type = None
         if connector_id:
             connector = env.models.chat_connector(id=connector_id)
-            _conn = await env.models.chat_connector.search(
+            _conn = await env.models.chat_connector.search_one(
                 filter=[("id", "=", connector_id)],
                 fields=["id", "type"],
-                limit=1,
             )
-            connector_type = _conn[0].type if _conn else None
+            connector_type = _conn.type if _conn else None
 
         parent = None
         if parent_id:

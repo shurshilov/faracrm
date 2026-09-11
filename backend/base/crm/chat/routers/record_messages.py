@@ -33,7 +33,7 @@ async def find_record_chat(req: Request, res_model: str, res_id: int):
     """
     env: "Environment" = req.app.state.env
 
-    chats = await env.models.chat.search(
+    chat = await env.models.chat.search_one(
         filter=[
             ("res_model", "=", res_model),
             ("res_id", "=", res_id),
@@ -41,11 +41,10 @@ async def find_record_chat(req: Request, res_model: str, res_id: int):
             ("active", "=", True),
         ],
         fields=["id", "name"],
-        limit=1,
     )
 
-    if chats:
-        return {"chat_id": chats[0].id, "name": chats[0].name}
+    if chat:
+        return {"chat_id": chat.id, "name": chat.name}
 
     return {"chat_id": None, "name": None}
 

@@ -144,7 +144,7 @@ class ChatExternalAccount(AuditMixin, DotModel):
         """
         Найти аккаунт по внешнему ID и коннектору.
         """
-        accounts = await self.search(
+        return await self.search_one(
             filter=[
                 ("external_id", "=", external_id),
                 ("connector_id", "=", connector_id),
@@ -152,9 +152,7 @@ class ChatExternalAccount(AuditMixin, DotModel):
             ],
             fields=["id", "contact_id", "external_id", "name"],
             # fields_nested={"contact_id": ["user_id", "partner_id"]},
-            limit=1,
         )
-        return accounts[0] if accounts else None
 
     @hybridmethod
     async def find_or_create_for_webhook(
@@ -190,16 +188,15 @@ class ChatExternalAccount(AuditMixin, DotModel):
         # Поток A — аккаунт уже привязан к контакту
         existing = await self.find_by_external_id(external_id, connector.id)
         if existing and existing.contact_id:
-            contacts = await env.models.contact.search(
+            contact = await env.models.contact.search_one(
                 filter=[("id", "=", existing.contact_id.id)],
                 fields=["id", "name", "user_id", "partner_id"],
                 fields_nested={
                     "partner_id": ["id", "name"],
                     "user_id": ["id", "name"],
                 },
-                limit=1,
             )
-            return existing, contacts[0], False
+            return existing, contact, False
 
         # Поток B — резолв/создание контакта + создание/доcвязка аккаунта
         if connector.contact_type_id is None:

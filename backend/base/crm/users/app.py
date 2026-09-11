@@ -71,8 +71,8 @@ class UserApp(App):
 
     async def _init_admin_user(self, env: "Environment"):
         """Создаёт пользователя-администратора (id=1)."""
-        user_admin = await env.models.user.search(
-            filter=[("id", "=", ADMIN_USER_ID)], limit=1
+        user_admin = await env.models.user.search_one(
+            filter=[("id", "=", ADMIN_USER_ID)]
         )
         if not user_admin:
             await env.models.user.create(
@@ -87,8 +87,8 @@ class UserApp(App):
 
     async def _init_system_user(self, env: "Environment"):
         """Создаёт системного пользователя (id=2) для автоматических операций."""
-        user_system = await env.models.user.search(
-            filter=[("id", "=", SYSTEM_USER_ID)], limit=1
+        user_system = await env.models.user.search_one(
+            filter=[("id", "=", SYSTEM_USER_ID)]
         )
         if not user_system:
             await env.models.user.create(
@@ -108,8 +108,8 @@ class UserApp(App):
         (пустой password_hash), is_admin=False. Никаких ролей не имеет
         — доступ ограничен whitelist'ом таблиц в use_anonymous_session.
         """
-        user_anon = await env.models.user.search(
-            filter=[("id", "=", ANONYMOUS_USER_ID)], limit=1
+        user_anon = await env.models.user.search_one(
+            filter=[("id", "=", ANONYMOUS_USER_ID)]
         )
         if not user_anon:
             await env.models.user.create(
@@ -127,21 +127,19 @@ class UserApp(App):
         Создаёт шаблонного пользователя (id=3, login='default_internal').
         Используется как прототип при создании
         """
-        existing = await env.models.user.search(
-            filter=[("id", "=", TEMPLATE_USER_ID)], limit=1
+        existing = await env.models.user.search_one(
+            filter=[("id", "=", TEMPLATE_USER_ID)]
         )
         if existing:
             return
 
-        base_user_role = await env.models.role.search(
+        base_user_role = await env.models.role.search_one(
             filter=[("code", "=", "base_user")],
             fields=["id"],
-            limit=1,
         )
 
-        default_user = await env.models.user.search(
+        default_user = await env.models.user.search_one(
             filter=[("login", "=", "default_internal")],
-            limit=1,
         )
         if default_user:
             return
@@ -164,7 +162,7 @@ class UserApp(App):
         if base_user_role:
             new_user = await env.models.user.get(new_user_id)
             await new_user.update(
-                payload=User(role_ids={"selected": [base_user_role[0].id]})
+                payload=User(role_ids={"selected": [base_user_role.id]})
             )
 
     async def _init_user_rules(self, env: "Environment"):
@@ -172,29 +170,20 @@ class UserApp(App):
         from backend.base.crm.security.models.rules import Rule
 
         # Получаем model_id для user
-        user_model = await env.models.model.search(
+        user_model_id = await env.models.model.search_one(
             filter=[("name", "=", "user")],
-            limit=1,
         )
-        if not user_model:
+        if not user_model_id:
             return
-        user_model_id = user_model[0]
 
         # Резолвим роли которые понадобятся в правилах
-        base_user_role = await env.models.role.search(
+        base_user_role_id = await env.models.role.search_one(
             filter=[("code", "=", "base_user")],
             fields=["id"],
-            limit=1,
         )
-        base_user_role_id = base_user_role[0] if base_user_role else None
-
-        system_admin_role = await env.models.role.search(
+        system_admin_role_id = await env.models.role.search_one(
             filter=[("code", "=", "system_admin")],
             fields=["id"],
-            limit=1,
-        )
-        system_admin_role_id = (
-            system_admin_role[0] if system_admin_role else None
         )
 
         rules = [
@@ -260,9 +249,8 @@ class UserApp(App):
             )
 
         for rule_data in rules:
-            existing = await env.models.rule.search(
+            existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
-                limit=1,
             )
             if existing:
                 continue

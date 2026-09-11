@@ -45,14 +45,13 @@ async def _stage_progress(stage) -> int:
     if sequence <= 0:
         return 0
 
-    last = await env.models.lead_stage.search(
+    last = await env.models.lead_stage.search_one(
         filter=[("active", "=", True)],
         fields=["sequence"],
         sort="sequence",
         order="DESC",
-        limit=1,
     )
-    top = int(last[0].sequence or 0) if last else 0
+    top = int(last.sequence or 0) if last else 0
     return min(100, round(sequence * 100 / top)) if top > 0 else 0
 
 
@@ -226,12 +225,11 @@ class Lead(AuditMixin, PolymorphicParentMixin):
         продажу ему. Стадия — первая по порядку активная: дефолт Sale берёт
         первую найденную без сортировки.
         """
-        stages = await env.models.sale_stage.sudo().search(
+        stage = await env.models.sale_stage.sudo().search_one(
             filter=[("active", "=", True)],
             fields=["id"],
             sort="sequence",
             order="ASC",
-            limit=1,
         )
         values = {
             "partner_id": self.partner_id,
@@ -241,8 +239,8 @@ class Lead(AuditMixin, PolymorphicParentMixin):
             "origin": self.name,
             "lead_id": env.models.lead(id=self.id),
         }
-        if stages:
-            values["stage_id"] = stages[0]
+        if stage:
+            values["stage_id"] = stage
         payload = env.models.sale(
             **{
                 name: value
@@ -263,7 +261,7 @@ class Lead(AuditMixin, PolymorphicParentMixin):
         звонка — куда вести оператора по ссылке. Правило «свежий лид клиента по
         каналу» должно быть в одном месте.
         """
-        rows = await env.models.lead.search(
+        return await env.models.lead.search_one(
             filter=[
                 ("partner_id", "=", partner_id),
                 ("connector_id", "=", connector_id),
@@ -271,9 +269,7 @@ class Lead(AuditMixin, PolymorphicParentMixin):
             fields=["id", "website", "name"],
             sort="id",
             order="DESC",
-            limit=1,
         )
-        return rows[0] if rows else None
 
     @hybridmethod
     async def create_or_get_for_chat(

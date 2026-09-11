@@ -83,14 +83,14 @@ class CallAcceptPayload(BaseModel):
 async def _load_call_or_404(env: "Environment", call_id: int):
     """Загрузить ChatMessage(type='call') или бросить 404."""
     try:
-        msg = await env.models.chat_message.search(
-            filter=[("id", "=", call_id)], limit=1
+        msg = await env.models.chat_message.search_one(
+            filter=[("id", "=", call_id)]
         )
     except Exception:
         raise HTTPException(HTTP_404_NOT_FOUND, "Call not found")
-    if not msg or msg[0].message_type != "call":
+    if not msg or msg.message_type != "call":
         raise HTTPException(HTTP_404_NOT_FOUND, "Not a call message")
-    return msg[0]
+    return msg
 
 
 async def _find_other_user(env, chat_id: int, not_user_id: int) -> int | None:
@@ -112,16 +112,15 @@ async def _find_other_user(env, chat_id: int, not_user_id: int) -> int | None:
 
 async def _assert_participant(env, chat_id: int, user_id: int):
     """Проверить что user_id — участник direct-чата звонка."""
-    members = await env.models.chat_member.search(
+    member = await env.models.chat_member.search_one(
         filter=[
             ("chat_id", "=", chat_id),
             ("user_id", "=", user_id),
             ("is_active", "=", True),
         ],
         fields=["id"],
-        limit=1,
     )
-    if not members:
+    if not member:
         raise HTTPException(
             HTTP_403_FORBIDDEN, "Not a participant of this call"
         )

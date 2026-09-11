@@ -264,13 +264,12 @@ class ChatConnector(AuditMixin, DotModel):
 
     @onchange("type")
     async def onchange_type(self) -> dict:
-        first_type = await env.models.contact_type.search(
+        first_type = await env.models.contact_type.search_one(
             filter=[("name", "=", self.type)],
             fields=["id", "name"],
-            limit=1,
         )
         if first_type:
-            return {"contact_type_id": first_type[0]}
+            return {"contact_type_id": first_type}
         else:
             return {"contact_type_id": None}
 
@@ -340,17 +339,16 @@ class ChatConnector(AuditMixin, DotModel):
             return
 
         # Ищем существующий
-        existing_accounts = await env.models.chat_external_account.search(
+        existing_account = await env.models.chat_external_account.search_one(
             filter=[
                 ("connector_id", "=", self.id),
                 ("external_id", "=", self.external_account_id),
             ],
             fields=["id"],
-            limit=1,
         )
 
-        if existing_accounts:
-            outbox_id = existing_accounts[0].id
+        if existing_account:
+            outbox_id = existing_account.id
         else:
             # Создаём новую запись chat_external_account для outbox.
             # contact_id остаётся пустым — outbox не привязан к конкретному
@@ -372,16 +370,15 @@ class ChatConnector(AuditMixin, DotModel):
 
         # Привязываем к коннектору. Идём через super().update чтобы не
         # запустить рекурсивный _ensure_outbox_account.
-        current = await self.search(
+        current = await self.search_one(
             filter=[("id", "=", self.id)],
             fields=["id", "outbox_account_id"],
-            limit=1,
         )
         if current and (
-            not current[0].outbox_account_id
-            or current[0].outbox_account_id.id != outbox_id
+            not current.outbox_account_id
+            or current.outbox_account_id.id != outbox_id
         ):
-            await super(ChatConnector, current[0]).update(
+            await super(ChatConnector, current).update(
                 ChatConnector(
                     outbox_account_id=env.models.chat_external_account(
                         id=outbox_id

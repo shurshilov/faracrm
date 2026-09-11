@@ -159,11 +159,11 @@ class Environment:
         return order
 
     async def _set_installed(self, code: str, value: bool) -> None:
-        rows = await self.models.app.search(
-            filter=[("code", "=", code)], fields=["id"], limit=1
+        row = await self.models.app.search_one(
+            filter=[("code", "=", code)], fields=["id"]
         )
-        if rows:
-            await rows[0].update(payload=self.models.app(installed=value))
+        if row:
+            await row.update(payload=self.models.app(installed=value))
 
     async def apps_changed(self, app: FastAPI) -> None:
         """Флаги изменились: свои роуты — сразу, остальным воркерам — событие
