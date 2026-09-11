@@ -93,7 +93,7 @@ class PerfReport:
                 if current_module is not None:
                     print("-" * 100)
                 current_module = r.module
-            rps_str = f"{r.rps:,.1f}" if r.rps != float("inf") else "∞"
+            rps_str = f"{r.rps:,.1f}" if r.rps != float("inf") else "inf"
             print(
                 f"{r.module:<18} {r.operation:<35} {r.rows:>10,} {r.elapsed_ms:>11,.2f} {rps_str:>12}"
             )
@@ -162,7 +162,7 @@ tr:hover {{ background:#f8f9fa; }}
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write(html)
-        print(f"\n✓ HTML report saved to {path}")
+        print(f"\n[OK] HTML report saved to {path}")
 
     # ── json ──
 
@@ -211,7 +211,7 @@ tr:hover {{ background:#f8f9fa; }}
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write(html)
-        print(f"\n✓ Comparison HTML saved to {path}")
+        print(f"\n[OK] Comparison HTML saved to {path}")
 
 
 # ── HTML template for comparison report ──
@@ -270,6 +270,7 @@ _COMPARISON_HTML_TEMPLATE = r"""<!DOCTYPE html>
   thead th:first-child{text-align:left;min-width:210px}
   thead th.col-asyncpg{color:var(--cyan)} thead th.col-sa{color:var(--purple)}
   thead th.col-tortoise{color:var(--orange)} thead th.col-dotorm{color:var(--gold)}
+  thead th.col-dotorm-old{color:var(--text-dim)}
   tr.group-header td{background:var(--bg);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:.76rem;letter-spacing:.5px;color:var(--text-dim);padding:9px 14px;border-bottom:1px solid var(--border);text-transform:uppercase}
   tbody tr{border-bottom:1px solid rgba(255,255,255,.03);transition:background .15s}
   tbody tr:hover{background:rgba(255,255,255,.02)}
@@ -283,12 +284,14 @@ _COMPARISON_HTML_TEMPLATE = r"""<!DOCTYPE html>
   .badge-last{background:var(--red-dim);color:var(--red)}
   td.cell-asyncpg{color:var(--cyan)} td.cell-sa{color:var(--purple)}
   td.cell-tortoise{color:var(--orange)} td.cell-dotorm{color:var(--gold)}
+  td.cell-dotorm-old{color:var(--text-dim)}
   td.winner-cell{font-weight:700}
   td.winner-cell::before{content:'';position:absolute;left:0;top:4px;bottom:4px;width:3px;border-radius:0 2px 2px 0}
   td.winner-cell.cell-asyncpg::before{background:var(--cyan)}
   td.winner-cell.cell-sa::before{background:var(--purple)}
   td.winner-cell.cell-tortoise::before{background:var(--orange)}
   td.winner-cell.cell-dotorm::before{background:var(--gold)}
+  td.winner-cell.cell-dotorm-old::before{background:var(--text-dim)}
 
   /* Detail table */
   .detail-table th{text-align:left}
@@ -307,7 +310,7 @@ _COMPARISON_HTML_TEMPLATE = r"""<!DOCTYPE html>
 <div class="container">
   <div class="header">
     <h1>⚡ DotORM Performance Report</h1>
-    <p>Head-to-head: raw asyncpg · SQLAlchemy · Tortoise · dotorm</p>
+    <p>Head-to-head: raw asyncpg · SQLAlchemy · Tortoise · dotorm · dotorm_old (real activity table)</p>
     <div class="meta"><span>PostgreSQL 16</span><span>100k rows</span><span>asyncpg 0.30</span><span>Python 3.12</span></div>
     <span class="ts">Generated: __TIMESTAMP__</span>
   </div>
@@ -324,6 +327,7 @@ _COMPARISON_HTML_TEMPLATE = r"""<!DOCTYPE html>
       <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>SQLAlchemy</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Tortoise</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div>dotorm</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--text-dim)"></div>dotorm_old (real activity table)</div>
       <div class="legend-item"><span class="badge badge-gold">🥇 1st</span></div>
       <div class="legend-item"><span class="badge badge-silver">🥈 2nd</span></div>
       <div class="legend-item"><span class="badge badge-last">🐌 last</span></div>
@@ -355,9 +359,9 @@ function switchTab(name) {
 const modules = [...new Set(data.map(d => d.module))];
 const baseline = modules[0];
 const ormModules = modules.slice(1);
-const cssMap = ['cell-asyncpg','cell-sa','cell-tortoise','cell-dotorm'];
-const colMap = ['col-asyncpg','col-sa','col-tortoise','col-dotorm'];
-const themeColors = ['var(--cyan)','var(--purple)','var(--orange)','var(--gold)'];
+const cssMap = ['cell-asyncpg','cell-sa','cell-tortoise','cell-dotorm','cell-dotorm-old'];
+const colMap = ['col-asyncpg','col-sa','col-tortoise','col-dotorm','col-dotorm-old'];
+const themeColors = ['var(--cyan)','var(--purple)','var(--orange)','var(--gold)','var(--text-dim)'];
 
 const ops = {};
 data.forEach(d => { if (!ops[d.operation]) ops[d.operation] = {}; ops[d.operation][d.module] = d; });
@@ -488,17 +492,30 @@ async def perf_timer(
 
 @pytest_asyncio.fixture(scope="class")
 async def seed_users(db_pool) -> int:
-    """Insert 10 000 users via raw SQL. Returns count."""
+    """Insert 10 000 users via raw SQL. Returns count.
+
+    TRUNCATE ... RESTART IDENTITY: фикстура class-scoped, сеется заново для
+    каждого класса, а тесты и сиды зависимых таблиц адресуют строки по
+    id (User.get(1), user_id = g % 10000 + 1). Без сброса sequence второй
+    класс получает id 10001+ и всё бьёт по несуществующим строкам (FK).
+    CASCADE выносит и все таблицы с FK на users (sessions, chat_*, activity,
+    leads, audit-поля) — вместе с их sequence.
+    """
     from backend.base.crm.languages.models.language import Language
 
-    lang_id = await Language.create(
-        Language(code="en", name="English", active=True)
+    lang = await Language.search_one(filter=[("code", "=", "en")])
+    lang_id = (
+        lang.id
+        if lang
+        else await Language.create(
+            Language(code="en", name="English", active=True)
+        )
     )
 
     count = 10_000
     async with db_pool.acquire() as conn:
         # Clean only users + dependents, not the whole DB
-        await conn.execute("TRUNCATE TABLE users CASCADE")
+        await conn.execute("TRUNCATE TABLE users RESTART IDENTITY CASCADE")
         await conn.execute(
             """
             INSERT INTO users (name, login, password_hash, password_salt, is_admin, lang_id)
@@ -514,6 +531,9 @@ async def seed_users(db_pool) -> int:
             lang_id,
             count,
         )
+        # Свежая статистика после массовой вставки: иначе планировщик
+        # считает таблицу пустой и выбирает seq scan (замер = не ORM).
+        await conn.execute("ANALYZE users")
     return count
 
 
@@ -522,7 +542,7 @@ async def seed_sessions(db_pool, seed_users) -> int:
     """Insert 1 000 000 sessions via raw SQL. Returns count."""
     count = 1_000_000
     async with db_pool.acquire() as conn:
-        await conn.execute("TRUNCATE TABLE sessions CASCADE")
+        await conn.execute("TRUNCATE TABLE sessions RESTART IDENTITY CASCADE")
         # Distribute sessions across users (10k users → ~100 sessions each)
         await conn.execute(
             """
@@ -543,6 +563,7 @@ async def seed_sessions(db_pool, seed_users) -> int:
             seed_users,
             count,
         )
+        await conn.execute("ANALYZE sessions")
     return count
 
 
@@ -559,7 +580,8 @@ async def seed_chat_and_messages(db_pool, seed_users) -> dict:
 
     async with db_pool.acquire() as conn:
         await conn.execute(
-            "TRUNCATE TABLE chat_message, chat_member, chat CASCADE"
+            "TRUNCATE TABLE chat_message, chat_member, chat "
+            "RESTART IDENTITY CASCADE"
         )
 
         # 1) Create chats
@@ -568,7 +590,7 @@ async def seed_chat_and_messages(db_pool, seed_users) -> dict:
             INSERT INTO chat (name, chat_type, active, is_public, is_internal,
                               default_can_read, default_can_write, default_can_invite,
                               default_can_pin, default_can_delete_others,
-                              create_date, write_date, create_user_id)
+                              create_datetime, update_datetime, create_user_id)
             SELECT
                 'Chat #' || g,
                 CASE WHEN g = 1 THEN 'channel' ELSE 'group' END,
@@ -621,16 +643,16 @@ async def seed_chat_and_messages(db_pool, seed_users) -> dict:
         await conn.execute(
             """
             INSERT INTO chat_message (chat_id, body, message_type,
-                                      author_user_id, create_date, write_date,
-                                      is_read, is_deleted, starred, pinned, is_edited)
+                                      author_user_id, create_datetime,
+                                      update_datetime, is_deleted, starred,
+                                      pinned, is_edited)
             SELECT
                 ((g - 1) % $1) + (SELECT min(id) FROM chat),
                 'Message body #' || g,
                 'comment',
                 (g % $2) + 1,
-                now() - ((($1 - g) * interval '1 second')),
+                now() - (($3 - g) * interval '1 second'),
                 now(),
-                (random() > 0.3),
                 false,
                 (random() > 0.95),
                 false,
@@ -641,6 +663,7 @@ async def seed_chat_and_messages(db_pool, seed_users) -> dict:
             seed_users,
             num_messages,
         )
+        await conn.execute("ANALYZE chat, chat_member, chat_message")
 
     return {
         "chats": num_chats,
@@ -655,7 +678,9 @@ async def seed_activities(db_pool, seed_users) -> int:
     """Insert 100 000 activities via raw SQL."""
     count = 100_000
     async with db_pool.acquire() as conn:
-        await conn.execute("TRUNCATE TABLE activity, activity_type CASCADE")
+        await conn.execute(
+            "TRUNCATE TABLE activity, activity_type RESTART IDENTITY CASCADE"
+        )
 
         # Create some activity types
         await conn.execute("""
@@ -694,6 +719,7 @@ async def seed_activities(db_pool, seed_users) -> int:
             seed_users,
             count,
         )
+        await conn.execute("ANALYZE activity_type, activity")
     return count
 
 
@@ -702,7 +728,12 @@ async def seed_leads(db_pool, seed_users) -> int:
     """Insert 100 000 leads via raw SQL."""
     count = 100_000
     async with db_pool.acquire() as conn:
-        await conn.execute("TRUNCATE TABLE lead, lead_stage CASCADE")
+        # lead_stage чистим DELETE, а не TRUNCATE ... CASCADE: на него
+        # ссылается chat_connector.lead_stage_id, а на chat_connector —
+        # users.call_connector_id, и каскад сносил бы только что засеянных
+        # пользователей (FK на leads.user_id падал на первой же строке).
+        await conn.execute("TRUNCATE TABLE leads RESTART IDENTITY CASCADE")
+        await conn.execute("DELETE FROM lead_stage")
 
         await conn.execute("""
             INSERT INTO lead_stage (name, sequence)
@@ -710,21 +741,20 @@ async def seed_leads(db_pool, seed_users) -> int:
                    ('Won', 4), ('Lost', 5)
             """)
 
+        # email/phone у лида больше нет — контакты живут в contact.
         await conn.execute(
             """
-            INSERT INTO lead (name, active, stage_id, user_id, type,
-                              email, phone)
+            INSERT INTO leads (name, active, stage_id, user_id, type)
             SELECT
                 'Lead #' || g,
                 true,
                 (g % 5) + (SELECT min(id) FROM lead_stage),
                 (g % $1) + 1,
-                CASE WHEN g % 3 = 0 THEN 'opportunity' ELSE 'lead' END,
-                'lead_' || g || '@test.com',
-                '+1' || lpad((g % 10000000)::text, 10, '0')
+                CASE WHEN g % 3 = 0 THEN 'opportunity' ELSE 'lead' END
             FROM generate_series(1, $2) g
             """,
             seed_users,
             count,
         )
+        await conn.execute("ANALYZE lead_stage, leads")
     return count

@@ -44,30 +44,6 @@ async def _default_name():
     return f"Заказ {str(next_id).zfill(7)}"
 
 
-async def _stage_progress(stage) -> int:
-    """Процент прохождения воронки продаж по стадии (0–100).
-
-    Отдельного «процента» у стадии нет: её вес — это sequence, а 100 %
-    соответствует последней активной стадии. Так шкала подстраивается под
-    любой набор стадий, включая пользовательские. Заказ без стадии — 0 %.
-    """
-    if stage is None:
-        return 0
-
-    sequence = int(stage.sequence or 0)
-    if sequence <= 0:
-        return 0
-
-    last = await env.models.sale_stage.search_one(
-        filter=[("active", "=", True)],
-        fields=["sequence"],
-        sort="sequence",
-        order="DESC",
-    )
-    top = int(last.sequence or 0) if last else 0
-    return min(100, round(sequence * 100 / top)) if top > 0 else 0
-
-
 class Sale(AuditMixin, DotModel):
     __table__ = "sales"
 
@@ -84,7 +60,8 @@ class Sale(AuditMixin, DotModel):
     user_id: "User | None" = Many2one(
         lambda: env.models.user,
         string="Salesperson",
-        # index=True,
+        # «мои заказы» без индекса — seq scan по всей таблице
+        index=True,
         ondelete="restrict",
     )
     partner_id: "Partner" = Many2one(
@@ -150,16 +127,18 @@ class Sale(AuditMixin, DotModel):
         compute="_compute_progress",
     )
 
-    @depends(triggers=[stage_id], prefetch=[(stage_id, "sequence")])
+    @depends(triggers=[stage_id], prefetch=[(stage_id, "progress")])
     async def _compute_progress(self) -> None:
-        """Прогресс заказа по стадии продажи.
+        """Прогресс заказа = процент его стадии (SaleStage.progress).
 
-        stage_id со свежим sequence уже подгружен движком @depends
-        (prefetch), так что внутри остаётся только нормировка.
-        Пересчитывается и в форме: stage_id — триггер @depends, поэтому
-        попадает в get_onchange_fields() и уезжает в POST /onchange.
+        Процент считается на самой стадии (SaleStage._compute_progress,
+        @depends() без триггеров — все стадии после любой операции над
+        ними); здесь только чтение: stage_id с progress уже подгружен
+        движком @depends (prefetch), запросов внутри нет. Пересчитывается и в форме: stage_id — триггер
+        @depends, поэтому попадает в get_onchange_fields() и уезжает в
+        POST /onchange.
         """
-        self.progress = await _stage_progress(self.stage_id)
+        self.progress = (self.stage_id.progress or 0) if self.stage_id else 0
 
     @depends(
         triggers_with_prefetch=[
@@ -171,10 +150,9 @@ class Sale(AuditMixin, DotModel):
     async def _compute_amounts(self) -> None:
         """Сумма по строкам заказа: untaxed / tax / total / undiscounted.
 
-        Pure compute: self.order_line_ids уже подгружен движком через
-        _ensure_prefetch_for_method (на основании dotted @depends).
-        Никаких SELECT'ов внутри. Округление до знаков валюты делает
-        само поле Decimal при записи."""
+        Pure compute: self.order_line_ids уже подгружен движком @depends
+        (prefetch по dotted-зависимости). Никаких SELECT'ов внутри.
+        Округление до знаков валюты делает само поле Decimal при записи."""
         lines = (
             self.order_line_ids
             if isinstance(self.order_line_ids, list)

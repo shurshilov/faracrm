@@ -31,7 +31,6 @@ class TestLeadPerformance:
                     stage_id=stage_id,
                     user_id=1,
                     type="lead",
-                    email="perf@test.com",
                 )
             )
 
@@ -49,7 +48,6 @@ class TestLeadPerformance:
                 stage_id=stage_id,
                 user_id=(i % 100) + 1,
                 type="lead",
-                email=f"bulk_lead_{i}@test.com",
             )
             for i in range(n)
         ]
@@ -71,7 +69,7 @@ class TestLeadPerformance:
         n = 100
         async with perf_timer(perf_report, MODULE, f"search — limit {n}", n):
             result = await Lead.search(
-                fields=["id", "name", "stage_id", "type", "email"],
+                fields=["id", "name", "stage_id", "type", "website"],
                 limit=n,
             )
         assert len(result) == n
@@ -94,7 +92,7 @@ class TestLeadPerformance:
             perf_report, MODULE, "search — filter type='opportunity'", 1000
         ):
             result = await Lead.search(
-                fields=["id", "name", "email"],
+                fields=["id", "name", "website"],
                 filter=[("type", "=", "opportunity")],
                 limit=1000,
             )
@@ -126,7 +124,7 @@ class TestLeadPerformance:
             200,
         ):
             result = await Lead.search(
-                fields=["id", "name", "type", "email"],
+                fields=["id", "name", "type", "website"],
                 filter=[
                     ("type", "=", "lead"),
                     ("active", "=", True),
@@ -135,20 +133,21 @@ class TestLeadPerformance:
                 limit=200,
             )
 
-    async def test_search_filter_email_ilike(
+    async def test_search_filter_name_ilike(
         self, db_pool, seed_leads, perf_report
     ):
-        """Text search: email ilike on 100k rows."""
+        """Text search: name ilike on 100k rows (email у лида больше нет)."""
         from backend.base.crm.leads.models.leads import Lead
 
         async with perf_timer(
-            perf_report, MODULE, "search — email ilike '%500%'", 100
+            perf_report, MODULE, "search — name ilike '%500%'", 100
         ):
             result = await Lead.search(
-                fields=["id", "name", "email"],
-                filter=[("email", "ilike", "%500%")],
+                fields=["id", "name"],
+                filter=[("name", "ilike", "%500%")],
                 limit=100,
             )
+        assert len(result) >= 1
 
     async def test_search_count(self, db_pool, seed_leads, perf_report):
         from backend.base.crm.leads.models.leads import Lead

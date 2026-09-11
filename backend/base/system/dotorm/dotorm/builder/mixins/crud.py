@@ -122,6 +122,34 @@ class CRUDMixin:
         values = tuple(values_list) + tuple(self.dialect.bind_ids(ids))
         return stmt, values
 
+    def build_update_bulk_rows(
+        self: "BuilderProtocol",
+        rows: list[dict[str, Any]],
+    ) -> tuple[str, list] | None:
+        """Bulk UPDATE с РАЗНЫМИ значениями на строку — одним запросом.
+
+        rows: [{"id": .., f1: .., ...}, ...] — один и тот же набор полей.
+        Postgres: UPDATE t SET f = v.f FROM unnest(...) AS v(id, f)
+        WHERE t.id = v.id. None — у диалекта нет такой формы
+        (MySQL/ClickHouse): вызывающий обновляет построчно.
+        """
+        if not rows:
+            raise ValueError("rows cannot be empty")
+        fields_list = [name for name in rows[0] if name != "id"]
+        if not fields_list:
+            raise ValueError("rows must contain fields besides id")
+        made = self.dialect.make_bulk_update_rows(
+            rows, fields_list, self.fields
+        )
+        if made is None:
+            return None
+        set_clause, from_clause, values = made
+        stmt = (
+            f"UPDATE {self.table} SET {set_clause} {from_clause} "
+            f"WHERE {self.table}.id = v.id"
+        )
+        return stmt, values
+
     def build_get(
         self: "BuilderProtocol",
         id: int,

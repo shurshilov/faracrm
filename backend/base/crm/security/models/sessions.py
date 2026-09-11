@@ -109,7 +109,9 @@ class Session(DotModel):
 
     id: int = Integer(primary_key=True)
     active: bool = Boolean(default=True)
-    user_id: "User" = Many2one(relation_table=lambda: env.models.user)
+    user_id: "User" = Many2one(
+        relation_table=lambda: env.models.user, index=True
+    )
     token: str = Char(max_length=256, index=True)
     cookie_token: str | None = Char(
         max_length=256,
@@ -122,11 +124,15 @@ class Session(DotModel):
     create_datetime: datetime = Datetime(
         default=lambda: datetime.now(timezone.utc)
     )
-    create_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
+    create_user_id: "User" = Many2one(
+        relation_table=lambda: env.models.user, index=True
+    )
     update_datetime: datetime = Datetime(
         default=lambda: datetime.now(timezone.utc)
     )
-    update_user_id: "User" = Many2one(relation_table=lambda: env.models.user)
+    update_user_id: "User" = Many2one(
+        relation_table=lambda: env.models.user, index=True
+    )
 
     # Последняя активность пользователя (обновляется через WS ping).
     # Пользователь считается онлайн если last_activity > now() - 120 секунд.

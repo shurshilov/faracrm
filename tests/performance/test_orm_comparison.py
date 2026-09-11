@@ -3,6 +3,8 @@ ORM Comparison Benchmark: dotorm vs SQLAlchemy (async) vs Tortoise ORM
 
 Same Activity-like model, same 100k dataset, same CRUD operations.
 Each ORM creates its own table, seeds 100k rows, runs identical benchmarks.
+dotorm тоже на своей bench-таблице (TestDotorm); dotorm_old — старый вариант
+на реальной activity, оставлен для истории (TestDotormOld).
 
 Run:
     pip install sqlalchemy[asyncio] asyncpg tortoise-orm
@@ -152,6 +154,9 @@ async def raw_pool():
         """,
             SEED_COUNT,
         )
+        # Свежая статистика: без ANALYZE планировщик считает таблицу пустой
+        # и выбирает seq scan — замеры показывали бы не ORM, а автовакуум.
+        await conn.execute("ANALYZE bench_user_raw, bench_activity_raw")
     yield pool
     async with pool.acquire() as conn:
         await conn.execute("DROP TABLE IF EXISTS bench_activity_raw CASCADE")
@@ -426,6 +431,7 @@ async def sa_session():
                 now() - (random() * interval '90 days')
             FROM generate_series(1, {SEED_COUNT}) g
         """)
+        await conn.execute("ANALYZE bench_user_sa, bench_activity_sa")
     await raw_pool.close()
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
@@ -664,6 +670,9 @@ async def tortoise_db():
                 now() - (random() * interval '90 days')
             FROM generate_series(1, {SEED_COUNT}) g
         """)
+        await conn.execute(
+            "ANALYZE bench_user_tortoise, bench_activity_tortoise"
+        )
     await raw_pool.close()
 
     yield
@@ -788,18 +797,247 @@ class TestTortoise:
 
 
 # ══════════════════════════════════════════════
-# 4) dotorm (our ORM)
+# 4) dotorm (our ORM) — bench-таблица той же формы, что у остальных
+# ══════════════════════════════════════════════
+# Честное сравнение: модель повторяет bench_activity_sa / _tortoise / _raw
+# (одна FK на users, те же индексы и колонки), таблицу создаёт DDL самого
+# dotorm. Старый вариант на реальной activity оставлен ниже как dotorm_old.
+
+from backend.base.system.dotorm.dotorm.fields import (
+    Boolean,
+    Char,
+    Date,
+    Datetime,
+    Integer,
+    Many2one,
+    Text,
+)
+from backend.base.system.dotorm.dotorm.model import DotModel
+
+
+class DotUser(DotModel):
+    __table__ = "bench_user_dotorm"
+
+    id: int = Integer(primary_key=True)
+    name: str = Char(max_length=255, required=True)
+
+
+class DotActivity(DotModel):
+    __table__ = "bench_activity_dotorm"
+
+    id: int = Integer(primary_key=True)
+    res_model: str = Char(max_length=255, required=True, index=True)
+    res_id: int = Integer(required=True, index=True)
+    summary: str | None = Char(max_length=255)
+    note: str | None = Text()
+    date_deadline: date = Date(required=True, index=True)
+    user_id: "DotUser" = Many2one(
+        relation_table=lambda: DotUser, required=True, index=True
+    )
+    state: str = Char(max_length=20, default="planned", index=True)
+    done: bool = Boolean(default=False, index=True)
+    active: bool = Boolean(default=True)
+    notification_sent: bool = Boolean(default=False)
+    create_datetime: datetime = Datetime(
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+
+@pytest_asyncio.fixture(scope="class")
+async def dotorm_bench_ready(db_pool):
+    """bench_user_dotorm / bench_activity_dotorm: таблицы создаёт DDL dotorm
+    (индексы и FK — из объявления модели), сид — сырым SQL, как у остальных."""
+    from backend.base.system.dotorm.dotorm.builder.builder import Builder
+    from backend.base.system.dotorm.dotorm.components import POSTGRES
+    from backend.base.system.dotorm.dotorm.databases.postgres.session import (
+        NoTransactionSession,
+    )
+    from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+        ContainerTransaction,
+    )
+
+    models = [DotUser, DotActivity]
+    for model in models:
+        model._pool = db_pool
+        model._no_transaction = NoTransactionSession
+        model._dialect = POSTGRES
+        model._builder = Builder(
+            table=model.__table__, fields=model.get_fields(), dialect=POSTGRES
+        )
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "DROP TABLE IF EXISTS bench_activity_dotorm CASCADE"
+        )
+        await conn.execute("DROP TABLE IF EXISTS bench_user_dotorm CASCADE")
+
+    async with ContainerTransaction(db_pool) as session:
+        foreign_keys = []
+        for model in models:
+            foreign_keys += await model.__create_table__(session)
+        for _fk_name, fk_sql in foreign_keys:
+            await session.execute(fk_sql)
+
+    async with db_pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO bench_user_dotorm (name)
+            SELECT 'User ' || g FROM generate_series(1, 10000) g
+        """)
+        await conn.execute(f"""
+            INSERT INTO bench_activity_dotorm
+                (res_model, res_id, summary, date_deadline, user_id, state, done,
+                 notification_sent, active, create_datetime)
+            SELECT
+                CASE g % 3 WHEN 0 THEN 'lead' WHEN 1 THEN 'partner' ELSE 'task' END,
+                (g % 1000) + 1,
+                'Activity #' || g,
+                current_date + ((g % 60) - 30),
+                (g % 10000) + 1,
+                CASE WHEN g%5=0 THEN 'done' WHEN g%7=0 THEN 'overdue'
+                     WHEN g%3=0 THEN 'today' ELSE 'planned' END,
+                (g % 5 = 0),
+                false, true,
+                now() - (random() * interval '90 days')
+            FROM generate_series(1, {SEED_COUNT}) g
+        """)
+        await conn.execute("ANALYZE bench_user_dotorm, bench_activity_dotorm")
+
+    yield
+
+    async with db_pool.acquire() as conn:
+        await conn.execute(
+            "DROP TABLE IF EXISTS bench_activity_dotorm CASCADE"
+        )
+        await conn.execute("DROP TABLE IF EXISTS bench_user_dotorm CASCADE")
+
+
+class TestDotorm:
+    """dotorm (FARA CRM ORM) на bench-таблице той же формы, что у остальных.
+
+    Без ContainerTransaction: у raw/Tortoise автокоммит и у SQLAlchemy commit
+    входят в замер, поэтому и здесь каждая операция коммитится внутри bench.
+    """
+
+    ORM = "dotorm"
+
+    async def test_create_single(self, dotorm_bench_ready, comparison_report):
+        async with bench(self.ORM, "create — single", 1):
+            await DotActivity.create(
+                DotActivity(
+                    res_model="lead",
+                    res_id=1,
+                    summary="Bench single",
+                    date_deadline=datetime.now(timezone.utc).date(),
+                    user_id=1,
+                    state="planned",
+                )
+            )
+
+    async def test_create_bulk(self, dotorm_bench_ready, comparison_report):
+        payload = [
+            DotActivity(
+                res_model="lead",
+                res_id=(i % 1000) + 1,
+                summary=f"Bulk {i}",
+                date_deadline=datetime.now(timezone.utc).date(),
+                user_id=(i % 10000) + 1,
+                state="planned",
+            )
+            for i in range(BULK_CREATE_N)
+        ]
+        async with bench(
+            self.ORM, f"create_bulk — {BULK_CREATE_N:,}", BULK_CREATE_N
+        ):
+            await DotActivity.create_bulk(payload)
+
+    async def test_get_single(self, dotorm_bench_ready, comparison_report):
+        async with bench(self.ORM, "get — single by id", 1):
+            await DotActivity.get(
+                1,
+                fields=DotActivity.get_store_fields(),
+                fields_nested=USER_NESTED,
+            )
+
+    async def test_search_filter_user(
+        self, dotorm_bench_ready, comparison_report
+    ):
+        async with bench(self.ORM, "search — filter user_id", SEARCH_LIMIT):
+            await DotActivity.search(
+                fields=["id", "summary", "state", "date_deadline", "user_id"],
+                fields_nested=USER_NESTED,
+                filter=[("user_id", "=", 1)],
+                limit=SEARCH_LIMIT,
+            )
+
+    async def test_search_filter_member_res_model(
+        self, dotorm_bench_ready, comparison_report
+    ):
+        async with bench(
+            self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
+        ):
+            await DotActivity.search(
+                fields=["id", "summary", "state", "res_id", "user_id"],
+                fields_nested=USER_NESTED,
+                filter=[("res_model", "=", "lead"), ("done", "=", False)],
+                limit=SEARCH_LIMIT,
+            )
+
+    async def test_search_filter_state(
+        self, dotorm_bench_ready, comparison_report
+    ):
+        async with bench(self.ORM, "search — state='overdue'", SEARCH_LIMIT):
+            await DotActivity.search(
+                fields=["id", "summary", "user_id", "date_deadline"],
+                fields_nested=USER_NESTED,
+                filter=[("state", "=", "overdue"), ("done", "=", False)],
+                limit=SEARCH_LIMIT,
+            )
+
+    async def test_search_count(self, dotorm_bench_ready, comparison_report):
+        async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
+            await DotActivity.search_count()
+
+    async def test_update_single(self, dotorm_bench_ready, comparison_report):
+        obj = await DotActivity.get(1)
+        async with bench(self.ORM, "update — single", 1):
+            await obj.update(DotActivity(state="done", done=True))
+
+    async def test_update_bulk(self, dotorm_bench_ready, comparison_report):
+        ids = list(range(1, BULK_UPDATE_N + 1))
+        async with bench(
+            self.ORM, f"update_bulk — {BULK_UPDATE_N:,}", BULK_UPDATE_N
+        ):
+            await DotActivity.update_bulk(
+                ids, DotActivity(notification_sent=True)
+            )
+
+    async def test_delete_single(self, dotorm_bench_ready, comparison_report):
+        obj = await DotActivity.get(SEED_COUNT)
+        async with bench(self.ORM, "delete — single", 1):
+            await obj.delete()
+
+    async def test_delete_bulk(self, dotorm_bench_ready, comparison_report):
+        ids = list(range(SEED_COUNT - BULK_DELETE_N, SEED_COUNT))
+        async with bench(
+            self.ORM, f"delete_bulk — {BULK_DELETE_N:,}", BULK_DELETE_N
+        ):
+            await DotActivity.delete_bulk(ids)
+
+
+# ══════════════════════════════════════════════
+# 5) dotorm_old — реальная таблица activity (старый вариант, для истории)
 # ══════════════════════════════════════════════
 
 
 @pytest_asyncio.fixture(scope="class")
-async def dotorm_ready(db_pool):
-    """Seed activity table for dotorm benchmarks (reuses existing schema)."""
+async def dotorm_old_ready(db_pool):
+    """Seed РЕАЛЬНОЙ таблицы activity для dotorm_old (см. TestDotormOld)."""
     from backend.base.crm.languages.models.language import Language
 
     async with db_pool.acquire() as conn:
         await conn.execute(
-            "TRUNCATE TABLE activity, activity_type, users, language CASCADE"
+            "TRUNCATE TABLE activity, activity_type, users, language "
+            "RESTART IDENTITY CASCADE"
         )
 
     lang_id = await Language.create(
@@ -843,16 +1081,28 @@ async def dotorm_ready(db_pool):
         """,
             SEED_COUNT,
         )
+        await conn.execute("ANALYZE users, activity_type, activity")
     yield
 
 
-class TestDotorm:
-    """dotorm (FARA CRM ORM)."""
+# Как select_related (Tortoise) / selectinload (SQLAlchemy) / JOIN (raw):
+# без этого dotorm читал бы только скаляры, и сравнение READ было бы нечестным.
+USER_NESTED = {"user_id": ["id", "name"]}
 
-    ORM = "dotorm"
+
+class TestDotormOld:
+    """dotorm на РЕАЛЬНОЙ таблице activity — старый вариант, для истории.
+
+    activity тяжелее bench-таблиц остальных ORM: 4 FK (user_id,
+    activity_type_id, create_user_id, update_user_id), 7 индексов, 16 колонок
+    с аудитом, timestamptz вместо date — тот же сырой executemany на ней
+    стоит ~250 мс против ~150 на bench_activity_raw. Поэтому эти цифры
+    сравнимы только с dotorm, а не с другими ORM."""
+
+    ORM = "dotorm_old"
 
     async def test_create_single(
-        self, db_pool, dotorm_ready, comparison_report
+        self, db_pool, dotorm_old_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.crm.activity.models.activity_type import ActivityType
@@ -876,7 +1126,9 @@ class TestDotorm:
                     )
                 )
 
-    async def test_create_bulk(self, db_pool, dotorm_ready, comparison_report):
+    async def test_create_bulk(
+        self, db_pool, dotorm_old_ready, comparison_report
+    ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.crm.activity.models.activity_type import ActivityType
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
@@ -905,7 +1157,9 @@ class TestDotorm:
             ):
                 await Activity.create_bulk(payload)
 
-    async def test_get_single(self, db_pool, dotorm_ready, comparison_report):
+    async def test_get_single(
+        self, db_pool, dotorm_old_ready, comparison_report
+    ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
             ContainerTransaction,
@@ -913,10 +1167,14 @@ class TestDotorm:
 
         async with ContainerTransaction(db_pool) as session:
             async with bench(self.ORM, "get — single by id", 1):
-                await Activity.get(1)
+                await Activity.get(
+                    1,
+                    fields=Activity.get_store_fields(),
+                    fields_nested=USER_NESTED,
+                )
 
     async def test_search_filter_user(
-        self, db_pool, dotorm_ready, comparison_report
+        self, db_pool, dotorm_old_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
@@ -928,13 +1186,20 @@ class TestDotorm:
                 self.ORM, "search — filter user_id", SEARCH_LIMIT
             ):
                 await Activity.search(
-                    fields=["id", "summary", "state", "date_deadline"],
+                    fields=[
+                        "id",
+                        "summary",
+                        "state",
+                        "date_deadline",
+                        "user_id",
+                    ],
+                    fields_nested=USER_NESTED,
                     filter=[("user_id", "=", 1)],
                     limit=SEARCH_LIMIT,
                 )
 
     async def test_search_filter_member_res_model(
-        self, db_pool, dotorm_ready, comparison_report
+        self, db_pool, dotorm_old_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
@@ -946,13 +1211,14 @@ class TestDotorm:
                 self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
             ):
                 await Activity.search(
-                    fields=["id", "summary", "state", "res_id"],
+                    fields=["id", "summary", "state", "res_id", "user_id"],
+                    fields_nested=USER_NESTED,
                     filter=[("res_model", "=", "lead"), ("done", "=", False)],
                     limit=SEARCH_LIMIT,
                 )
 
     async def test_search_filter_state(
-        self, db_pool, dotorm_ready, comparison_report
+        self, db_pool, dotorm_old_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
@@ -965,12 +1231,13 @@ class TestDotorm:
             ):
                 await Activity.search(
                     fields=["id", "summary", "user_id", "date_deadline"],
+                    fields_nested=USER_NESTED,
                     filter=[("state", "=", "overdue"), ("done", "=", False)],
                     limit=SEARCH_LIMIT,
                 )
 
     async def test_search_count(
-        self, db_pool, dotorm_ready, comparison_report
+        self, db_pool, dotorm_old_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
 
@@ -979,7 +1246,7 @@ class TestDotorm:
             await Activity.search_count()
 
     async def test_update_single(
-        self, db_pool, dotorm_ready, comparison_report
+        self, db_pool, dotorm_old_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
@@ -991,7 +1258,9 @@ class TestDotorm:
             async with bench(self.ORM, "update — single", 1):
                 await obj.update(Activity(state="done", done=True))
 
-    async def test_update_bulk(self, db_pool, dotorm_ready, comparison_report):
+    async def test_update_bulk(
+        self, db_pool, dotorm_old_ready, comparison_report
+    ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
             ContainerTransaction,
@@ -1007,7 +1276,7 @@ class TestDotorm:
                 )
 
     async def test_delete_single(
-        self, db_pool, dotorm_ready, comparison_report
+        self, db_pool, dotorm_old_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
@@ -1019,7 +1288,9 @@ class TestDotorm:
             async with bench(self.ORM, "delete — single", 1):
                 await obj.delete()
 
-    async def test_delete_bulk(self, db_pool, dotorm_ready, comparison_report):
+    async def test_delete_bulk(
+        self, db_pool, dotorm_old_ready, comparison_report
+    ):
         from backend.base.crm.activity.models.activity import Activity
         from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
             ContainerTransaction,

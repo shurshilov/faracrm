@@ -55,10 +55,14 @@ class AuditMixin(_Base):
             ...
     """
 
+    # index=True на обеих audit-ссылках: на users ссылаются ~70 FK, и без
+    # индексов каждое удаление пользователя — seq scan (ON DELETE SET NULL)
+    # по КАЖДОЙ аудируемой таблице.
     create_user_id: "User | None" = Many2one(
         relation_table=lambda: env.models.user,
         default=_default_current_user,
         required=False,
+        index=True,
         description="Кто создал запись",
     )
 
@@ -72,6 +76,7 @@ class AuditMixin(_Base):
         relation_table=lambda: env.models.user,
         default=_default_current_user,
         required=False,
+        index=True,
         description="Кто последний обновил запись",
     )
 

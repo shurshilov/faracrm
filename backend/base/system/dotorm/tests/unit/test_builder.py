@@ -525,6 +525,49 @@ class TestBuilderGetStoreFields:
 
 
 @pytest.mark.unit
+class TestBuilderUpdateBulkRows:
+    """UPDATE с разными значениями на строку одним запросом (unnest)."""
+
+    def setup_method(self):
+        from dotorm.builder.builder import Builder
+        from dotorm.components.dialect import POSTGRES
+
+        self.fields = {
+            "id": MockField(primary_key=True, sql_type="SERIAL"),
+            "progress": MockField(sql_type="INTEGER"),
+            "amount": MockField(sql_type="DECIMAL(16,2)"),
+        }
+        self.builder = Builder(
+            table="leads", fields=self.fields, dialect=POSTGRES
+        )
+
+    def test_postgres_unnest(self):
+        rows = [
+            {"id": 1, "progress": 20, "amount": 10},
+            {"id": 2, "progress": 40, "amount": None},
+        ]
+        stmt, values = self.builder.build_update_bulk_rows(rows)
+
+        assert stmt == (
+            'UPDATE leads SET "progress" = v."progress", '
+            '"amount" = v."amount" '
+            "FROM unnest($1::int4[], $2::int4[], $3::numeric[]) "
+            'AS v("id", "progress", "amount") WHERE leads.id = v.id'
+        )
+        # по массиву на колонку, первый — id
+        assert values == [[1, 2], [20, 40], [10, None]]
+
+    def test_mysql_has_no_single_statement_form(self):
+        from dotorm.builder.builder import Builder
+        from dotorm.components.dialect import MYSQL
+
+        builder = Builder(table="leads", fields=self.fields, dialect=MYSQL)
+        assert (
+            builder.build_update_bulk_rows([{"id": 1, "progress": 1}]) is None
+        )
+
+
+@pytest.mark.unit
 class TestBuilderHelpers:
     """Tests for helper functions."""
 

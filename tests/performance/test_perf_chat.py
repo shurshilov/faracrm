@@ -27,10 +27,8 @@ class TestChatMessagePerformance:
     ):
         """Create one message via ORM."""
         from backend.base.crm.chat.models.chat_message import ChatMessage
-        from datetime import datetime, timezone
 
         info = seed_chat_and_messages
-        now = datetime.now(timezone.utc)
 
         async with perf_timer(
             perf_report, MODULE, "message create — single", 1
@@ -41,8 +39,6 @@ class TestChatMessagePerformance:
                     body="Perf test message",
                     message_type="comment",
                     author_user_id=1,
-                    create_date=now,
-                    write_date=now,
                 )
             )
 
@@ -51,10 +47,8 @@ class TestChatMessagePerformance:
     ):
         """Bulk create 5 000 messages."""
         from backend.base.crm.chat.models.chat_message import ChatMessage
-        from datetime import datetime, timezone
 
         info = seed_chat_and_messages
-        now = datetime.now(timezone.utc)
         n = 5_000
         payload = [
             ChatMessage(
@@ -62,8 +56,6 @@ class TestChatMessagePerformance:
                 body=f"Bulk msg {i}",
                 message_type="comment",
                 author_user_id=(i % 100) + 1,
-                create_date=now,
-                write_date=now,
             )
             for i in range(n)
         ]
@@ -145,7 +137,6 @@ class TestChatMessagePerformance:
                     "starred",
                     "pinned",
                     "is_edited",
-                    "is_read",
                 ],
                 filter=[
                     ("chat_id", "=", info["big_chat_id"]),
@@ -161,23 +152,39 @@ class TestChatMessagePerformance:
     async def test_search_unread_messages(
         self, db_pool, seed_chat_and_messages, perf_report
     ):
-        """Search unread messages in a chat."""
+        """Search unread messages in a chat.
+
+        Флага is_read у сообщения нет: непрочитанное = id больше watermark
+        участника (chat_member.last_read_message_id). Сид watermark не
+        ставит, эмулируем «прочитано всё, кроме последних 5 000».
+        """
         from backend.base.crm.chat.models.chat_message import ChatMessage
 
         info = seed_chat_and_messages
+        last = await ChatMessage.search_one(
+            fields=["id"],
+            filter=[("chat_id", "=", info["big_chat_id"])],
+            sort="id",
+            order="DESC",
+        )
+        watermark = (last.id if last else 0) - 5_000
 
         async with perf_timer(
-            perf_report, MODULE, "message search — unread in chat", 1000
+            perf_report,
+            MODULE,
+            "message search — unread (id > watermark)",
+            1000,
         ):
             result = await ChatMessage.search(
                 fields=["id"],
                 filter=[
                     ("chat_id", "=", info["big_chat_id"]),
-                    ("is_read", "=", False),
                     ("is_deleted", "=", False),
+                    ("id", ">", watermark),
                 ],
                 limit=1000,
             )
+        assert len(result) >= 1
 
     async def test_search_starred_messages(
         self, db_pool, seed_chat_and_messages, perf_report
@@ -242,19 +249,20 @@ class TestChatMessagePerformance:
         ):
             await msg.update(ChatMessage(body="Edited body", is_edited=True))
 
-    async def test_update_bulk_mark_read(
+    async def test_update_bulk_starred(
         self, db_pool, seed_chat_and_messages, perf_report
     ):
-        """Bulk update: mark 10 000 messages as read."""
+        """Bulk update: star 10 000 messages (mark-read теперь одна строка
+        watermark в chat_member, массовый апдейт сообщений — starred)."""
         from backend.base.crm.chat.models.chat_message import ChatMessage
 
         n = 10_000
         ids = list(range(1, n + 1))
 
         async with perf_timer(
-            perf_report, MODULE, f"message update_bulk — mark_read {n:,}", n
+            perf_report, MODULE, f"message update_bulk — starred {n:,}", n
         ):
-            await ChatMessage.update_bulk(ids, ChatMessage(is_read=True))
+            await ChatMessage.update_bulk(ids, ChatMessage(starred=True))
 
     # ── DELETE ──
 

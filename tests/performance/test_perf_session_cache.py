@@ -99,7 +99,8 @@ async def _run_concurrent(
 
 
 def _fmt_row(label: str, db_val: str, cache_val: str, speedup: str) -> str:
-    return f"│ {label:<32} │ {db_val:>15} │ {cache_val:>15} │ {speedup:>10} │"
+    # ASCII: консоль Windows (cp1251) не печатает рамочную псевдографику.
+    return f"| {label:<32} | {db_val:>15} | {cache_val:>15} | {speedup:>10} |"
 
 
 def _print_comparison_table(
@@ -111,20 +112,18 @@ def _print_comparison_table(
     concurrent_total: int,
 ):
     total_width = 34 + 17 + 17 + 12 + 4
-    top = "┌" + "─" * (total_width - 2) + "┐"
-    sep = "├" + "─" * (total_width - 2) + "┤"
-    bottom = "└" + "─" * (total_width - 2) + "┘"
+    top = sep = bottom = "+" + "-" * (total_width - 2) + "+"
 
     def sp(db: float, cache: float) -> str:
         if cache <= 0:
-            return "—"
-        return f"×{db / cache:.1f}"
+            return "-"
+        return f"x{db / cache:.1f}"
 
     def sp_rps(db: float, cache: float) -> str:
         # для RPS больше=лучше, поэтому cache/db
         if db <= 0:
-            return "—"
-        return f"×{cache / db:.1f}"
+            return "-"
+        return f"x{cache / db:.1f}"
 
     lines = [
         "",
@@ -170,7 +169,7 @@ def _print_comparison_table(
         ),
         sep,
         _fmt_row(
-            f"Concurrent {CONCURRENT_BATCH}×{CONCURRENT_WAVES}", "", "", ""
+            f"Concurrent {CONCURRENT_BATCH}x{CONCURRENT_WAVES}", "", "", ""
         ),
         _fmt_row(
             "  total time (ms)",
@@ -269,7 +268,7 @@ class TestSessionCacheComparison:
         perf_report.add(MODULE, f"[SEQ] total — DB", N, db_seq.total_ms / 1000)
         perf_report.add(
             MODULE,
-            f"[SEQ] total — Cache (×{db_seq.total_ms / max(cache_seq.total_ms, 1e-9):.1f})",
+            f"[SEQ] total — Cache (x{db_seq.total_ms / max(cache_seq.total_ms, 1e-9):.1f})",
             N,
             cache_seq.total_ms / 1000,
         )
@@ -280,7 +279,7 @@ class TestSessionCacheComparison:
         )
         perf_report.add(
             MODULE,
-            f"[SEQ] avg per call — Cache (×{db_seq.avg_ms / max(cache_seq.avg_ms, 1e-9):.1f})",
+            f"[SEQ] avg per call — Cache (x{db_seq.avg_ms / max(cache_seq.avg_ms, 1e-9):.1f})",
             1,
             cache_seq.avg_ms / 1000,
         )
@@ -294,7 +293,7 @@ class TestSessionCacheComparison:
             perf_report.add(MODULE, f"[SEQ] {name} — DB", 1, db_v / 1000)
             perf_report.add(
                 MODULE,
-                f"[SEQ] {name} — Cache (×{db_v / max(cache_v, 1e-9):.1f})",
+                f"[SEQ] {name} — Cache (x{db_v / max(cache_v, 1e-9):.1f})",
                 1,
                 cache_v / 1000,
             )
@@ -302,15 +301,15 @@ class TestSessionCacheComparison:
         # Concurrent total time
         perf_report.add(
             MODULE,
-            f"[CONCURRENT {CONCURRENT_BATCH}×{CONCURRENT_WAVES}] total — DB",
+            f"[CONCURRENT {CONCURRENT_BATCH}x{CONCURRENT_WAVES}] total — DB",
             concurrent_total,
             db_concurrent_sec,
         )
         perf_report.add(
             MODULE,
             (
-                f"[CONCURRENT {CONCURRENT_BATCH}×{CONCURRENT_WAVES}] total — Cache "
-                f"(×{db_concurrent_sec / max(cache_concurrent_sec, 1e-9):.1f})"
+                f"[CONCURRENT {CONCURRENT_BATCH}x{CONCURRENT_WAVES}] total — Cache "
+                f"(x{db_concurrent_sec / max(cache_concurrent_sec, 1e-9):.1f})"
             ),
             concurrent_total,
             cache_concurrent_sec,

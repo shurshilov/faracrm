@@ -1,3 +1,4 @@
+from backend.base.system.dotorm.dotorm.decorators import depends
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
@@ -16,6 +17,31 @@ class LeadStage(DotModel):
     active: bool = Boolean(default=True)
     fold: bool = Boolean(default=False, string="Folded in Kanban")
     color: str = Char(string="Color", default="#3498db")
+
+    # Процент воронки (0–100): 100 у последней активной стадии, остальные
+    # пропорционально sequence. Зависит от всей таблицы (максимум), а не
+    # от полей одной строки — поэтому @depends() без триггеров: после
+    # любой операции над стадиями пересчитываются все стадии.
+    # Lead.progress копирует его через prefetch stage_id.progress.
+    progress: int = Integer(
+        string="Progress %", default=0, compute="_compute_progress"
+    )
+
+    @depends()
+    async def _compute_progress(self) -> None:
+        last = await self.search_one(
+            filter=[("active", "=", True)],
+            fields=["sequence"],
+            sort="sequence",
+            order="DESC",
+        )
+        top = int(last.sequence or 0) if last else 0
+        sequence = int(self.sequence or 0)
+        self.progress = (
+            min(100, round(sequence * 100 / top))
+            if top > 0 and sequence > 0
+            else 0
+        )
 
 
 INITIAL_LEAD_STAGES = [

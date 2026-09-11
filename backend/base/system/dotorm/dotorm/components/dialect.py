@@ -87,6 +87,19 @@ class Dialect(ABC):
         (MySQL). payloads_dicts is guaranteed non-empty."""
         ...
 
+    # --- bulk UPDATE with per-row values (single statement) ---
+    def make_bulk_update_rows(
+        self,
+        rows: list[dict[str, Any]],
+        fields_list: list[str],
+        fields: "dict[str, Field]",
+    ) -> tuple[str, str, list] | None:
+        """(set_clause, from_clause, params) for ``UPDATE t SET ... FROM ...
+        WHERE t.id = v.id`` writing DIFFERENT values per row in one statement.
+        None when the dialect has no single-statement form — the caller falls
+        back to one UPDATE per row. rows share the same keys, "id" included."""
+        return None
+
     @abstractmethod
     def get_no_transaction_session(self):
         """Return the driver session class (no-transaction) for this dialect."""
@@ -182,6 +195,42 @@ class PostgresSqlDialect(Dialect):
 
         unnest_clause = ", ".join(unnest_params)
         return f"SELECT * FROM unnest({unnest_clause})", column_arrays
+
+    def make_bulk_update_rows(
+        self,
+        rows: list[dict[str, Any]],
+        fields_list: list[str],
+        fields: "dict[str, Field]",
+    ) -> tuple[str, str, list]:
+        """Разные значения на строку одним UPDATE через unnest:
+
+            UPDATE t SET "f" = v."f", ...
+            FROM unnest($1::int4[], $2::numeric[], ...) AS v("id", "f", ...)
+            WHERE t.id = v.id
+
+        По массиву на колонку (первый — id), как в make_bulk_insert_source.
+        """
+        columns = ["id", *fields_list]
+        arrays: list = []
+        casts: list[str] = []
+        for i, name in enumerate(columns, 1):
+            arrays.append([row.get(name) for row in rows])
+            field_obj = fields.get(name)
+            pg_type = (
+                self._array_cast_type(field_obj.sql_type)
+                if field_obj
+                else "text"
+            )
+            casts.append(f"${i}::{pg_type}[]")
+        set_clause = ", ".join(
+            f"{self.escape_identifier(f)} = v.{self.escape_identifier(f)}"
+            for f in fields_list
+        )
+        from_clause = (
+            f"FROM unnest({', '.join(casts)}) "
+            f"AS v({', '.join(self.escape_identifier(c) for c in columns)})"
+        )
+        return set_clause, from_clause, arrays
 
     def get_no_transaction_session(self):
         from ..databases.postgres.session import NoTransactionSession

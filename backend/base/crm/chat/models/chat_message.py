@@ -111,15 +111,19 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         required=True,
     )
 
-    # Автор сообщения (пользователь системы - оператор)
+    # Автор сообщения (пользователь системы - оператор).
+    # index=True на обоих авторах: самая большая таблица, и без индекса
+    # удаление пользователя/партнёра (FK ON DELETE SET NULL) — seq scan по ней.
     author_user_id: "User | None" = Many2one(
         relation_table=lambda: env.models.user,
+        index=True,
         description="Автор - пользователь системы (для операторов)",
     )
 
     # Автор сообщения (партнёр - внешний клиент)
     author_partner_id: "Partner | None" = Many2one(
         relation_table=lambda: env.models.partner,
+        index=True,
         description="Автор - партнёр (для внешних клиентов)",
     )
 

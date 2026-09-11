@@ -45,6 +45,7 @@ class OrmPrimaryMixin(_Base):
     _depends_local_triggers: dict = {}
     _depends_parent_triggers: dict = {}
     _depends_prefetch: dict = {}
+    _depends_always: list = []
 
     async def delete(self, session=None, depends_jobs=None):
         await self._check_access(Operation.DELETE, record_ids=[self.id])
@@ -53,10 +54,15 @@ class OrmPrimaryMixin(_Base):
         stmt = self._builder.build_delete()
         result = await session.execute(stmt, [self.id], cursor="void")
 
-        # @depends: триггеры по полям self (включая FK) → подъём родителей.
-        await self._collect_and_flush(
-            self.assigned_fields(), depends_jobs, session
+        # @depends: родители по FK удалённой строки и @depends() без
+        # триггеров. Computes самой строки не помечаем — её уже нет, их
+        # UPDATE ушёл бы в пустоту (у Lead это три лишних запроса).
+        depends_jobs, owner = self._depends_open(depends_jobs)
+        self._depends_mark_always(depends_jobs)
+        self._depends_mark_parents(
+            [self], self.assigned_fields(), depends_jobs
         )
+        await self._depends_flush(depends_jobs, owner, session)
         return result
 
     @hybridmethod
@@ -95,10 +101,12 @@ class OrmPrimaryMixin(_Base):
             # IN (%s, %s, ...) — ids as individual params
             result = await session.execute(stmt, ids, cursor="void")
 
-        for rec in pre_fetched:
-            await rec._collect_depends(
-                rec.assigned_fields(), depends_jobs, session
-            )
+        # Только родители (см. delete). У удалённой строки «изменились» все
+        # поля, по которым подписаны родители.
+        cls._depends_mark_parents(
+            pre_fetched, list(cls._depends_parent_triggers), depends_jobs
+        )
+        cls._depends_mark_always(depends_jobs)
 
         await cls._depends_flush(depends_jobs, owner, session)
         return result
@@ -164,10 +172,11 @@ class OrmPrimaryMixin(_Base):
         if payload is not self:
             self._sync_after_update(payload, fields)
 
-        # @depends: локальные computes self + (если owner) подъём родителей.
-        await self._collect_and_flush(
-            list(fields), depends_jobs, session, owner
-        )
+        # @depends: пометить по факту операции (@depends() без триггеров)
+        # и по изменённым полям; owner сольёт очередь.
+        self._depends_mark_always(depends_jobs)
+        self._depends_mark([self], list(fields), depends_jobs)
+        await self._depends_flush(depends_jobs, owner, session)
 
     def _sync_after_update(self, payload: "_M", fields: list[str]):
         """
@@ -270,28 +279,30 @@ class OrmPrimaryMixin(_Base):
         stmt, values = cls._builder.build_update_bulk(payload_dict, ids)
         result = await session.execute(stmt, values, cursor="void")
 
-        # @depends на НОВОМ состоянии: каскад по затронутым полям.
-        # FK для нового родителя, если был в payload, поднимет Stage 2.
-        # Лишний SELECT + пересчёт нужны, только если у модели вообще есть
-        # @depends-триггеры — свои локальные computes или родительские (где
-        # self — ребёнок). Иначе _collect_depends ничего не соберёт, и
-        # перечитывать строки незачем (у моделей без @depends таблицы пусты).
+        # @depends на НОВОМ состоянии: пометить по затронутым полям (FK
+        # нового родителя, если был в payload, поднимет и его).
+        # Перечитывать строки есть смысл, только если среди изменённых полей
+        # есть триггер (локальный или родительский): иначе помечать нечего,
+        # а SELECT по всем ids на большом bulk стоил дороже самого UPDATE.
+        cls._depends_mark_always(depends_jobs)
         changed = list(payload_dict.keys())
-        if changed and (
-            cls._depends_local_triggers or cls._depends_parent_triggers
-        ):
+        triggered = set(changed) & (
+            cls._depends_local_triggers.keys()
+            | cls._depends_parent_triggers.keys()
+        )
+        if triggered:
             recs = await cls.search(
                 filter=[("id", "in", list(ids))], session=session
             )
             for rec in recs:
                 for k, v in payload_dict.items():
                     setattr(rec, k, v)
-                await rec._collect_depends(changed, depends_jobs, session)
+            cls._depends_mark(recs, changed, depends_jobs)
 
         # @depends на СТАРОМ родителе: для каждой записи проверяем, какой
-        # FK реально менялся (old != new), и фаерим stub со старым FK.
-        # Stub содержит только id и old_fk_value — этого достаточно для
-        # Stage 2 (резолв инверсии FK → родитель → recompute).
+        # FK реально менялся (old != new), и помечаем родителя по stub'у со
+        # старым FK. Stub — только id и old_fk_value: этого достаточно,
+        # чтобы резолвнуть инверсию FK → родитель.
         for old_rec in pre_fetched_old:
             for fk_attr in fk_attrs_in_payload:
                 old_fk = getattr(old_rec, fk_attr, None)
@@ -302,7 +313,7 @@ class OrmPrimaryMixin(_Base):
                     continue
                 stub = cls(id=old_rec.id)
                 setattr(stub, fk_attr, old_fk)
-                await stub._collect_depends([fk_attr], depends_jobs, session)
+                cls._depends_mark_parents([stub], [fk_attr], depends_jobs)
 
         await cls._depends_flush(depends_jobs, owner, session)
         return result
@@ -325,6 +336,7 @@ class OrmPrimaryMixin(_Base):
         )
 
         session = cls._get_db_session(session)
+        depends_jobs, owner = cls._depends_open(depends_jobs)
 
         # Применяем default-ы к незаданным store-полям ДО сериализации.
         # json() только сериализует — он не вычисляет дефолты.
@@ -352,15 +364,14 @@ class OrmPrimaryMixin(_Base):
         # Проверяем row access после создания (для Rules типа "только свои записи")
         await cls._check_access(Operation.CREATE, record_ids=[record_id])
 
-        # @depends: подставим свежий id, чтобы self-триггеры могли
-        # адресовать запись, и запустим cascade. Stage 1 запишет
-        # значения вычисляемых stored-полей отдельным UPDATE — это цена
-        # единого пути create/update; pre-INSERT compute убран ради
-        # одной точки запуска @depends.
+        # @depends: подставим свежий id, чтобы пометка могла адресовать
+        # запись. Значения вычисляемых stored-полей уйдут отдельным UPDATE —
+        # это цена единого пути create/update; pre-INSERT compute убран
+        # ради одной точки запуска @depends.
         payload.id = record_id
-        await payload._collect_and_flush(
-            payload.assigned_fields(), depends_jobs, session
-        )
+        cls._depends_mark_always(depends_jobs)
+        cls._depends_mark([payload], payload.assigned_fields(), depends_jobs)
+        await cls._depends_flush(depends_jobs, owner, session)
         return record_id
 
     def _check_translated_field(self, field_name):
@@ -452,26 +463,21 @@ class OrmPrimaryMixin(_Base):
 
         records = await session.execute(stmt, values, cursor="fetch")
 
-        # @depends: проверяем row access и запускаем cascade для каждой
-        # созданной строки. Stage 1 запишет stored-computed поля отдельным
-        # UPDATE (компромисс единого пути create); Stage 2 поднимет
-        # родителей через _depends_parent_triggers (например Sale.amount_* по
-        # созданным SaleLine).
+        # @depends: проверяем row access и помечаем созданные строки одним
+        # списком — очередь посчитает их группой (prefetch и UPDATE на все
+        # строки сразу, а не по запросу на строку) и поднимет родителей
+        # (например Sale.amount_* по созданным SaleLine).
         if records:
             created_ids = [r["id"] for r in records]
             await cls._check_access(Operation.CREATE, record_ids=created_ids)
-            # p.id = rid обязателен; depends по строкам — только если они есть
-            # (иначе на больших bulk-вставках no-depends моделей это была бы
-            # поштучная трата на assigned_fields() + no-op _collect_depends).
-            has_depends = bool(
-                cls._depends_local_triggers or cls._depends_parent_triggers
-            )
             for p, rid in zip(payload, created_ids):
                 p.id = rid
-                if has_depends:
-                    await p._collect_depends(
-                        p.assigned_fields(), depends_jobs, session
-                    )
+            cls._depends_mark_always(depends_jobs)
+            if cls._depends_local_triggers or cls._depends_parent_triggers:
+                changed: set[str] = set()
+                for p in payload:
+                    changed.update(p.assigned_fields())
+                cls._depends_mark(payload, changed, depends_jobs)
 
         await cls._depends_flush(depends_jobs, owner, session)
         return records
@@ -645,29 +651,38 @@ class OrmPrimaryMixin(_Base):
             return records[0]
         return 0
 
-    # ---- @depends: cross-model trigger engine ---------------------------
-    # Двух-этапный пересчёт поверх @depends.
+    # ---- @depends: отложенный пересчёт ----------------------------------
+    # Паттерн «пометить → слить» (как tocompute/recompute в Odoo). CRUD
+    # ничего не считает: после своего SQL он только ПОМЕЧАЕТ, что
+    # пересчитать — depends_jobs[(Модель, метод)] = {id: запись | None}.
+    # Считает owner операции один раз в конце (_depends_run): ключ за
+    # ключом — один SELECT недостающих записей, один prefetch, handler по
+    # каждой записи в памяти, один UPDATE; записанные поля помечают
+    # следующее звено каскада в ту же очередь.
     #
-    # Хук self._collect_depends(changed_fields, depends_jobs, session) вызывается
-    # из delete/update/create ПОСЛЕ успешного SQL и только НАПОЛНЯЕТ depends_jobs.
+    # Одиночная запись и bulk — один путь, разница только в числе id под
+    # ключом. Сколько бы раз и откуда ключ ни пометили (несколько команд
+    # O2M в одном update, два метода одной модели по цепочке), выполнится
+    # он один раз на все id — лишних пересчётов нет. Дети считаются раньше
+    # родителей (_depends_next): Sale.amount_* читает уже пересчитанные
+    # строки, а не помечается ими повторно.
     #
-    # Этап 1 (локально): по каждому изменённому полю поднимаются
-    # @depends-методы самой модели через таблицу _depends_local_triggers
-    # (set-дедуп: одна функция на нескольких полях запускается один раз;
-    # порядок — _cache_compute_order).
+    # Значение под id: объект — свежее локальное состояние (payload/self,
+    # перечитывать не надо); None — «перечитать из БД» (так дети помечают
+    # родителей: их строки уже в базе, а объект родителя на руках мог
+    # держать устаревший список детей).
     #
-    # Этап 2 (cross-model): по каждому полю смотрится таблица
-    # _depends_parent_triggers (инверсия dotted-deps родителей),
-    # резолвится FK, job-ы родителей складываются в depends_jobs (запуск —
-    # позже, в _fire_parent_depends у owner'а операции).
+    # @depends() без триггеров — метод зависит от всей таблицы, а не от
+    # полей строки (процент стадии от max(sequence) активных стадий):
+    # любая операция над моделью помечает его как «все записи» (вместо
+    # словаря id — None), _depends_run загружает их search'ем. Помечают
+    # только CRUD-методы (_depends_mark_always), каскад — нет, иначе
+    # метод перепомечал бы сам себя.
     #
-    # Compute пишет stored-поля → каскад через _collect_depends
-    # на множестве `written`.
-    #
-    # Таблицы строятся ОДНОКРАТНО при регистрации моделей в env.models
-    # (ModelsCore._build_table_mapping → _build_depends_tables), а не
-    # лениво — чтобы не было гонок и чтобы инверсия на детях гарантированно
-    # была доступна с первого CRUD-вызова.
+    # Таблицы триггеров строятся ОДНОКРАТНО при регистрации моделей в
+    # env.models (ModelsCore._build_table_mapping → _build_depends_tables),
+    # а не лениво — чтобы не было гонок и чтобы инверсия на детях
+    # гарантированно была доступна с первого CRUD-вызова.
 
     @classmethod
     def _build_depends_tables(cls, models) -> None:
@@ -699,13 +714,16 @@ class OrmPrimaryMixin(_Base):
             @depends("order_line_ids.price_subtotal", "tax_id.amount")
             → {head=order_line_ids: [price_subtotal,id],
                head=tax_id:        [amount,id]}
-          Движок дёргает _ensure_prefetch_for_method() перед каждым
+          Движок дёргает _prefetch_for_method() перед каждым
           compute, чтобы метод читал self.tax_id.amount /
           self.order_line_ids[i].price_subtotal напрямую, без fetch'ей
           внутри compute-функции.
           (Триггер по M2O-полю — `_compute меняется когда tax.amount
           поменялся` — пока не реализован: требует индекса «кто на меня
           ссылается». Здесь только prefetch.)
+
+        - _depends_always: [method_name] — методы с пустым @depends():
+          пересчёт ВСЕХ записей модели после любой операции над ней.
 
         Идемпотентно: при повторном вызове таблицы переинициализируются.
         """
@@ -716,14 +734,19 @@ class OrmPrimaryMixin(_Base):
             klass._depends_local_triggers = {}
             klass._depends_parent_triggers = {}
             klass._depends_prefetch = {}
+            klass._depends_always = []
 
         for klass in models:
             all_fields = klass._cache_all_fields
 
             # --- TRIGGERS ---
-            # bare скаляр / M2O → local; dotted O2M/M2M → parent на ребёнке.
+            # bare скаляр / M2O → local; dotted O2M/M2M → parent на ребёнке;
+            # пустой список → «после любой операции, все записи».
             trigger_deps = klass._cache_compute_method_deps
             for method_name, deps in trigger_deps.items():
+                if not deps:
+                    klass._depends_always.append(method_name)
+                    continue
                 for dep in deps:
                     if "." in dep:
                         head, tail = dep.split(".", 1)
@@ -789,225 +812,293 @@ class OrmPrimaryMixin(_Base):
     @staticmethod
     def _depends_open(depends_jobs):
         """Открыть scope @depends → (depends_jobs, owner). owner=True у самого
-        внешнего вызова (depends_jobs не передан): он создаёт аккумулятор и в конце
-        сольёт его. Вложенные получают чужой depends_jobs и только копят."""
+        внешнего вызова (depends_jobs не передан): он создаёт очередь и в конце
+        сливает её. Вложенные получают чужую очередь и только помечают."""
         return (
             (depends_jobs, False) if depends_jobs is not None else ({}, True)
         )
 
     @classmethod
     async def _depends_flush(cls, depends_jobs, owner, session=None) -> None:
-        """Слить накопленные родительские пересчёты — только если owner.
-        Для bulk-методов: вызывается после цикла _collect_depends по строкам.
-        """
+        """Слить очередь пересчётов — только если owner."""
         if owner:
-            await cls._fire_parent_depends(depends_jobs, session)
+            await cls._depends_run(depends_jobs, session)
 
-    async def _collect_and_flush(
-        self, changed_fields, depends_jobs, session=None, owner=None
-    ) -> None:
-        """Собрать @depends по полям записи и (если owner) слить родителей.
+    @classmethod
+    def _depends_mark(cls, records, changed_fields, depends_jobs) -> None:
+        """Пометить по изменённым полям записей: computes самой модели
+        (_depends_local_triggers) и родителей (_depends_mark_parents).
+        Чистый bookkeeping, без запросов.
 
-        owner=None (по умолчанию) → определить владение самому из depends_jobs: так
-        одиночные create/delete зовут это ОДНОЙ строкой, без _depends_open
-        наверху (depends_jobs им в теле не нужен). Если depends_jobs нужен и в теле
-        метода (update → _update_relations; bulk-циклы) — open делается заранее
-        через _depends_open, а owner передаётся сюда явно."""
-        if owner is None:
-            depends_jobs, owner = self._depends_open(depends_jobs)
-        await self._collect_depends(changed_fields, depends_jobs, session)
-        await self._depends_flush(depends_jobs, owner, session)
-
-    async def _collect_depends(
-        self, changed_fields, depends_jobs, session=None
-    ) -> None:
-        """Обработать изменённые поля self В аккумулятор depends_jobs.
-
-        Координатор двух этапов; родителей НЕ запускает:
-          Этап 1 — _fire_local_depends: пересчитать локальные computes self
-                   (их записи каскадно проходят сюда же);
-          Этап 2 — _collect_parent_depends: сложить jobs родителей в depends_jobs.
-        Запуск родителей — отдельно, в _fire_parent_depends (его зовёт owner
-        CRUD-операции в самом конце). depends_jobs обязателен.
-
-        Таблицы триггеров построены однократно при регистрации моделей
-        в env.models (см. _build_depends_tables)."""
-        await self._fire_local_depends(changed_fields, depends_jobs, session)
-        self._collect_parent_depends(changed_fields, depends_jobs)
-
-    async def _fire_local_depends(
-        self, changed_fields, depends_jobs, session=None
-    ) -> None:
-        """Этап 1: пересчитать локальные @depends-computes self по изменённым
-        полям. Записанные ими stored-поля каскадно проходят _collect_depends
-        (через _fire_compute) с тем же depends_jobs."""
-        cls = self.__class__
-        local_methods: set[str] = set()
+        Под id лежит сам объект (его состояние свежее, перечитывать не
+        надо); пометка None («перечитать») липкая — объект её не затирает."""
+        methods: set[str] = set()
         for f in changed_fields:
-            local_methods |= cls._depends_local_triggers.get(f, set())
-        if not local_methods:
-            return
+            methods |= cls._depends_local_triggers.get(f, set())
         for m in cls._cache_compute_order:
-            if m in local_methods:
-                await self._fire_compute(m, depends_jobs, session)
+            if m not in methods:
+                continue
+            slot = depends_jobs.setdefault((cls, m), {})
+            for rec in records:
+                if rec.id not in slot or slot[rec.id] is not None:
+                    slot[rec.id] = rec
+        cls._depends_mark_parents(records, changed_fields, depends_jobs)
 
-    def _collect_parent_depends(self, changed_fields, depends_jobs) -> None:
-        """Этап 2: сложить родительские jobs в depends_jobs — какие computes каких
-        родителей пересчитать при изменении полей self (self здесь — ребёнок).
-        Чистый bookkeeping: ни await, ни запусков (поэтому обычный def).
-
-        _depends_parent_triggers — {child_field: {(Parent, fk, method)}},
-        поэтому по изменённому полю идёт прямой lookup, без скана-фильтра."""
-        cls = self.__class__
-        parent_triggers = cls._depends_parent_triggers
+    @classmethod
+    def _depends_mark_parents(
+        cls, records, changed_fields, depends_jobs
+    ) -> None:
+        """Пометить computes родителей по FK записей (cls здесь — ребёнок):
+        _depends_parent_triggers — {child_field: {(Parent, fk, method)}}.
+        Родитель помечается как None — _depends_run перечитает его из БД
+        (у объекта на руках могли быть уже неактуальные дети)."""
         for f in changed_fields:
-            for Parent, child_fk, parent_method in parent_triggers.get(f, ()):
-                fk_val = getattr(self, child_fk, None)
-                if hasattr(fk_val, "id"):
-                    fk_val = fk_val.id
-                if isinstance(fk_val, int):
-                    depends_jobs.setdefault((Parent, fk_val), set()).add(
-                        parent_method
+            for Parent, fk, m in cls._depends_parent_triggers.get(f, ()):
+                slot = depends_jobs.setdefault((Parent, m), {})
+                for rec in records:
+                    pid = getattr(rec, fk, None)
+                    if hasattr(pid, "id"):
+                        pid = pid.id
+                    if isinstance(pid, int):
+                        slot[pid] = None
+
+    @classmethod
+    def _depends_mark_always(cls, depends_jobs) -> None:
+        """Пометить методы с пустым @depends() как «все записи модели»
+        (None вместо словаря id). Зовут только CRUD-методы — по факту
+        операции, какие бы поля она ни трогала."""
+        for m in cls._depends_always:
+            depends_jobs[(cls, m)] = None
+
+    @classmethod
+    async def _depends_run(cls, depends_jobs, session=None) -> None:
+        """Слить очередь до пустоты. Один ключ (Модель, метод) — один SELECT
+        недостающих записей (или всех, если ключ помечен как «все записи»),
+        один prefetch relation-голов, handler по каждой записи в памяти,
+        один UPDATE; записанные поля помечают следующее звено каскада в ту
+        же очередь."""
+        while depends_jobs:
+            key = cls._depends_next(depends_jobs)
+            Model, method = key
+            slot = depends_jobs.pop(key)
+            if slot is None:
+                records = await Model.search(session=session)
+            else:
+                records = [rec for rec in slot.values() if rec is not None]
+                missing = [rid for rid, rec in slot.items() if rec is None]
+                if missing:
+                    records += await Model.search(
+                        filter=[("id", "in", missing)], session=session
                     )
+            if not records:
+                continue
+            await Model._prefetch_for_method(records, method, session)
+            for rec in records:
+                result = getattr(rec, method)()
+                if asyncio.iscoroutine(result):
+                    await result
+            written = Model._cache_compute_writes.get(method, set())
+            if written:
+                await Model._update_store_many(records, list(written), session)
+                Model._depends_mark(records, written, depends_jobs)
+
+    @hybridmethod
+    async def recompute_all(self, session=None) -> None:
+        """Пересчитать и записать все @depends-поля у ВСЕХ записей модели.
+
+        Backfill: compute-поле добавили на существующую таблицу — колонку
+        создаст DDL, значения даёт этот вызов (например, из post_init)."""
+        cls = self.__class__
+        depends_jobs = {(cls, m): None for m in cls._cache_compute_order}
+        await cls._depends_run(depends_jobs, cls._get_db_session(session))
 
     @staticmethod
-    async def _fire_parent_depends(depends_jobs, session=None) -> None:
-        """Прогнать накопленные родительские пересчёты до фикс-точки.
+    def _depends_next(depends_jobs):
+        """Следующий ключ очереди: дети раньше родителей. Модель, на которую
+        ссылается _depends_parent_triggers другой модели из очереди, ждёт —
+        иначе родитель посчитался бы по ещё не пересчитанным строкам, а
+        после них был бы помечен и посчитан снова. Самоссылка/цикл — просто
+        первый ключ."""
+        pending = {Model for Model, _m in depends_jobs}
+        parents = {
+            Parent
+            for Child in pending
+            for trigs in Child._depends_parent_triggers.values()
+            for Parent, _fk, _m in trigs
+            if Parent is not Child
+        }
+        for key in depends_jobs:
+            if key[0] not in parents:
+                return key
+        return next(iter(depends_jobs))
 
-        Единственное место, где родители реально выполняются. Пересчёт
-        родителя через _fire_compute пишет stored-поля и каскадно докладывает
-        деда в ТОТ ЖЕ depends_jobs — цикл while это подхватывает (и дедупит).
+    @classmethod
+    async def _update_store_many(cls, records, fields: list[str], session):
+        """Записать одни и те же поля с РАЗНЫМИ значениями у записей списка.
 
-        depends_jobs — {(ParentClass, parent_id): set(method_names)}."""
-        while depends_jobs:
-            (Parent, pid), methods = depends_jobs.popitem()
-            parent = await Parent.get_or_none(pid, session=session)
-            if parent is None:
-                continue
-            for m in Parent._cache_compute_order:
-                if m in methods:
-                    await parent._fire_compute(m, depends_jobs, session)
+        Одна запись — обычный UPDATE (_update_store). Много — один
+        UPDATE ... FROM unnest (Postgres); построчно, если диалект так не
+        умеет (MySQL) или поле требует своего SQL (JSON: jsonb_set)."""
+        from ...fields import JSONField
 
-    async def _fire_compute(
-        self, method_name: str, depends_jobs, session=None
-    ) -> None:
-        """Выполнить один @depends-compute, записать выходные stored-поля и
-        каскадно обработать их через _collect_depends (в тот же depends_jobs).
-
-        depends_jobs обязателен: родительские пересчёты от записанных полей копятся
-        в общий аккумулятор операции, а выполняются в _fire_parent_depends.
-
-        Перед запуском handler'а догружает relation-поля, объявленные в
-        dotted @depends этого метода (через _ensure_prefetch_for_method),
-        чтобы compute мог читать self.tax_id.amount /
-        self.order_line_ids[i].price_subtotal напрямую, без fetch'ей."""
-        cls = self.__class__
-        handler = getattr(self, method_name, None)
-        if handler is None:
+        store = cls.get_store_fields_dict()
+        plain = [f for f in fields if f in store]
+        if not plain:
             return
-        await self._ensure_prefetch_for_method(method_name, session)
-        result = handler()
-        if asyncio.iscoroutine(result):
-            await result
-        written = cls._cache_compute_writes.get(method_name, set())
-        if written:
-            roll = cls(**{w: getattr(self, w) for w in written})
-            await self._update_store(roll, list(written), session)
-            await self._collect_depends(written, depends_jobs, session)
+        rolls = [cls(**{f: getattr(rec, f) for f in plain}) for rec in records]
+        built = None
+        if len(records) > 1 and not any(
+            isinstance(store[f], JSONField) for f in plain
+        ):
+            rows = []
+            for rec, roll in zip(records, rolls):
+                row = roll.json(
+                    include=set(plain),
+                    exclude_unset=True,
+                    only_store=True,
+                    mode=JsonMode.UPDATE,
+                )
+                row["id"] = rec.id
+                rows.append(row)
+            built = cls._builder.build_update_bulk_rows(rows)
+        if built is None:
+            for rec, roll in zip(records, rolls):
+                await rec._update_store(roll, plain, session)
+            return
+        stmt, values = built
+        await session.execute(stmt, values, cursor="void")
 
     async def _ensure_prefetch_for_method(
         self, method_name: str, session=None
     ) -> None:
-        """Догрузить relation-поля по _depends_prefetch для метода.
+        """Догрузить relation-поля одной записи — см. _prefetch_for_method.
+        Зовёт recompute() (onchange из формы)."""
+        await self._prefetch_for_method([self], method_name, session)
 
-        Делает RELATION-поля на self «толстыми»:
-          - M2O: self.head становится экземпляром related_model с
-            указанными tail-полями (или dict/int конвертируется тоже);
-          - O2M: self.head становится list[related_model] с tail-полями.
+    @classmethod
+    async def _prefetch_for_method(
+        cls, records, method_name: str, session=None
+    ) -> None:
+        """Догрузить relation-поля по _depends_prefetch метода — один SELECT
+        на relation-голову для всего списка.
 
-        Идемпотентно: если для M2O self.head уже DotModel со всеми tail'ами
-        — пропускаем; для O2M — если self.head уже list и первый элемент
-        содержит tail'ы, тоже пропускаем. Это покрывает ситуацию, когда
-        запись уже была загружена с fields_nested или была подложена
-        тестами/onchange-роутером.
-        """
+        Делает RELATION-поля записей «толстыми»:
+          - M2O: rec.head становится экземпляром related_model с указанными
+            tail-полями (int / {id, ...} от фронта тоже конвертируются);
+          - O2M: rec.head становится list[related_model] с tail-полями.
+
+        Идемпотентно: M2O уже DotModel со всеми tail'ами и O2M-список, чей
+        первый элемент несёт tail'ы, не трогаем — это покрывает записи,
+        загруженные с fields_nested или подложенные тестами/onchange."""
         from ...fields import Many2one, One2many
-        from ...model import DotModel as _DM
 
-        cls = self.__class__
         prefetch_map = cls._depends_prefetch.get(method_name)
         if not prefetch_map:
             return
-
         all_fields = cls._cache_all_fields or {}
 
         for head, tails in prefetch_map.items():
             head_field = all_fields.get(head)
             if head_field is None:
                 continue
-            current = getattr(self, head, None)
 
             if isinstance(head_field, Many2one):
                 related_model = head_field.relation_table
                 if related_model is None:
                     continue
-
-                fk_val: int | None = None
-                if isinstance(current, int):
-                    fk_val = current
-                elif isinstance(current, dict):
-                    # фронт прислал {id, name, ...}
-                    candidate = current.get("id")
-                    if isinstance(candidate, int):
-                        fk_val = candidate
-                elif isinstance(current, _DM):
-                    # уже модель — проверим наличие tail'ов
-                    missing = [
-                        t
-                        for t in tails
-                        if t != "id" and not current.is_assigned(t)
-                    ]
-                    if not missing:
-                        continue
-                    rid = current.id
-                    if isinstance(rid, int):
-                        fk_val = rid
-
-                if isinstance(fk_val, int):
-                    fetched = await related_model.get_or_none(
-                        fk_val, fields=list(tails), session=session
+                need: dict[int, list] = {}  # fk → записи, которым он нужен
+                for rec in records:
+                    fk_val = cls._prefetch_fk_id(
+                        getattr(rec, head, None), tails
                     )
-                    if fetched is not None:
-                        setattr(self, head, fetched)
+                    if fk_val is not None:
+                        need.setdefault(fk_val, []).append(rec)
+                if not need:
+                    continue
+                fetched = await related_model.search(
+                    fields=list(tails),
+                    filter=[("id", "in", list(need))],
+                    session=session,
+                )
+                by_id = {obj.id: obj for obj in fetched}
+                for fk_val, recs in need.items():
+                    obj = by_id.get(fk_val)
+                    if obj is not None:
+                        for rec in recs:
+                            setattr(rec, head, obj)
 
             elif isinstance(head_field, One2many):
                 related_model = head_field.relation_table
                 inverse_fk = head_field.relation_table_field
                 if related_model is None or inverse_fk is None:
                     continue
-
-                # Если уже список с нужными tail'ами — пропускаем.
-                if isinstance(current, list):
-                    if not current:
-                        continue
-                    first = current[0]
-                    if isinstance(first, _DM):
-                        missing = [
-                            t
-                            for t in tails
-                            if t != "id" and not first.is_assigned(t)
-                        ]
-                        if not missing:
-                            continue
-
-                if not isinstance(self.id, int):
-                    # запись ещё не сохранена — детей быть не может
-                    setattr(self, head, [])
+                pending = [
+                    rec
+                    for rec in records
+                    if cls._prefetch_o2m_pending(
+                        getattr(rec, head, None), tails
+                    )
+                ]
+                parent_ids: list[int] = []
+                for rec in pending:
+                    if isinstance(rec.id, int):
+                        parent_ids.append(rec.id)
+                    else:
+                        setattr(rec, head, [])  # не сохранена — детей нет
+                if not parent_ids:
                     continue
-
-                records = await related_model.search(
-                    fields=list(tails),
-                    filter=[(inverse_fk, "=", self.id)],
-                    limit=1000,
+                # raw + prepare_list_ids: FK нужен только для группировки, а
+                # search() с M2O в fields поднял бы {id, name} родителя на
+                # каждого ребёнка отдельным запросом.
+                rows = await related_model.search(
+                    fields=[*tails, inverse_fk],
+                    filter=[(inverse_fk, "in", parent_ids)],
+                    raw=True,
+                    session=session,
                 )
-                setattr(self, head, records)
+                grouped: dict[int, list] = {}
+                for child in related_model.prepare_list_ids(rows or []):
+                    fk = child.__dict__.get(inverse_fk)
+                    if hasattr(fk, "id"):
+                        fk = fk.id
+                    grouped.setdefault(fk, []).append(child)
+                for rec in pending:
+                    if isinstance(rec.id, int):
+                        setattr(rec, head, grouped.get(rec.id, []))
+
+    @staticmethod
+    def _prefetch_fk_id(current, tails) -> int | None:
+        """id M2O-головы, которую нужно догрузить: int, {id: ...} от фронта
+        или модель без нужных tail'ов. None — догружать нечего или незачем
+        (уже «толстая»)."""
+        from ...model import DotModel as _DM
+
+        if isinstance(current, int):
+            return current
+        if isinstance(current, dict):
+            candidate = current.get("id")
+            return candidate if isinstance(candidate, int) else None
+        if isinstance(current, _DM):
+            missing = [
+                t for t in tails if t != "id" and not current.is_assigned(t)
+            ]
+            if not missing:
+                return None
+            return current.id if isinstance(current.id, int) else None
+        return None
+
+    @staticmethod
+    def _prefetch_o2m_pending(current, tails) -> bool:
+        """Нужно ли догружать O2M-голову: пустой список — нет (детей нет),
+        список моделей со всеми tail'ами — нет, всё остальное — да."""
+        from ...model import DotModel as _DM
+
+        if isinstance(current, list):
+            if not current:
+                return False
+            first = current[0]
+            if isinstance(first, _DM):
+                return any(
+                    t != "id" and not first.is_assigned(t) for t in tails
+                )
+        return True
