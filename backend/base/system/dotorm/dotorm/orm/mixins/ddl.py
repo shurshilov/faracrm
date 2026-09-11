@@ -241,7 +241,7 @@ class DDLMixin(_Base):
         # Составные индексы из __indexes__ класса модели.
         # Валидация делается здесь (а не при импорте), чтобы получить
         # осмысленную ошибку с именем таблицы.
-        composite_indexes = getattr(cls, "__indexes__", None) or []
+        composite_indexes = cls.__indexes__ or []
         all_field_names = set(cls.get_fields().keys())
         for cols in composite_indexes:
             if not isinstance(cols, (tuple, list)) or len(cols) < 2:

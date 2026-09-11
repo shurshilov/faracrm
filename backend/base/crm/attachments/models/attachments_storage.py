@@ -120,8 +120,8 @@ class AttachmentStorage(DotModel):
         """
         return {
             "id": self.id,
-            "name": getattr(self, "name", None) or str(self.id),
-            "type": getattr(self, "type", None),
+            "name": self.name or str(self.id),
+            "type": self.type,
         }
 
     async def activate(self) -> None:

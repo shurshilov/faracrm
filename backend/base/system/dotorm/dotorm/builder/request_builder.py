@@ -78,7 +78,7 @@ class RequestBuilder:
         # TODO: помоему тут ошибка relation_table всегда будет пустое
         # а реквест билдер всеравно не используется в не связей
         # и else никогда не вызывается
-        return getattr(self.field.relation_table, "prepare_list_id")
+        return self.field.relation_table.prepare_list_id
 
 
 def create_request_builder(

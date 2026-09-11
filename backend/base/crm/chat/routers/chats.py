@@ -812,13 +812,11 @@ async def get_chat(req: Request, chat_id: int):
             ),
             "members": members,
             # Default permissions
-            "default_can_read": getattr(chat, "default_can_read", True),
-            "default_can_write": getattr(chat, "default_can_write", True),
-            "default_can_invite": getattr(chat, "default_can_invite", False),
-            "default_can_pin": getattr(chat, "default_can_pin", False),
-            "default_can_delete_others": getattr(
-                chat, "default_can_delete_others", False
-            ),
+            "default_can_read": chat.default_can_read,
+            "default_can_write": chat.default_can_write,
+            "default_can_invite": chat.default_can_invite,
+            "default_can_pin": chat.default_can_pin,
+            "default_can_delete_others": chat.default_can_delete_others,
         }
     }
 

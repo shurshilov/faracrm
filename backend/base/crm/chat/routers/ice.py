@@ -76,7 +76,7 @@ async def test_ice(req: Request):
     global _last_test_at
 
     env: "Environment" = req.app.state.env
-    if not getattr(req.state.session.user_id, "is_admin", False):
+    if not req.state.session.user_id.is_admin:
         raise HTTPException(HTTP_403_FORBIDDEN, "ADMIN_REQUIRED")
 
     now = time.monotonic()

@@ -139,7 +139,7 @@ class SystemSettings(DotModel):
         )
         if records:
             raw = records[0].value
-            ttl = getattr(records[0], "cache_ttl", 0) or 0
+            ttl = records[0].cache_ttl or 0
 
             # Извлекаем значение
             if raw and isinstance(raw, dict):

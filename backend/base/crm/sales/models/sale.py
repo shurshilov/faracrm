@@ -58,7 +58,7 @@ async def _stage_progress(stage) -> int:
     if stage is None:
         return 0
 
-    sequence = int(getattr(stage, "sequence", 0) or 0)
+    sequence = int(stage.sequence or 0)
     if sequence <= 0:
         return 0
 

@@ -285,14 +285,14 @@ class Call(AuditMixin, DotModel):
         if not adapter.call_record_url:
             # Отличаем «провайдер не отдаёт поле» от «АТС не писала разговор»:
             # по одному recordingfile=None это неразличимо.
-            raw = getattr(adapter, "raw", None) or {}
+            raw = adapter.raw or {}
             logger.info(
                 "[call %s] запись не качаем: recordingfile=%r (поле у провайдера:"
                 " %s), talk=%r",
                 call_id,
                 rec_name,
                 "есть" if "recordingfile" in raw else "НЕТ",
-                getattr(adapter, "talk_duration", None),
+                adapter.talk_duration,
             )
             return
         existing = await env.models.attachment.search(

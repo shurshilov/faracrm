@@ -167,7 +167,7 @@ def _manifest_icons_from_company(company) -> list[dict[str, Any]]:
     бэк сам прописывает правильные URL и размеры.
     """
     icons: list[dict[str, Any]] = []
-    if getattr(company, "manifest_icon_192_id", None):
+    if company.manifest_icon_192_id:
         icons.append(
             {
                 "src": "/api/public/branding/manifest_icon_192_id",
@@ -176,7 +176,7 @@ def _manifest_icons_from_company(company) -> list[dict[str, Any]]:
                 "purpose": "any maskable",
             }
         )
-    if getattr(company, "manifest_icon_512_id", None):
+    if company.manifest_icon_512_id:
         icons.append(
             {
                 "src": "/api/public/branding/manifest_icon_512_id",
@@ -197,7 +197,7 @@ def _manifest_version(company) -> str | None:
     if company is None:
         return None
     parts: list[str] = []
-    raw = getattr(company, "manifest_json", None)
+    raw = company.manifest_json
     if raw:
         # dict → стабильный JSON (sort_keys чтобы порядок ключей не сбивал хеш).
         parts.append(
@@ -227,7 +227,7 @@ def _build_manifest(company) -> tuple[dict[str, Any], str]:
        загружает файлы (либо удалит manifest_icon_*).
     3. ETag — sha1 по итоговому JSON, для conditional GET (304).
     """
-    manifest = _ensure_manifest_dict(getattr(company, "manifest_json", None))
+    manifest = _ensure_manifest_dict(company.manifest_json)
     company_icons = _manifest_icons_from_company(company)
     if company_icons:
         manifest["icons"] = company_icons

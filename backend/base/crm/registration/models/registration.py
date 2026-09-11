@@ -29,12 +29,6 @@ CODE_TTL = timedelta(minutes=15)
 NEW_USER_SETTING = "registration.new_user"
 
 
-def _fara_error(content: str, detail: str, status_code: int = 400):
-    return FaraException(
-        {"content": content, "detail": detail, "status_code": status_code}
-    )
-
-
 class Registration(DotModel):
     """
     Заявка на регистрацию: живёт до подтверждения кода.
@@ -60,12 +54,6 @@ class Registration(DotModel):
         default=lambda: datetime.now(timezone.utc)
     )
 
-    @staticmethod
-    async def _check_captcha(token: str | None, answer: str | None) -> None:
-        """Проверить капчу. Регистрация зависит от модуля captcha (см. app.py)."""
-        if not await CaptchaChallenge.verify(token, answer):
-            raise _fara_error("REGISTRATION_CAPTCHA_INVALID", "Неверная капча")
-
     @classmethod
     async def start(
         cls,
@@ -85,22 +73,33 @@ class Registration(DotModel):
             filter=[("login", "=", login)], fields=["id"], limit=1
         )
         if existing:
-            raise _fara_error(
-                "REGISTRATION_LOGIN_EXISTS",
-                "Пользователь с таким логином уже существует",
+            raise FaraException(
+                {
+                    "content": "REGISTRATION_LOGIN_EXISTS",
+                    "detail": "Пользователь с таким логином уже существует",
+                }
             )
 
         policy = await User.get_password_policy(env)
         errors = User.validate_password(password, policy)
         if errors:
-            raise _fara_error(
-                "REGISTRATION_PASSWORD_POLICY", ", ".join(errors)
+            raise FaraException(
+                {
+                    "content": "REGISTRATION_PASSWORD_POLICY",
+                    "detail": ", ".join(errors),
+                }
             )
 
         # Капчу проверяем последней из валидаций и гасим её здесь: провал
         # других проверок (почта, пароль) капчу не тратит — можно повторить
         # с той же задачкой; неверная капча — с новой (фронт перезапросит).
-        await cls._check_captcha(captcha_token, captcha_answer)
+        if not await CaptchaChallenge.verify(captcha_token, captcha_answer):
+            raise FaraException(
+                {
+                    "content": "REGISTRATION_CAPTCHA_INVALID",
+                    "detail": "Неверная капча",
+                }
+            )
 
         # Одна ожидающая заявка на логин: прежние коды перестают действовать.
         pending = await cls.search(
@@ -149,12 +148,18 @@ class Registration(DotModel):
         if registration is None or not secrets.compare_digest(
             registration.code or "", code
         ):
-            raise _fara_error(
-                "REGISTRATION_CODE_INVALID", "Неверный код подтверждения"
+            raise FaraException(
+                {
+                    "content": "REGISTRATION_CODE_INVALID",
+                    "detail": "Неверный код подтверждения",
+                }
             )
         if registration.expires_at < datetime.now(timezone.utc):
-            raise _fara_error(
-                "REGISTRATION_CODE_EXPIRED", "Срок действия кода истёк"
+            raise FaraException(
+                {
+                    "content": "REGISTRATION_CODE_EXPIRED",
+                    "detail": "Срок действия кода истёк",
+                }
             )
 
         user_id = await registration._create_user()

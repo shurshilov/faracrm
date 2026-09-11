@@ -740,7 +740,7 @@ class ChatStrategyBase(ABC):
                             # падал на первом же сбое отправки вложения.
                             logger.error(
                                 "Failed to send attachment %s: %s",
-                                getattr(att, "id", None),
+                                att.id,
                                 e,
                             )
 

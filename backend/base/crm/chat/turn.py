@@ -363,7 +363,7 @@ async def _host_from_site_url(env) -> str:
     try:
         site_url = await env.models.system_settings.sudo().get_site_url()
     except Exception:  # noqa: BLE001
-        site_url = getattr(env.settings, "site_url", "")
+        site_url = env.settings.site_url
 
     try:
         return urlparse(site_url or "").hostname or ""

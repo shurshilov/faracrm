@@ -85,9 +85,7 @@ class YandexDiskStrategy(StorageStrategyBase):
 
     def _get_root_path(self, storage: "AttachmentStorage") -> str:
         """Получить путь к корневой папке хранилища."""
-        return self._normalize_path(
-            getattr(storage, "yandex_folder_path", None)
-        )
+        return self._normalize_path(storage.yandex_folder_path)
 
     async def _ensure_token(self, storage: "AttachmentStorage") -> str:
         """

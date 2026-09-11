@@ -82,7 +82,7 @@ class OrmPrimaryMixin(_Base):
         # DELETE значений уже не достать). Делаем только если у модели
         # есть хоть один parent-trigger — иначе лишний SELECT.
         pre_fetched: list = []
-        if getattr(cls, "_depends_parent_triggers", None):
+        if cls._depends_parent_triggers:
             pre_fetched = await cls.search(
                 filter=[("id", "in", list(ids))], session=session
             )
@@ -256,9 +256,7 @@ class OrmPrimaryMixin(_Base):
         # Делаем только если в payload есть FK, на которые подписан
         # parent-trigger — иначе лишний SELECT.
         fk_attrs_in_payload: set[str] = set()
-        for trigs in (
-            getattr(cls, "_depends_parent_triggers", {}) or {}
-        ).values():
+        for trigs in cls._depends_parent_triggers.values():
             for _parent_model, fk_attr, _method in trigs:
                 if fk_attr in payload_dict:
                     fk_attrs_in_payload.add(fk_attr)
@@ -720,13 +718,11 @@ class OrmPrimaryMixin(_Base):
             klass._depends_prefetch = {}
 
         for klass in models:
-            all_fields = getattr(klass, "_cache_all_fields", {}) or {}
+            all_fields = klass._cache_all_fields
 
             # --- TRIGGERS ---
             # bare скаляр / M2O → local; dotted O2M/M2M → parent на ребёнке.
-            trigger_deps = (
-                getattr(klass, "_cache_compute_method_deps", {}) or {}
-            )
+            trigger_deps = klass._cache_compute_method_deps
             for method_name, deps in trigger_deps.items():
                 for dep in deps:
                     if "." in dep:
@@ -766,9 +762,7 @@ class OrmPrimaryMixin(_Base):
             # --- PREFETCH ---
             # Только dotted (любая relation: O2M/M2M/M2O) → собираем
             # tail-поля под методом.
-            prefetch_deps = (
-                getattr(klass, "_cache_compute_prefetch_deps", {}) or {}
-            )
+            prefetch_deps = klass._cache_compute_prefetch_deps
             for method_name, deps in prefetch_deps.items():
                 for dep in deps:
                     if "." not in dep:
@@ -865,7 +859,7 @@ class OrmPrimaryMixin(_Base):
         _depends_parent_triggers — {child_field: {(Parent, fk, method)}},
         поэтому по изменённому полю идёт прямой lookup, без скана-фильтра."""
         cls = self.__class__
-        parent_triggers = getattr(cls, "_depends_parent_triggers", {}) or {}
+        parent_triggers = cls._depends_parent_triggers
         for f in changed_fields:
             for Parent, child_fk, parent_method in parent_triggers.get(f, ()):
                 fk_val = getattr(self, child_fk, None)
@@ -941,9 +935,7 @@ class OrmPrimaryMixin(_Base):
         from ...model import DotModel as _DM
 
         cls = self.__class__
-        prefetch_map = (getattr(cls, "_depends_prefetch", {}) or {}).get(
-            method_name
-        )
+        prefetch_map = cls._depends_prefetch.get(method_name)
         if not prefetch_map:
             return
 
@@ -977,7 +969,7 @@ class OrmPrimaryMixin(_Base):
                     ]
                     if not missing:
                         continue
-                    rid = getattr(current, "id", None)
+                    rid = current.id
                     if isinstance(rid, int):
                         fk_val = rid
 

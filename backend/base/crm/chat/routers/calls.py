@@ -150,9 +150,7 @@ def _serialize_call_message(msg, author_name: str | None = None) -> dict:
     if msg.author_user_id:
         author = {
             "id": msg.author_user_id.id,
-            "name": author_name
-            or getattr(msg.author_user_id, "name", None)
-            or "",
+            "name": author_name or msg.author_user_id.name or "",
             "type": "user",
         }
     return {
