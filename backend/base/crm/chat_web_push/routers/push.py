@@ -41,7 +41,11 @@ async def subscribe(req: Request, body: PushSubscriptionData):
         }
     )
 
-    contact_type = await env.models.contact_type.search_one(
+    # Тип контакта — системный справочник, а не данные пользователя: читаем
+    # под sudo, чтобы подписаться мог и пользователь без ACL на contact_type
+    # (портальный из маркетплейса). Сами контакты ниже идут под сессией
+    # пользователя — их режут ACL и правило «только свои».
+    contact_type = await env.models.contact_type.sudo().search_one(
         filter=[("name", "=", "web_push")],
         fields=["id"],
     )
@@ -135,7 +139,8 @@ async def unsubscribe(req: Request, body: PushSubscriptionData):
     auth_session = req.state.session
     user_id = auth_session.user_id.id
 
-    contact_type = await env.models.contact_type.search_one(
+    # Справочник — под sudo, как в subscribe.
+    contact_type = await env.models.contact_type.sudo().search_one(
         filter=[("name", "=", "web_push")],
         fields=["id"],
     )
@@ -174,7 +179,10 @@ async def unsubscribe(req: Request, body: PushSubscriptionData):
 async def get_vapid_public_key(req: Request):
     env = req.app.state.env
 
-    connector = await env.models.chat_connector.search_one(
+    # Коннектор читаем под sudo: наружу уходит только публичный VAPID-ключ,
+    # он и так уезжает в браузер. Под сессией пользователя ручка падала с
+    # отказом у ролей без ACL на коннекторы (как /ice/servers до sudo).
+    connector = await env.models.chat_connector.sudo().search_one(
         filter=[
             ("type", "=", "web_push"),
             ("active", "=", True),
@@ -196,7 +204,10 @@ async def get_push_status(req: Request):
     """
     env = req.app.state.env
 
-    connector = await env.models.chat_connector.search_one(
+    # Проба возможности, а не данные: отдаём булево. Меню пользователя зовёт
+    # её на каждой загрузке, поэтому под сессией без ACL на коннекторы это
+    # была модалка «доступ запрещён» при каждом входе.
+    connector = await env.models.chat_connector.sudo().search_one(
         filter=[
             ("type", "=", "web_push"),
             ("active", "=", True),

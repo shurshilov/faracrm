@@ -49,11 +49,16 @@ let isRedirecting = false;
 //   return false;
 // }
 
+// Бэк кодирует ошибки как '#ACCESS_DENIED', а таблица переводов модалки —
+// без решётки: с ней любой отказ показывался как «непредвиденная ошибка».
+// Срезаем в единственном месте разбора.
+const errorCode = (value: string) => value.replace(/^#/, '');
+
 function parseApiError(data: unknown, status: number): ApiError | null {
   // Если data - строка (старый формат)
   if (typeof data === 'string') {
     return {
-      content: data,
+      content: errorCode(data),
       status_code: status,
     };
   }
@@ -63,7 +68,7 @@ function parseApiError(data: unknown, status: number): ApiError | null {
     const obj = data as Record<string, unknown>;
     if (obj.content && typeof obj.content === 'string') {
       return {
-        content: obj.content,
+        content: errorCode(obj.content),
         detail: obj.detail as string | undefined,
         status_code: status,
       };
@@ -116,14 +121,19 @@ export const baseQueryWithReauth: BaseQueryFn<
       }
     }
 
-    // 422 - ошибка валидации
+    // 422 - ошибка валидации схемы (pydantic: detail — список полей).
+    // Доменные 422 без такого detail (например #PASSWORD_POLICY у смены
+    // пароля) разбирает вызывающий код: общая модалка показывала бы поверх
+    // его сообщения пустую «ошибку валидации».
     if (status === 422) {
       const validationData = data as { detail?: unknown };
-      apiErrorEmitter.emit({
-        content: 'VALIDATION_ERROR',
-        detail: validationData?.detail as any,
-        status_code: 422,
-      });
+      if (Array.isArray(validationData?.detail)) {
+        apiErrorEmitter.emit({
+          content: 'VALIDATION_ERROR',
+          detail: validationData.detail as any,
+          status_code: 422,
+        });
+      }
     }
 
     // 400 - доменная ошибка (FaraException на бэке).

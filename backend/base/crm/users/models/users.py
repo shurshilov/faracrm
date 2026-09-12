@@ -566,11 +566,14 @@ class User(PolymorphicParentMixin):
                 )
             )
 
-            # закрыть старые сессии
+            # закрыть старые сессии — под sudo: это побочный эффект смены
+            # пароля над СВОИМИ сессиями (terminate_sessions фильтрует по
+            # user_id = self.id), а ACL на sessions есть не у всех: у
+            # портальной роли его нет, и смена пароля падала с отказом.
             if auth_session is None:
-                await self.terminate_sessions()
+                await self.sudo().terminate_sessions()
             else:
-                await self.terminate_sessions(auth_session.id)
+                await self.sudo().terminate_sessions(auth_session.id)
 
     async def terminate_sessions(
         self,

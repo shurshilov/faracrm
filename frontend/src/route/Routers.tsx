@@ -32,6 +32,8 @@ const MarketplaceStatsPage = lazy(
 const MarketplaceVendorPage = lazy(
   () => import('@/fara_marketplace/cabinet/VendorSettings'),
 );
+// Лёгкий профиль для пользователя без base_user (см. UserMenu.handleProfile).
+const ProfilePage = lazy(() => import('@/fara_users/ProfilePage'));
 
 // Wrapper для ChatPage с props из Redux
 const ChatPage = () => {
@@ -181,6 +183,7 @@ const FaraRouters = () => {
               path="marketplace/vendor"
               element={<MarketplaceVendorPage />}
             />
+            <Route path="profile" element={<ProfilePage />} />
 
             {/* Все остальные роуты - модели */}
             <Route path="*" element={<ModelRoutes />} />

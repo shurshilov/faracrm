@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import type { MenuGroup } from '@config/menuData';
 import { getVisibleMenuItems } from '@config/menuData';
 import { useInstalledApps } from '@/fara_apps/useInstalledApps';
+import { useHasWorkspaceApp } from '@/hooks/useWorkspaceApps';
 
 export function ModernLayout() {
   const [activeGroup, setActiveGroup] = useState<MenuGroup | null>(null);
@@ -64,10 +65,10 @@ export function ModernLayout() {
   // Виджеты шапки (уведомления из системного чата, чаты, звонилка) — часть
   // приложения «Общение». Пользователю, у которого его нет в РМ (например,
   // портальному из маркетплейса), их не показываем: их запросы упёрлись бы
-  // в отказ доступа к чатам и коннекторам.
-  const hasCommunication =
-    !!session?.user_id?.is_admin ||
-    !!session?.user_id?.workspace_id?.app_keys?.includes('communication');
+  // в отказ доступа к чатам и коннекторам. Тот же хук гейтит бейджи панелей
+  // формы (FormPanels).
+  const hasApp = useHasWorkspaceApp();
+  const hasCommunication = hasApp('communication');
 
   // Определяем активную группу по текущему URL
   useEffect(() => {

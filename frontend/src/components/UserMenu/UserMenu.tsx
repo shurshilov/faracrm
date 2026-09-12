@@ -157,9 +157,15 @@ function UserMenu() {
   };
 
   const handleProfile = () => {
-    if (session?.user_id.id) {
-      navigate(`/users/${session.user_id.id}`);
-    }
+    if (!session?.user_id.id) return;
+    // Полная карточка /users/{id} — форма для сотрудников: роли, команды,
+    // контакты, «Рабочее место». Пользователю без base_user (портальному из
+    // маркетплейса) эти связи закрыты, и generic-форма падает целиком на
+    // первой же из них — ему лёгкая страница профиля.
+    const isStaff =
+      !!session.user_id.is_admin ||
+      (session.user_id.role_ids || []).some(role => role.code === 'base_user');
+    navigate(isStaff ? `/users/${session.user_id.id}` : '/profile');
   };
 
   const handleLanguageChange = async (code: string) => {

@@ -11,6 +11,9 @@ export interface User {
   call_connector_id?: { id: number; name?: string } | null;
   is_admin: boolean;
   role_ids: RoleRecord[];
+  /** Активное «Рабочее место»: app_keys — ключи групп меню его приложений
+   *  (см. signin на бэке). Нет РМ → null. */
+  workspace_id?: { id: number; name: string; app_keys: string[] } | null;
 }
 export interface Session {
   id: number;

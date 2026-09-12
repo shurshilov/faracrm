@@ -16,6 +16,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSearchQuery } from '@/services/api/crudApi';
 import { useGetRecordMessagesCountQuery } from '@/services/api/chat';
+import { useHasWorkspaceApp } from '@/hooks/useWorkspaceApps';
+import { useInstalledApps } from '@/fara_apps/useInstalledApps';
 import { ActivityPanel } from './ActivityPanel';
 import { MessagesPanel } from './MessagesPanel';
 import { AttachmentsPanel } from './AttachmentsPanel';
@@ -59,29 +61,41 @@ export function FormPanelsBadges({
 }) {
   const { t } = useTranslation(['activity', 'common']);
 
+  // Активности и заметки — части приложений «Активности» и «Общение». Без
+  // них в «Рабочем месте» бейджи не рисуем и не считаем: их запросы упёрлись
+  // бы в отказ доступа (портальный пользователь маркетплейса) — та же логика,
+  // что у виджетов шапки. Вложения есть у всех.
+  const hasApp = useHasWorkspaceApp();
+  const { isInstalled } = useInstalledApps();
+  const activitiesEnabled = hasApp('activity') && isInstalled('activity');
+  const messagesEnabled = hasApp('communication');
+
   // ─── Counts ─────────────────────────────────────────────────
   // API limit:0 не возвращает пустой data, поэтому запрашиваем
   // COUNT_LIMIT+1 записей и считаем data.length
 
-  const { data: activitiesData } = useSearchQuery({
-    model: 'activity',
-    fields: ['id'],
-    filter: [
-      ['res_model', '=', resModel],
-      ['res_id', '=', resId],
-      ['active', '=', true],
-      ['done', '=', false],
-    ],
-    limit: COUNT_LIMIT + 1,
-  });
+  const { data: activitiesData } = useSearchQuery(
+    {
+      model: 'activity',
+      fields: ['id'],
+      filter: [
+        ['res_model', '=', resModel],
+        ['res_id', '=', resId],
+        ['active', '=', true],
+        ['done', '=', false],
+      ],
+      limit: COUNT_LIMIT + 1,
+    },
+    { skip: !activitiesEnabled },
+  );
 
   // chat_message: auto-CRUD отключён (права через ChatMember),
   // поэтому для бейджика используем выделенный эндпоинт,
   // возвращающий только число.
-  const { data: messagesData } = useGetRecordMessagesCountQuery({
-    resModel,
-    resId,
-  });
+  const { data: messagesData } = useGetRecordMessagesCountQuery(
+    { resModel, resId },
+    { skip: !messagesEnabled },
+  );
 
   const { data: attachmentsData } = useSearchQuery({
     model: 'attachments',
@@ -120,37 +134,41 @@ export function FormPanelsBadges({
 
   return (
     <Group gap={4}>
-      <Indicator
-        label={formatCount(activityCount)}
-        size={14}
-        disabled={activityCount === 0}
-        color="orange"
-        offset={4}>
-        <ActionIcon
-          variant={activePanel === 'activities' ? 'filled' : 'subtle'}
-          color={iconColor(activityCount, 'activities')}
-          size="md"
-          onClick={() => onToggle('activities')}
-          title={panelTitle.activities}>
-          <IconBell size={18} />
-        </ActionIcon>
-      </Indicator>
+      {activitiesEnabled && (
+        <Indicator
+          label={formatCount(activityCount)}
+          size={14}
+          disabled={activityCount === 0}
+          color="orange"
+          offset={4}>
+          <ActionIcon
+            variant={activePanel === 'activities' ? 'filled' : 'subtle'}
+            color={iconColor(activityCount, 'activities')}
+            size="md"
+            onClick={() => onToggle('activities')}
+            title={panelTitle.activities}>
+            <IconBell size={18} />
+          </ActionIcon>
+        </Indicator>
+      )}
 
-      <Indicator
-        label={formatCount(unreadMessageCount)}
-        size={14}
-        disabled={unreadMessageCount === 0}
-        color="blue"
-        offset={4}>
-        <ActionIcon
-          variant={activePanel === 'messages' ? 'filled' : 'subtle'}
-          color={iconColor(messageCount, 'messages')}
-          size="md"
-          onClick={() => onToggle('messages')}
-          title={panelTitle.messages}>
-          <IconNotes size={18} />
-        </ActionIcon>
-      </Indicator>
+      {messagesEnabled && (
+        <Indicator
+          label={formatCount(unreadMessageCount)}
+          size={14}
+          disabled={unreadMessageCount === 0}
+          color="blue"
+          offset={4}>
+          <ActionIcon
+            variant={activePanel === 'messages' ? 'filled' : 'subtle'}
+            color={iconColor(messageCount, 'messages')}
+            size="md"
+            onClick={() => onToggle('messages')}
+            title={panelTitle.messages}>
+            <IconNotes size={18} />
+          </ActionIcon>
+        </Indicator>
+      )}
 
       {/* Лента — клиентская переписка (только лид/партнёр). Счётчик не
           показываем (v1): unread ленты считается отдельно, бейдж без числа. */}

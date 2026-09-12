@@ -24,7 +24,10 @@ MARKET_ACL = {
 # Портальная роль НЕ наследует base_user (иначе видела бы партнёров, чаты и
 # прочее). Ей выдаётся только то, без чего не работает сам интерфейс: свой
 # профиль, языки (меню пользователя), списки с фильтрами/колонками, вложения
-# (скриншоты, архивы) и свои платежи. Вход/выход и сессия идут мимо ACL.
+# (скриншоты, архивы), свои платежи и свои контакты (подписка на web push —
+# это контакт типа web_push на пользователе). Вход/выход и сессия идут мимо
+# ACL. contact_type намеренно НЕ выдаётся: через его connector_ids читается
+# список коннекторов, а справочник ручки push берут под sudo.
 PORTAL_ACL = {
     "user": ACLPerms(create=False, read=True, update=True, delete=False),
     "language": ACL.READ_ONLY,
@@ -32,6 +35,7 @@ PORTAL_ACL = {
     "saved_filter": ACL.FULL,
     "column_setting": ACL.FULL,
     "payment": ACL.READ_ONLY,
+    "contact": ACL.NO_DELETE,
 }
 
 ALL_PERMS = {"create": True, "read": True, "update": True, "delete": True}
@@ -212,6 +216,14 @@ class MarketplaceApp(App):
                 role_id,
                 own_user,
                 {"read": True, "update": True, "delete": True},
+            ),
+            # Контакты только свои (user_id): подписка/отписка web push.
+            (
+                "Marketplace user: own contacts",
+                "contact",
+                role_id,
+                own_user,
+                {"create": True, "read": True, "update": True},
             ),
         ]
         if admin_id:

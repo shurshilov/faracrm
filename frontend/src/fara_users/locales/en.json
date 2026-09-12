@@ -84,6 +84,18 @@
     "error": "Error",
     "errorMessage": "Failed to copy user"
   },
+  "profile": {
+    "title": "My profile",
+    "save": "Save",
+    "saved": "Profile saved",
+    "policy": {
+      "too_short": "At least {{count}} characters",
+      "no_uppercase": "Uppercase letter required",
+      "no_lowercase": "Lowercase letter required",
+      "no_digit": "Digit required",
+      "no_special": "Special character required"
+    }
+  },
   "common": {
     "cancel": "Cancel",
     "actions": "Actions"
