@@ -29,10 +29,7 @@ import { CreateSaleButton } from './CreateSaleButton';
  */
 export function ViewFormLeads(props: ViewFormProps) {
   return (
-    <Form<LeadRecord>
-      model="leads"
-      {...props}
-      actions={<CreateSaleButton />}>
+    <Form<LeadRecord> model="leads" {...props} actions={<CreateSaleButton />}>
       {/* Основная информация */}
       <FormSection title="Основная информация" icon={<IconUser size={18} />}>
         <FormRow cols={2}>
@@ -64,15 +61,9 @@ export function ViewFormLeads(props: ViewFormProps) {
           <Field name="stage_id" label="Стадия" />
           <Field name="user_id" label="Ответственный" />
         </FormRow>
-        {/* progress — вычисляемое поле (Lead._compute_progress по стадии),
-            только для чтения: обновляется через /onchange при смене стадии. */}
+
         <FormRow cols={2}>
-          <Field
-            name="progress"
-            label="Прогресс"
-            widget="progress"
-            editable={false}
-          />
+          <Field name="progress" label="Прогресс" widget="progress" />
         </FormRow>
       </FormSection>
 
@@ -133,6 +124,16 @@ export function ViewFormLeadStage(props: ViewFormProps) {
         <FormRow cols={2}>
           <Field name="name" label="Название" />
           <Field name="sequence" label="Последовательность" />
+        </FormRow>
+
+        <FormRow cols={2}>
+          <Field name="progress_auto" label="Проставлять прогресс лидам" />
+          <Field
+            name="progress"
+            label="Прогресс по умолчанию"
+            widget="progress"
+            enabledBy="progress_auto"
+          />
         </FormRow>
       </FormSection>
 

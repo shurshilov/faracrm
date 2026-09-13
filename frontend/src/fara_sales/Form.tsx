@@ -63,15 +63,8 @@ export function ViewFormSales(props: ViewFormProps) {
           <Field name="date_order" label="Дата заказа" />
           <Field name="user_id" label="Менеджер" />
         </FormRow>
-        {/* progress — вычисляемое поле (Sale._compute_progress по стадии),
-            только для чтения: обновляется через /onchange при смене стадии. */}
         <FormRow cols={2}>
-          <Field
-            name="progress"
-            label="Прогресс"
-            widget="progress"
-            editable={false}
-          />
+          <Field name="progress" label="Прогресс" widget="progress" />
         </FormRow>
       </FormSection>
 
@@ -96,7 +89,11 @@ export function ViewFormSales(props: ViewFormProps) {
                 inline_update={true}
                 quickCreateFields={['product_id']}>
                 <Field name="id" label={t('sales.id')} />
-                <Field name="product_id" label={t('sale_line.product_id')} quickCreate />
+                <Field
+                  name="product_id"
+                  label={t('sale_line.product_id')}
+                  quickCreate
+                />
                 <Field
                   name="product_uom_qty"
                   label={t('sale_line.product_uom_qty')}
@@ -112,10 +109,7 @@ export function ViewFormSales(props: ViewFormProps) {
                   name="price_subtotal"
                   label={t('sale_line.price_subtotal')}
                 />
-                <Field
-                  name="price_total"
-                  label={t('sale_line.price_total')}
-                />
+                <Field name="price_total" label={t('sale_line.price_total')} />
               </Field>
             </FormCol>
             <FormCol span={1}>
@@ -166,7 +160,11 @@ export function ViewFormSaleLinesPopup(props: ViewFormProps) {
         title={t('sale_line.product_id')}
         icon={<IconPackage size={18} />}>
         <FormRow cols={1}>
-          <Field name="product_id" label={t('sale_line.product_id')} quickCreate />
+          <Field
+            name="product_id"
+            label={t('sale_line.product_id')}
+            quickCreate
+          />
         </FormRow>
         <FormRow cols={2}>
           <Field
@@ -218,7 +216,11 @@ export function ViewFormSaleLines(props: ViewFormProps) {
           <Field name="sequence" label={t('sale_line.sequence')} />
         </FormRow>
         <FormRow cols={2}>
-          <Field name="product_id" label={t('sale_line.product_id')} quickCreate />
+          <Field
+            name="product_id"
+            label={t('sale_line.product_id')}
+            quickCreate
+          />
           <Field name="product_uom_id" label={t('sale_line.product_uom_id')} />
         </FormRow>
       </FormSection>
@@ -272,6 +274,16 @@ export function ViewFormSaleStage(props: ViewFormProps) {
         <FormRow cols={2}>
           <Field name="name" label="Название" />
           <Field name="sequence" label="Последовательность" />
+        </FormRow>
+
+        <FormRow cols={2}>
+          <Field name="progress_auto" label="Проставлять прогресс заказам" />
+          <Field
+            name="progress"
+            label="Прогресс по умолчанию"
+            widget="progress"
+            enabledBy="progress_auto"
+          />
         </FormRow>
       </FormSection>
 

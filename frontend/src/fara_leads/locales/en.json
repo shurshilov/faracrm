@@ -27,7 +27,8 @@
     "name": "Lead stage",
     "sequence": "Sequence",
     "color": "Color",
-    "fold": "Folded"
+    "fold": "Folded",
+    "progress": "Default progress"
   },
   "team_crm": {
     "id": "Id",

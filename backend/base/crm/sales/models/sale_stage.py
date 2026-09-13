@@ -1,4 +1,3 @@
-from backend.base.system.dotorm.dotorm.decorators import depends
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
@@ -18,30 +17,15 @@ class SaleStage(DotModel):
     fold: bool = Boolean(default=False, string="Folded in Kanban")
     color: str = Char(string="Color", default="#3498db")
 
-    # Процент воронки (0–100): 100 у последней активной стадии, остальные
-    # пропорционально sequence. Зависит от всей таблицы (максимум), а не
-    # от полей одной строки — поэтому @depends() без триггеров: после
-    # любой операции над стадиями пересчитываются все стадии.
-    # Sale.progress копирует его через prefetch stage_id.progress.
-    progress: int = Integer(
-        string="Progress %", default=0, compute="_compute_progress"
+    # Прогресс по умолчанию (0–100): заказ получает его при попадании на
+    # стадию (StageProgressMixin), дальше правится в заказе руками.
+    progress: int = Integer(string="Default progress %", default=0)
+    # Выключено → заказам на этой стадии прогресс не проставляется, только руками.
+    # default_db: колонка добавляется в старые базы с DEFAULT TRUE, чтобы у
+    # уже существующих стадий проставление было включено без миграций.
+    progress_auto: bool = Boolean(
+        default=True, default_db=True, string="Auto-set progress"
     )
-
-    @depends()
-    async def _compute_progress(self) -> None:
-        last = await self.search_one(
-            filter=[("active", "=", True)],
-            fields=["sequence"],
-            sort="sequence",
-            order="DESC",
-        )
-        top = int(last.sequence or 0) if last else 0
-        sequence = int(self.sequence or 0)
-        self.progress = (
-            min(100, round(sequence * 100 / top))
-            if top > 0 and sequence > 0
-            else 0
-        )
 
 
 INITIAL_SALE_STAGES = [
@@ -51,6 +35,7 @@ INITIAL_SALE_STAGES = [
         "active": True,
         "fold": False,
         "color": "#6c757d",
+        "progress": 10,
     },
     {
         "name": "Отправлено",
@@ -58,6 +43,7 @@ INITIAL_SALE_STAGES = [
         "active": True,
         "fold": False,
         "color": "#17a2b8",
+        "progress": 30,
     },
     {
         "name": "Подтверждено",
@@ -65,6 +51,7 @@ INITIAL_SALE_STAGES = [
         "active": True,
         "fold": False,
         "color": "#28a745",
+        "progress": 60,
     },
     {
         "name": "Выполнено",
@@ -72,6 +59,7 @@ INITIAL_SALE_STAGES = [
         "active": True,
         "fold": False,
         "color": "#007bff",
+        "progress": 100,
     },
     {
         "name": "Отменено",
@@ -79,5 +67,6 @@ INITIAL_SALE_STAGES = [
         "active": True,
         "fold": True,
         "color": "#dc3545",
+        "progress": 0,
     },
 ]

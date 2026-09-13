@@ -18,10 +18,14 @@ interface FieldProgressProps {
   step?: number;
   /**
    * Можно ли менять значение мышью. По умолчанию true (ползунок).
-   * false — только показ: так подключаются вычисляемые поля
-   * (Lead.progress / Sale.progress считаются по стадии на бэке).
+   * false — только показ.
    */
   editable?: boolean;
+  /**
+   * Имя boolean-поля формы: ползунок активен, только пока оно включено
+   * (напр. «прогресс по умолчанию» стадии при галочке progress_auto).
+   */
+  enabledBy?: string;
   [key: string]: any;
 }
 
@@ -133,6 +137,7 @@ export const FieldProgress = ({
   size = 'xl',
   step = 5,
   editable = true,
+  enabledBy,
 }: FieldProgressProps) => {
   const form = useFormContext();
   const displayLabel = label ?? name;
@@ -140,6 +145,18 @@ export const FieldProgress = ({
   // пока не пришли метаданные) — в типах Mantine этого свойства нет.
   const { disabled } = form.getInputProps(name) as { disabled?: boolean };
   const value = clamp(form.getValues()?.[name]);
+
+  // enabledBy: следим за галочкой. form.watch вызывается во время рендера
+  // (правило Mantine v7, как в FieldPatternBuilder); без enabledBy
+  // подписка на само поле — холостая, но хук должен вызываться всегда.
+  const [enabled, setEnabled] = useState(() =>
+    enabledBy ? !!form.getValues()?.[enabledBy] : true,
+  );
+  form.watch(enabledBy ?? name, ({ value: next }: { value: unknown }) => {
+    if (enabledBy) {
+      setEnabled(!!next);
+    }
+  });
 
   return (
     <FieldWrapper
@@ -153,7 +170,7 @@ export const FieldProgress = ({
           value={value}
           size={size}
           step={step}
-          disabled={disabled}
+          disabled={disabled || !enabled}
           onCommit={next => form.setFieldValue(name, next)}
         />
       ) : (

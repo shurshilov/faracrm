@@ -59,6 +59,7 @@ export function ViewListLeadStage() {
       <Field name="id" label={t('lead_stage.id')} />
       <Field name="name" label={t('lead_stage.name')} />
       <Field name="sequence" label={t('lead_stage.sequence')} />
+      <Field name="progress" label={t('lead_stage.progress')} />
       <Field
         name="color"
         label={t('lead_stage.color')}

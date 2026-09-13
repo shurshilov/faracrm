@@ -90,6 +90,7 @@ export function ViewListSaleStage() {
       <Field name="id" label={t('sale_stage.id')} />
       <Field name="name" label={t('sale_stage.name')} />
       <Field name="sequence" label={t('sale_stage.sequence')} />
+      <Field name="progress" label={t('sale_stage.progress')} />
       <Field
         name="color"
         label={t('sale_stage.color')}

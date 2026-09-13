@@ -24,6 +24,7 @@ from backend.base.system.schemas.base_schema import Id
 from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 from backend.base.crm.users.audit_mixin import AuditMixin
+from .stage_progress import StageProgressMixin
 
 
 async def _default_stage_id():
@@ -44,7 +45,9 @@ async def _default_name():
     return f"Заказ {str(next_id).zfill(7)}"
 
 
-class Sale(AuditMixin, DotModel):
+# StageProgressMixin — поле progress: при смене стадии берётся из стадии,
+# дальше правится руками (см. stage_progress.py).
+class Sale(AuditMixin, StageProgressMixin, DotModel):
     __table__ = "sales"
 
     id: Id = Integer(primary_key=True)
@@ -119,26 +122,6 @@ class Sale(AuditMixin, DotModel):
         string="Paid / Advance",
         default=0,
     )
-
-    # Прогресс по воронке (0–100 %) — вычисляется из стадии.
-    progress: int = Integer(
-        string="Progress %",
-        default=0,
-        compute="_compute_progress",
-    )
-
-    @depends(triggers=[stage_id], prefetch=[(stage_id, "progress")])
-    async def _compute_progress(self) -> None:
-        """Прогресс заказа = процент его стадии (SaleStage.progress).
-
-        Процент считается на самой стадии (SaleStage._compute_progress,
-        @depends() без триггеров — все стадии после любой операции над
-        ними); здесь только чтение: stage_id с progress уже подгружен
-        движком @depends (prefetch), запросов внутри нет. Пересчитывается и в форме: stage_id — триггер
-        @depends, поэтому попадает в get_onchange_fields() и уезжает в
-        POST /onchange.
-        """
-        self.progress = (self.stage_id.progress or 0) if self.stage_id else 0
 
     @depends(
         triggers_with_prefetch=[

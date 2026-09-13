@@ -43,7 +43,7 @@ export interface LeadRecord extends BaseRecord {
   email: string | null;
   phone: string | null;
   mobile: string | null;
-  // Прогресс по воронке (0–100), считается бэкендом от стадии
+  // Прогресс (0–100): при смене стадии берётся из стадии, дальше руками
   progress: number;
   // AuditMixin
   create_datetime: string;
@@ -55,6 +55,9 @@ export interface LeadStageRecord extends BaseRecord {
   active: boolean;
   fold: boolean;
   color: string;
+  // Прогресс по умолчанию для лидов на стадии и включён ли он
+  progress: number;
+  progress_auto: boolean;
 }
 
 export interface TeamCrmRecord extends BaseRecord {
@@ -86,7 +89,7 @@ export interface SaleRecord extends BaseRecord {
   amount_total: number;
   // Аванс / предоплата — ручной ввод
   amount_paid: number;
-  // Прогресс по воронке (0–100), считается бэкендом от стадии
+  // Прогресс (0–100): при смене стадии берётся из стадии, дальше руками
   progress: number;
 }
 
@@ -111,6 +114,9 @@ export interface SaleStageRecord extends BaseRecord {
   active: boolean;
   fold: boolean;
   color: string;
+  // Прогресс по умолчанию для заказов на стадии и включён ли он
+  progress: number;
+  progress_auto: boolean;
 }
 
 export interface TaxRecord extends BaseRecord {

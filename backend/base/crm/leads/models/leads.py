@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 import logging
 
 from ...partners.models.contact import Contact
-from backend.base.system.dotorm.dotorm.decorators import depends, hybridmethod
+from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Char,
     Integer,
@@ -27,11 +27,14 @@ from backend.base.system.core.enviroment import env
 from backend.base.crm.security.polymorphic_parent import (
     PolymorphicParentMixin,
 )
+from backend.base.crm.sales.models.stage_progress import StageProgressMixin
 
 logger = logging.getLogger(__name__)
 
 
-class Lead(AuditMixin, PolymorphicParentMixin):
+# StageProgressMixin — поле progress: при смене стадии берётся из стадии,
+# дальше правится руками (см. sales/models/stage_progress.py).
+class Lead(AuditMixin, StageProgressMixin, PolymorphicParentMixin):
     __table__ = "leads"
 
     id: Id = Integer(primary_key=True)
@@ -101,26 +104,6 @@ class Lead(AuditMixin, PolymorphicParentMixin):
         relation_table_field="partner_id",
         description="Контакты",
     )
-
-    # Прогресс по воронке (0–100 %) — вычисляется из стадии.
-    progress: int = Integer(
-        string="Progress %",
-        default=0,
-        compute="_compute_progress",
-    )
-
-    @depends(triggers=[stage_id], prefetch=[(stage_id, "progress")])
-    async def _compute_progress(self) -> None:
-        """Прогресс лида = процент его стадии (LeadStage.progress).
-
-        Процент считается на самой стадии (LeadStage._compute_progress,
-        @depends() без триггеров — все стадии после любой операции над
-        ними); здесь только чтение: stage_id с progress уже подгружен
-        движком @depends (prefetch), запросов внутри нет. Пересчитывается и в форме: stage_id — триггер
-        @depends, поэтому попадает в get_onchange_fields() и уезжает в
-        POST /onchange.
-        """
-        self.progress = (self.stage_id.progress or 0) if self.stage_id else 0
 
     @hybridmethod
     async def update(
