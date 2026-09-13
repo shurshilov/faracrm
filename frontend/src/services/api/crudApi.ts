@@ -289,6 +289,18 @@ export const crudApi = createApi({
         [{ type: arg.model, id: 'LIST' }],
     }),
 
+    // Дубликат записи (POST /auto/{model}/{id}/copy → { id }). Что именно
+    // копируется, решает бэк (copy_record автокруда по Field.copy).
+    copy: build.mutation<CreateResult, { model: string; id: number }>({
+      query: ({ model, id }) => ({
+        url: `${AUTO}/${model}/${id}/copy`,
+        method: 'POST',
+      }),
+      invalidatesTags: (_result, _error, arg) => [
+        { type: arg.model, id: 'LIST' },
+      ],
+    }),
+
     // getAttachment: build.query<string, GetAttachmentParams>({
     //   // hour
     //   keepUnusedDataFor: 0,
@@ -424,6 +436,7 @@ export const {
   useUpdateMutation,
   useUpdateBulkMutation,
   useCreateMutation,
+  useCopyMutation,
   useGetOnchangeFieldsQuery,
   useExecuteOnchangeMutation,
   useGetFieldsQuery,

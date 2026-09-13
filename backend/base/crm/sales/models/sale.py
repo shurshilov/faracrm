@@ -51,7 +51,8 @@ class Sale(AuditMixin, StageProgressMixin, DotModel):
     __table__ = "sales"
 
     id: Id = Integer(primary_key=True)
-    name: str = Char(string="Order Name", default=_default_name)
+    # copy=False: у дубликата заказа свой номер (default).
+    name: str = Char(string="Order Name", default=_default_name, copy=False)
     active: bool = Boolean(default=True)
     stage_id: "SaleStage" = Many2one(
         lambda: env.models.sale_stage,
@@ -76,8 +77,12 @@ class Sale(AuditMixin, StageProgressMixin, DotModel):
     company_id: "Company | None" = Many2one(
         lambda: env.models.company, string="Company"
     )
+    # copy=True: дубликат заказа — с позициями (единственный смысл копии).
     order_line_ids: list["SaleLine"] = One2many(
-        lambda: env.models.sale_line, "sale_id", string="Order Lines"
+        lambda: env.models.sale_line,
+        "sale_id",
+        string="Order Lines",
+        copy=True,
     )
     notes: str | None = Text(string="Notes")
     date_order: datetime.datetime = Datetime(
@@ -116,11 +121,13 @@ class Sale(AuditMixin, StageProgressMixin, DotModel):
     )
     # Аванс / предоплата — ручной ввод. НЕ вычисляется (нет compute,
     # не в @depends) → движок пересчёта его не перезаписывает.
+    # copy=False: оплата относится к исходному заказу, дубликат не оплачен.
     amount_paid: float = Decimal(
         16,
         2,
         string="Paid / Advance",
         default=0,
+        copy=False,
     )
 
     @depends(

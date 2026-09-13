@@ -76,6 +76,12 @@ class Field[FieldType]:
     indexable: bool = True
     store: bool = True
     default: FieldType | None = None
+    # Копировать ли значение при дублировании записи (метаданные для
+    # API-слоя, как private/schema_required; сама логика — copy_record в
+    # dotorm_crud_auto). По умолчанию да; One2many, полиморфные вложения и
+    # One2one — нет (переопределено в классах полей), явный copy=... в
+    # объявлении поля сильнее.
+    copy: bool = True
 
     string: str = ""
     options: list[str] | None = None
@@ -119,6 +125,7 @@ class Field[FieldType]:
 
         self.indexable = kwargs.pop("indexable", self.indexable)
         self.store = kwargs.pop("store", self.store)
+        self.copy = kwargs.pop("copy", self.copy)
 
         # ondelete - явное указание действия при удалении родительской записи
         # Если не указано явно, определяется автоматически на основе null
@@ -744,6 +751,7 @@ class PolymorphicMany2one[T: DotModel](Field[T]):
     sql_type = "INTEGER"
     relation = True
     relation_table: Type["DotModel"]
+    copy = False
 
     def __init__(
         self, relation_table: Type["DotModel"], **kwargs: Any
@@ -758,6 +766,7 @@ class PolymorphicOne2many[T: DotModel](Field[list[T]]):
     field_type = list[Type]
     store = False
     relation = True
+    copy = False
     relation_table: Type["DotModel"]
     relation_table_field: str
 
@@ -886,6 +895,7 @@ class One2many[T: DotModel](Field[list[T]]):
     field_type = list[Type]
     store = False
     relation = True
+    copy = False
     relation_table: Type["DotModel"]
     relation_table_field: str
 
@@ -906,6 +916,7 @@ class One2one[T: DotModel](Field[T]):
     field_type = Type
     store = False
     relation = True
+    copy = False
     relation_table: Type["DotModel"]
 
     def __init__(

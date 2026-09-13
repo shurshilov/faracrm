@@ -11,11 +11,12 @@ import {
 } from '@/components/Form/Layout';
 import { IconBuilding, IconWorld, IconUsers } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { CopyRecordButton } from '@/components/Form/CopyRecordButton';
 
 export function ViewFormPartners(props: ViewFormProps) {
   const { t } = useTranslation('partners');
   return (
-    <Form<Partner> model="partners" {...props}>
+    <Form<Partner> model="partners" {...props} actions={<CopyRecordButton />}>
       {/* Основная информация */}
       <FormSheet avatar={<Field name="image" />}>
         <FormRow cols={2}>

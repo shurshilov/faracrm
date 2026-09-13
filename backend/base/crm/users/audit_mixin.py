@@ -58,17 +58,21 @@ class AuditMixin(_Base):
     # index=True на обеих audit-ссылках: на users ссылаются ~70 FK, и без
     # индексов каждое удаление пользователя — seq scan (ON DELETE SET NULL)
     # по КАЖДОЙ аудируемой таблице.
+    # copy=False: у дубликата (POST /{id}/copy автокруда) свой автор и своё
+    # время — подставятся default'ами при создании.
     create_user_id: "User | None" = Many2one(
         relation_table=lambda: env.models.user,
         default=_default_current_user,
         required=False,
         index=True,
+        copy=False,
         description="Кто создал запись",
     )
 
     create_datetime: datetime = Datetime(
         default=_default_now,
         required=False,
+        copy=False,
         description="Когда создана запись (UTC)",
     )
 
@@ -77,12 +81,14 @@ class AuditMixin(_Base):
         default=_default_current_user,
         required=False,
         index=True,
+        copy=False,
         description="Кто последний обновил запись",
     )
 
     update_datetime: datetime = Datetime(
         default=_default_now,
         required=False,
+        copy=False,
         description="Когда последний раз обновлена запись (UTC)",
     )
 

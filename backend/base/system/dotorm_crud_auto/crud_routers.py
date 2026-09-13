@@ -130,6 +130,13 @@ class CRUDRouterGenerator(APIRouter):
             response_model=SchemaGetOutput[self._schema_read_output],
             dependencies=[Depends(AuthTokenApp.verify_access)],
         )
+        self.add_api_route(
+            f"{self.Model.__route__}/{{id}}/copy",
+            self._copy(),
+            methods=["POST"],
+            response_model=SchemaCreateOutput,
+            dependencies=[Depends(AuthTokenApp.verify_access)],
+        )
 
     def _add_update_routes(self) -> None:
         """Добавляет роуты обновления."""
@@ -490,6 +497,16 @@ class CRUDRouterGenerator(APIRouter):
 
         return route
 
+    def _copy(self) -> Callable:
+        """Дубликат записи (copy_record; что копируется, решают поля —
+        Field.copy). Ответ — id новой записи, как у создания."""
+        Model = self.Model
+
+        async def route(id: int):
+            return {"id": await copy_record(Model, id)}
+
+        return route
+
     def _get_fields(self) -> Callable:
         """Получение списка полей модели для фильтрации/настройки колонок.
 
@@ -607,3 +624,102 @@ def _strip_bytes(value: Any) -> Any:
             if not isinstance(v, bytes)
         }
     return value
+
+
+def _copy_store_fields(Model: Type[DotModel]) -> list[str]:
+    """Store-поля, которые уходят в дубликат (см. copy_record)."""
+    return [
+        name
+        for name, field in Model.get_fields().items()
+        if field.store
+        and field.copy
+        and not field.primary_key
+        and not field.unique
+        and not field.private
+        and not field.compute
+    ]
+
+
+async def copy_record(
+    Model: Type[DotModel], record_id: int, defaults: dict | None = None
+) -> int:
+    """
+    Дубликат записи — новая запись с теми же значениями (POST /{id}/copy).
+
+    Собрано из штатных get/create/update ORM, поэтому живёт здесь, а не в
+    dotorm. Что копируется, решают поля (Field.copy):
+      • скаляры и Many2one — copy=True по умолчанию (те же значения и
+        ссылки); Many2many — те же связи;
+      • One2many — только с явным copy=True (Sale.order_line_ids): дочерние
+        записи дублируются по тем же правилам, без своих связей;
+      • первичный ключ, unique, private, вычисляемые (пересчитает @depends),
+        полиморфные вложения (принадлежат исходной записи) и One2one —
+        никогда.
+    Поля с copy=False (Sale.name, аудит) и пустые значения получают default
+    при создании. defaults перекрывают значения копии. Доступ штатный:
+    чтение — get(), запись — create()/update().
+    """
+    fields = Model.get_fields()
+    store_names = _copy_store_fields(Model)
+    m2m_names = [
+        name
+        for name, field in fields.items()
+        if isinstance(field, Many2many) and field.copy
+    ]
+    o2m_fields = {
+        name: field
+        for name, field in fields.items()
+        if isinstance(field, One2many) and field.copy
+    }
+
+    source = await Model.get(
+        record_id,
+        fields=store_names + m2m_names + list(o2m_fields),
+        fields_nested={
+            **{name: ["id"] for name in m2m_names},
+            **{
+                name: _copy_store_fields(field.relation_table)
+                for name, field in o2m_fields.items()
+            },
+        },
+    )
+
+    values = {
+        name: getattr(source, name)
+        for name in store_names
+        if getattr(source, name) is not None
+    }
+    if defaults:
+        values.update(defaults)
+    new_id = await Model.create(Model(**values))
+
+    # Связи — тем же путём, что create-роут: сначала запись, потом update
+    # по relation-полям командами selected/created.
+    relations: dict = {}
+    for name in m2m_names:
+        ids = [rec.id for rec in getattr(source, name) or []]
+        if ids:
+            relations[name] = {"selected": ids}
+    for name, field in o2m_fields.items():
+        child_names = [
+            child_name
+            for child_name in _copy_store_fields(field.relation_table)
+            if child_name != field.relation_table_field
+        ]
+        created = []
+        for child in getattr(source, name) or []:
+            row = {
+                child_name: getattr(child, child_name)
+                for child_name in child_names
+                if getattr(child, child_name) is not None
+            }
+            # VirtualId → id новой записи подставит _update_relations.
+            row[field.relation_table_field] = "VirtualId"
+            created.append(row)
+        if created:
+            relations[name] = {"created": created}
+    if relations:
+        await Model(id=new_id).update(
+            Model(**relations), fields=list(relations)
+        )
+    return new_id

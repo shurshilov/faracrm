@@ -28,6 +28,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { PrintButton } from '@/fara_report_docx/PrintButton';
 import { FieldContacts } from '@/components/ContactsWidget';
+import { CopyRecordButton } from '@/components/Form/CopyRecordButton';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -41,7 +42,12 @@ export function ViewFormSales(props: ViewFormProps) {
     <Form<SaleRecord>
       model="sales"
       {...props}
-      actions={<PrintButton model="sales" recordId={id} />}>
+      actions={
+        <>
+          <PrintButton model="sales" recordId={id} />
+          <CopyRecordButton />
+        </>
+      }>
       {/* Основная информация */}
       <FormSection
         title="Основная информация"

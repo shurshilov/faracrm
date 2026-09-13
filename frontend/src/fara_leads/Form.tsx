@@ -20,6 +20,7 @@ import {
   IconPalette,
 } from '@tabler/icons-react';
 import { FieldContacts } from '@/components/ContactsWidget';
+import { CopyRecordButton } from '@/components/Form/CopyRecordButton';
 import { CreateSaleButton } from './CreateSaleButton';
 
 /**
@@ -29,7 +30,15 @@ import { CreateSaleButton } from './CreateSaleButton';
  */
 export function ViewFormLeads(props: ViewFormProps) {
   return (
-    <Form<LeadRecord> model="leads" {...props} actions={<CreateSaleButton />}>
+    <Form<LeadRecord>
+      model="leads"
+      {...props}
+      actions={
+        <>
+          <CreateSaleButton />
+          <CopyRecordButton />
+        </>
+      }>
       {/* Основная информация */}
       <FormSection title="Основная информация" icon={<IconUser size={18} />}>
         <FormRow cols={2}>
