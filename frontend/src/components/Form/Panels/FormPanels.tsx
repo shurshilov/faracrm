@@ -12,20 +12,26 @@ import {
   IconNotes,
   IconPaperclip,
   IconMessageCircle,
+  IconPhone,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useSearchQuery } from '@/services/api/crudApi';
-import { useGetRecordMessagesCountQuery } from '@/services/api/chat';
+import {
+  useGetRecordMessagesCountQuery,
+  useResolveRecordPartnerChatQuery,
+} from '@/services/api/chat';
 import { useHasWorkspaceApp } from '@/hooks/useWorkspaceApps';
 import { useInstalledApps } from '@/fara_apps/useInstalledApps';
 import { ActivityPanel } from './ActivityPanel';
 import { MessagesPanel } from './MessagesPanel';
 import { AttachmentsPanel } from './AttachmentsPanel';
 import { PartnerChatPanel } from './PartnerChatPanel';
+import { CallsPanel } from './CallsPanel';
 
-// «Чат» (переписка с клиентом) доступен только там, где есть партнёр:
-// на форме лида (по lead.partner_id) и партнёра (по partner_id).
-const FEED_MODELS = new Set(['leads', 'partners']);
+// «Чат» (переписка с клиентом) и «Звонки» доступны только там, где есть
+// партнёр: форма партнёра (сама запись), лида и заказа (их partner_id).
+// Партнёра записи резолвит GET /records/{model}/{id}/partner_chat.
+const FEED_MODELS = new Set(['leads', 'partners', 'sales']);
 
 const COUNT_LIMIT = 80;
 const PANEL_MIN_WIDTH = 300;
@@ -43,6 +49,7 @@ export type PanelType =
   | 'messages'
   | 'attachments'
   | 'feed'
+  | 'calls'
   | null;
 
 /**
@@ -69,6 +76,10 @@ export function FormPanelsBadges({
   const { isInstalled } = useInstalledApps();
   const activitiesEnabled = hasApp('activity') && isInstalled('activity');
   const messagesEnabled = hasApp('communication');
+  const feedEnabled = FEED_MODELS.has(resModel);
+  // «Звонки» — там же, где «Чат», и только с установленной телефонией
+  // (без неё маршрутов модели call нет).
+  const callsEnabled = feedEnabled && isInstalled('chat_phone');
 
   // ─── Counts ─────────────────────────────────────────────────
   // API limit:0 не возвращает пустой data, поэтому запрашиваем
@@ -108,10 +119,32 @@ export function FormPanelsBadges({
     limit: COUNT_LIMIT + 1,
   });
 
+  // Звонки считаем по партнёру записи (тот же резолв, что у панели «Чат»,
+  // RTK отдаёт из кеша), а не по res_model/res_id: у звонка ссылки на
+  // запись нет, ключ — партнёр.
+  const { data: partnerData } = useResolveRecordPartnerChatQuery(
+    { resModel, resId },
+    { skip: !feedEnabled },
+  );
+  const partnerId = partnerData?.partner_id ?? null;
+  const { data: callsData } = useSearchQuery(
+    {
+      model: 'call',
+      fields: ['id'],
+      filter: [
+        ['partner_id', '=', partnerId ?? 0],
+        ['active', '=', true],
+      ],
+      limit: COUNT_LIMIT + 1,
+    },
+    { skip: !callsEnabled || !partnerId },
+  );
+
   const activityCount = activitiesData?.data?.length || 0;
   const messageCount = messagesData?.total || 0;
   const unreadMessageCount = messagesData?.unread || 0;
   const attachmentCount = attachmentsData?.data?.length || 0;
+  const callCount = callsData?.data?.length || 0;
 
   const formatCount = (count: number) =>
     count > COUNT_LIMIT ? `${COUNT_LIMIT}+` : String(count);
@@ -128,9 +161,8 @@ export function FormPanelsBadges({
     messages: t('common:notes', 'Заметки'),
     attachments: t('common:attachments', 'Вложения'),
     feed: t('common:client_chat', 'Чат'),
+    calls: t('common:calls', 'Звонки'),
   };
-
-  const feedEnabled = FEED_MODELS.has(resModel);
 
   return (
     <Group gap={4}>
@@ -181,6 +213,26 @@ export function FormPanelsBadges({
           title={panelTitle.feed}>
           <IconMessageCircle size={18} />
         </ActionIcon>
+      )}
+
+      {/* Звонки — отфильтрованный вид коммуникаций с клиентом (в «Чате» они
+          подмешаны в переписку), не зависит от наличия чата. */}
+      {callsEnabled && (
+        <Indicator
+          label={formatCount(callCount)}
+          size={14}
+          disabled={callCount === 0}
+          color="grape"
+          offset={4}>
+          <ActionIcon
+            variant={activePanel === 'calls' ? 'filled' : 'subtle'}
+            color={iconColor(callCount, 'calls')}
+            size="md"
+            onClick={() => onToggle('calls')}
+            title={panelTitle.calls}>
+            <IconPhone size={18} />
+          </ActionIcon>
+        </Indicator>
       )}
 
       <Indicator
@@ -278,6 +330,7 @@ export function FormPanelSide({
     messages: t('common:notes', 'Заметки'),
     attachments: t('common:attachments', 'Вложения'),
     feed: t('common:client_chat', 'Чат'),
+    calls: t('common:calls', 'Звонки'),
   };
 
   // Панели с собственным скроллом (чат-подобные) рендерятся без падинга и
@@ -372,6 +425,9 @@ export function FormPanelSide({
           )}
           {activePanel === 'feed' && (
             <PartnerChatPanel resModel={resModel} resId={resId} />
+          )}
+          {activePanel === 'calls' && (
+            <CallsPanel resModel={resModel} resId={resId} />
           )}
           {activePanel === 'attachments' && (
             <AttachmentsPanel resModel={resModel} resId={resId} />

@@ -1068,27 +1068,22 @@ const recordChatApi = api.injectEndpoints({
 // ====================== ЧАТ ПАРТНЁРА (1:1) ======================
 //
 // Модель 1:1: у партнёра ОДИН внешний групповой чат. Панель на форме
-// лида/партнёра резолвит его id и показывает обычным чат-компонентом
+// партнёра/лида/заказа резолвит его id и показывает обычным чат-компонентом
 // (ChatMessages + ChatInput). Отдельной «ленты»/агрегации нет — доступ идёт
 // через штатные правила чата (членство / team). resolve БЕЗ создания (пустой
 // чат на открытие не плодим); чат создаётся при первом входящем/ответе.
 
 const partnerChatApi = api.injectEndpoints({
   endpoints: build => ({
-    // Найти чат партнёра (без создания). { chat_id: null } → чата ещё нет.
-    resolvePartnerChat: build.query<
-      { chat_id: number | null; partner_id: number },
-      { partnerId: number }
-    >({
-      query: ({ partnerId }) => `/partners/${partnerId}/chat`,
-    }),
-
-    // Как resolvePartnerChat, но партнёр берётся из лида (lead.partner_id).
-    resolveLeadChat: build.query<
+    // Найти чат партнёра ЗАПИСИ (без создания): для partners — сама запись,
+    // иначе её partner_id (лид, заказ). { chat_id: null } → чата ещё нет;
+    // partner_id нужен кнопке «Создать чат» и панели «Звонки».
+    resolveRecordPartnerChat: build.query<
       { chat_id: number | null; partner_id: number | null },
-      { leadId: number }
+      { resModel: string; resId: number }
     >({
-      query: ({ leadId }) => `/leads/${leadId}/chat`,
+      query: ({ resModel, resId }) =>
+        `/records/${resModel}/${resId}/partner_chat`,
     }),
 
     // Создать (get-or-create) групповой чат партнёра — кнопка «Создать чат».
@@ -1170,8 +1165,7 @@ const folderApi = api.injectEndpoints({
 export { chatApi, recordChatApi, folderApi, partnerChatApi };
 export const { usePinChatMutation, useGetFolderUnreadQuery } = folderApi;
 export const {
-  useResolvePartnerChatQuery,
-  useResolveLeadChatQuery,
+  useResolveRecordPartnerChatQuery,
   useGetChatTagsQuery,
   useCreatePartnerChatMutation,
 } = partnerChatApi;

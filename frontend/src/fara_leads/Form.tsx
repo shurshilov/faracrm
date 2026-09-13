@@ -18,10 +18,8 @@ import {
   IconTag,
   IconProgress,
   IconPalette,
-  IconPhone,
 } from '@tabler/icons-react';
 import { FieldContacts } from '@/components/ContactsWidget';
-import { callFields } from '@/fara_telephony/CallFields';
 import { CreateSaleButton } from './CreateSaleButton';
 
 /**
@@ -86,21 +84,6 @@ export function ViewFormLeads(props: ViewFormProps) {
 
         <FormTab name="notes" label="Заметки" icon={<IconTag size={16} />}>
           <Field name="notes" label="Заметки" />
-        </FormTab>
-
-        <FormTab name="calls" label="Звонки" icon={<IconPhone size={16} />}>
-          {/* call_ids — One2many из модуля телефонии (chat_phone/models/
-              lead_ext.py): звонки с привязкой к лиду (Call.lead_id). Только
-              просмотр; открыть звонок — иконкой в строке. */}
-          <Field
-            name="call_ids"
-            label=""
-            showSelect={false}
-            showDelete={false}
-            sort="started_at"
-            order="desc">
-            {callFields()}
-          </Field>
         </FormTab>
       </FormTabs>
     </Form>

@@ -24,12 +24,10 @@ import {
   IconCurrencyDollar,
   IconPackage,
   IconServicemark,
-  IconPhone,
 } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
 import { PrintButton } from '@/fara_report_docx/PrintButton';
 import { FieldContacts } from '@/components/ContactsWidget';
-import { callFields } from '@/fara_telephony/CallFields';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -145,23 +143,6 @@ export function ViewFormSales(props: ViewFormProps) {
         </FormTab>
         <FormTab name="notes" label="Заметки" icon={<IconReceipt size={16} />}>
           <Field name="notes" label="Заметки" />
-        </FormTab>
-
-        <FormTab name="calls" label="Звонки" icon={<IconPhone size={16} />}>
-          {/* call_ids — One2many из модуля телефонии (chat_phone/models/
-              sale_ext.py). У звонка нет sale_id, поэтому показываем звонки
-              КЛИЕНТА: владелец — partner_id заказа (parentField), как
-              контакты. Только просмотр; открыть звонок — иконкой в строке. */}
-          <Field
-            name="call_ids"
-            label=""
-            parentField="partner_id"
-            showSelect={false}
-            showDelete={false}
-            sort="started_at"
-            order="desc">
-            {callFields()}
-          </Field>
         </FormTab>
       </FormTabs>
     </Form>

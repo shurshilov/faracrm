@@ -257,16 +257,42 @@ async def get_messages_count(
     return {"total": total, "unread": unread}
 
 
-@router_private.get("/partners/{partner_id}/chat")
-async def resolve_partner_chat(req: Request, partner_id: int):
-    """Найти внешний чат партнёра (модель 1:1) — БЕЗ создания (не плодим пустой
-    чат на открытие панели). Возвращает {chat_id|null}. Само содержимое чата
-    читается штатным GET /chats/{id}/messages (там и применяется доступ:
-    членство/team-правило).
+@router_private.get("/records/{res_model}/{res_id}/partner_chat")
+async def resolve_record_partner_chat(
+    req: Request, res_model: str, res_id: int
+):
+    """Внешний чат ПАРТНЁРА записи (модель 1:1) — БЕЗ создания (не плодим
+    пустой чат на открытие панели). Партнёр записи: для partners — сама
+    запись, иначе поле partner_id записи (лид, заказ — любая модель с таким
+    полем); доступ к записи проверяют штатные правила её модели (ORM search).
+    Возвращает {chat_id|null, partner_id|null}. Содержимое чата читается
+    штатным GET /chats/{id}/messages (там и применяется доступ: членство/
+    team-правило). Тот же partner_id использует панель «Звонки».
     """
     env: "Environment" = req.app.state.env
+    partner_id = await _record_partner_id(env, res_model, res_id)
+    if not partner_id:
+        return {"chat_id": None, "partner_id": None}
     chat = await env.models.chat.find_partner_group_chat(partner_id)
     return {"chat_id": chat.id if chat else None, "partner_id": partner_id}
+
+
+async def _record_partner_id(
+    env: "Environment", res_model: str, res_id: int
+) -> int | None:
+    """Партнёр записи res_model/res_id (res_model — имя таблицы, как на фронте)."""
+    if res_model == "partners":
+        return res_id
+    try:
+        Model = env.models._get_model_class_by_table(res_model)
+    except KeyError:
+        return None
+    if "partner_id" not in Model.get_fields():
+        return None
+    record = await Model.search_one(
+        filter=[("id", "=", res_id)], fields=["id", "partner_id"]
+    )
+    return record.partner_id.id if record and record.partner_id else None
 
 
 @router_private.post("/partners/{partner_id}/chat")
@@ -283,25 +309,6 @@ async def create_partner_chat(req: Request, partner_id: int):
     chat = await env.models.chat.get_or_create_partner_chat(partner_id)
     await chat._ensure_membership(chat.id, user_id)
     return {"chat_id": chat.id, "partner_id": partner_id}
-
-
-@router_private.get("/leads/{lead_id}/chat")
-async def resolve_lead_chat(req: Request, lead_id: int):
-    """Как resolve_partner_chat, но партнёр берётся из лида (lead.partner_id).
-    Доступ к лиду проверяют штатные правила leads (ORM search)."""
-    env: "Environment" = req.app.state.env
-    lead = await env.models.lead.search_one(
-        filter=[("id", "=", lead_id)],
-        fields=["id", "partner_id"],
-    )
-    if not lead or not lead.partner_id:
-        return {"chat_id": None, "partner_id": None}
-    partner_id = lead.partner_id.id
-    chat = await env.models.chat.find_partner_group_chat(partner_id)
-    return {
-        "chat_id": chat.id if chat else None,
-        "partner_id": partner_id,
-    }
 
 
 @router_private.get("/chats/{chat_id}/tags")

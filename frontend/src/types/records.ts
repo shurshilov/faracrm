@@ -45,8 +45,6 @@ export interface LeadRecord extends BaseRecord {
   mobile: string | null;
   // Прогресс (0–100): при смене стадии берётся из стадии, дальше руками
   progress: number;
-  // Звонки лида (Call.lead_id) — добавлены модулем телефонии через @extend
-  call_ids: RelationRecord[];
   // AuditMixin
   create_datetime: string;
 }
@@ -93,8 +91,6 @@ export interface SaleRecord extends BaseRecord {
   amount_paid: number;
   // Прогресс (0–100): при смене стадии берётся из стадии, дальше руками
   progress: number;
-  // Звонки клиента (Call.partner_id) — добавлены модулем телефонии через @extend
-  call_ids: RelationRecord[];
 }
 
 export interface SaleLineRecord extends BaseRecord {

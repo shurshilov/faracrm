@@ -1,9 +1,11 @@
 /**
  * PartnerChatPanel — чат с клиентом на форме записи (модель 1:1).
  *
- * У партнёра ОДИН внешний групповой чат. Панель резолвит его id по partner_id
- * (форма партнёра) или по lead.partner_id (форма лида) и показывает ОБЫЧНЫМ
- * чат-компонентом (ChatMessages + ChatInput) — никакой отдельной «ленты».
+ * У партнёра ОДИН внешний групповой чат. Панель резолвит его id по партнёру
+ * записи (форма партнёра — сама запись, лида и заказа — их partner_id) и
+ * показывает ОБЫЧНЫМ чат-компонентом (ChatMessages + ChatInput) — никакой
+ * отдельной «ленты». Звонки партнёра в историю подмешивает бэк
+ * (call_external); только звонки — панель «Звонки» (CallsPanel).
  * На форме лида исходящее тегируется lead_id (ChatInput.leadId) для привязки.
  *
  * Доступ — штатные правила чата (членство / team-правило): не член и не в
@@ -19,8 +21,7 @@ import { IconMessagePlus } from '@tabler/icons-react';
 import { useSelector } from 'react-redux';
 import { selectCurrentSession } from '@/slices/authSlice';
 import {
-  useResolvePartnerChatQuery,
-  useResolveLeadChatQuery,
+  useResolveRecordPartnerChatQuery,
   useGetChatQuery,
   useGetChatConnectorsQuery,
   useSetChatDefaultConnectorMutation,
@@ -35,27 +36,18 @@ interface PartnerChatPanelProps {
 }
 
 export function PartnerChatPanel({ resModel, resId }: PartnerChatPanelProps) {
-  const isLead = resModel === 'leads';
   const session = useSelector(selectCurrentSession);
   const currentUserId = session?.user_id?.id || 0;
   const currentUserName = session?.user_id?.name || '';
 
   // На форме лида исходящее привязываем к этому лиду.
-  const leadId = isLead ? resId : null;
+  const leadId = resModel === 'leads' ? resId : null;
 
-  // 1. Резолвим id чата партнёра (без создания).
-  const leadRes = useResolveLeadChatQuery({ leadId: resId }, { skip: !isLead });
-  const partnerRes = useResolvePartnerChatQuery(
-    { partnerId: resId },
-    { skip: isLead },
-  );
-  const resolve = isLead ? leadRes : partnerRes;
+  // 1. Резолвим id чата партнёра записи (без создания). Партнёр для кнопки
+  // «Создать чат» приходит в том же ответе.
+  const resolve = useResolveRecordPartnerChatQuery({ resModel, resId });
   const chatId = resolve.data?.chat_id || undefined;
-  // Партнёр для создания чата: на форме партнёра — сама запись, на лиде —
-  // lead.partner_id (приходит в ответе резолва).
-  const targetPartnerId = isLead
-    ? (resolve.data?.partner_id ?? null)
-    : resId;
+  const targetPartnerId = resolve.data?.partner_id ?? null;
 
   const [createPartnerChat, { isLoading: creating }] =
     useCreatePartnerChatMutation();
