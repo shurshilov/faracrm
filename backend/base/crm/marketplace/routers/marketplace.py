@@ -66,7 +66,7 @@ APP_FIELDS = [
     "verified",
     "create_user_id",
 ]
-VENDOR_NESTED = {"create_user_id": ["id", "name", "verified"]}
+VENDOR_NESTED = {"create_user_id": {"fields": ["id", "name", "verified"]}}
 SORTS: dict[str, tuple[str, Literal["desc", "asc"]]] = {
     "popular": ("downloads", "desc"),
     "new": ("id", "desc"),

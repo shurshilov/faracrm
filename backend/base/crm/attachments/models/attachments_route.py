@@ -264,7 +264,7 @@ class AttachmentRoute(DotModel):
                         ("active", "=", True),
                         ("model_id", "=", model_rec.id),
                     ],
-                    # fields_nested={"storage_id": ["id", "type", "active"]},
+                    # fields_nested={"storage_id": {"fields": ["id", "type", "active"]}},
                     sort="priority",
                     order="DESC",
                 )

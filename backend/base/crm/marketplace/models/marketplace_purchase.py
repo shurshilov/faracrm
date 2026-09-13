@@ -85,7 +85,9 @@ class MarketplacePurchase(AuditMixin, DotModel):
 
         current = await cls.search_one(
             fields=["id", "state", "payment_id"],
-            fields_nested={"payment_id": ["id", "state", "payment_url"]},
+            fields_nested={
+                "payment_id": {"fields": ["id", "state", "payment_url"]}
+            },
             filter=[("app_id", "=", app_id), ("user_id", "=", user_id)],
             sort="id",
             order="desc",

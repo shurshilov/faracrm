@@ -21,9 +21,11 @@ from backend.base.system.dotorm.dotorm.fields import (
     Text,
 )
 from backend.base.system.schemas.base_schema import Id
-from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 from backend.base.crm.users.audit_mixin import AuditMixin
+from backend.base.crm.security.polymorphic_parent import (
+    PolymorphicParentMixin,
+)
 from .stage_progress import StageProgressMixin
 
 
@@ -47,7 +49,10 @@ async def _default_name():
 
 # StageProgressMixin — поле progress: при смене стадии берётся из стадии,
 # дальше правится руками (см. stage_progress.py).
-class Sale(AuditMixin, StageProgressMixin, DotModel):
+# PolymorphicParentMixin — activity_ids / attachment_ids для колонок списка
+# и каскад детей при удалении: панели активностей/вложений у заказа есть
+# давно, а каскада не было.
+class Sale(AuditMixin, StageProgressMixin, PolymorphicParentMixin):
     __table__ = "sales"
 
     id: Id = Integer(primary_key=True)

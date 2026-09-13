@@ -1087,7 +1087,7 @@ async def dotorm_old_ready(db_pool):
 
 # Как select_related (Tortoise) / selectinload (SQLAlchemy) / JOIN (raw):
 # без этого dotorm читал бы только скаляры, и сравнение READ было бы нечестным.
-USER_NESTED = {"user_id": ["id", "name"]}
+USER_NESTED = {"user_id": {"fields": ["id", "name"]}}
 
 
 class TestDotormOld:

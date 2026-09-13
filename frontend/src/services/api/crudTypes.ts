@@ -31,9 +31,18 @@ export type Triplet = [string, string, any];
 export type FilterItem = Triplet | 'and' | 'or' | FilterExpression;
 export type FilterExpression = FilterItem[];
 
+/**
+ * Элемент fields в search: имя поля ИЛИ {имя: {fields, filter}} для
+ * relation-поля — вложенные поля и фильтр на связанные записи (колонка-
+ * связь с пользовательским фильтром, см. ColumnRelationSettings). Бэк
+ * складывает filter с фильтром самого поля по И.
+ */
+export type NestedFieldSpec = { fields?: string[]; filter?: FilterExpression };
+export type SearchField = string | Record<string, NestedFieldSpec>;
+
 export type GetListParams = {
   model: string;
-  fields: string[];
+  fields: SearchField[];
   end?: number | null;
   order?: 'desc' | 'asc';
   sort?: string;
@@ -54,12 +63,14 @@ export type GetListM2mParams = {
   sort?: string;
   limit?: number;
 };
+/** Вариант Selection-поля как его отдаёт бэкенд: [значение, подпись]. */
+export type SelectionOption = [string, string];
 export interface GetListField {
   name: string;
   type: string;
   relation?: string;
   /** Для Selection-полей бэкенд (get_fields_info_list) отдаёт варианты. */
-  options?: string[];
+  options?: SelectionOption[];
   required?: boolean;
 }
 export interface GetFormField {
@@ -67,7 +78,7 @@ export interface GetFormField {
   type: string;
   relatedModel?: string;
   relatedField?: string;
-  options?: string[];
+  options?: SelectionOption[];
   required?: boolean;
 }
 export interface GetListResult<RecordType extends FaraRecord> {

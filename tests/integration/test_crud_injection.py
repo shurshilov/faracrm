@@ -343,12 +343,12 @@ class TestM2mUnlinkScoping:
         a = await User.get(
             user_a,
             fields=["id", "role_ids"],
-            fields_nested={"role_ids": ["id"]},
+            fields_nested={"role_ids": {"fields": ["id"]}},
         )
         b = await User.get(
             user_b,
             fields=["id", "role_ids"],
-            fields_nested={"role_ids": ["id"]},
+            fields_nested={"role_ids": {"fields": ["id"]}},
         )
 
         assert role_id not in [r.id for r in a.role_ids]

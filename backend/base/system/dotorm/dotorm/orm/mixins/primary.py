@@ -520,7 +520,7 @@ class OrmPrimaryMixin(_Base):
         self,
         id,
         fields: list[str] | None = None,
-        fields_nested: dict[str, list[str]] | None = None,
+        fields_nested: dict[str, dict] | None = None,
         session=None,
     ) -> Self:
         """
@@ -535,7 +535,8 @@ class OrmPrimaryMixin(_Base):
                     O2M  → список объектов []
                     M2M  → список объектов []
                 Если не передан — только store поля (M2O = integer FK).
-                Пример: {"user_id": ["id", "name"], "tag_ids": ["id", "name"]}
+                Пример: {"user_id": {"fields": ["id", "name"]},
+                         "tag_ids": {"fields": ["id", "name"]}}
             session: DB сессия
 
         Returns:
@@ -552,7 +553,7 @@ class OrmPrimaryMixin(_Base):
             # С relations
             chat = await Chat.get(5,
                 fields=["id", "name", "user_id", "message_ids"],
-                fields_nested={"user_id": ["id", "name"]}
+                fields_nested={"user_id": {"fields": ["id", "name"]}}
             )
             chat.user_id  # → User(id=42, name="John")
         """
@@ -570,7 +571,7 @@ class OrmPrimaryMixin(_Base):
         self,
         id,
         fields: list[str] | None = None,
-        fields_nested: dict[str, list[str]] | None = None,
+        fields_nested: dict[str, dict] | None = None,
         session=None,
     ) -> Self | None:
         """

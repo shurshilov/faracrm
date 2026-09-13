@@ -159,7 +159,7 @@ class TestCategory:
         p = await Product.get(
             pid,
             fields=["id", "name", "category_id"],
-            fields_nested={"category_id": ["id"]},
+            fields_nested={"category_id": {"fields": ["id"]}},
         )
         assert p.category_id.id == cid
 

@@ -70,7 +70,7 @@ class TestPartnerCreate:
         child = await Partner.get(
             child_id,
             fields=["id", "name", "parent_id"],
-            fields_nested={"parent_id": ["id"]},
+            fields_nested={"parent_id": {"fields": ["id"]}},
         )
         assert child.parent_id.id == parent_id
 

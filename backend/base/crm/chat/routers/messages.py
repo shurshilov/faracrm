@@ -464,7 +464,9 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
         if body.connector_id:
             connector = await env.models.chat_connector.search_one(
                 filter=[("id", "=", body.connector_id)],
-                fields_nested={"outbox_account_id": ["id", "external_id"]},
+                fields_nested={
+                    "outbox_account_id": {"fields": ["id", "external_id"]}
+                },
             )
             if not connector:
                 return False
@@ -615,7 +617,7 @@ async def delete_message(req: Request, chat_id: int, message_id: int):
     message = await env.models.chat_message.get(
         message_id,
         fields=["author_user_id"],
-        fields_nested={"author_user_id": ["id"]},
+        fields_nested={"author_user_id": {"fields": ["id"]}},
     )
 
     # Проверяем права: своё сообщение, can_delete_others или админ чата.
@@ -670,7 +672,7 @@ async def edit_message(
     message = await env.models.chat_message.get(
         message_id,
         fields=["author_user_id"],
-        fields_nested={"author_user_id": ["id"]},
+        fields_nested={"author_user_id": {"fields": ["id"]}},
     )
 
     # Редактировать сообщение может автор или админ чата.

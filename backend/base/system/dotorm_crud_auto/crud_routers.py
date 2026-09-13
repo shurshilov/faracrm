@@ -195,9 +195,19 @@ class CRUDRouterGenerator(APIRouter):
         schema_input = self._schema_search_input
 
         async def route(payload: schema_input):  # type: ignore
+            params = payload.model_dump()
+            # Элемент fields может быть {имя: {"fields", "filter"}} —
+            # разворачиваем в плоский список имён + fields_nested (как get).
+            fields_client, fields_nested = _split_nested_fields(
+                params.pop("fields")
+            )
             try:
                 records, count_total = await asyncio.gather(
-                    Model.search(**payload.model_dump()),
+                    Model.search(
+                        fields=fields_client,
+                        fields_nested=fields_nested or None,
+                        **params,
+                    ),
                     Model.search_count(filter=payload.filter),
                 )
             except ValueError as e:
@@ -209,9 +219,9 @@ class CRUDRouterGenerator(APIRouter):
                 )
 
             if not payload.raw:
-                records = [rec.json(include=payload.fields) for rec in records]
+                records = [rec.json(include=fields_client) for rec in records]
 
-            fields_info = Model.get_fields_info_list(payload.fields)
+            fields_info = Model.get_fields_info_list(fields_client)
 
             return {
                 "data": records,
@@ -266,6 +276,7 @@ class CRUDRouterGenerator(APIRouter):
             ):
                 sort = "id"
 
+            # filter поля (Field.filter) — тот же срез, что при загрузке связи
             records, count_total = await asyncio.gather(
                 Model.get_many2many(
                     id,
@@ -279,6 +290,7 @@ class CRUDRouterGenerator(APIRouter):
                     end,
                     sort,
                     limit,
+                    filter=field_class.filter,
                 ),
                 Model.get_many2many(
                     id,
@@ -292,6 +304,7 @@ class CRUDRouterGenerator(APIRouter):
                     None,
                     "id",
                     None,
+                    filter=field_class.filter,
                 ),
             )
 
@@ -338,17 +351,12 @@ class CRUDRouterGenerator(APIRouter):
         allowed_fields = self._schema_get_input
 
         async def route(payload: allowed_fields):  # type: ignore
-            fields_client = []
-            fields_client_nested = {}
-
-            for field in payload.fields:
-                if isinstance(field, str):
-                    fields_client.append(field)
-                else:
-                    field_relation: dict = field.model_dump()
-                    for name, nested_fields in field_relation.items():
-                        fields_client.append(name)
-                        fields_client_nested[name] = nested_fields
+            fields_client, fields_client_nested = _split_nested_fields(
+                [
+                    field if isinstance(field, str) else field.model_dump()
+                    for field in payload.fields
+                ]
+            )
 
             default_values = await Model.get_default_values(
                 fields_client_nested
@@ -450,17 +458,12 @@ class CRUDRouterGenerator(APIRouter):
         allowed_fields = self._schema_get_input
 
         async def route(id: int, payload: allowed_fields):  # type: ignore
-            fields_client = []
-            fields_client_nested = {}
-
-            for field in payload.fields:
-                if isinstance(field, str):
-                    fields_client.append(field)
-                else:
-                    field_relation = field.model_dump()
-                    for key, val in field_relation.items():
-                        fields_client.append(key)
-                        fields_client_nested[key] = val
+            fields_client, fields_client_nested = _split_nested_fields(
+                [
+                    field if isinstance(field, str) else field.model_dump()
+                    for field in payload.fields
+                ]
+            )
 
             record = await Model.get(
                 id,
@@ -551,7 +554,7 @@ async def _wrap_relations_for_ui(
         if not isinstance(value, list):
             continue
 
-        nested = fields_client_nested.get(name)
+        nested = field_cls.nested_fields(fields_client_nested.get(name))
         if not nested and field_cls.relation_table:
             nested = ["id"]
             if field_cls.relation_table.get_fields().get("name"):
@@ -563,16 +566,24 @@ async def _wrap_relations_for_ui(
             nested or ["id"]
         )
 
-        # Готовим count — корутину или значение
+        # Готовим count — корутину или значение. Фильтр — тот же, что при
+        # загрузке связи: Field.filter + фильтр запроса (Field.nested_filter).
+        relation_filter = field_cls.nested_filter(
+            fields_client_nested.get(name)
+        )
         if isinstance(field_cls, One2many):
             count = field_cls.relation_table.search_count(
-                filter=[(field_cls.relation_table_field, "=", record.id)]
+                filter=[
+                    (field_cls.relation_table_field, "=", record.id),
+                    *relation_filter,
+                ]
             )
         elif isinstance(field_cls, PolymorphicOne2many):
             count = field_cls.relation_table.search_count(
                 filter=[
                     ("res_id", "=", record.id),
                     ("res_model", "=", record.__table__),
+                    *relation_filter,
                 ]
             )
         else:
@@ -607,6 +618,29 @@ async def _wrap_relations_for_ui(
             "fields": rel_fields_info,
             "total": totals[i],
         }
+
+
+def _split_nested_fields(
+    fields: list,
+) -> tuple[list[str], dict[str, dict]]:
+    """Элементы fields (get/search): имя поля или {имя: вложенное} →
+    плоский список имён + fields_nested в форме ORM
+    {имя: {"fields": [...], "filter": [...]}}.
+
+    С провода вложенное приходит либо списком имён полей связанной модели
+    (схема get/default_values — `{"role_ids": ["id", "code"]}`), либо уже
+    словарём {"fields", "filter"} (схема search — колонка-срез). Список
+    нормализуем здесь, чтобы ORM знал одну форму."""
+    names: list[str] = []
+    nested: dict[str, dict] = {}
+    for item in fields:
+        if isinstance(item, str):
+            names.append(item)
+            continue
+        for name, spec in item.items():
+            names.append(name)
+            nested[name] = {"fields": spec} if isinstance(spec, list) else spec
+    return names, nested
 
 
 def _strip_bytes(value: Any) -> Any:

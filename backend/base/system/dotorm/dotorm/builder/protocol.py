@@ -45,6 +45,7 @@ class BuilderProtocol(Protocol):
         column2: str,
         fields: list[str] | None = None,
         limit: int = 80,
+        filter: list | None = None,
     ) -> tuple[str, tuple]: ...
 
     def build_get_many2many(
@@ -60,4 +61,5 @@ class BuilderProtocol(Protocol):
         end: int | None = None,
         sort: str = "id",
         limit: int | None = 10,
+        filter: list | None = None,
     ) -> tuple[str, tuple]: ...

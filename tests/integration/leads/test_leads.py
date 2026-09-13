@@ -78,7 +78,7 @@ class TestLeadCreate:
         lead = await Lead.get(
             lid,
             fields=["id", "name", "partner_id"],
-            fields_nested={"partner_id": ["id"]},
+            fields_nested={"partner_id": {"fields": ["id"]}},
         )
         assert lead.partner_id.id == pid
 
@@ -173,7 +173,9 @@ class TestLeadUpdate:
         await lead.update(Lead(stage_id=LeadStage(id=s2)))
 
         updated = await Lead.get(
-            lid, fields=["id", "stage_id"], fields_nested={"stage_id": ["id"]}
+            lid,
+            fields=["id", "stage_id"],
+            fields_nested={"stage_id": {"fields": ["id"]}},
         )
         assert updated.stage_id.id == s2
 

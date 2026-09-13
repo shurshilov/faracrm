@@ -2,10 +2,15 @@
 # Security — PolymorphicParentMixin
 #
 # При удалении записи каскадно удаляет связанные polymorphic-children
-# (attachments, activities) у которых res_model + res_id указывают на эту запись.
+# (attachments, activities, record-чаты) у которых res_model + res_id
+# указывают на эту запись.
 #
 # Поведение: сначала удаляется сам parent, потом children.
 # Если удаление children упало — warning в лог, parent уже удалён.
+#
+# Поля-связи на детей (activity_ids / attachment_ids / note_chat_ids) сюда
+# НЕ относятся: их получает КАЖДАЯ модель автоматически из реестра
+# (ModelsCore._attach_polymorphic_fields по __polymorphic_field__ детей).
 
 import logging
 from typing import ClassVar
@@ -24,29 +29,32 @@ logger = logging.getLogger(__name__)
 
 class PolymorphicParentMixin(DotModel):
     """
-    Mixin для моделей которые могут быть parent для polymorphic children
-    (attachments, activities, и т.п. — модели с res_model + res_id).
+    Mixin для моделей, при удалении которых нужно каскадно удалить их
+    polymorphic children (модели с res_model + res_id).
 
-    При удалении записи каскадно удаляет всех её polymorphic children.
+    Список детей — из реестра (env.models._polymorphic_children, собран
+    по __polymorphic_field__ дочерних моделей); __polymorphic_children__
+    переопределяет его для своих моделей с другими именами колонок:
 
-    Использование:
-        class Partner(PolymorphicParentMixin, DotModel):
-            __table__ = "partners"
-
-    Можно переопределить список children-моделей:
         class MyModel(PolymorphicParentMixin, DotModel):
             __polymorphic_children__ = [
-                ("attachment", "res_model", "res_id"),
-                ("activity", "res_model", "res_id"),
-                ("custom_log", "object_type", "object_id"),  # своя модель
+                ("custom_log", "object_type", "object_id"),
             ]
     """
 
-    # Список (child_model_name, model_field, id_field)
-    __polymorphic_children__: ClassVar[list[tuple[str, str, str]]] = [
-        ("attachment", "res_model", "res_id"),
-        ("activity", "res_model", "res_id"),
-    ]
+    # Список (child_model_name, model_field, id_field); None — из реестра.
+    __polymorphic_children__: ClassVar[list[tuple[str, str, str]] | None] = (
+        None
+    )
+
+    @classmethod
+    def _polymorphic_children(cls) -> list[tuple[str, str, str]]:
+        if cls.__polymorphic_children__ is not None:
+            return cls.__polymorphic_children__
+        return [
+            (model_name, "res_model", "res_id")
+            for model_name, _field, _filter in env.models._polymorphic_children
+        ]
 
     async def delete(self, session=None, depends_jobs=None):
         # Сначала удаляем сам parent — если упадёт, дальше не пойдём.
@@ -112,7 +120,7 @@ class PolymorphicParentMixin(DotModel):
 
         set_access_session(sys_session)
         try:
-            for child_info in cls.__polymorphic_children__:
+            for child_info in cls._polymorphic_children():
                 child_model_name, model_field, id_field = child_info
 
                 child_cls = getattr(env.models, child_model_name, None)

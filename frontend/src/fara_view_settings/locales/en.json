@@ -1,0 +1,14 @@
+{
+  "title": "Column Settings",
+  "menu": {
+    "column_settings": "Column Settings"
+  },
+  "fields": {
+    "id": "ID",
+    "model_name": "Model",
+    "columns": "Columns (JSON)",
+    "widgets": "Relation column widgets (JSON)",
+    "filters": "Relation column filters (JSON)",
+    "created_at": "Created At"
+  }
+}

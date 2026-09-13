@@ -263,7 +263,7 @@ class Contact(AuditMixin, DotModel):
         return await env.models.contact.search_one(
             filter=filters,
             fields=["id", "value", "name", "user_id", "contact_type_id"],
-            fields_nested={"user_id": ["id", "name"]},
+            fields_nested={"user_id": {"fields": ["id", "name"]}},
         )
 
     @classmethod

@@ -1,6 +1,7 @@
 /**
  * Типы для компонента SearchFilter
  */
+import type { SelectionOption } from '@/services/api/crudTypes';
 
 // Типы полей
 export type FieldType =
@@ -48,7 +49,7 @@ export interface FieldInfo {
   type: FieldType;
   label?: string;
   relation?: string;
-  options?: string[];
+  options?: SelectionOption[];
 }
 
 // Один фильтр (триплет)

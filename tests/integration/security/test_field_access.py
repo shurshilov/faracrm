@@ -93,7 +93,7 @@ async def _user_role_codes(user_id: int) -> set[str]:
     u = await User.get(
         user_id,
         fields=["id", "role_ids"],
-        fields_nested={"role_ids": ["id", "code"]},
+        fields_nested={"role_ids": {"fields": ["id", "code"]}},
     )
     return {r.code for r in (u.role_ids or [])}
 

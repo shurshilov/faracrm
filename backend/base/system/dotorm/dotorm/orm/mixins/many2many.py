@@ -15,6 +15,7 @@ from ...fields import (
     Many2one,
     One2many,
     One2one,
+    PolymorphicOne2many,
 )
 from ...decorators import hybridmethod
 from ..utils import execute_maybe_parallel
@@ -53,6 +54,7 @@ class OrmMany2manyMixin(_Base):
         sort: str = "id",
         limit: int | None = 10,
         session=None,
+        filter: list | None = None,
     ):
         if not fields:
             fields = []
@@ -75,6 +77,7 @@ class OrmMany2manyMixin(_Base):
             end,
             sort,
             limit,
+            filter=filter,
         )
         records = await session.execute(
             stmt, values, prepare=comodel.prepare_list_ids
@@ -148,7 +151,7 @@ class OrmMany2manyMixin(_Base):
         session,
         fields_relation,
         records,
-        fields_nested: dict[str, list[str]] | None = None,
+        fields_nested: dict[str, dict] | None = None,
     ):
         """Load relations for a list of records (batch)."""
         cls._dialect
@@ -185,7 +188,8 @@ class OrmMany2manyMixin(_Base):
                     fk_id = getattr(rec, req.field_name)
                     setattr(rec, req.field_name, result_by_id.get(fk_id))
 
-            if isinstance(req.field, (One2many, One2one)):
+            # PolymorphicOne2many — как One2many: relation_table_field = res_id
+            if isinstance(req.field, (One2many, One2one, PolymorphicOne2many)):
                 # Build lookup: parent_id → [children]
                 children: dict[int, list] = {}
                 for res_model in result:

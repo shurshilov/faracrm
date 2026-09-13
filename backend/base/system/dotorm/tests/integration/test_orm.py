@@ -427,7 +427,7 @@ class TestMany2oneRelations:
         role = await Role.get(
             id=role_id,
             fields=["id", "name", "model_id"],
-            fields_nested={"model_id": ["id", "name"]},
+            fields_nested={"model_id": {"fields": ["id", "name"]}},
         )
 
         assert role is not None
@@ -481,7 +481,7 @@ class TestOne2manyRelations:
         role = await Role.get(
             id=role_id,
             fields=["id", "name", "acl_ids"],
-            fields_nested={"acl_ids": ["id", "name", "active"]},
+            fields_nested={"acl_ids": {"fields": ["id", "name", "active"]}},
         )
 
         assert role is not None
@@ -566,7 +566,7 @@ class TestMany2manyRelations:
         user = await User.get(
             id=user_id,
             fields=["id", "name", "role_ids"],
-            fields_nested={"role_ids": ["id", "name"]},
+            fields_nested={"role_ids": {"fields": ["id", "name"]}},
         )
 
         assert user is not None

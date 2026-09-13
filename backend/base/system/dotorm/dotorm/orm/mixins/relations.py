@@ -56,7 +56,7 @@ class OrmRelationsMixin(_Base):
     async def search(
         self,
         fields: list[str] | None = None,
-        fields_nested: dict[str, list[str]] | None = None,
+        fields_nested: dict[str, dict] | None = None,
         start: int | None = None,
         end: int | None = None,
         limit: int | None = None,
@@ -147,7 +147,7 @@ class OrmRelationsMixin(_Base):
     async def search_one(
         self,
         fields: list[str] | None = None,
-        fields_nested: dict[str, list[str]] | None = None,
+        fields_nested: dict[str, dict] | None = None,
         order: Literal["DESC", "ASC", "desc", "asc"] | None = None,
         sort: str | None = None,
         filter: FilterExpression | None = None,
@@ -249,7 +249,7 @@ class OrmRelationsMixin(_Base):
         cls,
         record,
         fields: list[str],
-        fields_nested: dict[str, list[str]],
+        fields_nested: dict[str, dict],
         session,
     ):
         """
@@ -285,8 +285,12 @@ class OrmRelationsMixin(_Base):
             relation_table = field.relation_table
             relation_table_field = field.relation_table_field
 
-            # Определяем какие поля вложенной модели загружать
-            nested = fields_nested.get(name)
+            # Определяем какие поля вложенной модели загружать. Элемент
+            # fields_nested — {"fields", "filter"}; фильтр запроса
+            # складывается с Field.filter (Field.nested_filter).
+            nested_raw = fields_nested.get(name)
+            nested = field.nested_fields(nested_raw)
+            relation_filter = field.nested_filter(nested_raw)
             if nested:
                 fields_select = nested
             elif relation_table:
@@ -328,6 +332,7 @@ class OrmRelationsMixin(_Base):
                         column2=field.column2,
                         fields=fields_select,
                         limit=None,
+                        filter=relation_filter,
                     )
                 )
                 request_meta.append((name, "m2m"))
@@ -340,7 +345,10 @@ class OrmRelationsMixin(_Base):
                 execute_list.append(
                     relation_table.search(
                         fields=fields_select,
-                        filter=[(relation_table_field, "=", record.id)],
+                        filter=[
+                            (relation_table_field, "=", record.id),
+                            *relation_filter,
+                        ],
                         limit=1000,
                     )
                 )
@@ -353,6 +361,7 @@ class OrmRelationsMixin(_Base):
                         filter=[
                             ("res_id", "=", record.id),
                             ("res_model", "=", record.__table__),
+                            *relation_filter,
                         ],
                         limit=1000,
                     )

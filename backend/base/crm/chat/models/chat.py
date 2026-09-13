@@ -102,6 +102,15 @@ class Chat(AuditMixin, DotModel):
     # через /records/{res_model}/{res_id}/chat/exists.
     __indexes__ = [("res_model", "res_id", "chat_type")]
 
+    # Полиморфный ребёнок: record-чат «Заметки» записи. Каждая модель
+    # получает поле-связь note_chat_ids (0 или 1 чат) автоматически — см.
+    # ModelsCore._attach_polymorphic_fields. Каскад при удалении записи —
+    # тем же реестром (PolymorphicParentMixin).
+    __polymorphic_field__ = (
+        "note_chat_ids",
+        [("chat_type", "=", "record"), ("active", "=", True)],
+    )
+
     id: int = Integer(primary_key=True)
     name: str = Char(max_length=255, description="Название чата/канала")
     description: str | None = Text(description="Описание канала")

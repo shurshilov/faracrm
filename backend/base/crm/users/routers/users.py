@@ -192,7 +192,7 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
                 "role_ids",
                 "workspace_id",
             ],
-            fields_nested={"role_ids": ["id", "code"]},
+            fields_nested={"role_ids": {"fields": ["id", "code"]}},
         )
         if not user_id:
             raise AuthException.UserNotExist()
@@ -263,7 +263,7 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
             ws = await env.models.workspace.search_one(
                 filter=[("id", "=", user_id.workspace_id.id)],
                 fields=["id", "name", "app_ids"],
-                fields_nested={"app_ids": ["id", "ui_menu_name"]},
+                fields_nested={"app_ids": {"fields": ["id", "ui_menu_name"]}},
             )
             if ws:
                 result.setdefault("user_id", {})["workspace_id"] = {

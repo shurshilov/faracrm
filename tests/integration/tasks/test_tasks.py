@@ -133,7 +133,7 @@ class TestTasks:
         updated = await Task.get(
             task_id,
             fields=["id", "stage_id"],
-            fields_nested={"stage_id": ["id"]},
+            fields_nested={"stage_id": {"fields": ["id"]}},
         )
         assert updated.stage_id.id == s2
 

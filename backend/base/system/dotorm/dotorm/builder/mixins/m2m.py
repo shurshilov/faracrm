@@ -12,6 +12,26 @@ class Many2ManyMixin:
 
     __slots__ = ()
 
+    @staticmethod
+    def _m2m_filter_clause(
+        relation_table: Type["DotModel"], filter: list | None
+    ) -> tuple[str, tuple]:
+        """Field.filter у Many2many → доп. условие на связанную таблицу.
+
+        В M2M-запросе три таблицы под алиасами, а FilterParser пишет голые
+        имена колонок, поэтому фильтр не вклеиваем в общий WHERE, а сужаем
+        связанную таблицу подзапросом по её id: там имена однозначны.
+        Парсер связанной модели заодно проверяет имена полей фильтра.
+        """
+        if not filter:
+            return "", ()
+        clause, values = relation_table._builder.filter_parser.parse(filter)
+        return (
+            f" AND p.id IN (SELECT id FROM {relation_table.__table__} "
+            f"WHERE {clause})",
+            tuple(values),
+        )
+
     def build_get_many2many(
         self: "BuilderProtocol",
         id: int,
@@ -25,6 +45,7 @@ class Many2ManyMixin:
         end: int | None = None,
         sort: str = "id",
         limit: int | None = 10,
+        filter: list | None = None,
     ) -> tuple[str, tuple]:
         """Build SELECT for M2M relation."""
         store_fields = relation_table.get_store_fields()
@@ -38,17 +59,20 @@ class Many2ManyMixin:
         # к связанной таблице
         fields_prefixed = [f"p.{field}" for field in fields]
         fields_select_stmt = ", ".join(fields_prefixed)
+        filter_clause, filter_values = self._m2m_filter_clause(
+            relation_table, filter
+        )
 
         stmt = f"""
         SELECT {fields_select_stmt}
         FROM {relation_table.__table__} p
         JOIN {many2many_table} pt ON p.id = pt.{column1}
         JOIN {self.table} t ON pt.{column2} = t.id
-        WHERE t.id = %s
+        WHERE t.id = %s{filter_clause}
         ORDER BY {sort} {order}
         """
 
-        val: tuple = (id,)
+        val: tuple = (id, *filter_values)
 
         if end is not None and start is not None:
             stmt += "LIMIT %s OFFSET %s"
@@ -68,6 +92,7 @@ class Many2ManyMixin:
         column2: str,
         fields: list[str] | None = None,
         limit: int = 80,
+        filter: list | None = None,
     ) -> tuple[str, tuple]:
         """
         Оптимизированная версия, когда необходимо получить сразу несколько свзяей m2m
@@ -91,17 +116,20 @@ class Many2ManyMixin:
 
         fields_select_stmt = ", ".join(fields_prefixed)
         query_placeholders = ", ".join(["%s"] * len(ids))
+        filter_clause, filter_values = self._m2m_filter_clause(
+            relation_table, filter
+        )
 
         stmt = f"""
         SELECT {fields_select_stmt}
         FROM {relation_table.__table__} p
         JOIN {many2many_table} pt ON p.id = pt.{column1}
         JOIN {self.table} t ON pt.{column2} = t.id
-        WHERE t.id IN ({query_placeholders})
+        WHERE t.id IN ({query_placeholders}){filter_clause}
         LIMIT %s
         """
 
-        val = (*ids, limit)
+        val = (*ids, *filter_values, limit)
         return stmt, val
 
 

@@ -676,7 +676,7 @@ class ChatStrategyBase(ABC):
             #         ("user_id", "=", user_id),
             #         ("active", "=", True),
             #     ],
-            #     fields_nested={"external_account_ids": ["id"]},
+            #     fields_nested={"external_account_ids": {"fields": ["id"]}},
             #     limit=1,
             # )
 

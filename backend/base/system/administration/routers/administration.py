@@ -133,12 +133,12 @@ async def _get_first_company():
             "login_social3_url",
         ],
         fields_nested={
-            "logo_id": ["id"],
-            "login_logo_id": ["id"],
-            "login_background_id": ["id"],
-            "favicon_id": ["id"],
-            "manifest_icon_192_id": ["id"],
-            "manifest_icon_512_id": ["id"],
+            "logo_id": {"fields": ["id"]},
+            "login_logo_id": {"fields": ["id"]},
+            "login_background_id": {"fields": ["id"]},
+            "favicon_id": {"fields": ["id"]},
+            "manifest_icon_192_id": {"fields": ["id"]},
+            "manifest_icon_512_id": {"fields": ["id"]},
         },
     )
 
@@ -381,7 +381,9 @@ async def branding_file(
             "storage_id",
             "content",
         ],
-        fields_nested={"storage_id": ["id", "type", "google_credentials"]},
+        fields_nested={
+            "storage_id": {"fields": ["id", "type", "google_credentials"]}
+        },
     )
     if not attach:
         raise HTTPException(status_code=404)

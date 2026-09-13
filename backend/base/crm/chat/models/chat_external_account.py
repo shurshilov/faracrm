@@ -151,7 +151,7 @@ class ChatExternalAccount(AuditMixin, DotModel):
                 ("active", "=", True),
             ],
             fields=["id", "contact_id", "external_id", "name"],
-            # fields_nested={"contact_id": ["user_id", "partner_id"]},
+            # fields_nested={"contact_id": {"fields": ["user_id", "partner_id"]}},
         )
 
     @hybridmethod
@@ -192,8 +192,8 @@ class ChatExternalAccount(AuditMixin, DotModel):
                 filter=[("id", "=", existing.contact_id.id)],
                 fields=["id", "name", "user_id", "partner_id"],
                 fields_nested={
-                    "partner_id": ["id", "name"],
-                    "user_id": ["id", "name"],
+                    "partner_id": {"fields": ["id", "name"]},
+                    "user_id": {"fields": ["id", "name"]},
                 },
             )
             return existing, contact, False

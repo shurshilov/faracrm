@@ -504,6 +504,18 @@ export interface SavedFilterRecord extends BaseRecord {
   use_count: number;
 }
 
+export interface ColumnSettingRecord extends BaseRecord {
+  model_name: string;
+  user_id: RelationRecord | null;
+  /** JSON-массив имён колонок в порядке отображения. */
+  columns: string;
+  /** JSON {поле: виджет} для колонок-связей. */
+  widgets: string | null;
+  /** JSON {поле: фильтр} для колонок-связей. */
+  filters: string | null;
+  created_at: string | null;
+}
+
 export interface SystemSettingRecord extends BaseRecord {
   key: string;
   value: unknown;
@@ -575,6 +587,7 @@ export interface ModelRecordMap {
   language: LanguageRecord;
   cron_job: CronJobRecord;
   saved_filters: SavedFilterRecord;
+  column_settings: ColumnSettingRecord;
   system_settings: SystemSettingRecord;
   report_template: ReportTemplateRecord;
 }

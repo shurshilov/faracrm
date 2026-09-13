@@ -58,7 +58,7 @@ async def _default_roles():
     base_user = await env.models.role.search_one(
         filter=[("code", "=", "base_user")],
         fields=["id", "name", "user_ids"],
-        fields_nested={"user_ids": ["id", "name"]},
+        fields_nested={"user_ids": {"fields": ["id", "name"]}},
     )
     return [base_user] if base_user else []
 
@@ -289,7 +289,7 @@ class User(PolymorphicParentMixin):
     #             "notification_popup",
     #             "notification_sound",
     #         ],
-    #         fields_nested={"role_ids": ["id"]},
+    #         fields_nested={"role_ids": {"fields": ["id"]}},
     #     )
 
     #     # 2. Генерируем хэш пароля

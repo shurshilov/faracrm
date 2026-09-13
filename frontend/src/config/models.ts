@@ -555,6 +555,19 @@ export const modelsConfig: Record<string, ModelConfig> = {
         default: m.ViewFormSavedFilters,
       })),
   },
+  // Настройки колонок списков (per-user) — ремонтный экран: правится
+  // обычно из меню колонок самого списка.
+  column_settings: {
+    menu: MenuGroups.settings,
+    list: () =>
+      import('@/fara_view_settings/List').then(m => ({
+        default: m.ViewListColumnSettings,
+      })),
+    form: () =>
+      import('@/fara_view_settings/Form').then(m => ({
+        default: m.ViewFormColumnSettings,
+      })),
+  },
   // === Projects & Tasks ===
   tasks: {
     menu: MenuGroups.projects,

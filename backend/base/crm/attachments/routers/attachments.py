@@ -102,7 +102,7 @@ async def attachment_content(req: Request, attachment_id: Id):
             "storage_id",
             "content",
         ],
-        # fields_nested={"storage_id": ["id", "type", "google_credentials"]},
+        # fields_nested={"storage_id": {"fields": ["id", "type", "google_credentials"]}},
     )
     if not attach:
         return JSONResponse(
@@ -151,7 +151,7 @@ async def attachment_preview(
             "storage_id",
             "content",
         ],
-        # fields_nested={"storage_id": ["id", "type", "google_credentials"]},
+        # fields_nested={"storage_id": {"fields": ["id", "type", "google_credentials"]}},
     )
     if not attach:
         return JSONResponse(

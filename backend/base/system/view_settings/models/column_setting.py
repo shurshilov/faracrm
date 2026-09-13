@@ -49,6 +49,15 @@ class ColumnSetting(DotModel):
     # (кроме виртуальных колонок вью).
     columns: str = Text(required=True)
 
+    # Настройки колонок-связей (One2many/Many2many/полиморфные) по имени
+    # поля. widgets: {"activity_ids": "count"} — как рисовать (count —
+    # плашка-счётчик, present — «есть/нет», text — текст). filters:
+    # {"activity_ids": [["state", "=", "overdue"], ...]} — фильтр на
+    # связанные записи в формате фильтра списков; уходит в search как
+    # {имя: {"filter": [...]}} и складывается с Field.filter поля по И.
+    widgets: str | None = Text()
+    filters: str | None = Text()
+
     # Дата создания
     created_at: datetime.datetime = Datetime(
         default=lambda: datetime.datetime.now(datetime.timezone.utc),

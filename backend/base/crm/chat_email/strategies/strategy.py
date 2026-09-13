@@ -861,8 +861,10 @@ class EmailStrategy(ChatStrategyBase):
                 ("active", "=", True),
             ],
             fields_nested={
-                "contact_type_id": ["id", "name", "is_phone_format"],
-                "outbox_account_id": ["id", "external_id"],
+                "contact_type_id": {
+                    "fields": ["id", "name", "is_phone_format"]
+                },
+                "outbox_account_id": {"fields": ["id", "external_id"]},
             },
         )
 

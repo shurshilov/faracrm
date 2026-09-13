@@ -214,6 +214,32 @@ class DotModel(
             )
 
     @classmethod
+    def add_field(cls, name: str, field: Field) -> None:
+        """Добавить поле к уже определённой модели (после __init_subclass__).
+
+        Единственный путь для полей «снаружи» — @extend и авто-поля
+        полиморфных детей: кэши полей/compute и билдер собраны при
+        определении класса, поэтому после setattr их надо пересобрать —
+        иначе SELECT, FilterParser и движок @depends о поле не знают.
+        """
+        field.__set_name__(cls, name)
+        setattr(cls, name, field)
+        cls.rebuild_field_caches()
+
+    @classmethod
+    def rebuild_field_caches(cls) -> None:
+        """Пересобрать кэши полей, compute-кэш и билдер по текущим полям
+        класса (порядок важен: compute-кэш читает _cache_all_fields)."""
+        cls._build_field_cache()
+        cls._build_compute_cache()
+        if "__table__" in cls.__dict__:
+            cls._builder = Builder(
+                table=cls.__table__,
+                fields=cls._cache_all_fields,
+                dialect=cls._dialect,
+            )
+
+    @classmethod
     def _build_field_cache(cls):
         """Build all field caches from MRO. Called once in __init_subclass__."""
         fields = {}
@@ -755,9 +781,9 @@ class DotModel(
         ]
 
     @classmethod
-    async def get_default_values(
-        cls, fields_client_nested: dict[str, list[str]]
-    ):
+    async def get_default_values(cls, fields_client_nested: dict[str, dict]):
+        """fields_client_nested — {имя x2m-поля: {"fields": [...]}}, как у
+        get/search (см. Field.nested_fields)."""
         default_values = {}
 
         for name, field in cls.get_fields().items():
@@ -774,7 +800,9 @@ class DotModel(
 
             # 2. Обработка x2m полей (подготовка структуры)
             if is_x2m:
-                nested_names = fields_client_nested.get(name)
+                nested_names = field.nested_fields(
+                    fields_client_nested.get(name)
+                )
                 # Если есть вложенные поля, создаем спец. структуру, иначе пропускаем
                 if nested_names:
                     if value:
@@ -1034,9 +1062,11 @@ class DotModel(
             elif kind == FieldKind.X2M:
                 # store=False → до CREATE/UPDATE не доходит (ключ не пишется).
                 if mode == JsonMode.LIST:
+                    # {id, name} через json_list(): у модели без поля name
+                    # (activity как полиморфный ребёнок любой записи) имя
+                    # подменяется id, а не падает AttributeError.
                     fields_json[field_name] = [
-                        {"id": rec.id, "name": rec.name or str(rec.id)}
-                        for rec in field
+                        rec.json_list() for rec in field
                     ]
                 elif mode == JsonMode.NESTED_LIST:
                     fields_json[field_name] = field

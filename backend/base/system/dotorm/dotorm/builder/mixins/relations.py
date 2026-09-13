@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 from ..request_builder import RequestBuilder
 from ...fields import (
     PolymorphicMany2one,
+    PolymorphicOne2many,
     Field,
     Many2many,
     Many2one,
@@ -25,11 +26,15 @@ class RelationsMixin:
         self: "BuilderProtocol",
         fields_relation: list[tuple[str, Field]],
         records: list | None = None,
-        fields_nested: dict[str, list[str]] | None = None,
+        fields_nested: dict[str, dict] | None = None,
     ) -> list[RequestBuilder]:
         """
         Build optimized queries for loading relations.
         Avoids N+1 by batching relation queries.
+
+        fields_nested[name] — {"fields": [...], "filter": [...]}: вложенные
+        поля связанной модели и фильтр запроса, который складывается с
+        Field.filter (см. Field.nested_filter).
         """
         if records is None:
             records = []
@@ -44,13 +49,14 @@ class RelationsMixin:
             # TODO: взможно ошибка от дублирвоания полей
             # Default fields for relations
             # добавить вложенные поля от пользователя
+            nested = fields_nested.get(name) if fields_nested else None
+            custom_fields = field.nested_fields(nested)
             fields = []
-            if fields_nested:
-                custom_fields = fields_nested.get(name)
-                if custom_fields:
-                    fields += custom_fields
+            if custom_fields:
+                fields += custom_fields
             elif field.relation_table:
                 fields = field.relation_table.get_store_fields()
+            relation_filter = field.nested_filter(nested)
 
             req: RequestBuilder | None = None
 
@@ -58,7 +64,30 @@ class RelationsMixin:
             if isinstance(field, (One2many, One2one)):
                 stmt, val = field.relation_table._builder.build_search(
                     fields=list(set([*fields, field.relation_table_field])),
-                    filter=[(field.relation_table_field, "in", ids)],
+                    filter=[
+                        (field.relation_table_field, "in", ids),
+                        *relation_filter,
+                    ],
+                )
+                req = RequestBuilder(
+                    stmt=stmt,
+                    value=val,
+                    field_name=name,
+                    field=field,
+                    fields=fields,
+                )
+
+            # Полиморфные дети (res_model = таблица родителя, res_id = id):
+            # один запрос на страницу, как у One2many; filter поля сужает
+            # выборку (напр. только просроченные активности).
+            elif isinstance(field, PolymorphicOne2many):
+                stmt, val = field.relation_table._builder.build_search(
+                    fields=list(set([*fields, field.relation_table_field])),
+                    filter=[
+                        (field.relation_table_field, "in", ids),
+                        ("res_model", "=", self.table),
+                        *relation_filter,
+                    ],
                 )
                 req = RequestBuilder(
                     stmt=stmt,
@@ -76,6 +105,7 @@ class RelationsMixin:
                     column1=field.column1,
                     column2=field.column2,
                     fields=fields,
+                    filter=relation_filter,
                 )
                 req = RequestBuilder(
                     stmt=stmt,

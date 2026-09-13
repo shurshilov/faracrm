@@ -267,7 +267,7 @@ class TestCopyUserAPI:
         copied = await User.get(
             data["id"],
             fields=["id", "role_ids"],
-            fields_nested={"role_ids": ["id"]},
+            fields_nested={"role_ids": {"fields": ["id"]}},
         )
         role_ids = [r.id for r in copied.role_ids] if copied.role_ids else []
         assert role_id in role_ids

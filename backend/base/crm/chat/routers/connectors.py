@@ -174,7 +174,9 @@ async def fetch_connector_history(
     # contact_type.id — внутренние звонки при этом пишутся, а клиентские нет.
     connector = await env.models.chat_connector.search_one(
         filter=[("id", "=", connector_id)],
-        fields_nested={"contact_type_id": ["id", "name", "is_phone_format"]},
+        fields_nested={
+            "contact_type_id": {"fields": ["id", "name", "is_phone_format"]}
+        },
     )
     if not connector:
         raise HTTPException(status_code=404, detail="CONNECTOR_NOT_FOUND")

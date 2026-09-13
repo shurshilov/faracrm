@@ -311,6 +311,7 @@ const menuTree: GroupConfig[] = [
           { model: 'models' },
           { model: 'cron_job' },
           { model: 'saved_filters' },
+          { model: 'column_settings' },
           { model: 'system_settings' },
           { model: 'report_template' },
         ],

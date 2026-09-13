@@ -82,6 +82,15 @@ class Field[FieldType]:
     # One2one — нет (переопределено в классах полей), явный copy=... в
     # объявлении поля сильнее.
     copy: bool = True
+    # Доп. условия на связанные записи (тот же формат, что filter у
+    # search), объявляются в Python на поле. Читают их все загрузчики
+    # связей — One2many/One2one/PolymorphicOne2many/Many2many (search/get)
+    # и счётчики автокруда; у скаляров всегда None. Так одна таблица детей
+    # даёт несколько полей-срезов: все активности / только просроченные.
+    # Клиент может сузить срез своим фильтром на запрос (fields_nested
+    # {name: {"fields": [...], "filter": [...]}}) — он складывается с этим
+    # по И, см. Field.nested_filter.
+    filter: list | None = None
 
     string: str = ""
     options: list[str] | None = None
@@ -126,6 +135,7 @@ class Field[FieldType]:
         self.indexable = kwargs.pop("indexable", self.indexable)
         self.store = kwargs.pop("store", self.store)
         self.copy = kwargs.pop("copy", self.copy)
+        self.filter = kwargs.pop("filter", self.filter)
 
         # ondelete - явное указание действия при удалении родительской записи
         # Если не указано явно, определяется автоматически на основе null
@@ -168,6 +178,16 @@ class Field[FieldType]:
             if raw:
                 acl[op] = [c.strip() for c in raw.split(",") if c.strip()]
         return acl
+
+    def nested_filter(self, nested: "dict | None") -> list:
+        """Итоговый фильтр на связанные записи для одного запроса."""
+        extra = nested.get("filter") if nested else None
+        return [*(self.filter or []), *(extra or [])]
+
+    @staticmethod
+    def nested_fields(nested: "dict | None") -> list[str] | None:
+        """Имена вложенных полей из элемента fields_nested."""
+        return (nested.get("fields") or None) if nested else None
 
     def required_roles(self, operation: str) -> list[str] | None:
         """Коды ролей, которым разрешена операция над полем, либо None.

@@ -57,7 +57,7 @@ class TestRoles:
         role = await Role.get(
             role_id,
             fields=["id", "name", "model_id"],
-            fields_nested={"model_id": ["id"]},
+            fields_nested={"model_id": {"fields": ["id"]}},
         )
         assert role.model_id.id == model_id
 
@@ -77,7 +77,7 @@ class TestRoles:
         updated = await Role.get(
             role_id,
             fields=["id", "user_ids"],
-            fields_nested={"user_ids": ["id"]},
+            fields_nested={"user_ids": {"fields": ["id"]}},
         )
         user_ids = [u.id for u in updated.user_ids] if updated.user_ids else []
         assert user1.id in user_ids
@@ -512,8 +512,8 @@ class TestSecurityIntegration:
             role_id,
             fields=["id", "user_ids", "acl_ids"],
             fields_nested={
-                "user_ids": ["id"],
-                "acl_ids": ["id"],
+                "user_ids": {"fields": ["id"]},
+                "acl_ids": {"fields": ["id"]},
             },
         )
         user_ids = [u.id for u in role.user_ids] if role.user_ids else []
@@ -545,7 +545,7 @@ class TestSecurityIntegration:
         updated = await User.get(
             user.id,
             fields=["id", "role_ids"],
-            fields_nested={"role_ids": ["id"]},
+            fields_nested={"role_ids": {"fields": ["id"]}},
         )
         role_ids = [r.id for r in updated.role_ids] if updated.role_ids else []
 

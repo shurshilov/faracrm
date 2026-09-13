@@ -9,13 +9,7 @@ import {
   BaseQueryFn,
   TypedUseQueryHookResult,
 } from '@reduxjs/toolkit/query/react';
-import {
-  Children,
-  isValidElement,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { Children, isValidElement, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -130,7 +124,11 @@ export const List = <RecordType extends FaraRecord>({
   );
 
   useEffect(() => {
-    const snapshot: ListUiState<RecordType> = { page, pageSize, sort: sortStatus };
+    const snapshot: ListUiState<RecordType> = {
+      page,
+      pageSize,
+      sort: sortStatus,
+    };
     saveViewState(listUiKey(props.model), snapshot);
   }, [props.model, page, pageSize, sortStatus]);
 
@@ -246,9 +244,18 @@ export const List = <RecordType extends FaraRecord>({
   // запроса — так кастомные рендеры соседних колонок не ломаются.
   // Пользовательские колонки добавляем только когда набор полей известен
   // (allFields загружен) — чтобы устаревшее private-поле не улетело в search.
-  const requestFields = Array.from(
+  const requestFieldNames = Array.from(
     new Set([...fieldsList, ...(knownFieldNames ? selectedColumns : [])]),
   );
+  // Колонка-связь с пользовательским фильтром уходит в search словарём
+  // {поле: {fields, filter}} (см. ColumnRelationSettings). Для плашки
+  // хватает id связанных записей: имя запрашивать нельзя — не у всех
+  // моделей оно есть (activity), а схема search вложенные поля проверяет
+  // по публичным полям связанной модели (422).
+  const requestFields: GetListParams['fields'] = requestFieldNames.map(name => {
+    const filter = columnConfig.filters[name];
+    return filter?.length ? { [name]: { fields: ['id'], filter } } : name;
+  });
 
   const { data, refetch, originalArgs } = useFilteredSearchQuery({
     ...props,
@@ -323,13 +330,29 @@ export const List = <RecordType extends FaraRecord>({
           if (!record) {
             return null;
           }
-          if (field.type === 'Many2many' || field.type === 'One2many') {
+          if (
+            field.type === 'Many2many' ||
+            field.type === 'One2many' ||
+            field.type === 'PolymorphicOne2many'
+          ) {
             const count = Array.isArray(record) ? record.length : 0;
-            const display = customRelationDisplay[field.name] || 'badge';
+            // Виджет колонки-связи: из настройки пользователя (меню
+            // колонок), иначе из разметки вью (relationDisplay).
+            const widget = columnConfig.widgets[field.name];
+            const display =
+              widget === 'text'
+                ? 'text'
+                : (customRelationDisplay[field.name] ?? 'badge');
+            const label =
+              widget === 'present'
+                ? count > 0
+                  ? 'Есть'
+                  : '—'
+                : `${count} записей`;
             if (display === 'text') {
               return (
                 <Text size="sm" c="dimmed">
-                  {count} записей
+                  {label}
                 </Text>
               );
             }
@@ -345,7 +368,7 @@ export const List = <RecordType extends FaraRecord>({
                       }
                     : undefined
                 }>
-                {count} записей
+                {label}
               </span>
             );
           }
@@ -397,7 +420,11 @@ export const List = <RecordType extends FaraRecord>({
       model={props.model}
       selected={selectedColumns}
       isCustom={columnConfig.isCustom}
+      widgets={columnConfig.widgets}
+      filters={columnConfig.filters}
       onChange={columnConfig.setDraft}
+      onWidgetChange={columnConfig.setWidget}
+      onFilterChange={columnConfig.setFilter}
       onReset={columnConfig.reset}
       onClose={columnConfig.persistIfDirty}
     />

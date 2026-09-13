@@ -46,6 +46,14 @@ class Activity(AuditMixin, DotModel):
     # всех активностей конкретной записи.
     __indexes__ = [("res_model", "res_id")]
 
+    # Полиморфный ребёнок: каждая модель получает поле-связь activity_ids
+    # (открытые активности записи) автоматически — см.
+    # ModelsCore._attach_polymorphic_fields.
+    __polymorphic_field__ = (
+        "activity_ids",
+        [("active", "=", True), ("done", "=", False)],
+    )
+
     id: int = Integer(primary_key=True)
 
     # Полиморфная привязка к записи

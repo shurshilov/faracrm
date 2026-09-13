@@ -64,7 +64,9 @@ async def chat_webhook(
             ("webhook_hash", "=", webhook_hash),
             ("active", "=", True),
         ],
-        fields_nested={"contact_type_id": ["id", "name", "is_phone_format"]},
+        fields_nested={
+            "contact_type_id": {"fields": ["id", "name", "is_phone_format"]}
+        },
     )
     if not connector:
         return JSONResponse(

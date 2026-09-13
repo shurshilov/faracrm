@@ -169,7 +169,7 @@ class PhoneNumber(AuditMixin, DotModel):
                 ("connector_id", "=", connector_id),
             ],
             fields=["id", "user_id", "create_partner"],
-            fields_nested={"user_id": ["id"]},
+            fields_nested={"user_id": {"fields": ["id"]}},
         )
 
     # ==================== cron-точки телефонии ====================
@@ -185,7 +185,9 @@ class PhoneNumber(AuditMixin, DotModel):
         return await env.models.chat_connector.search(
             filter=[("type", "=", strategy_type), ("active", "=", True)],
             fields_nested={
-                "contact_type_id": ["id", "name", "is_phone_format"]
+                "contact_type_id": {
+                    "fields": ["id", "name", "is_phone_format"]
+                }
             },
         )
 

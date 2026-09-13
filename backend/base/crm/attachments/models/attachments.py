@@ -51,6 +51,11 @@ class Attachment(AuditMixin, DotModel):
     # всех вложений конкретной записи (основной паттерн доступа).
     __indexes__ = [("res_model", "res_id")]
 
+    # Полиморфный ребёнок: каждая модель получает поле-связь attachment_ids
+    # (файлы записи, без папок) автоматически — см.
+    # ModelsCore._attach_polymorphic_fields. ChatMessage объявляет своё.
+    __polymorphic_field__ = ("attachment_ids", [("folder", "=", False)])
+
     def json_list(self):
         """Добавляет checksum в LIST сериализацию для cache busting."""
         result = super().json_list()

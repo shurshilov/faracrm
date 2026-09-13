@@ -16,6 +16,7 @@ import {
   ReadDefaultValuesResult,
   ReadParams,
   ReadResult,
+  SelectionOption,
   UpdateBulkParams,
   UpdateBulkResult,
 } from './crudTypes';
@@ -421,7 +422,7 @@ export interface FieldInfoResponse {
   name: string;
   type: string;
   relation?: string;
-  options?: string[];
+  options?: SelectionOption[];
   required?: boolean;
 }
 

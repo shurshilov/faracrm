@@ -656,7 +656,7 @@ class TestUserRoles:
         updated = await User.get(
             user.id,
             fields=["id", "role_ids"],
-            fields_nested={"role_ids": ["id"]},
+            fields_nested={"role_ids": {"fields": ["id"]}},
         )
         role_ids = [r.id for r in updated.role_ids] if updated.role_ids else []
         assert role_id in role_ids

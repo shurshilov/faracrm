@@ -70,6 +70,10 @@ import ruActivity from './fara_activity/locales/ru.json';
 import enSavedFilters from './fara_saved_filters/locales/en.json';
 import ruSavedFilters from './fara_saved_filters/locales/ru.json';
 
+// fara_view_settings
+import enColumnSettings from './fara_view_settings/locales/en.json';
+import ruColumnSettings from './fara_view_settings/locales/ru.json';
+
 // fara_report_docx
 import enReports from './fara_report_docx/locales/en.json';
 import ruReports from './fara_report_docx/locales/ru.json';
@@ -115,6 +119,7 @@ const resources = {
     activity: enActivity,
     tasks: enTasks,
     saved_filters: enSavedFilters,
+    column_settings: enColumnSettings,
     reports: enReports,
     workspace: enWorkspace,
     apps: enApps,
@@ -139,6 +144,7 @@ const resources = {
     activity: ruActivity,
     tasks: ruTasks,
     saved_filters: ruSavedFilters,
+    column_settings: ruColumnSettings,
     reports: ruReports,
     workspace: ruWorkspace,
     apps: ruApps,
@@ -172,6 +178,7 @@ i18n
       'tasks',
       'activity',
       'saved_filters',
+      'column_settings',
       'reports',
       'workspace',
       'apps',

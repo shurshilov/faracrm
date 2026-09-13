@@ -460,10 +460,42 @@ class SchemaRegistry:
         fields_literal = Literal[tuple(allowed_fields)]
         sort_literal = Literal[tuple(allowed_fields)]
 
+        # Элемент fields — имя поля ИЛИ {имя: {"fields": [...], "filter":
+        # [...]}} для relation-поля: вложенные поля и фильтр на связанные
+        # записи (колонка-срез в списке). Схема — своя на каждое relation-
+        # поле: вложенные имена — Literal по ПУБЛИЧНЫМ полям связанной
+        # модели (как у схемы get), иначе билдер связанной модели молча
+        # положил бы в SELECT её private store-поле (users.password_hash).
+        # Фильтр по именам проверяет FilterParser связанной модели (400).
+        filter_type = Optional[list[Union[list, Literal["and", "or"]]]]
+        nested_variants = []
+        for field_name, field in model.get_public_fields().items():
+            related = (
+                field.relation_table
+                if isinstance(field, RELATION_TYPES)
+                else None
+            )
+            if related is None:
+                continue
+            related_public = list(related.get_public_fields()) or ["id"]
+            nested_spec = create_model(
+                f"{name}Search_{field_name}_Nested",
+                __config__=ConfigDict(protected_namespaces=()),
+                fields=(Optional[list[Literal[tuple(related_public)]]], None),
+                filter=(filter_type, None),
+            )
+            nested_variants.append(
+                create_model(
+                    f"{name}Search_{field_name}_RelationInput",
+                    __config__=ConfigDict(protected_namespaces=()),
+                    **{field_name: (nested_spec, ...)},
+                )
+            )
+
         return create_model(
             f"{name}SearchInput",
             __config__=ConfigDict(protected_namespaces=()),
-            fields=(list[fields_literal], ...),
+            fields=(list[Union[fields_literal, *nested_variants]], ...),
             end=(Optional[int], None),
             order=(Literal["DESC", "ASC", "desc", "asc"], "DESC"),
             sort=(sort_literal, "id"),

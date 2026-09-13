@@ -23,7 +23,12 @@ import {
 import { IconChevronDown, IconPlus } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useSearchQuery, useCreateMutation } from '@/services/api/crudApi';
-import { FaraRecord, GetListParams, GetListResult } from '@/services/api/crudTypes';
+import {
+  FaraRecord,
+  GetListParams,
+  GetListResult,
+  SelectionOption,
+} from '@/services/api/crudTypes';
 
 const QUICK_CREATE_VALUE = '__quick_create__';
 import {
@@ -39,8 +44,8 @@ interface InlineCellProps {
   fieldName: string;
   /** Тип поля из fieldsServer */
   fieldType: string;
-  /** Опции для Selection */
-  options?: string[];
+  /** Опции для Selection: [значение, подпись] */
+  options?: SelectionOption[];
   /** Модель связи (для Many2one) */
   relation?: string;
   /** Callback при изменении */
@@ -113,7 +118,7 @@ export function InlineCell({
         <Select
           value={value ?? null}
           onChange={onChange}
-          data={(options || []).map(opt => ({ value: opt, label: opt }))}
+          data={(options || []).map(([value, label]) => ({ value, label }))}
           size="xs"
           variant="unstyled"
           styles={{ input: { padding: '2px 4px', minHeight: 28 } }}

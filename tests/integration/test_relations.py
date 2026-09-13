@@ -73,7 +73,10 @@ async def _get_user_with_roles(user_id):
     return await User.get(
         user_id,
         fields=["id", "name", "role_ids", "lang_id"],
-        fields_nested={"role_ids": ["id", "code"], "lang_id": ["id", "name"]},
+        fields_nested={
+            "role_ids": {"fields": ["id", "code"]},
+            "lang_id": {"fields": ["id", "name"]},
+        },
     )
 
 
@@ -510,7 +513,7 @@ class TestM2OUserLanguageORM:
         user = await User.get(
             user_id,
             fields=["id", "lang_id"],
-            fields_nested={"lang_id": ["id", "code", "name"]},
+            fields_nested={"lang_id": {"fields": ["id", "code", "name"]}},
         )
         assert user.lang_id.code == "en"
         assert user.lang_id.name == "English"
@@ -528,7 +531,7 @@ class TestM2OUserLanguageORM:
         updated = await User.get(
             user_id,
             fields=["id", "lang_id"],
-            fields_nested={"lang_id": ["id", "code"]},
+            fields_nested={"lang_id": {"fields": ["id", "code"]}},
         )
         assert updated.lang_id.id == lang_ru
         assert updated.lang_id.code == "ru"
@@ -559,7 +562,7 @@ class TestM2OUserLanguageAPI:
         updated = await User.get(
             user_id,
             fields=["id", "lang_id"],
-            fields_nested={"lang_id": ["id", "code"]},
+            fields_nested={"lang_id": {"fields": ["id", "code"]}},
         )
         assert updated.lang_id.code == "ru"
 
