@@ -58,6 +58,7 @@
   "loadMore": "Загрузить ещё",
   "copy": "Копировать",
   "copyFailed": "Не удалось скопировать",
+  "autofillNotFound": "Ничего не найдено",
   "menu": {
     "communication": "Общение",
     "stock": "Склад",

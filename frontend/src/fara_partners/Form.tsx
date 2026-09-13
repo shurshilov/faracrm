@@ -36,12 +36,12 @@ export function ViewFormPartners(props: ViewFormProps) {
         </FormRow>
       </FormSheet>
 
-      {/* Вкладки */}
+      {/* Вкладки. ИНН (vat) показывает вкладка «Реквизиты» из fara_contract
+          вместе с КПП/ОГРН и автозаполнением — см. extensions/ViewFormPartner. */}
       <FormTabs defaultTab="children">
         <FormTab name="common" label="Общие" icon={<IconUsers size={16} />}>
           <FormRow cols={2}>
             <Field name="parent_id" label={t('fields.parent_id')} />
-            <Field name="vat" label={t('fields.vat')} />
             <Field name="user_id" label={t('fields.user_id')} />
             <Field name="company_id" label={t('fields.company_id')} />
           </FormRow>

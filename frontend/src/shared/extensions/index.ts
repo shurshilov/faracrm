@@ -1,4 +1,4 @@
-import { ComponentType, createContext, useContext } from 'react';
+import { ComponentType, ReactNode, createContext, useContext } from 'react';
 import type { FaraRecord } from '@/services/api/crudTypes';
 
 /**
@@ -16,6 +16,9 @@ import type { FaraRecord } from '@/services/api/crudTypes';
  * Расширение карточки получает { record, model } (KanbanCardExtensionProps);
  * поля, которые ему нужны, объявляются 4-м аргументом registerExtension —
  * Kanban подмешивает их в запрос записей (getExtensionFields).
+ *
+ * Новая вкладка формы (а не контент в существующей) — registerFormTab:
+ * FormTabs дорисовывает её после вкладок из разметки формы.
  */
 
 export type ExtensionAction = 'before' | 'after' | 'inside' | 'replace';
@@ -37,11 +40,33 @@ export interface ExtensionsForTarget {
   replace: ComponentType<any> | null;
 }
 
+/** Вкладка формы, добавляемая модулем-расширением (см. registerFormTab). */
+export interface FormTabExtension {
+  name: string;
+  label: string;
+  icon?: ReactNode;
+  component: ComponentType<any>;
+}
+
 // Registry: model -> ExtensionEntry[]
 const registry = new Map<string, ExtensionEntry[]>();
 
+// Registry вкладок: model -> FormTabExtension[]
+const tabsRegistry = new Map<string, FormTabExtension[]>();
+
 // Registry полей: model -> Set<fieldName>
 const fieldsRegistry = new Map<string, Set<string>>();
+
+function registerFields(model: string, fields?: string[]): void {
+  if (!fields || fields.length === 0) return;
+  if (!fieldsRegistry.has(model)) {
+    fieldsRegistry.set(model, new Set());
+  }
+  const set = fieldsRegistry.get(model)!;
+  for (const field of fields) {
+    set.add(field);
+  }
+}
 
 /**
  * Регистрирует расширение для модели.
@@ -103,16 +128,42 @@ export function registerExtension(
     list.push({ component: extension, position });
   }
 
-  // Регистрируем поля если переданы
-  if (fields && fields.length > 0) {
-    if (!fieldsRegistry.has(model)) {
-      fieldsRegistry.set(model, new Set());
-    }
-    const set = fieldsRegistry.get(model)!;
-    for (const field of fields) {
-      set.add(field);
-    }
+  registerFields(model, fields);
+}
+
+/**
+ * Регистрирует НОВУЮ вкладку формы модели. FormTabs рисует её после
+ * вкладок из разметки; контент — обычный компонент расширения (внутри те
+ * же прямые FieldChar/FieldSelection, что и в других расширениях).
+ * Расширения 'after:FormTab:<name>' работают и для такой вкладки.
+ *
+ * Дедуп по имени вкладки: при Fast Refresh модуль переисполняется и
+ * регистрирует её повторно — заменяем, а не дублируем.
+ *
+ * @example
+ * registerFormTab('partners', {
+ *   name: 'requisites', label: 'Реквизиты', component: RequisitesTab,
+ * }, ['kpp', 'ogrn']);
+ */
+export function registerFormTab(
+  model: string,
+  tab: FormTabExtension,
+  fields?: string[],
+): void {
+  const list = tabsRegistry.get(model) ?? [];
+  const index = list.findIndex(item => item.name === tab.name);
+  if (index >= 0) {
+    list[index] = tab;
+  } else {
+    list.push(tab);
   }
+  tabsRegistry.set(model, list);
+
+  registerFields(model, fields);
+}
+
+export function getFormTabExtensions(model: string): FormTabExtension[] {
+  return tabsRegistry.get(model) ?? [];
 }
 
 /**
@@ -255,4 +306,13 @@ export function useTabExtensions(tabName: string): ExtensionsForTarget {
     return { before: [], after: [], replace: null };
   }
   return getExtensionsForTab(model, tabName);
+}
+
+/**
+ * Хук для вкладок, добавленных расширениями (registerFormTab) к модели
+ * текущей формы.
+ */
+export function useFormTabExtensions(): FormTabExtension[] {
+  const model = useContext(ExtensionsContext);
+  return model ? getFormTabExtensions(model) : [];
 }

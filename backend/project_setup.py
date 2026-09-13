@@ -256,6 +256,7 @@ from backend.base.crm.tasks.app import TasksApp
 from backend.base.crm.activity.app import ActivityApp
 from backend.base.crm.report_docx.app import ReportDocxApp
 from backend.base.crm.contract.app import ContractApp
+from backend.base.crm.dadata.app import DadataApp
 from backend.base.crm.registration.app import RegistrationApp
 from backend.base.crm.registration_email.app import RegistrationEmailApp
 from backend.base.crm.captcha.app import CaptchaApp
@@ -404,6 +405,7 @@ class Apps(AppsCore):
     activity = ActivityApp()
     report_docx = ReportDocxApp()
     contract = ContractApp()
+    dadata = DadataApp()
     captcha = CaptchaApp()
     registration = RegistrationApp()
     registration_email = RegistrationEmailApp()

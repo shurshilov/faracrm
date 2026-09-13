@@ -142,6 +142,16 @@ export interface PartnerRecord extends BaseRecord {
   notes: string | null;
   website: string | null;
   contact_ids: RelationRecord[];
+  // Реквизиты РФ (модуль contract через @extend); ИНН — базовое vat
+  partner_type: 'person' | 'company' | 'entrepreneur' | null;
+  kpp: string | null;
+  ogrn: string | null;
+  okpo: string | null;
+  address: string | null;
+  bank_bic: string | null;
+  bank_name: string | null;
+  bank_corr_account: string | null;
+  bank_account: string | null;
 }
 
 export interface ContactRecord extends BaseRecord {

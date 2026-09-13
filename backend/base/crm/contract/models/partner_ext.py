@@ -4,7 +4,7 @@
 from typing import TYPE_CHECKING
 
 from backend.base.crm.partners.models.partners import Partner
-from backend.base.system.dotorm.dotorm.fields import Char
+from backend.base.system.dotorm.dotorm.fields import Char, Selection, Text
 from backend.base.system.core.extensions import extend
 
 # Поддержка IDE - видны все атрибуты базового класса
@@ -18,14 +18,21 @@ else:
 class PartnerContractMixin(_Base):
     """
     Расширение Partner для работы с договорами (РФ).
+
+    ИНН — базовое поле Partner.vat (в интерфейсе оно подписано «ИНН»),
+    отдельного поля здесь нет. Автозаполнение по ИНН и БИК — кнопка у поля
+    в форме, она зовёт /requisites/party и /requisites/bank
+    (routers/requisites.py), сохранение записи не затрагивается.
     """
 
-    # ИНН — 10 цифр (юрлицо) или 12 цифр (физлицо/ИП)
-    inn: str | None = Char(
-        string="ИНН",
-        max_length=12,
-        index=True,
-        help="Идентификационный номер налогоплательщика",
+    partner_type: str = Selection(
+        options=[
+            ("person", "Физическое лицо"),
+            ("company", "Юридическое лицо"),
+            ("entrepreneur", "Индивидуальный предприниматель"),
+        ],
+        default="person",
+        string="Тип лица",
     )
 
     # КПП — 9 цифр, только для юрлиц
@@ -48,3 +55,13 @@ class PartnerContractMixin(_Base):
         max_length=14,
         help="Общероссийский классификатор предприятий и организаций",
     )
+
+    address: str | None = Text(string="Юридический адрес")
+
+    # Банковские реквизиты
+    bank_bic: str | None = Char(string="БИК", max_length=9)
+    bank_name: str | None = Char(string="Банк")
+    bank_corr_account: str | None = Char(
+        string="Корреспондентский счёт", max_length=20
+    )
+    bank_account: str | None = Char(string="Расчётный счёт", max_length=20)

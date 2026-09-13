@@ -60,6 +60,22 @@ def _hydrate_m2o_values(
             values[field_name] = related_model(**safe_vals)
 
 
+def _resolve_model(env: "Environment", name: str):
+    """
+    Модель по имени с фронта.
+
+    Фронт шлёт имя ТАБЛИЦЫ — то же, что в /auto/{model}. У partners/sales
+    оно не совпадает с атрибутом в Models (partner/sale), и резолв только
+    по атрибуту молча отдавал «полей нет»: onchange для таких моделей не
+    работал вовсе. Сначала таблица, затем атрибут (для chat_connector и
+    прочих, где имена совпадают, разницы нет). Не найдено — AttributeError.
+    """
+    try:
+        return env.models._get_model_class_by_table(name)
+    except KeyError:
+        return env.models._get_model(name)
+
+
 class OnchangeRequest(BaseModel):
     """Схема запроса onchange."""
 
@@ -86,7 +102,7 @@ async def get_onchange_fields(req: Request, model: str):
 
     # Получаем класс модели
     try:
-        model_class = env.models._get_model(model)
+        model_class = _resolve_model(env, model)
     except AttributeError:
         # Модель не найдена - возвращаем пустой список вместо ошибки
         return {"fields": []}
@@ -122,7 +138,7 @@ async def execute_onchange(req: Request, body: OnchangeRequest):
 
     # Получаем класс модели
     try:
-        model_class = env.models._get_model(body.model)
+        model_class = _resolve_model(env, body.model)
     except AttributeError:
         raise FaraException(
             {

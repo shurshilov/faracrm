@@ -1,7 +1,7 @@
 import { ReactNode, ReactElement, Children, isValidElement } from 'react';
 import { Tabs, Box, Badge } from '@mantine/core';
 import classes from './FormLayout.module.css';
-import { useTabExtensions } from '@/shared/extensions';
+import { useFormTabExtensions, useTabExtensions } from '@/shared/extensions';
 
 interface FormTabProps {
   name: string;
@@ -54,6 +54,10 @@ interface FormTabsProps {
 /**
  * Вкладки для группировки связанных данных
  *
+ * После вкладок из разметки идут вкладки модулей-расширений
+ * (registerFormTab для модели формы), например «Реквизиты» партнёра
+ * из fara_contract.
+ *
  * @example
  * <FormTabs defaultTab="general">
  *   <FormTab name="general" label="Основное" icon={<IconUser />}>
@@ -70,13 +74,27 @@ export function FormTabs({
   variant = 'default',
   orientation = 'horizontal',
 }: FormTabsProps) {
-  // Извлекаем props из детей FormTab
-  const tabs = Children.toArray(children).filter(
-    (child): child is ReactElement<FormTabProps> =>
-      isValidElement(child) && (child.type as any) === FormTab,
-  );
+  const extensionTabs = useFormTabExtensions();
 
-  const firstTabName = tabs[0]?.props.name;
+  // Извлекаем props из детей FormTab
+  const tabs: FormTabProps[] = Children.toArray(children)
+    .filter(
+      (child): child is ReactElement<FormTabProps> =>
+        isValidElement(child) && (child.type as any) === FormTab,
+    )
+    .map(child => child.props);
+
+  for (const tab of extensionTabs) {
+    const Content = tab.component;
+    tabs.push({
+      name: tab.name,
+      label: tab.label,
+      icon: tab.icon,
+      children: <Content />,
+    });
+  }
+
+  const firstTabName = tabs[0]?.name;
   const defaultValue = defaultTab || firstTabName;
 
   return (
@@ -94,24 +112,24 @@ export function FormTabs({
         <Tabs.List>
           {tabs.map(tab => (
             <Tabs.Tab
-              key={tab.props.name}
-              value={tab.props.name}
-              leftSection={tab.props.icon}
+              key={tab.name}
+              value={tab.name}
+              leftSection={tab.icon}
               rightSection={
-                tab.props.badge !== undefined ? (
+                tab.badge !== undefined ? (
                   <Badge size="sm" variant="filled" radius="xl">
-                    {tab.props.badge}
+                    {tab.badge}
                   </Badge>
                 ) : undefined
               }>
-              {tab.props.label}
+              {tab.label}
             </Tabs.Tab>
           ))}
         </Tabs.List>
 
         {tabs.map(tab => (
-          <Tabs.Panel key={tab.props.name} value={tab.props.name} pt="md">
-            <TabContent name={tab.props.name}>{tab.props.children}</TabContent>
+          <Tabs.Panel key={tab.name} value={tab.name} pt="md">
+            <TabContent name={tab.name}>{tab.children}</TabContent>
           </Tabs.Panel>
         ))}
       </Tabs>

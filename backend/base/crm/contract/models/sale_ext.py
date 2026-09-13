@@ -129,7 +129,7 @@ class SaleContractMixin(_Base):
                 "order_line_ids",
             ],
             fields_nested={
-                "partner_id": {"fields": ["id", "name", "vat", "inn", "kpp"]},
+                "partner_id": {"fields": ["id", "name", "vat", "kpp"]},
                 "user_id": {"fields": ["id", "name"]},
                 "company_id": {
                     "fields": [
@@ -187,7 +187,8 @@ class SaleContractMixin(_Base):
         # ── Покупатель ──
         partner = sale.partner_id
         partner_name = partner.name or "" if partner else ""
-        partner_inn = partner.inn or "" if partner else ""
+        # ИНН партнёра — базовое поле vat (см. PartnerContractMixin)
+        partner_inn = partner.vat or "" if partner else ""
         partner_kpp = partner.kpp or "" if partner else ""
 
         # ── Менеджер ──
