@@ -26,7 +26,7 @@ import { getChildrenRecursive, getComponentsFromChildren } from './utils';
 import { Toolbar } from './Toolbar';
 import { useOnchange } from './hooks/useOnchange';
 import { getExtensionFields, ExtensionsContext } from '@/shared/extensions';
-import { modelsConfig } from '@/config/models';
+import { useModelExtensions } from '@/shared/extensions/useModelExtensions';
 import { FormPanelSide, PanelType } from './Panels';
 
 /**
@@ -108,24 +108,9 @@ export const Form = <RecordType extends FaraRecord>({
   //   );
   // }, [children]);
 
-  // Загружаем модули-расширения из config (один раз)
-  const [extensionsLoaded, setExtensionsLoaded] = useState(false);
-  useEffect(() => {
-    let cancelled = false;
-    const loadExtensions = async () => {
-      const config = modelsConfig[model];
-      if (config?.extensions) {
-        await Promise.all(config.extensions.map(load => load()));
-      }
-      if (!cancelled) {
-        setExtensionsLoaded(true);
-      }
-    };
-    loadExtensions();
-    return () => {
-      cancelled = true;
-    };
-  }, [model]);
+  // Модули-расширения из config: ждём их загрузки, чтобы поля расширений
+  // попали в запрос записи (см. useModelExtensions).
+  const extensionsLoaded = useModelExtensions(model);
 
   // Собираем список полей из children + из расширений
   const fieldsList = useMemo(() => {

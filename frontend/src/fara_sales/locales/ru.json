@@ -24,7 +24,8 @@
     "active": "Активен",
     "order_line_ids": "Позиции заказа",
     "contact_ids": "Контакты",
-    "lead_id": "Лид"
+    "lead_id": "Лид",
+    "progress": "Прогресс"
   },
   "sale_line": {
     "title": "Позиции заказа",

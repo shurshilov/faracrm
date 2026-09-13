@@ -43,6 +43,10 @@ export interface LeadRecord extends BaseRecord {
   email: string | null;
   phone: string | null;
   mobile: string | null;
+  // Прогресс по воронке (0–100), считается бэкендом от стадии
+  progress: number;
+  // AuditMixin
+  create_datetime: string;
 }
 
 export interface LeadStageRecord extends BaseRecord {
@@ -82,6 +86,8 @@ export interface SaleRecord extends BaseRecord {
   amount_total: number;
   // Аванс / предоплата — ручной ввод
   amount_paid: number;
+  // Прогресс по воронке (0–100), считается бэкендом от стадии
+  progress: number;
 }
 
 export interface SaleLineRecord extends BaseRecord {

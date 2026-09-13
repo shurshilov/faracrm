@@ -24,7 +24,8 @@
     "active": "Active",
     "order_line_ids": "Order Lines",
     "contact_ids": "Contacts",
-    "lead_id": "Lead"
+    "lead_id": "Lead",
+    "progress": "Progress"
   },
   "sale_line": {
     "title": "Order Lines",

@@ -37,6 +37,41 @@ const clamp = (raw: unknown) => {
   return Number.isFinite(num) ? Math.max(0, Math.min(100, num)) : 0;
 };
 
+interface ProgressViewProps {
+  value: unknown;
+  size?: ProgressSize;
+  /** aria-label полосы. */
+  label?: string;
+}
+
+/**
+ * Полоса «только показ» + процент. Общая для формы (editable={false}) и
+ * карточек канбана (fara_leads / fara_sales, extensions/KanbanCard*).
+ */
+export const ProgressView = ({
+  value,
+  size = 'xl',
+  label,
+}: ProgressViewProps) => {
+  const num = clamp(value);
+
+  return (
+    <Group gap="xs" wrap="nowrap">
+      <Progress
+        value={num}
+        color={progressColor(num)}
+        size={size}
+        radius="xl"
+        aria-label={label}
+        style={{ flex: 1 }}
+      />
+      <Text size="sm" c="dimmed" style={{ minWidth: 38, textAlign: 'right' }}>
+        {num}%
+      </Text>
+    </Group>
+  );
+};
+
 interface ProgressSliderProps {
   value: number;
   size: ProgressSize;
@@ -122,22 +157,12 @@ export const FieldProgress = ({
           onCommit={next => form.setFieldValue(name, next)}
         />
       ) : (
-        <Group gap="xs" wrap="nowrap" key={form.key(name)}>
-          <Progress
-            value={value}
-            color={progressColor(value)}
-            size={size}
-            radius="xl"
-            aria-label={displayLabel}
-            style={{ flex: 1 }}
-          />
-          <Text
-            size="sm"
-            c="dimmed"
-            style={{ minWidth: 38, textAlign: 'right' }}>
-            {value}%
-          </Text>
-        </Group>
+        <ProgressView
+          key={form.key(name)}
+          value={value}
+          size={size}
+          label={displayLabel}
+        />
       )}
     </FieldWrapper>
   );

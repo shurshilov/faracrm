@@ -9,7 +9,7 @@ export interface ModelConfig {
   gantt?: () => Promise<{ default: ComponentType<any> }>;
   // Поля только для Generic* компонентов
   fields?: string[];
-  // Модули-расширения формы (загружаются при открытии формы)
+  // Модули-расширения формы и карточки канбана (загружаются при открытии вью)
   extensions?: (() => Promise<any>)[];
 }
 
@@ -148,6 +148,8 @@ export const modelsConfig: Record<string, ModelConfig> = {
       import('@/fara_leads/Form').then(m => ({ default: m.ViewFormLeads })),
     kanban: () =>
       import('@/fara_leads/Kanban').then(m => ({ default: m.ViewKanbanLeads })),
+    // fara_leads — карточка лида в канбане (extensions/KanbanCardLead).
+    extensions: [() => import('@/fara_leads')],
   },
 
   // === Activity ===
@@ -305,8 +307,13 @@ export const modelsConfig: Record<string, ModelConfig> = {
       import('@/fara_sales/Form').then(m => ({ default: m.ViewFormSales })),
     kanban: () =>
       import('@/fara_sales/Kanban').then(m => ({ default: m.ViewKanbanSales })),
-    // fara_leads — блок «Исходный лид» в форме заказа (Sale.lead_id).
-    extensions: [() => import('@/fara_contract'), () => import('@/fara_leads')],
+    // fara_contract — договор в форме заказа; fara_leads — блок «Исходный
+    // лид» (Sale.lead_id); fara_sales — карточка заказа в канбане.
+    extensions: [
+      () => import('@/fara_contract'),
+      () => import('@/fara_leads'),
+      () => import('@/fara_sales'),
+    ],
   },
   sale_stage: {
     menu: MenuGroups.sales,

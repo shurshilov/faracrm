@@ -6,10 +6,11 @@ import type {
 } from '@/types/records';
 
 export function ViewKanbanLeads() {
+  // Содержимое карточки (прогресс, партнёр, ответственный, дата создания) —
+  // расширение extensions/KanbanCardLead; здесь только заголовок и стадии.
   return (
     <Kanban<LeadRecord>
       model="leads"
-      fields={['id', 'name', 'type', 'user_id']}
       groupByField="stage_id"
       groupByModel="lead_stage"
       groupByFilter={[['active', '=', true]]}

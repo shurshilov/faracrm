@@ -2,10 +2,11 @@ import { Kanban } from '@/components/Kanban';
 import type { SaleRecord, SaleStageRecord, TaxRecord } from '@/types/records';
 
 export function ViewKanbanSales() {
+  // Содержимое карточки (прогресс, клиент, менеджер, дата заказа) —
+  // расширение extensions/KanbanCardSale; здесь только заголовок и стадии.
   return (
     <Kanban<SaleRecord>
       model="sales"
-      fields={['id', 'name', 'partner_id', 'user_id', 'date_order']}
       groupByField="stage_id"
       groupByModel="sale_stage"
       groupByFilter={[['active', '=', true]]}

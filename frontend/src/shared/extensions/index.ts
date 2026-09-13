@@ -1,13 +1,21 @@
 import { ComponentType, createContext, useContext } from 'react';
+import type { FaraRecord } from '@/services/api/crudTypes';
 
 /**
- * Registry расширений форм.
+ * Registry расширений форм и карточек канбана.
  *
  * Позиции (action:target:param):
  * - 'before:FormTab:connection'  — перед контентом таба "connection"
  * - 'after:FormTab:connection'   — после контента таба "connection"
  * - 'inside:FormTab:connection'  — внутри таба "connection" (в конце, алиас для after)
  * - 'replace:FormTab:auth'       — полностью заменить контент таба "auth"
+ * - 'before:KanbanCard'          — над стандартным содержимым карточки канбана
+ * - 'after:KanbanCard'           — под ним (прогресс-бар, доп. строки и т.п.)
+ * - 'replace:KanbanCard'         — вместо него целиком
+ *
+ * Расширение карточки получает { record, model } (KanbanCardExtensionProps);
+ * поля, которые ему нужны, объявляются 4-м аргументом registerExtension —
+ * Kanban подмешивает их в запрос записей (getExtensionFields).
  */
 
 export type ExtensionAction = 'before' | 'after' | 'inside' | 'replace';
@@ -192,6 +200,19 @@ export function getExtensionsForTab(
   tabName: string,
 ): ExtensionsForTarget {
   return getExtensionsGrouped(model, 'FormTab', tabName);
+}
+
+/** Пропсы расширения карточки канбана (позиции '*:KanbanCard'). */
+export interface KanbanCardExtensionProps<T extends FaraRecord = FaraRecord> {
+  record: T;
+  model: string;
+}
+
+/**
+ * Получить расширения карточки канбана модели.
+ */
+export function getExtensionsForKanbanCard(model: string): ExtensionsForTarget {
+  return getExtensionsGrouped(model, 'KanbanCard');
 }
 
 // Context для передачи model в Layout компоненты

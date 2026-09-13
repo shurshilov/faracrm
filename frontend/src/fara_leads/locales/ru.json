@@ -20,7 +20,8 @@
     "website": "Вебсайт",
     "email": "Email",
     "phone": "Телефон",
-    "mobile": "Мобильный"
+    "mobile": "Мобильный",
+    "progress": "Прогресс"
   },
   "lead_stage":{
     "id": "Ид",

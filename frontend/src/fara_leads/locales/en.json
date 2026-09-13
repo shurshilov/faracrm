@@ -19,7 +19,8 @@
     "website": "Website",
     "email": "Email",
     "phone": "Phone",
-    "mobile": "Mobile"
+    "mobile": "Mobile",
+    "progress": "Progress"
   },
   "lead_stage":{
     "id": "Id",

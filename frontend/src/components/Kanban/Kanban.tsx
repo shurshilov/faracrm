@@ -11,6 +11,11 @@ import {
 } from '@/services/api/crudTypes';
 import { useFilteredSearchQuery } from '@/components/SearchFilter/useFilteredSearchQuery';
 import {
+  getExtensionFields,
+  getExtensionsForKanbanCard,
+} from '@/shared/extensions';
+import { useModelExtensions } from '@/shared/extensions/useModelExtensions';
+import {
   DndContext,
   DragEndEvent,
   DragOverlay,
@@ -42,8 +47,68 @@ interface KanbanCardProps {
   onClick: () => void;
 }
 
+/** Значение поля одной строкой: Many2one — имя записи, остальное — как есть. */
+function fieldText(value: unknown): string {
+  if (typeof value === 'object' && value !== null) {
+    const rel = value as { id?: unknown; name?: unknown };
+    return rel.name ? String(rel.name) : `#${String(rel.id)}`;
+  }
+  return String(value);
+}
+
+/**
+ * Содержимое карточки: заголовок + первые два поля из `fields`, обёрнутые
+ * расширениями модели (registerExtension, target KanbanCard):
+ *   'before:KanbanCard'  — над стандартным содержимым;
+ *   'after:KanbanCard'   — под ним (прогресс-бар, доп. строки — см.
+ *                          fara_leads/extensions/KanbanCardLead);
+ *   'replace:KanbanCard' — вместо него целиком.
+ * Расширение получает { record, model }; нужные ему поля объявляет
+ * 4-м аргументом registerExtension — Kanban подмешивает их в запрос.
+ */
+function KanbanCardBody({
+  record,
+  model,
+  fields,
+}: Omit<KanbanCardProps, 'onClick'>) {
+  const { before, after, replace } = getExtensionsForKanbanCard(model);
+
+  if (replace) {
+    const Replace = replace;
+    return <Replace record={record} model={model} />;
+  }
+
+  return (
+    <>
+      {before.map((Before, i) => (
+        <Before key={`before-${i}`} record={record} model={model} />
+      ))}
+      <Text fw={500} truncate>
+        {record.name || `#${record.id}`}
+      </Text>
+      {fields.slice(0, 2).map(field => {
+        if (field === 'id' || field === 'name') {
+          return null;
+        }
+        const value = record[field];
+        if (!value) {
+          return null;
+        }
+        return (
+          <Text key={field} size="sm" c="dimmed" truncate>
+            {fieldText(value)}
+          </Text>
+        );
+      })}
+      {after.map((After, i) => (
+        <After key={`after-${i}`} record={record} model={model} />
+      ))}
+    </>
+  );
+}
+
 // Карточка канбана (перетаскиваемая)
-function SortableKanbanCard({ record, fields, onClick }: KanbanCardProps) {
+function SortableKanbanCard({ record, model, fields, onClick }: KanbanCardProps) {
   const {
     attributes,
     listeners,
@@ -72,21 +137,7 @@ function SortableKanbanCard({ record, fields, onClick }: KanbanCardProps) {
     >
       <Group justify="space-between" wrap="nowrap">
         <Box style={{ flex: 1, overflow: 'hidden' }}>
-          <Text fw={500} truncate>
-            {record.name || `#${record.id}`}
-          </Text>
-          {fields.slice(0, 2).map(field => {
-            if (field === 'id' || field === 'name') return null;
-            const value = record[field];
-            if (!value) return null;
-            return (
-              <Text key={field} size="sm" c="dimmed" truncate>
-                {typeof value === 'object' && value?.id
-                  ? `#${value.id}`
-                  : String(value)}
-              </Text>
-            );
-          })}
+          <KanbanCardBody record={record} model={model} fields={fields} />
         </Box>
         <ActionIcon
           variant="subtle"
@@ -104,7 +155,7 @@ function SortableKanbanCard({ record, fields, onClick }: KanbanCardProps) {
 }
 
 // Простая карточка без drag
-function SimpleKanbanCard({ record, fields, onClick }: Omit<KanbanCardProps, 'model'>) {
+function SimpleKanbanCard({ record, model, fields, onClick }: KanbanCardProps) {
   return (
     <Card
       className={classes.card}
@@ -114,21 +165,7 @@ function SimpleKanbanCard({ record, fields, onClick }: Omit<KanbanCardProps, 'mo
       withBorder
       onClick={onClick}
     >
-      <Text fw={500} truncate>
-        {record.name || `#${record.id}`}
-      </Text>
-      {fields.slice(0, 2).map(field => {
-        if (field === 'id' || field === 'name') return null;
-        const value = record[field];
-        if (!value) return null;
-        return (
-          <Text key={field} size="sm" c="dimmed" truncate>
-            {typeof value === 'object' && value?.id
-              ? `#${value.id}`
-              : String(value)}
-          </Text>
-        );
-      })}
+      <KanbanCardBody record={record} model={model} fields={fields} />
     </Card>
   );
 }
@@ -252,19 +289,29 @@ export function Kanban<T extends FaraRecord>({
       : rectIntersection(args);
   }, []);
 
-  // Загрузка записей
-  const fieldsWithGroup = groupByField && !fields.includes(groupByField)
-    ? [...fields, groupByField]
-    : fields;
+  // Модули-расширения модели (modelsConfig[model].extensions): ждём их
+  // загрузки, чтобы поля расширений карточки попали в первый же запрос.
+  const extensionsLoaded = useModelExtensions(model);
 
-  const { data: recordsData } = useFilteredSearchQuery({
-    model,
-    fields: fieldsWithGroup,
-    limit: 500,
-    order: 'asc',
-    sort: 'id',
-    filter,
-  }) as TypedUseQueryHookResult<GetListResult<T>, GetListParams, BaseQueryFn>;
+  // Поля запроса: поля вью + поле группировки + поля расширений карточки.
+  const queryFields: string[] = [...fields];
+  for (const extra of [groupByField, ...getExtensionFields(model)]) {
+    if (extra && !queryFields.includes(extra)) {
+      queryFields.push(extra);
+    }
+  }
+
+  const { data: recordsData } = useFilteredSearchQuery(
+    {
+      model,
+      fields: queryFields,
+      limit: 500,
+      order: 'asc',
+      sort: 'id',
+      filter,
+    },
+    { skip: !extensionsLoaded },
+  ) as TypedUseQueryHookResult<GetListResult<T>, GetListParams, BaseQueryFn>;
 
   // Загрузка стадий (если группировка). groupByFilter (если передан вью)
   // отсекает лишние стадии прямо на бэке тем же доменным синтаксисом, что и
@@ -402,6 +449,7 @@ export function Kanban<T extends FaraRecord>({
         <SimpleKanbanCard
           key={record.id}
           record={record}
+          model={model}
           fields={fields}
           onClick={() => handleCardClick(Number(record.id))}
         />
