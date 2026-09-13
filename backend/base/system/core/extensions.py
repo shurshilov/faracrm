@@ -207,15 +207,41 @@ class ExtensionRegistry:
             dialect=model_class._dialect,
         )
 
+    @staticmethod
+    def _apply_annotation(model: Type, name: str, annotation: Any) -> None:
+        """Перенести аннотацию поля расширения на модель.
+
+        Генератор pydantic-схем (dotorm/integrations/pydantic.py) собирает
+        типы по __annotations__ вдоль MRO: по аннотации list["Call"] /
+        "Lead | None" резолвит связанную модель, по str / int | None —
+        тип скаляра. Без переноса поле из @extend получает Any: скаляры
+        не валидируются, Many2one ещё спасает запасная схема {id, name},
+        а One2many/Many2many в схеме ответа формы становятся плоским
+        списком и не принимают обёртку {data, fields, total} —
+        ResponseValidationError на открытии формы.
+
+        Аннотация в расширении подчиняется тем же правилам, что в модели:
+        строка — только для relation ("Lead | None"), скаляр — реальный тип,
+        и голый тип без None делает поле обязательным (_is_field_required).
+        """
+        if annotation is None:
+            return
+        merged = dict(getattr(model, "__annotations__", {}))
+        merged[name] = annotation
+        model.__annotations__ = merged
+
     def _apply_extension(self, model: Type, namespace: dict[str, Any]) -> None:
         """Применить namespace расширения к модели."""
         from backend.base.system.dotorm.dotorm.fields import Field, Selection
+
+        annotations = namespace.get("__annotations__", {})
 
         for name, value in namespace.items():
             # Отбрасываем только dunder. Одинарное подчёркивание — обычное
             # имя для compute-обработчиков (_compute_*) и приватных хелперов
             # расширения; отбрасывать их нельзя. Сам namespace уже очищен от
-            # dunder'ов в декораторе extend(), проверка здесь — страховка.
+            # dunder'ов в декораторе extend() (кроме __annotations__, они
+            # читаются выше), проверка здесь — страховка.
             if name.startswith("__"):
                 continue
 
@@ -239,6 +265,7 @@ class ExtensionRegistry:
                 else:
                     # Обычное поле - добавляем/заменяем
                     setattr(model, name, value)
+                    self._apply_annotation(model, name, annotations.get(name))
                     log.debug("  + field '%s'", name)
 
             elif callable(value) and not isinstance(value, type):
@@ -355,6 +382,18 @@ def extend(target: Union[Type[T], str]) -> Callable[[Type[M]], Type[M]]:
             for name, value in extension_class.__dict__.items()
             if not name.startswith("__")
         }
+
+        # Аннотации полей — единственный dunder, который едет дальше:
+        # генератор pydantic-схем резолвит по ним связанную модель
+        # (list["Call"], "Lead | None"), см. _apply_annotation. В 3.14
+        # аннотации ленивые: имя, не существующее в рантайме и без кавычек,
+        # даст NameError — тогда обходимся без них, как раньше.
+        try:
+            annotations = dict(getattr(extension_class, "__annotations__", {}))
+        except NameError:
+            annotations = {}
+        if annotations:
+            namespace["__annotations__"] = annotations
 
         # Регистрируем расширение
         registry.add_extension(target, namespace)

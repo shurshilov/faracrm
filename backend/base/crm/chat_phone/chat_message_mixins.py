@@ -71,13 +71,16 @@ class ChatMessagePhoneMixin(_Base):
         description="Длительность разговора в секундах (после ответа)",
     )
 
+    # Реальный тип, не строка: аннотации расширений уходят в генератор
+    # API-схем, а строку он считает именем модели (см. правило dotorm о
+    # строковых аннотациях — только для relation).
     # Когда сняли трубку
-    call_answer_time: "datetime | None" = Datetime(
+    call_answer_time: datetime | None = Datetime(
         description="Время ответа на звонок (когда сняли трубку)",
     )
 
     # Когда повесили трубку
-    call_end_time: "datetime | None" = Datetime(
+    call_end_time: datetime | None = Datetime(
         description="Время завершения звонка",
     )
 

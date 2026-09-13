@@ -66,6 +66,8 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   inline_create = false,
   inline_update = false,
   quickCreateFields = [],
+  parentField,
+  showDelete = true,
   ...props
 }: {
   name: string;
@@ -82,6 +84,14 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   /** Имена Many2one-колонок, для которых в инлайн-редакторе
    *  доступно быстрое создание записи по имени. По умолчанию []. */
   quickCreateFields?: string[];
+  /**
+   * Имя Many2one-поля ФОРМЫ, чьё значение — владелец записей (вместо id
+   * текущей записи), как у ContactsWidget. Напр. parentField="partner_id"
+   * на заказе: звонки клиента (call.partner_id = заказ.partner_id).
+   */
+  parentField?: string;
+  /** Кнопка удаления/отвязки в строке. false — таблица только для просмотра. */
+  showDelete?: boolean;
 } & Omit<GetListParams, 'fields' | 'model'>) => {
   const [records, setRecords] = useState<RecordType[]>([]);
   const [recordsCreated, setRecordsCreated] = useState<RecordType[]>([]);
@@ -89,6 +99,19 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
   const form = useFormContext();
   const defaulValues = form.getValues()[name] || [];
   const { id } = useParams<{ id: string }>();
+
+  // Владелец записей для запроса: значение parentField из формы, иначе id
+  // текущей записи из URL.
+  const parentValue = parentField ? form.getValues()?.[parentField] : null;
+  const ownerId: number | null = parentField
+    ? typeof parentValue === 'object' && parentValue !== null
+      ? parentValue.id
+      : typeof parentValue === 'number'
+        ? parentValue
+        : null
+    : id
+      ? Number(id)
+      : null;
   const navigate = useNavigate();
   const displayLabel = label ?? name;
 
@@ -121,12 +144,22 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
       return field.props.name;
     }) || [];
 
-  // Собираем label-ы из children <Field label="..." />
-  // для заголовков колонок (как в List)
+  // Собираем label-ы и render-ы из children <Field label="..." render={...} />
+  // для заголовков и ячеек колонок (как в List)
   const customLabels: Record<string, string> = {};
+  const customRenders: Record<
+    string,
+    (value: any, record: RecordType) => React.ReactNode
+  > = {};
   Children.forEach(children, field => {
-    if (isValidElement<Record<string, any>>(field) && field.type === Field && field.props.label) {
+    if (!isValidElement<Record<string, any>>(field) || field.type !== Field) {
+      return;
+    }
+    if (field.props.label) {
       customLabels[field.props.name] = field.props.label;
+    }
+    if (field.props.render) {
+      customRenders[field.props.name] = field.props.render;
     }
   });
 
@@ -198,9 +231,9 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
       sort: sortStatus.columnAccessor as string,
       order: sortStatus.direction,
       fields: fieldsList,
-      filter: [[fieldsServer[name]?.relatedField || '', '=', Number(id)]],
+      filter: [[fieldsServer[name]?.relatedField || '', '=', ownerId ?? 0]],
     },
-    { skip: !fieldsServer[name]?.relatedModel || !id },
+    { skip: !fieldsServer[name]?.relatedModel || !ownerId },
   ) as TypedUseQueryHookResult<
     GetListResult<RecordType>,
     GetListParams,
@@ -372,7 +405,12 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
           );
         }
 
-        // Readonly mode (default)
+        // Readonly mode (default). Кастомный render дочернего <Field>
+        // (как в List) рисует ячейку целиком, включая пустое значение.
+        const customRender = customRenders[field.name];
+        if (customRender) {
+          return customRender(cellValue, row);
+        }
         if (cellValue === null || cellValue === undefined) {
           // Для Boolean null трактуем как false — всё равно рисуем кружок
           if (field.type === 'Boolean') {
@@ -446,6 +484,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
             </ActionIcon>
           </Tooltip>
         )}
+        {showDelete && (
         <Tooltip label="Удалить" position="left" withArrow>
           <ActionIcon
             size="sm"
@@ -530,6 +569,7 @@ export const FieldOne2many = <RecordType extends FaraRecord>({
             <IconTrash size={14} />
           </ActionIcon>
         </Tooltip>
+        )}
       </Group>
     ),
   });
