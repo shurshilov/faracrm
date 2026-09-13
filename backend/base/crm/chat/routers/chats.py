@@ -69,6 +69,12 @@ async def get_chats(
     req: Request,
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    search: str | None = Query(
+        None,
+        max_length=200,
+        description="Поиск: имя чата или участника (пользователь/партнёр), "
+        "без учёта регистра, среди всех доступных чатов",
+    ),
     is_internal: bool | None = Query(
         None, description="Фильтр: True=внутренние, False=внешние, None=все"
     ),
@@ -196,6 +202,24 @@ async def get_chats(
     # Record-чаты: по умолчанию исключены. Флаг снимает исключение (доступно всем)
     if not bool(include_record):
         conditions.append("c.chat_type != 'record'")
+
+    # Поиск по имени чата ИЛИ участника: у direct-чатов отображаемое имя —
+    # собеседник, у внешних — партнёр, поэтому одного c.name мало. Фильтр
+    # на бэке: раньше фронт фильтровал по имени только среди первых 100
+    # загруженных чатов (issue #28).
+    if search and search.strip():
+        # Экранирование LIKE — у диалекта (одна точка для всех поисков).
+        pattern = (
+            "%" + env.models.chat._dialect.like_escape(search.strip()) + "%"
+        )
+        conditions.append("""(c.name ILIKE %s OR EXISTS (
+                SELECT 1 FROM chat_member sm
+                LEFT JOIN users su ON su.id = sm.user_id
+                LEFT JOIN partners sp ON sp.id = sm.partner_id
+                WHERE sm.chat_id = c.id AND sm.is_active = true
+                  AND (su.name ILIKE %s OR sp.name ILIKE %s)
+            ))""")
+        where_params.extend([pattern, pattern, pattern])
 
     # Фильтр is_internal
     if is_internal is True:

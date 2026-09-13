@@ -177,6 +177,45 @@ async def get_messages(
     return {"data": result}
 
 
+@router_private.get("/chats/{chat_id}/messages/search")
+async def search_messages(
+    req: Request,
+    chat_id: int,
+    q: str = Query(..., min_length=1, max_length=200),
+    limit: int = Query(50, ge=1, le=100),
+):
+    """
+    Поиск сообщений чата по тексту (лупа в шапке). Доступ — как у ленты:
+    член / админ / team-читатель, иначе 403. Ответ — список совпадений
+    (новые первыми) в формате закреплённых, без вложений и реакций.
+    """
+    env: "Environment" = req.app.state.env
+    auth_session: "Session" = req.state.session
+    await ChatMember.get_or_stub_reader(
+        chat_id, auth_session.user_id.id, auth_session.user_id.is_admin
+    )
+
+    messages = await env.models.chat_message.search_chat_messages(
+        chat_id=chat_id, query=q.strip(), limit=limit
+    )
+    return {
+        "data": [
+            {
+                "id": msg.id,
+                "body": msg.body,
+                "message_type": msg.message_type,
+                "create_datetime": (
+                    msg.create_datetime.isoformat()
+                    if msg.create_datetime
+                    else None
+                ),
+                "author": format_message_author(msg),
+            }
+            for msg in messages
+        ]
+    }
+
+
 @router_private.get("/chats/messages/count")
 async def get_messages_count(
     req: Request,

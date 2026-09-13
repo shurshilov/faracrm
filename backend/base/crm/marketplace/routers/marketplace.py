@@ -2,7 +2,7 @@
 # Marketplace module - публичный каталог, покупка, скачивание, статистика
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request, Response
@@ -67,7 +67,7 @@ APP_FIELDS = [
     "create_user_id",
 ]
 VENDOR_NESTED = {"create_user_id": ["id", "name", "verified"]}
-SORTS = {
+SORTS: dict[str, tuple[str, Literal["desc", "asc"]]] = {
     "popular": ("downloads", "desc"),
     "new": ("id", "desc"),
     "price": ("price", "asc"),
@@ -142,7 +142,11 @@ async def list_apps(
     elif free is False:
         filter_.append(("price", ">", 0))
     if search.strip():
-        pattern = f"%{search.strip()}%"
+        # Экранирование LIKE — у диалекта (иначе «%»/«_» в запросе — маски).
+        escaped = env.models.marketplace_app._dialect.like_escape(
+            search.strip()
+        )
+        pattern = f"%{escaped}%"
         filter_.append(
             [("name", "ilike", pattern), "or", ("summary", "ilike", pattern)]
         )

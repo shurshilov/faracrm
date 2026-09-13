@@ -29,6 +29,7 @@ import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
 import { NewChatModal } from './NewChatModal';
 import { ChatSettingsModal } from './ChatSettingsModal';
+import { MessageSearchModal } from './MessageSearchModal';
 import styles from './ChatPage.module.css';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/store/store';
@@ -62,6 +63,7 @@ export function ChatPage({
   const [newChatModalOpen, setNewChatModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [pinnedModalOpen, setPinnedModalOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [typingUsers, setTypingUsers] = useState<Record<number, string[]>>({});
   const selectedChatRef = useRef<Chat | null>(null);
   const refetchChatsRef = useRef<(() => void) | null>(null);
@@ -397,6 +399,7 @@ export function ChatPage({
               typingUsers={getTypingUserNames()}
               onSettings={() => setSettingsModalOpen(true)}
               onPinnedMessages={handleOpenPinnedModal}
+              onSearch={() => setSearchModalOpen(true)}
               onBack={isMobile ? handleBackToList : undefined}
               showDeletedMessages={showDeletedMessages}
               onToggleShowDeletedMessages={setShowDeletedMessages}
@@ -501,6 +504,15 @@ export function ChatPage({
           )}
         </ScrollArea>
       </Modal>
+
+      {/* Поиск по сообщениям открытого чата (лупа в шапке) */}
+      {selectedChat && (
+        <MessageSearchModal
+          opened={searchModalOpen}
+          onClose={() => setSearchModalOpen(false)}
+          chatId={selectedChat.id}
+        />
+      )}
     </Box>
   );
 }

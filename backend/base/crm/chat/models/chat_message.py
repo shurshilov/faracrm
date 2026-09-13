@@ -526,6 +526,37 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         return messages
 
     @hybridmethod
+    async def search_chat_messages(
+        self, chat_id: int, query: str, limit: int = 50
+    ):
+        """
+        Сообщения чата по подстроке текста (ILIKE), новые первыми.
+
+        Для модалки поиска в открытом чате (лупа в шапке). Удалённые не
+        ищем; поля — как у закреплённых: это список результатов, не лента.
+        Спецсимволы LIKE экранирует диалект (Dialect.like_escape).
+        """
+        escaped = self._dialect.like_escape(query)
+        return await self.search(
+            filter=[
+                ("chat_id", "=", chat_id),
+                ("is_deleted", "=", False),
+                ("body", "ilike", f"%{escaped}%"),
+            ],
+            fields=[
+                "id",
+                "body",
+                "message_type",
+                "author_user_id",
+                "author_partner_id",
+                "create_datetime",
+            ],
+            sort="id",
+            order="DESC",
+            limit=limit,
+        )
+
+    @hybridmethod
     async def get_pinned_messages(self, chat_id: int):
         """
         Получить закрепленные сообщения чата.

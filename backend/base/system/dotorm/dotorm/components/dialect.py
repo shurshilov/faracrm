@@ -46,6 +46,27 @@ class Dialect(ABC):
         """Escape a column/table name."""
         return f"{self.escape}{identifier}{self.escape}"
 
+    # --- LIKE patterns ---
+    # Escape-символ LIKE по умолчанию: «\» у Postgres, MySQL и ClickHouse,
+    # поэтому реализация общая; диалект с другим правилом переопределяет
+    # атрибут (или метод целиком).
+    like_escape_char: str = "\\"
+
+    def like_escape(self, text: str) -> str:
+        """Экранировать пользовательский текст для подстановки в LIKE/ILIKE.
+
+        `%` и `_` в шаблоне — подстановочные знаки, а хвостовой escape-символ
+        ломает запрос («LIKE pattern must not end with escape character»).
+        Сам шаблон (`%…%`) добавляет вызывающий. Единственная точка для всех
+        поисков по подстроке — роутеры/модели свои replace не пишут.
+        """
+        esc = self.like_escape_char
+        return (
+            text.replace(esc, esc + esc)
+            .replace("%", esc + "%")
+            .replace("_", esc + "_")
+        )
+
     @abstractmethod
     def make_placeholders(self, count: int, start: int = 1) -> str:
         """Generate a comma-separated placeholder string for `count` params."""

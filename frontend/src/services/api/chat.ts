@@ -20,6 +20,7 @@ const chatApi = api.injectEndpoints({
           ...(args?.include_deleted && { include_deleted: 1 }),
           ...(args?.include_record && { include_record: 1 }),
           ...(args?.include_foreign && { include_foreign: 1 }),
+          ...(args?.search && { search: args.search }),
         },
       }),
       providesTags: result =>
@@ -492,6 +493,18 @@ const chatApi = api.injectEndpoints({
       query: ({ chatId }) => `/chats/${chatId}/pinned`,
     }),
 
+    // Поиск сообщений в чате по тексту (лупа в шапке). Результаты — список
+    // в формате закреплённых, не лента.
+    searchMessages: build.query<
+      SearchMessagesResponse,
+      { chatId: number; q: string; limit?: number }
+    >({
+      query: ({ chatId, q, limit }) => ({
+        url: `/chats/${chatId}/messages/search`,
+        params: { q, ...(limit && { limit }) },
+      }),
+    }),
+
     // Add reaction to message
     addReaction: build.mutation<
       { success: boolean; action: string; reactions: MessageReaction[] },
@@ -874,6 +887,8 @@ export interface GetChatsArgs {
   include_record?: boolean;
   /** Admin-only: показать чужие чаты (где user не мембер). */
   include_foreign?: boolean;
+  /** Поиск по имени чата или участника среди всех доступных чатов. */
+  search?: string;
 }
 
 export interface GetChatsResponse {
@@ -913,6 +928,10 @@ export interface GetMessagesResponse {
 }
 
 export interface GetPinnedMessagesResponse {
+  data: ChatMessage[];
+}
+
+export interface SearchMessagesResponse {
   data: ChatMessage[];
 }
 
@@ -1171,6 +1190,7 @@ export const {
 } = partnerChatApi;
 export const {
   useGetChatsQuery,
+  useSearchMessagesQuery,
   useGetChatQuery,
   useCreateChatMutation,
   useRemoveChatMemberMutation,

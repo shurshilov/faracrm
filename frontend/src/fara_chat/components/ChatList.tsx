@@ -15,7 +15,7 @@ import {
   Switch,
   Divider,
 } from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
+import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { useSelector } from 'react-redux';
 import {
   IconSearch,
@@ -201,6 +201,11 @@ export function ChatList({
   const mobileVisibleOptions = viewOptions.filter(o => !o.adminOnly || isAdmin);
   const anyMobileOptionActive = mobileVisibleOptions.some(o => o.checked);
 
+  // Поиск — на бэке (GET /chats?search=): по имени чата и участников среди
+  // ВСЕХ доступных чатов, а не первых 100 загруженных (issue #28).
+  // Дебаунс, чтобы не дёргать запрос на каждую букву.
+  const [debouncedSearch] = useDebouncedValue(search.trim(), 300);
+
   // Формируем аргументы запроса, исключая undefined значения
   const queryArgs = useMemo(() => {
     const args: {
@@ -213,6 +218,7 @@ export function ChatList({
       include_deleted?: boolean;
       include_record?: boolean;
       include_foreign?: boolean;
+      search?: string;
     } = { limit: 100 };
     if (filter.is_internal !== undefined) args.is_internal = filter.is_internal;
     if (filter.chat_type !== undefined) args.chat_type = filter.chat_type;
@@ -223,6 +229,7 @@ export function ChatList({
     if (showDeletedChats) args.include_deleted = true;
     if (showRecordChats) args.include_record = true;
     if (showForeignChats) args.include_foreign = true;
+    if (debouncedSearch) args.search = debouncedSearch;
     return args;
   }, [
     filter.is_internal,
@@ -233,6 +240,7 @@ export function ChatList({
     showDeletedChats,
     showRecordChats,
     showForeignChats,
+    debouncedSearch,
   ]);
 
   const { data, isLoading, error, refetch } = useGetChatsQuery(
@@ -282,10 +290,10 @@ export function ChatList({
   const getDisplayName = (chat: Chat) =>
     getOtherMember(chat)?.name || chat.name;
 
-  // Filter chats by search (по отображаемому имени)
-  const filteredChats = chats.filter(chat =>
-    getDisplayName(chat).toLowerCase().includes(search.toLowerCase()),
-  );
+  // Локального фильтра больше нет: список уже отфильтрован бэком по
+  // debouncedSearch (иначе чат, найденный по имени участника, отсеялся бы
+  // здесь по отображаемому имени).
+  const filteredChats = chats;
 
   const formatTime = (dateString?: string) => {
     if (!dateString) return '';
