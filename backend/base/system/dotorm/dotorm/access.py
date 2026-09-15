@@ -222,6 +222,15 @@ _state: dict = {"checker": AccessChecker()}
 
 _access_session: ContextVar = ContextVar("access_session", default=None)
 
+# Блокнот запроса: dict, живущий ровно один HTTP-запрос — взводится вместе
+# с сессией (new_access_memo в verify_access) и умирает с контекстом
+# задачи запроса. Чекер и операторы rules кладут сюда то, что в пределах
+# одного запроса не меняется: ACL/rules модели, скомпилированные фрагменты
+# — вместо повторных запросов в БД при search+search_count и вложенных
+# связях. Инвалидация не нужна: следующий запрос начинает с пустого.
+# Вне запроса (фон, cron, тесты) — None: считается каждый раз.
+_access_memo: ContextVar[dict | None] = ContextVar("access_memo", default=None)
+
 
 # ============================================================
 # Public API
@@ -249,8 +258,21 @@ def get_access_session():
 
 
 def clear_access_session() -> None:
-    """Очищает сессию (после завершения post_init)."""
+    """Очищает сессию (после завершения post_init) и блокнот запроса."""
     _access_session.set(None)
+    _access_memo.set(None)
+
+
+def new_access_memo() -> dict:
+    """Взвести пустой блокнот на текущий запрос (см. _access_memo)."""
+    memo: dict = {}
+    _access_memo.set(memo)
+    return memo
+
+
+def get_access_memo() -> dict | None:
+    """Блокнот текущего запроса или None вне запроса."""
+    return _access_memo.get()
 
 
 # ============================================================

@@ -24,6 +24,7 @@ from backend.base.system.dotorm.dotorm.access import (
     get_access_session,
 )
 from backend.base.crm.security.models.sessions import Session
+from backend.base.crm.users.models.users import User
 
 # ============================================================================
 # Helpers
@@ -32,16 +33,22 @@ from backend.base.crm.security.models.sessions import Session
 
 async def _make_session(user) -> Session:
     """
-    Build a Session-like object for a user. Doesn't persist to DB —
-    just enough for AccessChecker to extract user_id and is_admin.
+    Build a Session-like object for a user. Doesn't persist to DB.
+
+    Carries EXPANDED roles (id + code) and teams exactly as the real
+    session build does — the access checker (ACL, {{team_ids}},
+    field-level) reads them straight from the session, not from the DB.
     """
-    return Session(
+    session = Session(
         id=0,  # dummy
         active=True,
         user_id=user,
         token="test-token",
         ttl=3600,
     )
+    Session._set_role_codes(session, await User.get_all_role_codes(user.id))
+    Session._set_team_ids(session, await User.get_all_team_ids(user.id))
+    return session
 
 
 class as_user:

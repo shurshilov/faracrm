@@ -21,6 +21,7 @@ from backend.base.system.dotorm.dotorm.components.filter_parser import (
 )
 from backend.base.system.dotorm.dotorm.access import (
     get_access_checker,
+    get_access_memo,
     Operation,
 )
 
@@ -59,24 +60,6 @@ def is_operator_triplet(expr: Any) -> bool:
 # ─────────────────────────────────────────────────────────────────
 
 _MAX_RECURSION_DEPTH = 5
-_request_cache: dict[int, dict] = {}
-
-
-def _get_or_create_cache(user_id: int) -> dict:
-    if user_id not in _request_cache:
-        _request_cache[user_id] = {}
-    return _request_cache[user_id]
-
-
-def clear_cache(user_id: int | None = None) -> None:
-    """
-    Очистить кэш операторов.
-    Вызвать при изменении membership / rules / ACL.
-    """
-    if user_id is None:
-        _request_cache.clear()
-    else:
-        _request_cache.pop(user_id, None)
 
 
 async def resolve_operators(
@@ -102,8 +85,14 @@ async def resolve_operators(
             f"(>{_MAX_RECURSION_DEPTH}), seen: {_seen_models}"
         )
 
+    # Готовые фрагменты операторов — в блокнот запроса (dotorm.access
+    # ._access_memo): @has_parent_access прошивает в SQL ACL/rules и
+    # команды на момент вычисления, поэтому жить дольше запроса ему нельзя
+    # (раньше глобальный dict на процесс держал их до рестарта). Вне
+    # запроса — dict на одно вычисление: дедуп внутри рекурсии остаётся.
     if cache is None:
-        cache = _get_or_create_cache(user_id)
+        memo = get_access_memo()
+        cache = memo if memo is not None else {}
 
     # Уже скомпилированный SqlFragment (от рекурсивного резолва) —
     # проходим как есть

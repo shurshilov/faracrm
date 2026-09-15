@@ -399,7 +399,15 @@ class Session(DotModel):
                 name=session_id["name"],
             ),
         )
-
+        # Роли и команды — как в session_check: проверки доступа (ACL,
+        # {{team_ids}}, field-level) читают их из сессии, а не из БД,
+        # поэтому cookie-сессия обязана их нести так же, как bearer.
+        roles = await env.models.user.get_all_role_codes(session_id["user_id"])
+        self._set_role_codes(session_obj, roles)
+        team_ids = await env.models.user.get_all_team_ids(
+            session_id["user_id"]
+        )
+        self._set_team_ids(session_obj, team_ids)
         return session_obj
 
     # ================================================================
@@ -502,7 +510,7 @@ class Session(DotModel):
             await Session.publish_revoked([cached.session_id])
             raise AuthException.SessionExpired(clear_cookie=True)
 
-        return Session(
+        session_obj = Session(
             id=cached.session_id,
             ttl=cached.ttl,
             create_datetime=cached.create_datetime,
@@ -513,6 +521,11 @@ class Session(DotModel):
                 name=cached.user_name,
             ),
         )
+        # Роли и команды из слепка — как у bearer-пути: проверки доступа
+        # читают их из сессии, а не из БД.
+        self._set_role_codes(session_obj, cached.role_codes)
+        self._set_team_ids(session_obj, cached.team_ids)
+        return session_obj
 
     async def _fetch_session_from_db(self, token: str, cache):
         """Cache miss для session_check_cached: загружает из БД."""
@@ -567,7 +580,12 @@ class Session(DotModel):
         return cached
 
     async def _fetch_session_by_cookie_from_db(self, cookie_token: str, cache):
-        """Cache miss для session_check_by_cookie_cached."""
+        """Cache miss для session_check_by_cookie_cached.
+
+        Кэш индексирует слепок и по token, и по cookie_token — слепок,
+        созданный cookie-запросом (<img>), обслужит и следующий
+        bearer-запрос, поэтому он такой же полный: роли, команды, язык.
+        """
 
         session = self._get_db_session()
         stmt = """
@@ -581,9 +599,12 @@ class Session(DotModel):
                 s.cookie_token,
                 u.id as user_id,
                 u.is_admin,
-                u.name
+                u.lang_id,
+                u.name,
+                l.code as lang_code
             FROM sessions s
             JOIN users u ON s.user_id = u.id
+            LEFT JOIN language l ON u.lang_id = l.id
             WHERE s.cookie_token = %s AND s.active = true
             LIMIT 1
         """
@@ -592,18 +613,22 @@ class Session(DotModel):
             return None
 
         row = result[0]
+        roles = await env.models.user.get_all_role_codes(row["user_id"])
+        team_ids = await env.models.user.get_all_team_ids(row["user_id"])
         cached = CachedSession(
             session_id=row["id"],
             user_id=row["user_id"],
             is_admin=row["is_admin"],
             user_name=row["name"],
-            lang_id=None,
-            lang_code=None,
+            lang_id=row["lang_id"],
+            lang_code=row["lang_code"],
             cookie_token=row.get("cookie_token"),
             token=row.get("token"),
             expired_datetime=row["expired_datetime"],
             ttl=row["ttl"],
             create_datetime=row["create_datetime"],
+            role_codes=tuple(roles),
+            team_ids=tuple(team_ids),
         )
         await cache.put(cached)
         return cached

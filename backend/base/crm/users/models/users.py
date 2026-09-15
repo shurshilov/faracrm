@@ -431,7 +431,10 @@ class User(PolymorphicParentMixin):
         стабами {code} — иначе сериализация ответа (напр. default_values,
         где user_id = текущий юзер из сессии) падает на required-поле
         role_ids[].id. code используется field-level проверкой доступа.
-        Один рекурсивный CTE.
+        Один рекурсивный CTE — тот же, что в SecurityAccessChecker
+        ._get_user_roles, который читает роли из сессии вместо запроса:
+        поэтому здесь отдаются ВСЕ роли, и без code тоже (потребители
+        кода фильтруют `if r.code` сами).
         """
         query = """
             WITH RECURSIVE role_tree AS (
@@ -452,7 +455,7 @@ class User(PolymorphicParentMixin):
         return [
             (row["id"], row["code"])
             for row in result
-            if row.get("id") is not None and row.get("code")
+            if row.get("id") is not None
         ]
 
     @classmethod

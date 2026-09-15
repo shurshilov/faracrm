@@ -6,7 +6,10 @@ from backend.base.system.auth.exception import AuthFailed
 from backend.base.system.auth.strategy_abstract import AuthStrategyAbstract
 from backend.base.system.core.app import App
 from backend.base.system.core.enviroment import Environment
-from backend.base.system.dotorm.dotorm.access import set_access_session
+from backend.base.system.dotorm.dotorm.access import (
+    new_access_memo,
+    set_access_session,
+)
 from backend.base.crm.security.models.sessions import (
     SystemSession,
     AnonymousSession,
@@ -146,8 +149,10 @@ class AuthTokenApp(App, AuthStrategyAbstract):
 
         request.state.session = session
 
-        # Устанавливаем сессию для проверки доступа в DotORM
+        # Устанавливаем сессию для проверки доступа в DotORM + пустой
+        # блокнот запроса (ACL/rules считаются один раз на запрос).
         set_access_session(session)
+        new_access_memo()
 
         return session
 
@@ -177,6 +182,7 @@ class AuthTokenApp(App, AuthStrategyAbstract):
 
         request.state.session = session
         set_access_session(session)
+        new_access_memo()
 
         return session
 

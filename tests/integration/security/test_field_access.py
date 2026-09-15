@@ -44,22 +44,21 @@ from backend.base.system.core.exceptions.environment import FaraException
 async def _make_session(user) -> Session:
     """Build a Session-like object — enough for AccessChecker.
 
-    Hydrates user.role_ids with EXPANDED roles (id + code), exactly as the
-    real session build (Session.session_check) does. The field-level checker
-    reads codes straight from the session (no DB fallback), so test
-    sessions must carry them too.
+    Carries EXPANDED roles (id + code) and teams exactly as the real
+    session build (Session.session_check) does. Both the ACL check and the
+    field-level checker read them straight from the session (no DB
+    fallback), so test sessions must carry them too.
     """
-    from backend.base.crm.security.models.roles import Role
-
-    roles = await User.get_all_role_codes(user.id)
-    user.role_ids = [Role(id=i, code=c) for (i, c) in roles]
-    return Session(
+    session = Session(
         id=0,
         active=True,
         user_id=user,
         token="test-token",
         ttl=3600,
     )
+    Session._set_role_codes(session, await User.get_all_role_codes(user.id))
+    Session._set_team_ids(session, await User.get_all_team_ids(user.id))
+    return session
 
 
 class as_user:
@@ -278,16 +277,19 @@ class TestRoleCodeSource:
     pin both the hydrated path and the empty-session path."""
 
     async def test_reads_codes_from_session(self, alice, system_admin_role_id):
-        """Override alice's SESSION codes with system_admin (she is base_user
-        in DB). Self-assigning a role then succeeds — proving the check used
-        the session-carried codes, not the DB (ACL/Rules still see her DB
-        roles, so a self-edit is allowed; the field gate is the subject)."""
+        """Override alice's SESSION roles with system_admin (she is base_user
+        in DB). Self-assigning a role then succeeds — proving the checks used
+        the session-carried roles, not the DB. Roles in a session always
+        carry id + code (Session._set_role_codes): ACL reads the ids, the
+        field gate reads the codes."""
         from backend.base.crm.security.models.roles import Role
 
         async with as_user(alice):
             session = get_access_session()
-            # As session_check hydration would do (expanded codes):
-            session.user_id.role_ids = [Role(code="system_admin")]
+            # As the session build would do (expanded roles, id + code):
+            session.user_id.role_ids = [
+                Role(id=system_admin_role_id, code="system_admin")
+            ]
             await alice.update(
                 User(role_ids={"selected": [system_admin_role_id]})
             )

@@ -13,6 +13,8 @@ from backend.base.system.dotorm.dotorm.access import (
     SUPERUSER,
     AccessChecker,
     Operation,
+    get_access_memo,
+    get_access_session,
 )
 from backend.base.crm.security.models.sessions import (
     SystemSession,
@@ -90,7 +92,38 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         model = self.env.models._get_model_name_by_table(model)
         user_id = session.user_id.id
 
-        # Роли загружаются ОДИН раз
+        # ACL и domain модели в пределах запроса не меняются — в блокнот
+        # запроса (см. dotorm.access._access_memo): search + search_count и
+        # вложенные связи на одну модель спрашивают их по нескольку раз.
+        memo = get_access_memo()
+        key = ("check_access", user_id, model, operation.value)
+        acl_and_domain = memo.get(key) if memo is not None else None
+        if acl_and_domain is None:
+            acl_and_domain = await self._acl_and_domain(
+                session, user_id, model, operation
+            )
+            if memo is not None:
+                memo[key] = acl_and_domain
+        has_acl, domain = acl_and_domain
+
+        if not has_acl:
+            return False, []
+
+        # Проверка Rules по конкретным записям (если есть record_ids)
+        if record_ids:
+            has_rules = await self._check_rules(model, record_ids, domain)
+            return has_rules, []
+
+        return True, domain
+
+    async def _acl_and_domain(
+        self,
+        session: "Session",
+        user_id: int,
+        model: str,
+        operation: Operation,
+    ) -> tuple[bool, list]:
+        """(есть ли ACL, domain из rules) для обычной сессии — 2 запроса."""
         role_ids = await self._get_user_roles(user_id)
 
         # 1. Проверка ACL
@@ -107,11 +140,6 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         domain = await self._get_domains(
             role_ids, model, operation, user_id, team_ids=session_team_ids
         )
-        # 2. Проверка Rules (если есть record_ids)
-        if record_ids:
-            has_rules = await self._check_rules(model, record_ids, domain)
-            return has_rules, []
-
         return True, domain
 
     async def check_field_access(
@@ -202,10 +230,22 @@ class SecurityAccessChecker(AccessChecker["Session"]):
 
     async def _get_user_roles(self, user_id: int) -> list[int]:
         """
-        Получает все роли пользователя (включая наследуемые).
+        Все роли пользователя (включая наследуемые по based_role_ids).
 
-        Один рекурсивный CTE-запрос.
+        Из сессии: сборка сессии кладёт туда роли (Session._set_role_codes),
+        уже развёрнутые тем же CTE (id + code). Запрос — только для чужого
+        user_id (операторы rules с другим пользователем) или сессии без
+        ролей.
         """
+        session = get_access_session()
+        user = session.user_id
+        if (
+            user is not None
+            and user.id == user_id
+            and user.role_ids is not None
+        ):
+            return [r.id for r in user.role_ids if r.id is not None]
+
         db_session = self.env.models.model._get_db_session()
 
         stmt = """
@@ -282,11 +322,21 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         if not result:
             return []
 
-        # Команды для {{team_ids}}: обычно приходят из сессии (гидрируются при
-        # сборке — без запроса на каждую проверку). Запрос — только fallback
-        # для вызовов без сессии (напр. @has_parent_access из rule_operators).
+        # Команды для {{team_ids}}: из сессии (кладутся при сборке,
+        # _set_team_ids). Вызовы без team_ids (@has_parent_access из
+        # rule_operators для родительской модели) тоже берут из сессии в
+        # контексте; запрос — только для чужого user_id или сессии без команд.
         if team_ids is None:
-            team_ids = await self._get_user_team_ids(user_id)
+            session = get_access_session()
+            user = session.user_id
+            if (
+                user is not None
+                and user.id == user_id
+                and user.team_ids is not None
+            ):
+                team_ids = [t.id for t in user.team_ids]
+            else:
+                team_ids = await self._get_user_team_ids(user_id)
 
         # Парсим и объединяем domains
         domains = []
