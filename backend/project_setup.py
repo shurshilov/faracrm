@@ -59,7 +59,6 @@ from backend.base.system.view_settings.models.column_setting import (
 )
 from backend.base.crm.sales.models.sale import Sale
 from backend.base.crm.sales.models.sale_line import SaleLine
-from backend.base.crm.partners.models.partners import Partner
 from backend.base.crm.partners.models.contact import Contact
 from backend.base.crm.partners.models.contact_type import ContactType
 from backend.base.crm.products.models.product import Product
@@ -129,7 +128,7 @@ from backend.base.crm.activity.models.activity import Activity
 from backend.base.crm.report_docx.models.report_template import ReportTemplate
 from backend.base.crm.contract.models.contract import Contract
 from backend.base.crm.contract.models.company_ext import CompanyContractMixin
-from backend.base.crm.contract.models.partner_ext import PartnerContractMixin
+from backend.base.crm.contract.models.requisites_ext import RequisitesMixin
 from backend.base.crm.contract.models.sale_ext import SaleContractMixin
 
 # когда есть расширение чтобы IDE видела все поля в модели делаем хак
@@ -180,11 +179,26 @@ if TYPE_CHECKING:
 
     class Company(
         CompanyContractMixin,
+        RequisitesMixin,
         CompanyBase,
     ): ...
 
 else:
     from backend.base.crm.company.models.company import Company
+
+# когда есть расширение чтобы IDE видела все поля в модели делаем хак
+if TYPE_CHECKING:
+    from backend.base.crm.partners.models.partners import (
+        Partner as PartnerBase,
+    )
+
+    class Partner(
+        RequisitesMixin,
+        PartnerBase,
+    ): ...
+
+else:
+    from backend.base.crm.partners.models.partners import Partner
 
 from backend.base.crm.chat.models.chat_external_account import (
     ChatExternalAccount,

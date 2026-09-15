@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 SETTING_API_KEY = "dadata.api_key"
 API_URL = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/"
 
-# Тип организации DaData → Partner.partner_type. Физлиц в ЕГРЮЛ/ЕГРИП нет,
-# поэтому их ИНН просто ничего не находит.
-PARTNER_TYPE = {"LEGAL": "company", "INDIVIDUAL": "entrepreneur"}
+# Тип организации DaData → legal_type (RequisitesMixin). Физлиц в
+# ЕГРЮЛ/ЕГРИП нет, поэтому их ИНН просто ничего не находит.
+LEGAL_TYPE = {"LEGAL": "company", "INDIVIDUAL": "entrepreneur"}
 
 
 class DadataProvider(RequisitesProviderBase):
@@ -47,7 +47,7 @@ class DadataProvider(RequisitesProviderBase):
         address = data.get("address") or {}
         return {
             "name": name.get("short_with_opf") or chosen.get("value"),
-            "partner_type": PARTNER_TYPE.get(data.get("type"), "company"),
+            "legal_type": LEGAL_TYPE.get(data.get("type"), "company"),
             "kpp": data.get("kpp") or None,
             "ogrn": data.get("ogrn") or None,
             "okpo": data.get("okpo") or None,

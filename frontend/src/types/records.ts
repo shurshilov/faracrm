@@ -138,12 +138,12 @@ export interface PartnerRecord extends BaseRecord {
   company_id: RelationRecord | null;
   tz: string | null;
   lang: string | null;
-  vat: string | null;
   notes: string | null;
   website: string | null;
   contact_ids: RelationRecord[];
-  // Реквизиты РФ (модуль contract через @extend); ИНН — базовое vat
-  partner_type: 'person' | 'company' | 'entrepreneur' | null;
+  // Реквизиты РФ — RequisitesMixin модуля contract (@extend), общий с компанией
+  legal_type: 'person' | 'company' | 'entrepreneur' | null;
+  vat: string | null;
   kpp: string | null;
   ogrn: string | null;
   okpo: string | null;
@@ -242,6 +242,20 @@ export interface CompanyRecord extends BaseRecord {
   login_social2_url: string | null;
   login_social3_type: string | null;
   login_social3_url: string | null;
+  // Подписанты счёта (CompanyContractMixin модуля contract, @extend)
+  chief_id: RelationRecord | null;
+  accountant_id: RelationRecord | null;
+  // Реквизиты РФ — RequisitesMixin модуля contract, общий с партнёром
+  legal_type: 'person' | 'company' | 'entrepreneur' | null;
+  vat: string | null;
+  kpp: string | null;
+  ogrn: string | null;
+  okpo: string | null;
+  address: string | null;
+  bank_bic: string | null;
+  bank_name: string | null;
+  bank_corr_account: string | null;
+  bank_account: string | null;
 }
 
 // ============================================================

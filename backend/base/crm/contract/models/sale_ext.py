@@ -135,8 +135,12 @@ class SaleContractMixin(_Base):
                     "fields": [
                         "id",
                         "name",
-                        "inn",
+                        "vat",
                         "kpp",
+                        "bank_name",
+                        "bank_bic",
+                        "bank_account",
+                        "bank_corr_account",
                         "chief_id",
                         "accountant_id",
                     ]
@@ -170,7 +174,7 @@ class SaleContractMixin(_Base):
         # ── Компания ──
         company = sale.company_id
         company_name = company.name or "" if company else ""
-        company_inn = company.inn or "" if company else ""
+        company_inn = company.vat or "" if company else ""
         company_kpp = company.kpp or "" if company else ""
 
         # Руководитель и бухгалтер
@@ -187,7 +191,7 @@ class SaleContractMixin(_Base):
         # ── Покупатель ──
         partner = sale.partner_id
         partner_name = partner.name or "" if partner else ""
-        # ИНН партнёра — базовое поле vat (см. PartnerContractMixin)
+        # ИНН — поле vat из RequisitesMixin (у компании такое же)
         partner_inn = partner.vat or "" if partner else ""
         partner_kpp = partner.kpp or "" if partner else ""
 
@@ -262,13 +266,15 @@ class SaleContractMixin(_Base):
             summ_nds += line_nds
 
         return {
-            # Банковские реквизиты (TODO: добавить bank_ids в Company)
-            "bank_received": "",
-            "bik": "",
-            "acc_number": "",
+            # Банковские реквизиты компании (RequisitesMixin)
+            "bank_received": company.bank_name or "" if company else "",
+            "bik": company.bank_bic or "" if company else "",
+            "acc_number": company.bank_account or "" if company else "",
             "inn": company_inn,
             "kpp": company_kpp,
-            "correspondent_account": "",
+            "correspondent_account": (
+                company.bank_corr_account or "" if company else ""
+            ),
             # Получатель
             "reciver": company_name,
             # Номер и дата

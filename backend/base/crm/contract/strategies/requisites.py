@@ -16,8 +16,9 @@ class RequisitesProviderBase:
     (routers/requisites.py), те спрашивают провайдера и отдают форме то,
     что он вернул.
 
-    Оба метода возвращают словарь «поле Partner → значение», готовый к
-    подстановке в форму, или пустой словарь, если ничего не найдено.
+    Оба метода возвращают словарь «поле RequisitesMixin → значение» (одни
+    и те же имена у партнёра и компании), готовый к подстановке в форму,
+    или пустой словарь, если ничего не найдено.
     Ошибки настройки/связи провайдер поднимает FaraException — фронт
     покажет их пользователю.
     """
@@ -29,7 +30,7 @@ class RequisitesProviderBase:
     app_code: str = ""
 
     async def party_by_inn(self, inn: str) -> dict:
-        """Юрлицо/ИП по ИНН → {name, partner_type, kpp, ogrn, okpo, address}."""
+        """Юрлицо/ИП по ИНН → {name, legal_type, kpp, ogrn, okpo, address}."""
         raise NotImplementedError
 
     async def bank_by_bic(self, bic: str) -> dict:

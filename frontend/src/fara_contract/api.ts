@@ -1,12 +1,12 @@
 /**
  * API модуля contract: реквизиты по ИНН и банк по БИК для кнопки
- * «Заполнить» у поля (см. extensions/ViewFormPartner.tsx). Бэк —
+ * «Заполнить» у поля (см. Requisites.tsx). Бэк —
  * backend/base/crm/contract/routers/requisites.py, источник данных —
  * провайдер реквизитов (модуль dadata).
  */
 import { crudApi } from '@/services/api/crudApi';
 
-/** Значения полей партнёра для подстановки в форму; {} — не найдено. */
+/** Значения полей партнёра/компании для подстановки в форму; {} — не найдено. */
 export type RequisitesValues = Record<string, unknown>;
 
 const contractApi = crudApi.injectEndpoints({

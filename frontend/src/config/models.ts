@@ -424,6 +424,8 @@ export const modelsConfig: Record<string, ModelConfig> = {
       import('@/fara_company/List').then(m => ({ default: m.ViewListCompany })),
     form: () =>
       import('@/fara_company/Form').then(m => ({ default: m.ViewFormCompany })),
+    // fara_contract — вкладки «Реквизиты» (ИНН/КПП/ОГРН…) и «Банк», как у партнёра.
+    extensions: [() => import('@/fara_contract')],
     kanban: () =>
       import('@/fara_company/Kanban').then(m => ({
         default: m.ViewKanbanCompany,

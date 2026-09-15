@@ -1,31 +1,32 @@
 # Copyright 2025 FARA CRM
-# Contract module — Partner extension with Russian legal entity fields
+# Contract module — реквизиты РФ, общие для партнёра и компании
 
-from typing import TYPE_CHECKING
-
+from backend.base.crm.company.models.company import Company
 from backend.base.crm.partners.models.partners import Partner
 from backend.base.system.dotorm.dotorm.fields import Char, Selection, Text
 from backend.base.system.core.extensions import extend
 
-# Поддержка IDE - видны все атрибуты базового класса
-if TYPE_CHECKING:
-    _Base = Partner
-else:
-    _Base = object
 
-
+@extend(Company)
 @extend(Partner)
-class PartnerContractMixin(_Base):
+class RequisitesMixin:
     """
-    Расширение Partner для работы с договорами (РФ).
+    Реквизиты, одинаковые у контрагента (Partner) и у своей организации
+    (Company): тип лица, ИНН, КПП/ОГРН/ОКПО, юридический адрес, банк. Один
+    класс навешан на обе модели — @extend можно стекать, каждый
+    регистрирует те же поля для своей модели (Field-инстансы между
+    моделями шарятся, как у AuditMixin через наследование; у поля из
+    своего только name).
 
-    ИНН — базовое поле Partner.vat (в интерфейсе оно подписано «ИНН»),
-    отдельного поля здесь нет. Автозаполнение по ИНН и БИК — кнопка у поля
-    в форме, она зовёт /requisites/party и /requisites/bank
-    (routers/requisites.py), сохранение записи не затрагивается.
+    Наследоваться от этого класса в других расширениях нельзя: @extend
+    читает только собственный __dict__ класса, унаследованные поля не
+    увидит — добавлять модель сюда ещё одним декоратором.
+
+    Своё у Company — подписанты и печать (company_ext.py). Кнопка
+    «Заполнить» по ИНН/БИК в форме — routers/requisites.py.
     """
 
-    partner_type: str = Selection(
+    legal_type: str = Selection(
         options=[
             ("person", "Физическое лицо"),
             ("company", "Юридическое лицо"),
@@ -33,6 +34,14 @@ class PartnerContractMixin(_Base):
         ],
         default="person",
         string="Тип лица",
+    )
+
+    # ИНН — 10 цифр (юрлицо) или 12 цифр (ИП)
+    vat: str | None = Char(
+        string="ИНН (Tax ID)",
+        max_length=12,
+        index=True,
+        help="Идентификационный номер налогоплательщика (Tax Identification Number)",
     )
 
     # КПП — 9 цифр, только для юрлиц

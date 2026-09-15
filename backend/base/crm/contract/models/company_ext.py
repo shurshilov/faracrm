@@ -4,7 +4,6 @@
 from typing import TYPE_CHECKING
 
 from backend.base.system.dotorm.dotorm.fields import (
-    Char,
     Many2one,
     PolymorphicMany2one,
 )
@@ -25,37 +24,11 @@ else:
 class CompanyContractMixin(_Base):
     """
     Расширение Company для работы с договорами (РФ).
+
+    Здесь только своё: подписанты и печать. Реквизиты (тип лица, ИНН,
+    КПП/ОГРН/ОКПО, юр. адрес, банк) — общие с Partner, живут в
+    RequisitesMixin (requisites_ext.py).
     """
-
-    # Реквизиты (могут быть related к partner_id)
-    # ИНН — 10 цифр (юрлицо) или 12 цифр (физлицо/ИП)
-    inn: str | None = Char(
-        string="ИНН",
-        max_length=12,
-        index=True,
-        help="Идентификационный номер налогоплательщика",
-    )
-
-    # КПП — 9 цифр, только для юрлиц
-    kpp: str | None = Char(
-        string="КПП",
-        max_length=9,
-        help="Код причины постановки на учёт (только для организаций)",
-    )
-
-    # ОГРН — 13 цифр (юрлицо) или 15 цифр (ИП — ОГРНИП)
-    ogrn: str | None = Char(
-        string="ОГРН",
-        max_length=15,
-        help="Основной государственный регистрационный номер",
-    )
-
-    # ОКПО — 8 цифр (юрлицо) или 10 цифр (ИП)
-    okpo: str | None = Char(
-        string="ОКПО",
-        max_length=14,
-        help="Общероссийский классификатор предприятий и организаций",
-    )
 
     # Ответственные лица
     chief_id: "User" = Many2one(

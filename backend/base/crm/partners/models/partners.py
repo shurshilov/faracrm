@@ -75,11 +75,6 @@ class Partner(AuditMixin, PolymorphicParentMixin):
         default="russian",
         string="Language",
     )
-    vat: str | None = Char(
-        string="Tax ID",
-        index=True,
-        help="Tax Identification Number",
-    )
 
     # bank_ids: PartnerBank = One2many(
     #     PartnerBank, "partner_id", string="Banks"
