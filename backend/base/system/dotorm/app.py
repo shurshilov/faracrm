@@ -11,7 +11,7 @@ class Dotorm(App):
         "summary": "Dotorm",
         "author": "Artem Shurshilov",
         "category": "Base",
-        "version": "2.1.0",
+        "version": "2.4.0",
         "license": "FARA CRM License v1.0",
         "depends": [],
     }

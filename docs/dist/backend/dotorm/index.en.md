@@ -70,6 +70,7 @@ await chat.delete()
 
 - [Models](models.md) — defining models, `DotModel`, `__table__`
 - [Fields](fields.md) — field types, parameters, defaults
+- [Decorators](decorators.md) — `@onchange`, `@depends`, `@constrains`: form, computed fields, checks before the write
 - [Queries](queries.md) — `search`, `get`, `create`, `update`, `delete`
 - [Relations](relations.md) — Many2one, One2many, Many2many
 - [CRUD Auto](crud-auto.md) — REST API auto-generation

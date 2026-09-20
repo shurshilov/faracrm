@@ -1107,6 +1107,16 @@ Field(
 )
 ```
 
+### Decorators
+
+| Decorator | When | Purpose |
+|-----------|------|---------|
+| `@onchange("field")` | On a field change in the form, via `/onchange` | Fill other form fields; UI only |
+| `@depends(triggers=[...])` | After INSERT/UPDATE/DELETE, bulk included | Stored computed fields (`compute=`), parent recompute through relations |
+| `@constrains("field")` | Before INSERT/UPDATE, bulk included | One constraint for `create`, `update`, `create_bulk` and `update_bulk` in a single function: an exception means the query is never sent |
+
+`@constrains` is called once per operation with the list of records (`self` is an empty model instance, `records` are the payloads), so a check batches its own queries. Works from `@extend` extensions.
+
 ### Model Class Methods
 
 | Method | Description | Returns |

@@ -82,6 +82,22 @@ const TRANSLATIONS: Record<
       description:
         'Пользователь с таким логином уже существует. Выберите другой.',
     },
+    DUPLICATE_NAME: {
+      title: 'Дубликат: имя партнёра',
+      description: 'Партнёр с таким именем уже есть:',
+    },
+    DUPLICATE_VAT: {
+      title: 'Дубликат: ИНН и КПП',
+      description: 'Партнёр с таким ИНН и КПП уже есть:',
+    },
+    DUPLICATE_CONTACT: {
+      title: 'Дубликат: контакт',
+      description: 'Этот контакт уже указан у другого партнёра:',
+    },
+    DUPLICATE_CONTACT_OPERATOR: {
+      title: 'Дубликат: контакт',
+      description: 'Этот контакт уже указан у другого сотрудника:',
+    },
     VALIDATION_ERROR: {
       title: 'Ошибка валидации',
       description: 'Проверьте правильность заполнения полей:',
@@ -148,6 +164,22 @@ const TRANSLATIONS: Record<
       title: 'Login already taken',
       description:
         'A user with this login already exists. Please choose another.',
+    },
+    DUPLICATE_NAME: {
+      title: 'Duplicate: partner name',
+      description: 'A partner with this name already exists:',
+    },
+    DUPLICATE_VAT: {
+      title: 'Duplicate: Tax ID and KPP',
+      description: 'A partner with this Tax ID and KPP already exists:',
+    },
+    DUPLICATE_CONTACT: {
+      title: 'Duplicate: contact',
+      description: 'This contact is already listed on another partner:',
+    },
+    DUPLICATE_CONTACT_OPERATOR: {
+      title: 'Duplicate: contact',
+      description: 'This contact is already listed on another employee:',
     },
     VALIDATION_ERROR: {
       title: 'Validation Error',

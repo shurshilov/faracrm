@@ -182,6 +182,33 @@ class DotModel(
     _dialect: ClassVar[Dialect] = POSTGRES
     _builder: ClassVar["Builder"]
 
+    # Кэши класса. Заполняются в __init_subclass__ (и заново в
+    # rebuild_field_caches — после @extend, который кладёт поля и методы
+    # setattr'ом); объявления здесь — для типизации и IDE, значения
+    # присваивают _build_field_cache / _build_compute_cache /
+    # _build_constrains_cache / _build_onchange_cache.
+    _cache_all_fields: ClassVar[dict[str, "Field"]]
+    _cache_store_fields: ClassVar[list[str]]
+    _cache_store_fields_dict: ClassVar[dict[str, "Field"]]
+    _cache_public_fields: ClassVar[dict[str, "Field"]]
+    _cache_relation_fields: ClassVar[list[tuple[str, "Field"]]]
+    _cache_json_fields: ClassVar[list[str]]
+    _cache_compute_fields: ClassVar[list[tuple[str, "Field"]]]
+    _cache_has_json_fields: ClassVar[bool]
+    _cache_has_compute_fields: ClassVar[bool]
+    _cache_all_field_kinds: ClassVar[dict[str, "FieldKind"]]
+    _cache_default_plan: ClassVar[list]
+    _cache_compute_method_deps: ClassVar[dict[str, tuple[str, ...]]]
+    _cache_compute_prefetch_deps: ClassVar[dict[str, tuple[str, ...]]]
+    _cache_compute_writes: ClassVar[dict[str, set[str]]]
+    _cache_compute_by_dep: ClassVar[dict[str, set[str]]]
+    _cache_compute_order: ClassVar[list[str]]
+    _cache_has_compute_methods: ClassVar[bool]
+    # @constrains: (имя метода, поля-триггеры; пустое множество = всегда).
+    _cache_constrains: ClassVar[tuple[tuple[str, frozenset[str]], ...]] = ()
+    # @onchange: поле формы → имена методов-обработчиков (порядок dir()).
+    _cache_onchange: ClassVar[dict[str, list[str]]] = {}
+
     def __init_subclass__(cls, **kwargs):
         """
         1.Срабатывает один раз при определении подкласса,а не при каждом создании экземпляра
@@ -204,6 +231,10 @@ class DotModel(
         # потому что использует _cache_all_fields для определения, какие
         # поля пишет каждый compute-метод (через field.compute=...).
         cls._build_compute_cache()
+        # @constrains: проверки перед INSERT/UPDATE (OrmPrimaryMixin._run_constrains).
+        cls._build_constrains_cache()
+        # @onchange: обработчики полей формы (execute_onchange).
+        cls._build_onchange_cache()
 
         # Default query builder — доступен сразу после определения модели, без
         if "__table__" in cls.__dict__:
@@ -232,6 +263,8 @@ class DotModel(
         класса (порядок важен: compute-кэш читает _cache_all_fields)."""
         cls._build_field_cache()
         cls._build_compute_cache()
+        cls._build_constrains_cache()
+        cls._build_onchange_cache()
         if "__table__" in cls.__dict__:
             cls._builder = Builder(
                 table=cls.__table__,
@@ -416,6 +449,34 @@ class DotModel(
         cls._cache_compute_by_dep = by_dep
         cls._cache_compute_order = list(method_deps.keys())
         cls._cache_has_compute_methods = bool(method_deps)
+
+    @classmethod
+    def _build_constrains_cache(cls) -> None:
+        """Собрать @constrains-методы для OrmPrimaryMixin._run_constrains.
+
+        Обход как у _build_compute_cache: по __dict__ вдоль MRO и по
+        маркеру _is_constrains, а не по имени — метод, добавленный
+        @extend'ом (setattr на класс), попадает сюда после
+        rebuild_field_caches. Поля-триггеры (str / Field) резолвятся в
+        имена здесь же; пустой набор = проверка при любой записи.
+        """
+        found: dict[str, frozenset[str]] = {}
+        for klass in reversed(cls.__mro__):
+            if klass is object:
+                continue
+            for attr_name, attr in klass.__dict__.items():
+                func = getattr(attr, "__func__", attr)
+                if not (
+                    callable(func) and getattr(func, "_is_constrains", False)
+                ):
+                    continue
+                names: list[str] = []
+                for dep in getattr(func, "_constrains_fields", ()):
+                    name = dep.name if isinstance(dep, Field) else dep
+                    if isinstance(name, str) and name:
+                        names.append(name)
+                found[attr_name] = frozenset(names)
+        cls._cache_constrains = tuple(found.items())
 
     async def recompute(
         self, changed: set[str] | None = None, session=None
@@ -1154,12 +1215,33 @@ class DotModel(
         return record
 
     @classmethod
+    def _build_onchange_cache(cls) -> None:
+        """Собрать @onchange-обработчики: поле формы → имена методов.
+
+        Раньше get_onchange_fields и _get_onchange_handlers обходили
+        dir(cls) на каждый запрос /onchange. Обход тот же и порядок тот же
+        — dir() отдаёт имена по алфавиту, и расширения на это опираются:
+        onchange_type_max_business идёт после базового onchange_type и
+        перекрывает его значения при мёрже в execute_onchange. Вызывается из
+        __init_subclass__ и rebuild_field_caches — после @extend.
+        """
+        handlers: dict[str, list[str]] = {}
+        for attr_name in dir(cls):
+            if attr_name.startswith("__"):
+                continue
+            attr = getattr(cls, attr_name, None)
+            if attr and callable(attr) and hasattr(attr, "_is_onchange"):
+                for field_name in getattr(attr, "_onchange_fields", ()):
+                    handlers.setdefault(field_name, []).append(attr_name)
+        cls._cache_onchange = handlers
+
+    @classmethod
     def get_onchange_fields(cls) -> list[str]:
         """
         Получить список полей у которых есть onchange обработчики.
 
         Возвращает объединение:
-          - полей с явным @onchange-декоратором;
+          - полей с явным @onchange-декоратором (кэш _cache_onchange);
           - полей-триггеров из @depends (через _cache_compute_by_dep.keys()).
             Фронт должен следить и за ними, чтобы при изменении price_unit
             автоматически шёл /onchange и приходили пересчитанные
@@ -1167,15 +1249,7 @@ class DotModel(
 
         Используется фронтендом для определения за какими полями следить.
         """
-        fields_with_onchange = set()
-
-        for attr_name in dir(cls):
-            if attr_name.startswith("__"):
-                continue
-            attr = getattr(cls, attr_name, None)
-            if attr and callable(attr) and hasattr(attr, "_is_onchange"):
-                onchange_fields = getattr(attr, "_onchange_fields", ())
-                fields_with_onchange.update(onchange_fields)
+        fields_with_onchange = set(cls._cache_onchange)
 
         # Поля-триггеры всех @depends-методов модели — фронту нужно
         # дёрнуть /onchange при их изменении, чтобы получить свежие
@@ -1186,28 +1260,8 @@ class DotModel(
 
     @classmethod
     def _get_onchange_handlers(cls, field_name: str) -> list[str]:
-        """
-        Получить список методов-обработчиков для указанного поля.
-
-        Args:
-            field_name: Имя поля
-
-        Returns:
-            Список имён методов-обработчиков
-        """
-        handlers = []
-
-        for attr_name in dir(cls):
-            # Пропускаем dunder методы
-            if attr_name.startswith("__"):
-                continue
-            attr = getattr(cls, attr_name, None)
-            if attr and callable(attr) and hasattr(attr, "_is_onchange"):
-                onchange_fields = getattr(attr, "_onchange_fields", ())
-                if field_name in onchange_fields:
-                    handlers.append(attr_name)
-
-        return handlers
+        """Имена методов-обработчиков @onchange для поля (из кэша)."""
+        return cls._cache_onchange.get(field_name, [])
 
     async def execute_onchange(self, field_name: str) -> dict:
         """

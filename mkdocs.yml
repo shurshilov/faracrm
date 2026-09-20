@@ -107,6 +107,7 @@ plugins:
             DotORM: DotORM
             Модели: Models
             Поля: Fields
+            Декораторы: Decorators
             Запросы: Queries
             Связи: Relations
             "CRUD Auto — автогенерация REST API": "CRUD Auto — REST API auto-generation"
@@ -156,6 +157,7 @@ nav:
           - backend/dotorm/index.md
           - Модели: backend/dotorm/models.md
           - Поля: backend/dotorm/fields.md
+          - Декораторы: backend/dotorm/decorators.md
           - Запросы: backend/dotorm/queries.md
           - Связи: backend/dotorm/relations.md
           - CRUD Auto — автогенерация REST API: backend/dotorm/crud-auto.md

@@ -12,7 +12,10 @@ from backend.base.system.dotorm.dotorm.access import (
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
     FilterExpression,
 )
-from backend.base.system.dotorm.dotorm.decorators import hybridmethod
+from backend.base.system.dotorm.dotorm.decorators import (
+    constrains,
+    hybridmethod,
+)
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Char,
@@ -100,16 +103,15 @@ class User(PolymorphicParentMixin):
 
     id: int = Integer(primary_key=True)
     name: str = Char(max_length=256)
-    login: str = Char(max_length=50)
+    login: str = Char(max_length=50, unique=True)
     password_hash: str = Char(max_length=256, private=True, required=False)
     password_salt: str = Char(max_length=256, private=True, required=False)
 
     # Администратор (полный доступ ко всему).
     # role_create/role_update=SUPERUSER: ставить/снимать суперпользователя
     # может только суперпользователь — и на создании, и на правке (в т.ч.
-    # update_bulk), которые точечный гард в User.update не покрывает.
-    # Точечные правила (нельзя снять последнего админа / себя) остаются в
-    # User.update — это уже value-level логика поверх field-level.
+    # update_bulk). Value-level правила поверх (нельзя снять флаг с себя и
+    # с последнего админа) — @constrains _constrains_admin_demotion.
     is_admin: bool = Boolean(
         default=False, role_create=SUPERUSER, role_update=SUPERUSER
     )
@@ -319,31 +321,93 @@ class User(PolymorphicParentMixin):
     #     )
     #     return user_id
 
+    @constrains("login")
+    async def _constrains_login_unique(self, records: list[Self]) -> None:
+        """Логин уникален среди всех пользователей — и на create, и на
+        update (сменить логин на занятый нельзя), и в bulk-путях: один
+        search по всем логинам пачки, дубли внутри пачки ловятся до него.
+
+        Под sudo: пользователь с ограниченной видимостью не должен занять
+        логин того, кого не видит. UNIQUE в БД у login нет — проверка здесь.
+        """
+        taken = FaraException(
+            {
+                "content": "USER_LOGIN_EXISTS",
+                "detail": "User with this login already exists",
+                "status_code": 400,
+            }
+        )
+        by_login = {}
+        for record in records:
+            if not record.login:
+                continue
+            if record.login in by_login:
+                raise taken
+            by_login[record.login] = record
+        if not by_login:
+            return
+        existing = await self.sudo().search(
+            filter=[("login", "in", list(by_login))], fields=["id", "login"]
+        )
+        for other in existing:
+            if other.id != by_login[other.login].id:
+                raise taken
+
+    @staticmethod
+    def _only_superuser_changes_admin() -> None:
+        """Менять is_admin может только суперпользователь.
+
+        По сути то же, что field-level ACL поля (role_update=SUPERUSER), но
+        с кодом для модалки (ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD) вместо
+        общего ACCESS_DENIED. Поэтому зовётся ДО super(): проверка полей
+        внутри отдала бы AccessDenied раньше. Системная сессия — без юзера,
+        ей можно.
+        """
+        current = get_access_session().user_id
+        if current is not None and not current.is_admin:
+            raise FaraException(
+                {"content": "ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD"}
+            )
+
+    @constrains("is_admin")
+    async def _constrains_admin_demotion(self, records: list[Self]) -> None:
+        """Снять флаг суперпользователя нельзя с себя и с последнего админа.
+
+        Кто вообще вправе трогать is_admin, решают раньше field-level ACL
+        поля и _only_superuser_changes_admin. Одна функция на update и
+        update_bulk: снимаемые считаются пачкой, и последний админ — с
+        учётом всей пачки. На create снятия нет.
+        """
+        ids = [r.id for r in records if r.id and r.is_admin is False]
+        if not ids:
+            return
+        demoted = [
+            user.id
+            for user in await self.sudo().search(
+                filter=[("id", "in", ids), ("is_admin", "=", True)],
+                fields=["id"],
+            )
+        ]
+        if not demoted:
+            return
+        current = get_access_session().user_id
+        if current is not None and current.id in demoted:
+            raise FaraException(
+                {"content": "YOU_CANNOT_REVOKE_YOUR_OWN_ADMIN_STATUS"}
+            )
+        admins = await self.sudo().search_count(
+            filter=[("is_admin", "=", True)]
+        )
+        if admins - len(demoted) < 1:
+            raise FaraException(
+                {"content": "CANNOT_REMOVE_THE_LAST_ADMINISTRATOR"}
+            )
+
     @hybridmethod
     async def create(
         self, payload: Self, session=None, depends_jobs=None
     ) -> int:
-        """
-        Создание пользователя с проверкой уникальности login.
-
-        TODO: симметричную проверку стоит добавить и в update — иначе
-        login можно сменить на занятый. Сейчас не делаю, чтобы не
-        расширять scope правки за пределы создания.
-        """
-        if payload.login:
-            existing = await env.models.user.search_one(
-                filter=[("login", "=", payload.login)],
-                fields=["id"],
-            )
-            if existing:
-                raise FaraException(
-                    {
-                        "content": "USER_LOGIN_EXISTS",
-                        "detail": "User with this login already exists",
-                        "status_code": 400,
-                    }
-                )
-
+        """Создание пользователя (уникальность login — @constrains выше)."""
         # Базовое «Рабочее место» — только НЕ-админам (админ видит всё через
         # байпас, РМ ему не нужно; field-default нельзя завязать на is_admin,
         # он его не видит). Если РМ задано явно — не трогаем.
@@ -363,37 +427,14 @@ class User(PolymorphicParentMixin):
         session=None,
         depends_jobs=None,
     ):
-        # Берем переданные поля или автоматически вычисляем заполненные
-        fields = payload.assigned_fields()
+        # Берем переданные поля или автоматически вычисляем заполненные.
+        fields = fields or payload.assigned_fields()
 
+        # Смена флага не-суперпользователем — с понятным кодом, до ACL.
+        # Остальное про is_admin (снятие с себя / с последнего) — в
+        # @constrains _constrains_admin_demotion внутри super().update.
         if "is_admin" in fields and payload.is_admin != self.is_admin:
-            auth_session = get_access_session()
-            current_user = auth_session.user_id
-
-            # Правило 1: Только админ имеет право трогать это поле
-            if not current_user.is_admin:
-                raise FaraException(
-                    {"content": "ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD"}
-                )
-
-            # Если админа пытаются СНЯТЬ
-            if payload.is_admin is False:
-
-                # Правило 2: Запрещаем снимать права с самого себя
-                if current_user.id == self.id:
-                    raise FaraException(
-                        {"content": "YOU_CANNOT_REVOKE_YOUR_OWN_ADMIN_STATUS"}
-                    )
-
-                # Правило 3: Защита последнего выжившего админа.
-                # Считаем, сколько админов сейчас в базе
-                active_admins_count = await self.search_count(
-                    filter=[("is_admin", "=", True)], session=session
-                )
-                if active_admins_count <= 1:
-                    raise FaraException(
-                        {"content": "CANNOT_REMOVE_THE_LAST_ADMINISTRATOR"}
-                    )
+            self._only_superuser_changes_admin()
 
         await super().update(payload, fields, session, depends_jobs)
 
@@ -407,15 +448,9 @@ class User(PolymorphicParentMixin):
     async def update_bulk(
         self, ids: list[int], payload: "User", session=None, depends_jobs=None
     ):
+        # Записей на руках нет — по присутствию поля, как field-level ACL.
         if "is_admin" in payload.assigned_fields():
-            auth_session = get_access_session()
-            current_user = auth_session.user_id
-
-            # Правило 1: Только админ имеет право трогать это поле
-            if not current_user.is_admin:
-                raise FaraException(
-                    {"content": "ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD"}
-                )
+            self._only_superuser_changes_admin()
         result = await super().update_bulk(ids, payload, session, depends_jobs)
         # role_ids через bulk не идёт (store=False); is_admin — идёт.
         if "is_admin" in payload.assigned_fields():

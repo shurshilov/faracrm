@@ -70,6 +70,7 @@ await chat.delete()
 
 - [Модели](models.md) — определение моделей, `DotModel`, `__table__`
 - [Поля](fields.md) — типы полей, параметры, значения по умолчанию
+- [Декораторы](decorators.md) — `@onchange`, `@depends`, `@constrains`: форма, вычисляемые поля, проверки до записи
 - [Запросы](queries.md) — `search`, `get`, `create`, `update`, `delete`
 - [Связи](relations.md) — Many2one, One2many, Many2many
 - [CRUD Auto](crud-auto.md) — автогенерация REST API

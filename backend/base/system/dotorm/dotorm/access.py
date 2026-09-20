@@ -30,7 +30,7 @@ import inspect
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from enum import StrEnum
-from typing import TypeVar, Generic
+from typing import Callable, TypeVar, Generic, overload
 
 
 class Operation(StrEnum):
@@ -333,6 +333,9 @@ class Sudo:
         return f"<Sudo {self._target!r}>"
 
 
+_SudoT = TypeVar("_SudoT")
+
+
 class SudoAccessor:
     """
     Дескриптор, дающий .sudo() и классу, и записи.
@@ -340,7 +343,23 @@ class SudoAccessor:
     Обычным методом это не выразить: у класса не к чему привязать self, а
     classmethod потерял бы запись — и record.sudo().update(...) записывал бы
     «в никуда». Дескриптор просто отдаёт то, на чём его позвали.
+
+    Типизация (как у hybridmethod, через @overload): прокси Sudo прозрачен,
+    поэтому для IDE .sudo() возвращает то же, на чём его позвали —
+    self.sudo().search_one(...) даёт Self | None, Model.sudo().get_value()
+    — как у класса. Единственная неточность: синхронный метод через прокси
+    на самом деле вернёт awaitable (см. Sudo).
     """
+
+    @overload
+    def __get__(
+        self, instance: None, owner: type[_SudoT]
+    ) -> Callable[[], type[_SudoT]]: ...
+
+    @overload
+    def __get__(
+        self, instance: _SudoT, owner: type[_SudoT]
+    ) -> Callable[[], _SudoT]: ...
 
     def __get__(self, instance, owner):
         target = owner if instance is None else instance

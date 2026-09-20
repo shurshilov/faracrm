@@ -3,6 +3,8 @@
 
 @hybridmethod - декоратор для гибридных методов (работают И как classmethod И как instance).
 @onchange - декоратор для обработчиков изменения полей.
+@depends - декоратор вычисляемых (stored) полей.
+@constrains - декоратор проверок записи перед INSERT/UPDATE.
 @model - декоратор для бизнес-методов модели.
 
 Эта версия улучшает типизацию через:
@@ -252,6 +254,69 @@ def depends(
     return decorator
 
 
+def constrains(*fields: Any) -> Callable[[Callable], Callable]:
+    """
+    Декоратор проверок записи — аналог @api.constrains.
+
+    По сути это лёгкий способ добавить ограничение сразу во все четыре
+    пути записи — create, update, create_bulk, update_bulk — одной
+    функцией, без override'ов каждого из них. Проверка выполняется ДО
+    запроса к базе: сработала — INSERT/UPDATE не отправляется, откатывать
+    нечего (см. OrmPrimaryMixin._run_constrains). Вызов один на операцию,
+    как у @api.constrains с recordset: ``self`` — пустой экземпляр модели
+    (как у hybridmethod от класса — для self.sudo().search(...)),
+    ``records`` — записываемые payload'ы: одна запись у create/update, все
+    строки у bulk; на create у записи id None, на update выставлен. Чтобы
+    отклонить операцию — поднять исключение.
+
+    Правило батчит запросы само: одно IN по значениям всех записей вместо
+    запроса на строку; дубли внутри самой пачки (две новых строки с одним
+    значением) в базе ещё не видны — их ловят в том же цикле. На update
+    payload несёт только изменяемые поля; если нужны остальные — прочитать
+    их одним search по id записей в незаданные атрибуты payload (после
+    того, как правило решило, что проверка нужна). В SQL они не попадут:
+    update пишет по fields, update_bulk отдаёт правилу копии.
+
+    Аргументы — поля-триггеры (строки или Field-объекты): проверка идёт,
+    когда среди записываемых полей хотя бы одной записи есть одно из них.
+    Без аргументов — при любой записи модели.
+
+    Работает и из @extend-расширений: методы собираются в кэш модели по
+    маркеру, а не по имени (DotModel._build_constrains_cache), поэтому
+    расширения не затирают друг друга и не требуют call_original.
+
+    Пример::
+
+        @constrains("login")
+        async def _constrains_login_unique(self, records: list[Self]):
+            by_login = {}
+            for record in records:
+                if not record.login:
+                    continue
+                if record.login in by_login:  # дубль внутри пачки
+                    raise FaraException({...})
+                by_login[record.login] = record
+            if not by_login:
+                return
+            existing = await self.sudo().search(
+                filter=[("login", "in", list(by_login))],
+                fields=["id", "login"],
+            )
+            for other in existing:
+                if other.id != by_login[other.login].id:  # кроме себя
+                    raise FaraException({...})
+    """
+
+    def decorator(func: Callable) -> Callable:
+        # Сырые элементы (str / Field) — в имена резолвит
+        # _build_constrains_cache, когда у Field уже проставлен .name.
+        func._constrains_fields = tuple(fields)  # type: ignore[attr-defined]
+        func._is_constrains = True  # type: ignore[attr-defined]
+        return func
+
+    return decorator
+
+
 # def model(
 #     func: Callable[Concatenate[_T, _P], Coroutine[Any, Any, _R]],
 # ) -> Callable[Concatenate[_T, _P], Coroutine[Any, Any, _R]]:
@@ -368,7 +433,7 @@ def depends(
 
 
 # Экспортируем декораторы
-__all__ = ["hybridmethod", "onchange", "depends"]
+__all__ = ["hybridmethod", "onchange", "depends", "constrains"]
 
 
 def onchange(*fields: str):

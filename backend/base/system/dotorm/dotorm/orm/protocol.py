@@ -31,10 +31,19 @@ class DotModelProtocol(Protocol):
 
     __table__: ClassVar[str]
     __auto_create__: ClassVar[bool] = True
+    __indexes__: ClassVar[list[tuple[str, ...]]]
     _pool: ClassVar[Union["aiomysql.Pool", "asyncpg.Pool"]]
     _no_transaction: ClassVar[Type]
     _dialect: ClassVar["Dialect"]
     _builder: ClassVar["Builder"]
+
+    # Кэши модели (DotModel._build_field_cache / _build_compute_cache /
+    # _build_constrains_cache) — миксины читают их через cls.
+    _cache_all_fields: ClassVar[dict[str, "Field"]]
+    _cache_store_fields: ClassVar[list[str]]
+    _cache_store_fields_dict: ClassVar[dict[str, "Field"]]
+    _cache_compute_order: ClassVar[list[str]]
+    _cache_constrains: ClassVar[tuple[tuple[str, frozenset[str]], ...]]
 
     id: int
 
@@ -50,6 +59,20 @@ class DotModelProtocol(Protocol):
         record_ids: list[int] | None = None,
         filter: list | None = None,
     ) -> list | None: ...
+
+    @classmethod
+    async def _check_field_access(
+        cls,
+        operation: "Operation",
+        payload: Any,
+        fields: Any,
+    ) -> None: ...
+
+    # @constrains (from OrmPrimaryMixin)
+    @classmethod
+    async def _run_constrains(
+        cls, records: list[Any], changed: Any
+    ) -> None: ...
 
     # Field introspection
     @classmethod
@@ -161,6 +184,7 @@ class DotModelProtocol(Protocol):
         payload: Any,
         update_fields: list[str],
         session: Any,
+        depends_jobs: Any = None,
     ) -> None: ...
 
     async def _update_store(

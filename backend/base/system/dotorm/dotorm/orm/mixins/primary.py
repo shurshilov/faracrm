@@ -1,6 +1,7 @@
 """Primary ORM operations mixin."""
 
 import asyncio
+import copy
 import json
 from typing import TYPE_CHECKING, Self, TypeVar
 
@@ -158,6 +159,12 @@ class OrmPrimaryMixin(_Base):
         # (presence-based — любое присутствие restricted-поля проверяется).
         await self._check_field_access(Operation.UPDATE, payload, fields)
 
+        # @constrains по записываемым полям — до UPDATE. id — чтобы правило
+        # исключало «себя» и дочитывало поля записи.
+        if self._cache_constrains:
+            payload.id = self.id
+            await self._run_constrains([payload], fields)
+
         depends_jobs, owner = self._depends_open(depends_jobs)
 
         # SQL UPDATE для store-полей + обработка relation-полей.
@@ -241,6 +248,18 @@ class OrmPrimaryMixin(_Base):
         await cls._check_field_access(
             Operation.UPDATE, payload, payload.assigned_fields()
         )
+
+        # @constrains: один payload на много записей — правило получает
+        # копию на каждый id одной пачкой (у копии свой id: «кроме себя» у
+        # проверок уникальности, дочитанные поля своей записи). Общий
+        # payload ниже уходит в UPDATE для всех ids нетронутым.
+        if cls._cache_constrains:
+            records = []
+            for record_id in ids:
+                record = copy.copy(payload)
+                record.id = record_id
+                records.append(record)
+            await cls._run_constrains(records, payload.assigned_fields())
 
         session = cls._get_db_session(session)
         depends_jobs, owner = cls._depends_open(depends_jobs)
@@ -341,6 +360,10 @@ class OrmPrimaryMixin(_Base):
         # Применяем default-ы к незаданным store-полям ДО сериализации.
         # json() только сериализует — он не вычисляет дефолты.
         await cls._apply_defaults(payload)
+
+        # @constrains: после дефолтов, до INSERT.
+        if cls._cache_constrains:
+            await cls._run_constrains([payload], payload.assigned_fields())
 
         payload_dict = payload.json(
             exclude=payload.get_none_update_fields_set(),
@@ -445,6 +468,14 @@ class OrmPrimaryMixin(_Base):
         for p in payload:
             await cls._apply_defaults(p)
 
+        # @constrains: вся пачка одним вызовом — правило батчит запросы само;
+        # без проверок у модели — ни одного вызова.
+        if cls._cache_constrains:
+            written: set[str] = set()
+            for p in payload:
+                written.update(p.assigned_fields())
+            await cls._run_constrains(payload, written)
+
         # Горячий путь: get_json диспатчит по предвычисленным видам полей
         # (без per-row isinstance). exclude_unset=False (по умолчанию) →
         # неприсвоенные поля = None, у всех строк одинаковый набор ключей —
@@ -481,6 +512,36 @@ class OrmPrimaryMixin(_Base):
 
         await cls._depends_flush(depends_jobs, owner, session)
         return records
+
+    @classmethod
+    async def _run_constrains(
+        cls, records: list[_M], changed: "set[str] | list[str]"
+    ) -> None:
+        """Запустить @constrains-методы модели ДО SQL (decorators.constrains).
+
+        records — записываемые payload'ы операции целиком: одна запись у
+        create/update, все строки у create_bulk/update_bulk; на update у
+        каждой выставлен id, на create он None. Правило вызывается один
+        раз на операцию и батчит запросы само (IN по значениям) — на bulk
+        это один SELECT вместо N. Его self — пустой экземпляр модели, как
+        у hybridmethod при вызове от класса: self.sudo().search(...).
+        changed — объединение записываемых полей: метод с полями-триггерами
+        идёт, только если они пересекаются с changed; метод без полей —
+        всегда. Исключение из правила прерывает операцию до INSERT/UPDATE
+        — откат не нужен. Вызывающие гардят пустым _cache_constrains: у
+        модели без проверок overhead нулевой.
+
+        В базу движок не ходит: на update payload несёт только изменяемые
+        поля, и правило, которому нужны остальные, читает их по id записей
+        в незаданные атрибуты payload. В SQL это не попадёт — update пишет
+        по fields, update_bulk отдаёт сюда копии.
+        """
+        changed_set = set(changed)
+        model = cls()
+        for method_name, fields in cls._cache_constrains:
+            if fields and not (fields & changed_set):
+                continue
+            await getattr(model, method_name)(records)
 
     @staticmethod
     async def _apply_defaults(payload: "DotModel") -> None:
