@@ -574,6 +574,154 @@ class TestMany2manyRelations:
         assert isinstance(user.role_ids, list)
         assert len(user.role_ids) == 2
 
+    async def test_get_many2many_limit_only_explicit(
+        self, sample_data, session
+    ):
+        """Без limit — все связи (раньше скрытый LIMIT 10 обрезал их),
+        limit и start/end — страница."""
+        from .models import User, Role
+
+        user_id = sample_data["users"][0]
+        model_id = sample_data["models"][0]
+        role_ids = sample_data["roles"] + [
+            await Role.create(Role(name=f"r{i}", model_id=model_id))
+            for i in range(10)
+        ]
+        role_field = User.get_fields()["role_ids"]
+        await User.link_many2many(
+            role_field, [(user_id, role_id) for role_id in role_ids]
+        )
+        kw = dict(
+            id=user_id,
+            comodel=Role,
+            relation=role_field.many2many_table,
+            column1=role_field.column1,
+            column2=role_field.column2,
+            fields=["id"],
+        )
+
+        assert len(await User.get_many2many(**kw)) == 12
+        assert len(await User.get_many2many(**kw, limit=5)) == 5
+        page = await User.get_many2many(
+            **kw, start=2, end=6, sort="id", order="asc"
+        )
+        assert [r.id for r in page] == sorted(role_ids)[2:6]
+
+    async def test_get_many2many_sort_without_id_in_fields(
+        self, sample_data, session
+    ):
+        """ORDER BY p.{sort}: без алиаса «id» был неоднозначен между p и t,
+        когда его нет в SELECT (AmbiguousColumnError)."""
+        from .models import User, Role
+
+        user_id = sample_data["users"][0]
+        role_field = User.get_fields()["role_ids"]
+        await User.link_many2many(
+            role_field,
+            [(user_id, role_id) for role_id in sample_data["roles"]],
+        )
+
+        roles = await User.get_many2many(
+            id=user_id,
+            comodel=Role,
+            relation=role_field.many2many_table,
+            column1=role_field.column1,
+            column2=role_field.column2,
+            fields=["name"],
+            sort="id",
+        )
+
+        assert len(roles) == 2
+
+    async def test_search_loads_all_m2m_links_of_page(
+        self, sample_data, session
+    ):
+        """Батч-загрузка M2M в списке без общего LIMIT: 30 пользователей ×
+        3 роли = 90 связей (раньше LIMIT 80 обрезал последние строки);
+        связи каждого — по id, а не в порядке вставки."""
+        from .models import User, Role
+
+        model_id = sample_data["models"][0]
+        role_ids = sample_data["roles"] + [
+            await Role.create(Role(name="r3", model_id=model_id))
+        ]
+        user_ids = sample_data["users"] + [
+            await User.create(
+                User(
+                    name=f"u{i}",
+                    login=f"u{i}",
+                    email=f"u{i}@example.com",
+                    password_hash="h",
+                    password_salt="s",
+                )
+            )
+            for i in range(28)
+        ]
+        role_field = User.get_fields()["role_ids"]
+        await User.link_many2many(
+            role_field,
+            [(u, r) for u in user_ids for r in reversed(role_ids)],
+        )
+
+        users = await User.search(fields=["id", "role_ids"], limit=100)
+
+        assert len(users) == 30
+        assert all(len(u.role_ids) == 3 for u in users)
+        assert all(
+            [r.id for r in u.role_ids] == sorted(role_ids) for u in users
+        )
+
+
+class TestFilterInAndChildOrder:
+    """«in»/«not in» одним параметром-массивом и порядок детей O2M."""
+
+    async def test_in_and_not_in(self, sample_data, session):
+        from .models import User
+
+        user_ids = sample_data["users"]
+
+        assert await User.search(filter=[("id", "in", [])]) == []
+        assert len(await User.search(filter=[("id", "not in", [])])) == 2
+
+        found = await User.search(filter=[("id", "in", user_ids[:1])])
+        assert [u.id for u in found] == user_ids[:1]
+
+        rest = await User.search(filter=[("login", "not in", ["john"])])
+        assert [u.id for u in rest] == user_ids[1:]
+
+        # больше 32767 значений — раньше упирались в лимит параметров asyncpg
+        many = list(range(1, max(user_ids) + 40000))
+        assert len(await User.search(filter=[("id", "in", many)])) == 2
+
+    async def test_o2m_children_ordered_by_id(self, sample_data, session):
+        """Дети O2M приходят по id и в get(), и в батче search(): без
+        ORDER BY порядок был порядком кучи (после UPDATE строка уезжает
+        в конец)."""
+        from .models import Role, AccessList
+
+        role_id = sample_data["roles"][0]
+        model_id = sample_data["models"][0]
+        acl_ids = [
+            await AccessList.create(
+                AccessList(name=f"acl{i}", model_id=model_id, role_id=role_id)
+            )
+            for i in range(3)
+        ]
+        first = await AccessList.get(acl_ids[0])
+        await first.update(AccessList(name="acl0-upd"))
+
+        role = await Role.get(
+            role_id,
+            fields=["id", "acl_ids"],
+            fields_nested={"acl_ids": {"fields": ["id"]}},
+        )
+        assert [a.id for a in role.acl_ids] == acl_ids
+
+        roles = await Role.search(
+            fields=["id", "acl_ids"], filter=[("id", "=", role_id)]
+        )
+        assert [a.id for a in roles[0].acl_ids] == acl_ids
+
 
 # ====================
 # Field Type Tests

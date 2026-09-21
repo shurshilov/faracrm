@@ -46,6 +46,38 @@ class Connector(DotModel):
         self.total = (self.rate or 0) * 2
 
 
+# Кэш собирается по __dict__ вдоль MRO: обработчики базового класса видны
+# в наследнике, переопределённое имя берётся из наследника и не дублируется.
+class OnchangeMixin(DotModel):
+    @onchange("type")
+    async def onchange_type_base(self) -> dict:
+        return {"url": "mixin"}
+
+
+class MixedConnector(OnchangeMixin):
+    __table__ = "t_onchange_mixed"
+
+    id: int = Integer(primary_key=True)
+    type: str | None = Char()
+    url: str | None = Char()
+
+    @onchange("type")
+    async def onchange_type_own(self) -> dict:
+        return {"url": "own"}
+
+
+class OverridingConnector(OnchangeMixin):
+    __table__ = "t_onchange_override"
+
+    id: int = Integer(primary_key=True)
+    type: str | None = Char()
+    url: str | None = Char()
+
+    @onchange("type", "url")
+    async def onchange_type_base(self) -> dict:
+        return {}
+
+
 class TestOnchangeCache:
     def test_cache_maps_field_to_handlers_in_dir_order(self):
         assert Connector._cache_onchange == {
@@ -82,3 +114,19 @@ class TestOnchangeCache:
         result = await rec.execute_onchange("type")
         # Последний по алфавиту обработчик перекрывает базовый.
         assert result["url"] == "ext"
+
+    def test_handlers_of_base_class_collected_in_name_order(self):
+        assert MixedConnector._cache_onchange == {
+            "type": ["onchange_type_base", "onchange_type_own"],
+        }
+
+    def test_override_in_subclass_replaces_base_handler(self):
+        assert OverridingConnector._cache_onchange == {
+            "type": ["onchange_type_base"],
+            "url": ["onchange_type_base"],
+        }
+
+    async def test_execute_onchange_runs_base_then_own(self):
+        rec = MixedConnector(type="x")
+        result = await rec.execute_onchange("type")
+        assert result["url"] == "own"

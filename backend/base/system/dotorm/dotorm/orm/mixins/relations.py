@@ -349,6 +349,8 @@ class OrmRelationsMixin(_Base):
                             (relation_table_field, "=", record.id),
                             *relation_filter,
                         ],
+                        sort="id",
+                        order="ASC",
                         limit=1000,
                     )
                 )
@@ -363,6 +365,8 @@ class OrmRelationsMixin(_Base):
                             ("res_model", "=", record.__table__),
                             *relation_filter,
                         ],
+                        sort="id",
+                        order="ASC",
                         limit=1000,
                     )
                 )

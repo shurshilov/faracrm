@@ -52,10 +52,12 @@ class OrmMany2manyMixin(_Base):
         start: int | None = None,
         end: int | None = None,
         sort: str = "id",
-        limit: int | None = 10,
+        limit: int | None = None,
         session=None,
         filter: list | None = None,
     ):
+        # limit по умолчанию None: скрытый LIMIT 10 молча обрезал связи у
+        # вызывающих без явного лимита; страницу задаёт роут search_many2many.
         if not fields:
             fields = []
         session = cls._get_db_session(session)

@@ -60,7 +60,8 @@ class RelationsMixin:
 
             req: RequestBuilder | None = None
 
-            # One2one читается как One2many: одна строка на запись, по FK
+            # One2one читается как One2many: одна строка на запись, по FK.
+            # ORDER BY id — детерминированный порядок детей у родителя.
             if isinstance(field, (One2many, One2one)):
                 stmt, val = field.relation_table._builder.build_search(
                     fields=list(set([*fields, field.relation_table_field])),
@@ -68,6 +69,8 @@ class RelationsMixin:
                         (field.relation_table_field, "in", ids),
                         *relation_filter,
                     ],
+                    sort="id",
+                    order="ASC",
                 )
                 req = RequestBuilder(
                     stmt=stmt,
@@ -88,6 +91,8 @@ class RelationsMixin:
                         ("res_model", "=", self.table),
                         *relation_filter,
                     ],
+                    sort="id",
+                    order="ASC",
                 )
                 req = RequestBuilder(
                     stmt=stmt,

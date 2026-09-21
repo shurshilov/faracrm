@@ -95,6 +95,19 @@ class Dialect(ABC):
         for Postgres, individual scalars for MySQL."""
         ...
 
+    # --- IN / NOT IN of a filter triplet ---
+    @abstractmethod
+    def make_in_predicate(
+        self, field: str, op: str, values: list | tuple
+    ) -> tuple[str, tuple]:
+        """``field IN (...)`` / ``field NOT IN (...)`` with its bind params.
+
+        Postgres: one array param (``= ANY`` / ``<> ALL``) — the SQL text
+        does not depend on the list length (prepared statement cache) and
+        the 32767-parameter limit does not apply. MySQL: N placeholders.
+        Empty list: IN → FALSE, NOT IN → TRUE (``IN ()`` is invalid SQL)."""
+        ...
+
     # --- bulk insert source clause (tail after ``INSERT INTO t (cols)``) ---
     @abstractmethod
     def make_bulk_insert_source(
@@ -172,6 +185,14 @@ class PostgresSqlDialect(Dialect):
     def bind_ids(self, ids: list[int]) -> list:
         # one array parameter
         return [ids]
+
+    def make_in_predicate(
+        self, field: str, op: str, values: list | tuple
+    ) -> tuple[str, tuple]:
+        if not values:
+            return ("FALSE" if op == "in" else "TRUE"), ()
+        compare = "= ANY(%s)" if op == "in" else "<> ALL(%s)"
+        return f"{field} {compare}", (list(values),)
 
     def _array_cast_type(self, sql_type: str) -> str:
         """Map a column SQL type to its PostgreSQL array cast type for unnest()."""
@@ -284,6 +305,14 @@ class _DefaultSqlDialect(Dialect):
     def bind_ids(self, ids: list[int]) -> list:
         # individual scalar params
         return list(ids)
+
+    def make_in_predicate(
+        self, field: str, op: str, values: list | tuple
+    ) -> tuple[str, tuple]:
+        if not values:
+            return ("FALSE" if op == "in" else "TRUE"), ()
+        placeholders = self.make_placeholders(len(values))
+        return f"{field} {op.upper()} ({placeholders})", tuple(values)
 
     def make_bulk_insert_source(
         self,

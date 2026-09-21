@@ -26,10 +26,17 @@ class MockField:
     relation: bool = False
     primary_key: bool = False
     sql_type: str = "TEXT"
+    # FilterParser читает у поля private (whitelist имён) и to_sql_filter
+    # (приведение значения) — без них любой тест с filter= падал.
+    private: bool = False
 
     def to_sql_update(self, field_name: str, value):
         """Default Field behaviour: 'field=%s' with the raw value as param."""
         return f"{field_name}=%s", value
+
+    def to_sql_filter(self, value):
+        """Default Field behaviour: bind the filter value as is."""
+        return value
 
 
 @dataclass
@@ -443,10 +450,9 @@ class TestBuilderSearch:
         )
 
         assert "WHERE" in stmt
-        assert "IN" in stmt
-        assert 1 in values
-        assert 2 in values
-        assert 3 in values
+        # Postgres: один параметр-массив вместо IN (%s, %s, %s)
+        assert '"id" = ANY(%s)' in stmt
+        assert [1, 2, 3] in values
 
     def test_build_search_excludes_non_stored(self):
         """Test that non-stored fields are excluded."""

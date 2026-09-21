@@ -315,7 +315,8 @@ class TestBuildM2mSortGuard:
             10,
         )
         assert "pg_sleep" not in stmt
-        assert "ORDER BY id" in stmt
+        # с алиасом: без него «id» неоднозначен между p и t
+        assert "ORDER BY p.id" in stmt
 
 
 # ---------------------------------------------------------------------

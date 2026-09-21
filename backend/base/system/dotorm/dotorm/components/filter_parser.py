@@ -172,9 +172,10 @@ class FilterParser:
                     raise ValueError(
                         f"Operator '{op}' requires list/tuple value"
                     )
-                placeholders = ", ".join(["%s"] * len(value))
-                clause = f"{field} {op.upper()} ({placeholders})"
-                return clause, tuple(value)
+                # Форма зависит от диалекта: Postgres — один параметр-массив
+                # (= ANY / <> ALL), MySQL — N плейсхолдеров; пустой список —
+                # FALSE / TRUE, а не невалидный «IN ()».
+                return self.dialect.make_in_predicate(field, op, value)
 
             elif op in (
                 "like",

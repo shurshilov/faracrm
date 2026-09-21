@@ -101,12 +101,14 @@ class TestFilterParserInOperators:
 
         self.parser = FilterParser(POSTGRES)
 
+    # Postgres: один параметр-массив — текст запроса не зависит от длины
+    # списка (кэш prepared statements), нет лимита 32767 параметров.
     def test_in_operator_list(self):
         """Test IN operator with list."""
         clause, values = self.parser.parse(("id", "in", [1, 2, 3]))
 
-        assert clause == '"id" IN (%s, %s, %s)'
-        assert values == (1, 2, 3)
+        assert clause == '"id" = ANY(%s)'
+        assert values == ([1, 2, 3],)
 
     def test_in_operator_tuple(self):
         """Test IN operator with tuple."""
@@ -114,8 +116,8 @@ class TestFilterParserInOperators:
             ("status", "in", ("active", "pending"))
         )
 
-        assert clause == '"status" IN (%s, %s)'
-        assert values == ("active", "pending")
+        assert clause == '"status" = ANY(%s)'
+        assert values == (["active", "pending"],)
 
     def test_not_in_operator(self):
         """Test NOT IN operator."""
@@ -123,24 +125,23 @@ class TestFilterParserInOperators:
             ("role", "not in", ["admin", "guest"])
         )
 
-        assert clause == '"role" NOT IN (%s, %s)'
-        assert values == ("admin", "guest")
+        assert clause == '"role" <> ALL(%s)'
+        assert values == (["admin", "guest"],)
 
     def test_in_single_value(self):
         """Test IN with single value."""
         clause, values = self.parser.parse(("id", "in", [42]))
 
-        assert clause == '"id" IN (%s)'
-        assert values == (42,)
+        assert clause == '"id" = ANY(%s)'
+        assert values == ([42],)
 
     def test_in_many_values(self):
         """Test IN with many values."""
         ids = list(range(10))
         clause, values = self.parser.parse(("id", "in", ids))
 
-        placeholders = ", ".join(["%s"] * 10)
-        assert clause == f'"id" IN ({placeholders})'
-        assert values == tuple(ids)
+        assert clause == '"id" = ANY(%s)'
+        assert values == (ids,)
 
     def test_in_non_list_raises(self):
         """Test IN with non-list value raises error."""
@@ -302,8 +303,8 @@ class TestFilterParserNotExpression:
         """Test NOT with IN expression."""
         clause, values = self.parser.parse(("not", ("id", "in", [1, 2, 3])))
 
-        assert clause == 'NOT ("id" IN (%s, %s, %s))'
-        assert values == (1, 2, 3)
+        assert clause == 'NOT ("id" = ANY(%s))'
+        assert values == ([1, 2, 3],)
 
 
 @pytest.mark.unit
@@ -467,10 +468,13 @@ class TestFilterParserEdgeCases:
         assert "LIKE" in clause3
 
     def test_empty_in_list(self):
-        """Test IN with empty list."""
+        """IN [] — ни одна строка, NOT IN [] — все; «IN ()» невалиден в SQL."""
         clause, values = self.parser.parse(("id", "in", []))
+        assert clause == "FALSE"
+        assert values == ()
 
-        assert clause == '"id" IN ()'
+        clause, values = self.parser.parse(("id", "not in", []))
+        assert clause == "TRUE"
         assert values == ()
 
     def test_field_with_special_chars(self):
@@ -503,6 +507,17 @@ class TestFilterParserDialects:
         clause, _ = parser.parse(("name", "=", "test"))
 
         assert "`name`" in clause
+
+    def test_mysql_in_placeholders(self):
+        """MySQL has no array params: IN expands to N placeholders."""
+        from dotorm.components.filter_parser import FilterParser
+        from dotorm.components.dialect import MYSQL
+
+        parser = FilterParser(MYSQL)
+        clause, values = parser.parse(("id", "in", [1, 2]))
+
+        assert clause == "`id` IN (%s, %s)"
+        assert values == (1, 2)
 
 
 @pytest.mark.unit

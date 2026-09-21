@@ -154,7 +154,7 @@ class DotModelProtocol(Protocol):
         start: int | None = None,
         end: int | None = None,
         sort: str = "id",
-        limit: int | None = 10,
+        limit: int | None = None,
         session: Any = None,
         filter: list | None = None,
     ) -> list[Any]: ...

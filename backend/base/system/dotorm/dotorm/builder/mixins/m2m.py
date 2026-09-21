@@ -44,10 +44,10 @@ class Many2ManyMixin:
         start: int | None = None,
         end: int | None = None,
         sort: str = "id",
-        limit: int | None = 10,
+        limit: int | None = None,
         filter: list | None = None,
     ) -> tuple[str, tuple]:
-        """Build SELECT for M2M relation."""
+        """Build SELECT for M2M relation. LIMIT только явный (см. get_many2many)."""
         store_fields = relation_table.get_store_fields()
         if not fields:
             fields = store_fields
@@ -63,13 +63,15 @@ class Many2ManyMixin:
             relation_table, filter
         )
 
+        # ORDER BY с алиасом: без него «id» неоднозначен между p и t, когда
+        # его нет в списке выбранных полей (AmbiguousColumnError).
         stmt = f"""
         SELECT {fields_select_stmt}
         FROM {relation_table.__table__} p
         JOIN {many2many_table} pt ON p.id = pt.{column1}
         JOIN {self.table} t ON pt.{column2} = t.id
         WHERE t.id = %s{filter_clause}
-        ORDER BY {sort} {order}
+        ORDER BY p.{sort} {order}
         """
 
         val: tuple = (id, *filter_values)
@@ -91,13 +93,16 @@ class Many2ManyMixin:
         column1: str,
         column2: str,
         fields: list[str] | None = None,
-        limit: int = 80,
         filter: list | None = None,
     ) -> tuple[str, tuple]:
         """
         Оптимизированная версия, когда необходимо получить сразу несколько свзяей m2m
         у нескольких записей. Не просто один список на одну записиь.
         А N списков на N записей.
+
+        Без LIMIT: объём уже ограничен ids родителей (страница списка), а
+        общий LIMIT на весь join обрезал связи у последних строк страницы.
+        ORDER BY p.id — детерминированный порядок связей у каждого родителя.
 
         Returns:
             tuple[str, tuple]: SQL statement and parameter values
@@ -126,17 +131,8 @@ class Many2ManyMixin:
         JOIN {many2many_table} pt ON p.id = pt.{column1}
         JOIN {self.table} t ON pt.{column2} = t.id
         WHERE t.id IN ({query_placeholders}){filter_clause}
-        LIMIT %s
+        ORDER BY p.id
         """
 
-        val = (*ids, *filter_values, limit)
+        val = (*ids, *filter_values)
         return stmt, val
-
-
-#         SELECT * FROM (
-#     SELECT p.*, pt.column2 as m2m_id,
-#            ROW_NUMBER() OVER (PARTITION BY pt.column2 ORDER BY p.id) as rn
-#     FROM relation_table p
-#     JOIN m2m_table pt ON p.id = pt.column1
-#     WHERE pt.column2 IN (%s, %s, ...)
-# ) sub WHERE rn <= {limit_per_parent}

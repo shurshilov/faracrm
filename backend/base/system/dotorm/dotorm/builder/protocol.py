@@ -44,7 +44,6 @@ class BuilderProtocol(Protocol):
         column1: str,
         column2: str,
         fields: list[str] | None = None,
-        limit: int = 80,
         filter: list | None = None,
     ) -> tuple[str, tuple]: ...
 
@@ -60,6 +59,6 @@ class BuilderProtocol(Protocol):
         start: int | None = None,
         end: int | None = None,
         sort: str = "id",
-        limit: int | None = 10,
+        limit: int | None = None,
         filter: list | None = None,
     ) -> tuple[str, tuple]: ...
