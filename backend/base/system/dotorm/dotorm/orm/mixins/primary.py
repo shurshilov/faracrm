@@ -663,7 +663,7 @@ class OrmPrimaryMixin(_Base):
         session = cls._get_db_session(session)
 
         # Фильтруем fields — оставляем только store поля для SQL
-        store_fields = cls.get_store_fields()
+        store_fields = cls.get_store_fields_dict()
         fields_store = (
             [f for f in (fields or []) if f in store_fields] if fields else []
         )
@@ -897,7 +897,7 @@ class OrmPrimaryMixin(_Base):
         methods: set[str] = set()
         for f in changed_fields:
             methods |= cls._depends_local_triggers.get(f, set())
-        for m in cls._cache_compute_order:
+        for m in cls._cache_compute_method_deps:
             if m not in methods:
                 continue
             slot = depends_jobs.setdefault((cls, m), {})
@@ -971,7 +971,7 @@ class OrmPrimaryMixin(_Base):
         Backfill: compute-поле добавили на существующую таблицу — колонку
         создаст DDL, значения даёт этот вызов (например, из post_init)."""
         cls = self.__class__
-        depends_jobs = {(cls, m): None for m in cls._cache_compute_order}
+        depends_jobs = {(cls, m): None for m in cls._cache_compute_method_deps}
         await cls._depends_run(depends_jobs, cls._get_db_session(session))
 
     @staticmethod

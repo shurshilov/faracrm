@@ -8,6 +8,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Awaitable,
+    Callable,
     ClassVar,
     Type,
     Union,
@@ -186,24 +187,21 @@ class DotModel(
     # rebuild_field_caches — после @extend, который кладёт поля и методы
     # setattr'ом); объявления здесь — для типизации и IDE, значения
     # присваивают _build_field_cache / _build_compute_cache /
-    # _build_constrains_cache / _build_onchange_cache.
+    # _build_constrains_cache / _build_onchange_cache. Тот же список — в
+    # orm/protocol.py (DotModelProtocol), держать в синхроне.
     _cache_all_fields: ClassVar[dict[str, "Field"]]
-    _cache_store_fields: ClassVar[list[str]]
     _cache_store_fields_dict: ClassVar[dict[str, "Field"]]
     _cache_public_fields: ClassVar[dict[str, "Field"]]
     _cache_relation_fields: ClassVar[list[tuple[str, "Field"]]]
     _cache_json_fields: ClassVar[list[str]]
-    _cache_compute_fields: ClassVar[list[tuple[str, "Field"]]]
-    _cache_has_json_fields: ClassVar[bool]
-    _cache_has_compute_fields: ClassVar[bool]
+    # store=False поля с compute: (имя, callable(record) → значение).
+    _cache_compute_fields: ClassVar[list[tuple[str, Callable]]]
     _cache_all_field_kinds: ClassVar[dict[str, "FieldKind"]]
     _cache_default_plan: ClassVar[list]
     _cache_compute_method_deps: ClassVar[dict[str, tuple[str, ...]]]
     _cache_compute_prefetch_deps: ClassVar[dict[str, tuple[str, ...]]]
     _cache_compute_writes: ClassVar[dict[str, set[str]]]
     _cache_compute_by_dep: ClassVar[dict[str, set[str]]]
-    _cache_compute_order: ClassVar[list[str]]
-    _cache_has_compute_methods: ClassVar[bool]
     # @constrains: (имя метода, поля-триггеры; пустое множество = всегда).
     _cache_constrains: ClassVar[tuple[tuple[str, frozenset[str]], ...]] = ()
     # @onchange: поле формы → имена методов-обработчиков (порядок dir()).
@@ -245,16 +243,17 @@ class DotModel(
             )
 
     @classmethod
-    def add_field(cls, name: str, field: Field) -> None:
-        """Добавить поле к уже определённой модели (после __init_subclass__).
+    def add_fields(cls, fields: dict[str, Field]) -> None:
+        """Добавить поля к уже определённой модели (после __init_subclass__).
 
-        Единственный путь для полей «снаружи» — @extend и авто-поля
-        полиморфных детей: кэши полей/compute и билдер собраны при
-        определении класса, поэтому после setattr их надо пересобрать —
-        иначе SELECT, FilterParser и движок @depends о поле не знают.
+        Путь для авто-полей полиморфных детей: кэши полей/compute и билдер
+        собраны при определении класса, поэтому после setattr их надо
+        пересобрать — иначе SELECT, FilterParser и движок @depends о поле
+        не знают. Пересборка одна на вызов, а не на каждое поле.
         """
-        field.__set_name__(cls, name)
-        setattr(cls, name, field)
+        for name, field in fields.items():
+            field.__set_name__(cls, name)
+            setattr(cls, name, field)
         cls.rebuild_field_caches()
 
     @classmethod
@@ -283,9 +282,6 @@ class DotModel(
                 if isinstance(attr, Field):
                     fields[attr_name] = attr
         cls._cache_all_fields = fields
-        cls._cache_store_fields = [
-            name for name, field in fields.items() if field.store
-        ]
         cls._cache_store_fields_dict = {
             name: field for name, field in fields.items() if field.store
         }
@@ -303,15 +299,17 @@ class DotModel(
             for name, field in fields.items()
             if isinstance(field, (JSONField, TranslatedChar))
         ]
-        compute_fields = [
-            (name, field)
-            for name, field in fields.items()
-            if field.compute and not field.store
-        ]
+        # store=False + compute: считается в __init__, callable(record) →
+        # значение. Строка — имя метода класса, резолвим один раз здесь.
+        compute_fields = []
+        for name, field in fields.items():
+            if field.compute and not field.store:
+                compute = field.compute
+                if isinstance(compute, str):
+                    compute = getattr(cls, compute)
+                compute_fields.append((name, compute))
         cls._cache_json_fields = json_fields
         cls._cache_compute_fields = compute_fields
-        cls._cache_has_json_fields = bool(json_fields)
-        cls._cache_has_compute_fields = bool(compute_fields)
 
         # За один проход по ВСЕМ полям строим два кэша (оба на класс):
         #  1. _cache_all_field_kinds — вид сериализации каждого поля (FieldKind);
@@ -349,6 +347,10 @@ class DotModel(
                             if asyncio.iscoroutinefunction(_d)
                             else DefaultKind.SYNC
                         )
+                    elif isinstance(_d, (list, dict, set)):
+                        # Изменяемый дефолт — каждой записи своя копия.
+                        _kind = DefaultKind.SYNC
+                        _d = _d.copy
                     else:
                         _kind = DefaultKind.STATIC
                     default_plan.append((_name, _kind, _d))
@@ -367,11 +369,9 @@ class DotModel(
           OrmPrimaryMixin._depends_run персистит эти поля и каскадирует.
         - _cache_compute_by_dep: {dep_local_segment → set(methods)} —
           вход для recompute() (in-memory путь, см. execute_onchange).
-        - _cache_compute_order: list[method_name] — порядок объявления,
-          без топосорта. Каскад в _depends_run (пометка written-полей)
-          сам подтягивает downstream-методы — отдельная сортировка не
-          нужна.
-        - _cache_has_compute_methods: bool.
+        Порядок методов — порядок объявления (ключи method_deps), без
+        топосорта: каскад в _depends_run (пометка written-полей) сам
+        подтягивает downstream-методы.
 
         Вызывается один раз из __init_subclass__ после _build_field_cache.
         """
@@ -447,8 +447,6 @@ class DotModel(
         cls._cache_compute_prefetch_deps = method_prefetch
         cls._cache_compute_writes = method_writes
         cls._cache_compute_by_dep = by_dep
-        cls._cache_compute_order = list(method_deps.keys())
-        cls._cache_has_compute_methods = bool(method_deps)
 
     @classmethod
     def _build_constrains_cache(cls) -> None:
@@ -498,10 +496,10 @@ class DotModel(
             Множество имён полей, перезаписанных пересчётом.
         """
         cls = self.__class__
-        if not cls._cache_has_compute_methods:
+        order = cls._cache_compute_method_deps
+        if not order:
             return set()
 
-        order = cls._cache_compute_order
         if changed is None:
             methods = list(order)
         else:
@@ -539,7 +537,7 @@ class DotModel(
         # поэтому нужен fallback json.loads для строковых значений.
         # Для TranslatedChar дополнительно распаковываем dict в строку
         # текущего языка пользователя.
-        if cls._cache_has_json_fields:
+        if cls._cache_json_fields:
             cls_fields = cls._cache_all_fields
             for name in cls._cache_json_fields:
                 value = self.__dict__.get(name)
@@ -556,9 +554,8 @@ class DotModel(
             #             self.__dict__[name] = field_obj.deserialization(value)
 
         # Вычисляемые поля (compute, не хранящиеся в БД)
-        if cls._cache_has_compute_fields:
-            for name, field in cls._cache_compute_fields:
-                self.__dict__[name] = field.compute(self)
+        for name, compute in cls._cache_compute_fields:
+            self.__dict__[name] = compute(self)
 
     #             # Если есть функция вычисления (имя метода)
     #             if isinstance(field.compute, str):
@@ -647,10 +644,7 @@ class DotModel(
         Uses object.__new__ + __dict__.update — same approach as SQLAlchemy.
         """
         # Fast path: no JSON deserialization, no compute fields
-        if (
-            not cls._cache_has_json_fields
-            and not cls._cache_has_compute_fields
-        ):
+        if not cls._cache_json_fields and not cls._cache_compute_fields:
             result = []
             for r in rows:
                 obj = object.__new__(cls)
@@ -762,7 +756,7 @@ class DotModel(
         Поля, у которых store = False, не хранятся в бд.
         По умолчанию все поля store = True, кроме One2many и Many2many
         """
-        return cls._cache_store_fields
+        return list(cls._cache_store_fields_dict)
 
     @classmethod
     def get_public_fields(cls) -> dict[str, Field]:
@@ -1218,19 +1212,22 @@ class DotModel(
     def _build_onchange_cache(cls) -> None:
         """Собрать @onchange-обработчики: поле формы → имена методов.
 
-        Раньше get_onchange_fields и _get_onchange_handlers обходили
-        dir(cls) на каждый запрос /onchange. Обход тот же и порядок тот же
-        — dir() отдаёт имена по алфавиту, и расширения на это опираются:
+        Обход по __dict__ вдоль MRO, как у остальных кэшей (без getattr по
+        дескрипторам — он вдвое дороже всей пересборки). Порядок имён — по
+        алфавиту, как у dir(): расширения на это опираются —
         onchange_type_max_business идёт после базового onchange_type и
         перекрывает его значения при мёрже в execute_onchange. Вызывается из
         __init_subclass__ и rebuild_field_caches — после @extend.
         """
-        handlers: dict[str, list[str]] = {}
-        for attr_name in dir(cls):
-            if attr_name.startswith("__"):
+        attrs: dict[str, Any] = {}
+        for klass in reversed(cls.__mro__):
+            if klass is object:
                 continue
-            attr = getattr(cls, attr_name, None)
-            if attr and callable(attr) and hasattr(attr, "_is_onchange"):
+            attrs.update(klass.__dict__)
+        handlers: dict[str, list[str]] = {}
+        for attr_name in sorted(attrs):
+            attr = attrs[attr_name]
+            if callable(attr) and getattr(attr, "_is_onchange", False):
                 for field_name in getattr(attr, "_onchange_fields", ()):
                     handlers.setdefault(field_name, []).append(attr_name)
         cls._cache_onchange = handlers
@@ -1294,7 +1291,7 @@ class DotModel(
 
         # 2. @depends recompute — пересчёт computed-полей по триггеру.
         cls = self.__class__
-        if cls._cache_has_compute_methods:
+        if cls._cache_compute_method_deps:
             written = await self.recompute(changed={field_name})
             for name in written:
                 value = getattr(self, name, None)

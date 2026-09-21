@@ -2,7 +2,7 @@ from typing import Type
 
 # from backend.base.crm.users.audit_mixin import AuditMixin
 from backend.base.system.dotorm.dotorm.model import DotModel
-from backend.base.system.dotorm.dotorm.fields import PolymorphicOne2many
+from backend.base.system.dotorm.dotorm.fields import Field, PolymorphicOne2many
 
 
 class ModelsCore:
@@ -89,16 +89,21 @@ class ModelsCore:
         for model_cls in self._table_to_model_class.values():
             if model_cls in children:
                 continue
+            # Все поля модели одним add_fields — одна пересборка кэшей на
+            # модель, а не на каждого ребёнка.
+            new_fields: dict[str, Field] = {}
             for (
                 model_name,
                 field_name,
                 default_filter,
             ) in self._polymorphic_children:
-                if field_name not in model_cls.get_fields():
-                    model_cls.add_field(
-                        field_name,
-                        self._polymorphic_field(model_name, default_filter),
-                    )
+                if field_name in model_cls.get_fields():
+                    continue
+                field = self._polymorphic_field(model_name, default_filter)
+                if isinstance(field, Field):
+                    new_fields[field_name] = field
+            if new_fields:
+                model_cls.add_fields(new_fields)
 
     def _polymorphic_field(self, model_name: str, default_filter: list | None):
         """Поле-связь на полиморфного ребёнка model_name."""

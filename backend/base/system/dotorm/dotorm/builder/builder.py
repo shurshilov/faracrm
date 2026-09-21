@@ -54,7 +54,7 @@ class Builder(
     all attributes that mixins expect.
     """
 
-    __slots__ = ("table", "fields", "dialect", "filter_parser")
+    __slots__ = ("table", "fields", "dialect", "filter_parser", "store_fields")
 
     def __init__(
         self,
@@ -66,7 +66,12 @@ class Builder(
         self.fields = fields
         self.dialect = dialect
         self.filter_parser = FilterParser(dialect, fields)
+        # Один раз на билдер, а не на каждый build_*: билдер пересоздаётся
+        # вместе с кэшами модели (rebuild_field_caches), не устареет.
+        self.store_fields = [
+            name for name, field in fields.items() if field.store
+        ]
 
     def get_store_fields(self) -> list[str]:
-        """Returns only fields that are stored in DB (store=True)."""
-        return [name for name, field in self.fields.items() if field.store]
+        """Field names stored in DB (store=True), precomputed in __init__."""
+        return self.store_fields

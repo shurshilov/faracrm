@@ -3,6 +3,7 @@
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     ClassVar,
     Protocol,
     Self,
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from ..builder.builder import Builder
     from ..components.dialect import Dialect
     from ..fields import Field
+    from ..model import FieldKind
     from ..access import Operation
     import aiomysql
     import asyncpg
@@ -37,13 +39,24 @@ class DotModelProtocol(Protocol):
     _dialect: ClassVar["Dialect"]
     _builder: ClassVar["Builder"]
 
-    # Кэши модели (DotModel._build_field_cache / _build_compute_cache /
-    # _build_constrains_cache) — миксины читают их через cls.
+    # Кэши модели — тот же список, что в DotModel (model.py), держать в
+    # синхроне; заполняют _build_field_cache / _build_compute_cache /
+    # _build_constrains_cache / _build_onchange_cache, миксины читают их
+    # через cls.
     _cache_all_fields: ClassVar[dict[str, "Field"]]
-    _cache_store_fields: ClassVar[list[str]]
     _cache_store_fields_dict: ClassVar[dict[str, "Field"]]
-    _cache_compute_order: ClassVar[list[str]]
+    _cache_public_fields: ClassVar[dict[str, "Field"]]
+    _cache_relation_fields: ClassVar[list[tuple[str, "Field"]]]
+    _cache_json_fields: ClassVar[list[str]]
+    _cache_compute_fields: ClassVar[list[tuple[str, Callable]]]
+    _cache_all_field_kinds: ClassVar[dict[str, "FieldKind"]]
+    _cache_default_plan: ClassVar[list]
+    _cache_compute_method_deps: ClassVar[dict[str, tuple[str, ...]]]
+    _cache_compute_prefetch_deps: ClassVar[dict[str, tuple[str, ...]]]
+    _cache_compute_writes: ClassVar[dict[str, set[str]]]
+    _cache_compute_by_dep: ClassVar[dict[str, set[str]]]
     _cache_constrains: ClassVar[tuple[tuple[str, frozenset[str]], ...]]
+    _cache_onchange: ClassVar[dict[str, list[str]]]
 
     id: int
 
@@ -80,6 +93,9 @@ class DotModelProtocol(Protocol):
 
     @classmethod
     def get_store_fields(cls) -> list[str]: ...
+
+    @classmethod
+    def get_store_fields_dict(cls) -> dict[str, "Field"]: ...
 
     @classmethod
     def get_store_fields_omit_m2o(cls) -> list[str]: ...
