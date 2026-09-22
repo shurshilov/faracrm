@@ -26,11 +26,14 @@ Mixin для инициализации ACL в post_init модулей.
             await self._init_acl(app.state.env)
 """
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
+
+log = logging.getLogger(__package__)
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,14 @@ class ACLPostInitMixin:
             fields=["id"],
         )
         if not role:
+            # Не молчим: без роли ACL не создаётся, и модуль работает без
+            # прав до следующего post_init. Роли модуля создаются
+            # init_module_roles ДО super().post_init().
+            log.warning(
+                "ACL %s: role %r does not exist yet, ACL skipped",
+                type(self).__name__,
+                role_code,
+            )
             return
 
         role_id = role.id
@@ -118,7 +129,15 @@ class ACLPostInitMixin:
         # Создаём ACL
         for model_name, perms in acl_config.items():
             model_id = model_by_name.get(model_name)
-            if not model_id or model_id in existing_model_ids:
+            if not model_id:
+                log.warning(
+                    "ACL %s/%s: model %r is not registered, ACL skipped",
+                    type(self).__name__,
+                    role_code,
+                    model_name,
+                )
+                continue
+            if model_id in existing_model_ids:
                 continue
 
             await env.models.access_list.create(

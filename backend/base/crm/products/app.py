@@ -38,9 +38,10 @@ class ProductsApp(App):
     }
 
     async def post_init(self, app: "FastAPI"):
-        await super().post_init(app)
         env: "Environment" = app.state.env
 
+        # Роли модуля — ДО super().post_init(): он создаёт ACL из ROLE_ACL,
+        # а роли, которой ещё нет, ACL молча не достаётся.
         await init_module_roles(
             env,
             "products",
@@ -50,6 +51,8 @@ class ProductsApp(App):
                 ("stock_admin", "Склад: администратор"),
             ],
         )
+
+        await super().post_init(app)
 
         initial_product_uom = [
             {"name": "штуки"},

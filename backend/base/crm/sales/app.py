@@ -73,17 +73,17 @@ class SalesApp(App):
     }
 
     async def post_init(self, app: "FastAPI"):
-        await super().post_init(app)
         env: "Environment" = app.state.env
 
-        # 1. Начальные стадии продаж
-        await self._init_sale_stages(env)
-
-        # 2. Роли модуля (иерархия: salesman → salesman_all → manager)
+        # 1. Роли модуля (иерархия: user → manager → admin) — ДО super():
+        #    он создаёт ACL из ROLE_ACL, а роли без строки ACL не достаётся.
         await self._init_sale_roles(env)
 
-        # 3. ACL для ролей модуля
-        await self._init_acl(env)
+        # 2. ACL из BASE_USER_ACL / ROLE_ACL
+        await super().post_init(app)
+
+        # 3. Начальные стадии продаж
+        await self._init_sale_stages(env)
 
         # 4. Row-level rules
         await self._init_sale_rules(env)

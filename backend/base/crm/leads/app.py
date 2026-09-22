@@ -70,10 +70,10 @@ class LeadsApp(App):
     }
 
     async def post_init(self, app: "FastAPI"):
-        await super().post_init(app)
         env: "Environment" = app.state.env
 
-        # Роли модуля
+        # Роли модуля — ДО super().post_init(): он создаёт ACL из ROLE_ACL,
+        # а роли, которой ещё нет, ACL молча не достаётся.
         await init_module_roles(
             env,
             "leads",
@@ -83,6 +83,8 @@ class LeadsApp(App):
                 ("crm_admin", "CRM: администратор"),
             ],
         )
+
+        await super().post_init(app)
 
         existing_stages = await env.models.lead_stage.search_one(fields=["id"])
         if not existing_stages:

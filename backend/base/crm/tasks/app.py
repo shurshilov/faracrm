@@ -71,10 +71,10 @@ class TasksApp(App):
     }
 
     async def post_init(self, app: "FastAPI"):
-        await super().post_init(app)
         env: "Environment" = app.state.env
 
-        # Роли модуля
+        # Роли модуля — ДО super().post_init(): он создаёт ACL из ROLE_ACL,
+        # а роли, которой ещё нет, ACL молча не достаётся.
         await init_module_roles(
             env,
             "task",
@@ -84,6 +84,8 @@ class TasksApp(App):
                 ("project_admin", "Проекты: администратор"),
             ],
         )
+
+        await super().post_init(app)
 
         # Начальные стадии и теги задач
         existing = await env.models.task_stage.search_one(fields=["id"])

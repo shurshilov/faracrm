@@ -15,6 +15,7 @@ Run tests:
 """
 
 import os
+import sys
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock
 
@@ -37,6 +38,12 @@ try:
 except ImportError:
     AsyncClient = None
     ASGITransport = None
+
+# Cron-сервис при старте приложения спавнит дочерний Python
+# (backend.main_cron): в тестах это лишний процесс на каждый тест с фикстурой
+# app, который ещё и подключается к базе из .env. Settings читает
+# CRON__ENABLED (env_nested_delimiter="__"); ставим до первого Settings().
+os.environ.setdefault("CRON__ENABLED", "false")
 
 
 # ====================
@@ -215,19 +222,20 @@ async def _run_post_init_once():
 
     fake_app = SimpleNamespace(state=SimpleNamespace(env=env))
 
-    # Два прохода — для разрешения cross-app зависимостей
-    for pass_num in range(2):
-        for app_obj in _apps_instance.get_list():
-            if app_obj.info.get("post_init"):
-                try:
-                    await app_obj.post_init(fake_app)
-                except Exception as e:
-                    if pass_num == 0:
-                        continue
-                    print(
-                        f"\n⚠ post_init {app_obj.info.get('name')}: "
-                        f"{type(e).__name__}: {e}"
-                    )
+    # Один проход, как в Environment.start_post_init: security идёт первым
+    # (sequence=1) и создаёт реестр моделей, base_user и system_admin, а
+    # модули создают свои роли ДО ACL (init_module_roles перед
+    # super().post_init). Раньше проходов было два: второй дописывал ACL
+    # ролей, которые модуль создавал уже после попытки выдать им права.
+    for app_obj in _apps_instance.get_list():
+        if app_obj.info.get("post_init"):
+            try:
+                await app_obj.post_init(fake_app)
+            except Exception as e:
+                print(
+                    f"\n⚠ post_init {app_obj.info.get('name')}: "
+                    f"{type(e).__name__}: {e}"
+                )
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -277,6 +285,47 @@ async def initialize_seed_data(db_pool):
     yield
 
 
+# Очистка базы перед каждым тестом. Список таблиц и SQL собираются один раз
+# на сессию (после _create_all_tables схема не меняется).
+_cleanup_tables: list[str] = []
+_cleanup_sql: str | None = None
+
+
+async def _clean_database(conn) -> None:
+    """Опустошить все таблицы схемы и сбросить sequence — id снова с 1, как
+    у RESTART IDENTITY (тесты ждут admin=1, system=2).
+
+    DELETE, а не TRUNCATE: TRUNCATE ~60 таблиц с RESTART IDENTITY создаёт
+    новые файлы для таблиц и всех их индексов — ~0.5 с на тест, и это была
+    треть всего прогона; DELETE пустых/маленьких таблиц плюс setval — 4 мс.
+    Таблицы берём из pg_tables, а не из моделей: m2m-таблицы связей моделями
+    не являются, а TRUNCATE ... CASCADE раньше чистил их неявно. FK-триггеры
+    на время очистки выключены (session_replication_role, нужен superuser),
+    поэтому порядок таблиц не важен; при отказе — старый TRUNCATE.
+    """
+    global _cleanup_tables, _cleanup_sql
+    if _cleanup_sql is None:
+        rows = await conn.fetch(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+        )
+        _cleanup_tables = sorted(row["tablename"] for row in rows)
+        _cleanup_sql = ";\n".join(
+            [
+                "SET session_replication_role = replica",
+                *(f'DELETE FROM "{table}"' for table in _cleanup_tables),
+                "SET session_replication_role = DEFAULT",
+                "SELECT setval(oid, 1, false) FROM pg_class "
+                "WHERE relkind = 'S' AND relnamespace = 'public'::regnamespace",
+            ]
+        )
+    try:
+        await conn.execute(_cleanup_sql)
+    except asyncpg.PostgresError as e:
+        sys.stderr.write(f"\n!!! DELETE cleanup failed ({e}), TRUNCATE\n")
+        tables = ", ".join(f'"{table}"' for table in _cleanup_tables)
+        await conn.execute(f"TRUNCATE TABLE {tables} RESTART IDENTITY CASCADE")
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def clean_all_tables(db_pool):
     """
@@ -285,77 +334,8 @@ async def clean_all_tables(db_pool):
     Security-тесты подключают post_init через локальный conftest.
     """
     if _models_instance is not None:
-        tables = [m.__table__ for m in _models_instance._get_models()]
-
-        # Дополнительно явно включаем m2m-таблицы и security-таблицы —
-        # на случай если какие-то из них не возвращаются _get_models()
-        # (наблюдалось: после security-тестов roles/rules/acl остаются
-        # в БД хотя должны быть в tables).
-        extra_tables = [
-            "rules",
-            "access_list",
-            "role_based_many2many",
-            "user_role_many2many",
-            "roles",
-        ]
-        all_tables_set = set(tables) | set(extra_tables)
-
-        if all_tables_set:
-            tables_str = ", ".join(all_tables_set)
-            try:
-                async with db_pool.acquire() as conn:
-                    # До TRUNCATE
-                    rules_before = 0
-                    acl_before = 0
-                    try:
-                        rules_before = (
-                            await conn.fetchval("SELECT COUNT(*) FROM rules")
-                            or 0
-                        )
-                        acl_before = (
-                            await conn.fetchval(
-                                "SELECT COUNT(*) FROM access_list"
-                            )
-                            or 0
-                        )
-                    except Exception:
-                        pass
-
-                    await conn.execute(
-                        f"TRUNCATE TABLE {tables_str} RESTART IDENTITY CASCADE"
-                    )
-
-                    # После TRUNCATE
-                    rules_after = 0
-                    acl_after = 0
-                    try:
-                        rules_after = (
-                            await conn.fetchval("SELECT COUNT(*) FROM rules")
-                            or 0
-                        )
-                        acl_after = (
-                            await conn.fetchval(
-                                "SELECT COUNT(*) FROM access_list"
-                            )
-                            or 0
-                        )
-                    except Exception:
-                        pass
-
-                    import sys
-
-                    sys.stderr.write(
-                        f"\n>>> CLEAN: rules {rules_before}->{rules_after}, "
-                        f"acl {acl_before}->{acl_after}\n"
-                    )
-                    sys.stderr.flush()
-            except Exception as e:
-                import sys
-
-                sys.stderr.write(
-                    f"\n!!! TRUNCATE FAILED: {type(e).__name__}: {e}\n"
-                )
-                sys.stderr.flush()
+        async with db_pool.acquire() as conn:
+            await _clean_database(conn)
 
         # Базовый seed: язык + admin + system. Без post_init.
         from backend.base.crm.languages.models.language import Language
