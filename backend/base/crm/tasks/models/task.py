@@ -66,9 +66,7 @@ class Task(AuditMixin, DotModel):
     __table__ = "tasks"
 
     id: Id = Integer(primary_key=True)
-    name: str = Char(
-        string="Task Title", required=True, size=500, default=_default_name
-    )
+    name: str = Char(string="Task Title", required=True, default=_default_name)
     active: bool = Boolean(default=True)
     sequence: int = Integer(default=10, string="Sequence")
 

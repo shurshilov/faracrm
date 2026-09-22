@@ -1,7 +1,10 @@
 """ORM field definitions."""
 
+import asyncio
+import copy
 import datetime
 from decimal import Decimal as PythonDecimal, InvalidOperation
+from enum import IntEnum
 import json
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Type, Literal
@@ -19,6 +22,28 @@ from .exceptions import OrmConfigurationFieldException
 # SET DEFAULT не поддерживается MySQL InnoDB, поэтому исключён
 OnDeleteAction = Literal["restrict", "no action", "cascade", "set null"]
 VALID_ONDELETE_ACTIONS = ("restrict", "no action", "cascade", "set null")
+
+
+class DefaultKind(IntEnum):
+    """Вид объявленного default поля: что с ним делать для одной записи
+    (evaluate_default). Определяется Field.default_kind; для INSERT
+    предвычисляется в DotModel._cache_default_plan."""
+
+    STATIC_IMMUTABLE = 0  # литерал — подставляется как есть
+    STATIC_MUTABLE = 1  # list/dict/set — каждой записи своя копия
+    CALLABLE_SYNC = 2  # функция — вызывается на каждую запись
+    CALLABLE_ASYNC = 3  # async-функция — await на каждую запись
+
+
+async def evaluate_default(kind: DefaultKind, default: Any) -> Any:
+    """Значение дефолта для одной записи по его виду."""
+    if kind is DefaultKind.STATIC_IMMUTABLE:
+        return default
+    if kind is DefaultKind.STATIC_MUTABLE:
+        return copy.deepcopy(default)
+    if kind is DefaultKind.CALLABLE_SYNC:
+        return default()
+    return await default()
 
 
 class Field[FieldType]:
@@ -66,6 +91,8 @@ class Field[FieldType]:
     default_db: bool = False
     unique: bool = False
     description: str | None = None
+    # Подсказка к полю для UI (как help= в Odoo); ORM её не читает.
+    help: str | None = None
     ondelete: str = "set null"
 
     # ORM attributes
@@ -163,6 +190,13 @@ class Field[FieldType]:
         self._role_acl = self._parse_role_acl(kwargs)
 
         for name, value in kwargs.items():
+            # Только объявленные атрибуты поля: опечатка (defualt=) или
+            # чужой параметр (size= вместо max_length=) иначе молча оседали
+            # бы на поле.
+            # if not hasattr(type(self), name):
+            #     raise OrmConfigurationFieldException(
+            #         f"{type(self).__name__}: unknown option {name!r}"
+            #     )
             setattr(self, name, value)
         self.validation()
 
@@ -253,6 +287,21 @@ class Field[FieldType]:
         см. Datetime/Date.
         """
         return value
+
+    @property
+    def default_kind(self) -> DefaultKind:
+        """Вид объявленного default — единственное место, где он
+        классифицируется (без кэша, поэтому всегда актуален). Читают:
+        план INSERT (_cache_default_plan), дефолты формы (get_default_values)
+        и API-схема (в неё идут только STATIC_*)."""
+        default = self.default
+        if callable(default):
+            if asyncio.iscoroutinefunction(default):
+                return DefaultKind.CALLABLE_ASYNC
+            return DefaultKind.CALLABLE_SYNC
+        if isinstance(default, (list, dict, set)):
+            return DefaultKind.STATIC_MUTABLE
+        return DefaultKind.STATIC_IMMUTABLE
 
     @staticmethod
     def _can_apply_to_db(default: Any) -> bool:

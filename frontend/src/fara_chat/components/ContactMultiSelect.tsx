@@ -50,9 +50,8 @@ export function ContactMultiSelect({
   const { data: contactsData, isFetching } = useSearchQuery({
     model: 'contact',
     fields: ['id', 'name', 'contact_type_id', 'partner_id', 'user_id'],
-    filter: searchQuery
-      ? [['name', 'ilike', `%${searchQuery}%`]]
-      : [],
+    // ilike = подстрока: %…% и экранирование добавляет бэкенд
+    filter: searchQuery ? [['name', 'ilike', searchQuery]] : [],
     limit: 50,
   });
 

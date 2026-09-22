@@ -41,47 +41,48 @@ class ContainerPostgres:
         self.pool: "asyncpg.Pool | None" = None
 
     async def create_pool(self) -> "asyncpg.Pool":
-        """Create connection pool with retry on failure."""
-        try:
-            start_time = time.time()
-            pool = await asyncpg.create_pool(
-                **self.pool_settings.model_dump(),
-                min_size=5,
-                max_size=15,
-                command_timeout=60,
-                # 15 minutes
-                # max_inactive_connection_lifetime
-                # pool_recycle=60 * 15,
-            )
-            assert pool is not None
-            self.pool = pool
+        """Create connection pool; on connection loss retry after
+        reconnect_timeout (a loop, not recursion — retries are unbounded)."""
+        while True:
+            try:
+                start_time = time.time()
+                pool = await asyncpg.create_pool(
+                    **self.pool_settings.model_dump(),
+                    min_size=5,
+                    max_size=15,
+                    command_timeout=60,
+                    # 15 minutes
+                    # max_inactive_connection_lifetime
+                    # pool_recycle=60 * 15,
+                )
+                assert pool is not None
+                self.pool = pool
 
-            log.debug(
-                "Connection PostgreSQL db: %s, created time: [%0.3fs]",
-                self.pool_settings.database,
-                time.time() - start_time,
-            )
-            return self.pool
-        except (
-            asyncpg.InvalidCatalogNameError,
-            asyncpg.ConnectionDoesNotExistError,
-        ):
-            # БД не существует — пробрасываем наверх для создания
-            raise
-        except (
-            ConnectionError,
-            TimeoutError,
-            asyncpg.exceptions.ConnectionFailureError,
-        ):
-            log.exception(
-                "Postgres create pool connection lost, reconnect after %d seconds",
-                self.container_settings.reconnect_timeout,
-            )
-            await asyncio.sleep(self.container_settings.reconnect_timeout)
-            return await self.create_pool()
-        except Exception as e:
-            log.exception("Postgres create pool error:")
-            raise e
+                log.debug(
+                    "Connection PostgreSQL db: %s, created time: [%0.3fs]",
+                    self.pool_settings.database,
+                    time.time() - start_time,
+                )
+                return self.pool
+            except (
+                asyncpg.InvalidCatalogNameError,
+                asyncpg.ConnectionDoesNotExistError,
+            ):
+                # БД не существует — пробрасываем наверх для создания
+                raise
+            except (
+                ConnectionError,
+                TimeoutError,
+                asyncpg.exceptions.ConnectionFailureError,
+            ):
+                log.exception(
+                    "Postgres create pool connection lost, reconnect after %d seconds",
+                    self.container_settings.reconnect_timeout,
+                )
+                await asyncio.sleep(self.container_settings.reconnect_timeout)
+            except Exception as e:
+                log.exception("Postgres create pool error:")
+                raise e
 
     async def close_pool(self):
         """Close connection pool."""

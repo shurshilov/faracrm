@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Self, TypeVar
 from ...exceptions import RecordNotFound
 from ...access import Operation
 from ...components.dialect import POSTGRES
-from ...model import JsonMode, DefaultKind
+from ...model import JsonMode
 from ...decorators import hybridmethod
-from ...fields import TranslatedChar
+from ...fields import TranslatedChar, evaluate_default
 
 if TYPE_CHECKING:
     from ..protocol import DotModelProtocol
@@ -465,6 +465,15 @@ class OrmPrimaryMixin(_Base):
             if field.primary_key
         }
 
+        # Field-level доступ на КЛИЕНТСКИ назначенных полях — ДО дефолтов,
+        # как в create(). Сюда приходят и вложенные created из update()
+        # связей (O2M/M2M), иначе restricted-поле (is_admin) обходило бы
+        # проверку через них.
+        client_fields: set[str] = set()
+        for p in payload:
+            client_fields.update(p.assigned_fields())
+        await cls._check_field_access(Operation.CREATE, payload, client_fields)
+
         for p in payload:
             await cls._apply_defaults(p)
 
@@ -559,9 +568,10 @@ class OrmPrimaryMixin(_Base):
                      Незаданные поля остаются как Field дескрипторы.
         """
 
-        # Итерируем ТОЛЬКО поля с дефолтом (предвычислено в _build_field_cache),
-        # без per-row iscoroutinefunction/callable introspection. Проверка
-        # «уже задано» — прямой lookup в __dict__ (эквивалент is_assigned).
+        # Итерируем ТОЛЬКО поля с дефолтом (предвычислено в _build_field_cache:
+        # имя, DefaultKind, default), без per-row iscoroutinefunction/callable
+        # introspection. Проверка «уже задано» — прямой lookup в __dict__
+        # (эквивалент is_assigned).
         plan = payload._cache_default_plan
         if not plan:
             return
@@ -569,12 +579,7 @@ class OrmPrimaryMixin(_Base):
         for field_name, kind, default in plan:
             if field_name in assigned:
                 continue
-            if kind == DefaultKind.STATIC:
-                setattr(payload, field_name, default)
-            elif kind == DefaultKind.SYNC:
-                setattr(payload, field_name, default())
-            else:  # DefaultKind.ASYNC
-                setattr(payload, field_name, await default())
+            setattr(payload, field_name, await evaluate_default(kind, default))
 
     @hybridmethod
     async def get(

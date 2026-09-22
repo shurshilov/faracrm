@@ -82,7 +82,9 @@ class OrmRelationsMixin(_Base):
             order: Направление сортировки "DESC" или "ASC"
             sort: Поле для сортировки. По умолчанию "id".
             filter: Фильтр в формате FilterExpression.
-                   Например: [("active", "=", True), ("name", "ilike", "%test%")]
+                   Например: [("active", "=", True), ("name", "ilike", "test")]
+                   (like/ilike — подстрока, %…% добавляет парсер; свой
+                   шаблон — через "=like"/"=ilike")
             raw: Если True - возвращает сырые данные без преобразования в модели
             session: DB сессия (опционально)
 

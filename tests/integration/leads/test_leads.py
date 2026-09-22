@@ -151,9 +151,11 @@ class TestLeadRead:
         await Lead.create(Lead(name="ACME Deal", stage_id=sid))
         await Lead.create(Lead(name="Other Lead", stage_id=sid))
 
+        # ilike = подстрока: %…% и экранирование %/_ добавляет парсер,
+        # свой шаблон — только через "=ilike"
         results = await Lead.search(
             fields=["id", "name"],
-            filter=[("name", "ilike", "%acme%")],
+            filter=[("name", "ilike", "acme")],
         )
         assert len(results) == 2
 

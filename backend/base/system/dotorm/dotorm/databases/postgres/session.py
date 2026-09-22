@@ -49,8 +49,9 @@ class PostgresSession(SessionAbstract):
                 and isinstance(values[0][0], (list, tuple))
                 else values
             )
-            for row in rows:
-                await conn.execute(stmt, *row)
+            # одна подготовка и один round-trip на всю пачку,
+            # а не execute на каждую строку
+            await conn.executemany(stmt, rows)
             return None
 
         # void - execute only (INSERT/UPDATE/DELETE without return)
@@ -145,8 +146,8 @@ class NoTransactionSession(PostgresSession):
 
 class NoTransactionNoPoolSession(PostgresSession):
     """
-    Session without pool.
-    Opens connection, executes, closes. For admin tasks.
+    Session without pool: a bare connection for admin tasks
+    (create database). The caller executes and closes it.
     """
 
     @classmethod
@@ -157,29 +158,3 @@ class NoTransactionNoPoolSession(PostgresSession):
         import asyncpg
 
         return await asyncpg.connect(**settings.model_dump())
-
-    @classmethod
-    async def execute(
-        cls,
-        settings: PostgresPoolSettings,
-        stmt: str,
-        values: Any = None,
-        *,
-        prepare: Callable | None = None,
-        cursor: str = "execute",
-    ) -> Any:
-        conn = await cls.get_connection(settings)
-
-        try:
-            if values:
-                await conn.execute(stmt, values)
-            else:
-                await conn.execute(stmt)
-
-            rows = await getattr(conn, cursor)()
-
-            if prepare:
-                return prepare(rows)
-            return rows
-        finally:
-            await conn.close()

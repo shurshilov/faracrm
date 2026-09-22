@@ -28,6 +28,7 @@ except ImportError:
 
 from ..fields import (
     Binary,
+    DefaultKind,
     Many2many,
     One2many,
     Field as DotField,
@@ -259,13 +260,15 @@ def generate_pydantic_models(
                 is_required = cls._is_field_required(name, field_value)
                 required = Ellipsis if is_required else None
 
-                # если есть значение по умолчанию
-                if field_value.default is not None:
-                    # если default callable — вызываем
-                    if callable(field_value.default):
-                        default: Any = field_value.default()
-                    else:
-                        default = field_value.default
+                # В схему идёт только литерал (STATIC_*). Callable здесь не
+                # вызываем: async-дефолт дал бы корутину («never awaited»,
+                # несериализуемая схема), sync — значение на момент старта;
+                # их считает ORM при INSERT и get_default_values.
+                default: Any = field_value.default
+                if default is not None and field_value.default_kind in (
+                    DefaultKind.STATIC_IMMUTABLE,
+                    DefaultKind.STATIC_MUTABLE,
+                ):
                     # необходимо проставить через json_schema_extra чтобы поле осталось
                     # обязательным, но с default по умолчанию любое default делает поле
                     # не обязательным прихожится обходить это для более интуитивной работы

@@ -140,11 +140,12 @@ class TestLeadPerformance:
         from backend.base.crm.leads.models.leads import Lead
 
         async with perf_timer(
-            perf_report, MODULE, "search — name ilike '%500%'", 100
+            perf_report, MODULE, "search — name ilike '500'", 100
         ):
+            # ilike = подстрока: %…% и экранирование добавляет парсер
             result = await Lead.search(
                 fields=["id", "name"],
-                filter=[("name", "ilike", "%500%")],
+                filter=[("name", "ilike", "500")],
                 limit=100,
             )
         assert len(result) >= 1

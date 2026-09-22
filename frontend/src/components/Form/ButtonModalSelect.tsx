@@ -71,7 +71,8 @@ export function ButtonModalSelect({
     filter.push([relatedFieldO2M, 'is null', null]);
   }
   if (search) {
-    filter.push([displayField, 'ilike', `%${search}%`]);
+    // ilike = подстрока: %…% и экранирование добавляет бэкенд
+    filter.push([displayField, 'ilike', search]);
   }
   if (excludeIds.length > 0) {
     filter.push(['id', 'not in', excludeIds]);

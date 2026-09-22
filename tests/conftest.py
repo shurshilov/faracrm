@@ -544,6 +544,13 @@ async def test_env(db_pool):
     env.apps.db.get_session = lambda: NoTransactionSession(db_pool)
     # пул отдаётся по имени подключения, а не по атрибуту с именем базы
     env.apps.db.get_pool = lambda alias=None: db_pool
+    # настоящая транзакция (роут create автокруда пишет запись и связи в
+    # одной), а не MagicMock, который «проглотил» бы async with
+    from backend.base.system.dotorm.dotorm.databases.postgres.transaction import (
+        ContainerTransaction,
+    )
+
+    env.apps.db.get_transaction = lambda: ContainerTransaction(db_pool)
 
     yield env
 

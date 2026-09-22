@@ -47,6 +47,7 @@ from .fields import (
     One2one,
     PolymorphicMany2one,
     TranslatedChar,
+    evaluate_default,
 )
 
 
@@ -65,14 +66,6 @@ class FieldKind(IntEnum):
     JSON = 2  # JSONField, TranslatedChar
     X2M = 3  # Many2many, One2many, PolymorphicOne2many
     O2O = 4  # One2one (store=False; значение — модель, как у M2O)
-
-
-class DefaultKind(IntEnum):
-    """Вид дефолта в предвычисленном _cache_default_plan для _apply_defaults."""
-
-    STATIC = 0  # статическое значение
-    SYNC = 1  # sync-callable
-    ASYNC = 2  # async-callable (await)
 
 
 class JsonMode(IntEnum):
@@ -316,9 +309,10 @@ class DotModel(
         #     get_json диспатчит по нему без per-row isinstance (в т.ч. без
         #     медленного ABC isinstance(value, DotModel)) — выигрыш и на записи
         #     (create_bulk), и на чтении (search/get → LIST/FORM, много строк).
-        #  2. _cache_default_plan — только STORE-поля С дефолтом, с заранее
-        #     разрешённым видом (static/sync/async); _apply_defaults итерирует
-        #     лишь их и не гоняет iscoroutinefunction на каждую строку.
+        #  2. _cache_default_plan — (имя, DefaultKind, default) только
+        #     STORE-полей С дефолтом; вид считается здесь один раз
+        #     (Field.default_kind), _apply_defaults итерирует лишь их и не
+        #     гоняет iscoroutinefunction на каждую строку.
         all_kinds: dict[str, FieldKind] = {}
         default_plan: list = []
         for _name, _field in cls._cache_all_fields.items():
@@ -338,22 +332,10 @@ class DotModel(
             else:
                 all_kinds[_name] = FieldKind.SCALAR
 
-            if _field.store:
-                _d = _field.default
-                if _d is not None:
-                    if callable(_d):
-                        _kind = (
-                            DefaultKind.ASYNC
-                            if asyncio.iscoroutinefunction(_d)
-                            else DefaultKind.SYNC
-                        )
-                    elif isinstance(_d, (list, dict, set)):
-                        # Изменяемый дефолт — каждой записи своя копия.
-                        _kind = DefaultKind.SYNC
-                        _d = _d.copy
-                    else:
-                        _kind = DefaultKind.STATIC
-                    default_plan.append((_name, _kind, _d))
+            if _field.store and _field.default is not None:
+                default_plan.append(
+                    (_name, _field.default_kind, _field.default)
+                )
         cls._cache_all_field_kinds = all_kinds
         cls._cache_default_plan = default_plan
 
@@ -844,14 +826,8 @@ class DotModel(
         for name, field in cls.get_fields().items():
             is_x2m = isinstance(field, (One2many, Many2many))
 
-            # 1. Получаем само значение (разрешаем callable и async)
-            value = field.default
-            if callable(value):
-                value = (
-                    await value()
-                    if asyncio.iscoroutinefunction(value)
-                    else value()
-                )
+            # 1. Само значение — как при INSERT (DefaultKind)
+            value = await evaluate_default(field.default_kind, field.default)
 
             # 2. Обработка x2m полей (подготовка структуры)
             if is_x2m:

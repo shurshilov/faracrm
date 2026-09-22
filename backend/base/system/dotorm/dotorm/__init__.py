@@ -43,7 +43,6 @@ from .components import (
 # Exceptions
 from .exceptions import (
     OrmConfigurationFieldException,
-    OrmUpdateEmptyParamsException,
     RecordNotFound,
 )
 
@@ -99,7 +98,6 @@ __all__ = [
     "FilterExpression",
     # Exceptions
     "OrmConfigurationFieldException",
-    "OrmUpdateEmptyParamsException",
     "RecordNotFound",
     # Access control
     "Operation",

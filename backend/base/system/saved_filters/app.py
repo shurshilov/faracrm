@@ -1,5 +1,7 @@
 """Saved filters application."""
 
+import json
+import logging
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -8,6 +10,50 @@ if TYPE_CHECKING:
 
 from backend.base.system.core.app import App
 from backend.base.crm.security.acl_post_init_mixin import ACL
+
+log = logging.getLogger(__package__)
+
+
+# ВРЕМЕННО — УДАЛИТЬ после обновления всех инсталляций (добавлено
+# 2026-09-22 вместе с _migrate_like_patterns и tests/unit/
+# test_saved_filter_like_migration.py). like/ilike теперь ищут подстроку и
+# экранируют % и _ в значении; фильтры, сохранённые до этого со своим
+# шаблоном ("%test%"), стали бы искать литеральный процент. like/ilike
+# переводим на =like/=ilike (шаблон как есть) с тем же %…%, что раньше
+# добавлял парсер; у not like/not ilike сырого варианта нет — снимаем
+# обрамляющие %, подстрока остаётся подстрокой.
+def _wrap_like(value: str) -> str:
+    if not value.startswith("%"):
+        value = "%" + value
+    if not value.endswith("%"):
+        value = value + "%"
+    return value
+
+
+def _migrate_like_expr(expr) -> bool:
+    """Обходит выражение фильтра на месте (вложенные списки, триплеты
+    [поле, оператор, значение]); True — что-то изменил."""
+    if not isinstance(expr, list):
+        return False
+    if (
+        len(expr) == 3
+        and isinstance(expr[0], str)
+        and isinstance(expr[1], str)
+        and isinstance(expr[2], str)
+        and "%" in expr[2]
+    ):
+        op = expr[1].lower()
+        if op in ("like", "ilike"):
+            expr[1], expr[2] = "=" + op, _wrap_like(expr[2])
+            return True
+        if op in ("not like", "not ilike"):
+            expr[2] = expr[2].strip("%")
+            return True
+        return False
+    changed = False
+    for item in expr:
+        changed = _migrate_like_expr(item) or changed
+    return changed
 
 
 class SavedFiltersApp(App):
@@ -36,6 +82,25 @@ class SavedFiltersApp(App):
         await super().post_init(app)
         env: "Environment" = app.state.env
         await self._init_saved_filter_rules(env)
+        await self._migrate_like_patterns(env)
+
+    # ВРЕМЕННО — УДАЛИТЬ вместе с _migrate_like_expr (см. выше).
+    # Идемпотентно: после первого прогона значений с % у like/ilike нет.
+    async def _migrate_like_patterns(self, env: "Environment"):
+        SavedFilter = env.models.saved_filter
+        rows = await SavedFilter.sudo().search(fields=["id", "filter_data"])
+        for row in rows:
+            try:
+                data = json.loads(row.filter_data)
+            except (TypeError, ValueError):
+                continue
+            if not _migrate_like_expr(data):
+                continue
+            await row.sudo().update(
+                SavedFilter(filter_data=json.dumps(data, ensure_ascii=False)),
+                ["filter_data"],
+            )
+            log.info("saved_filter %s: like-шаблон переведён на =like", row.id)
 
     async def _init_saved_filter_rules(self, env: "Environment"):
         """

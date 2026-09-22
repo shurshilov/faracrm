@@ -115,6 +115,17 @@ class Dialect(ABC):
         (MySQL). payloads_dicts is guaranteed non-empty."""
         ...
 
+    # --- m2m links: all id pairs in one INSERT ---
+    @abstractmethod
+    def make_link_pairs_source(
+        self, pairs: list[tuple[int, int]]
+    ) -> tuple[str, list]:
+        """Хвост после ``INSERT INTO link_table (col_a, col_b)`` для пар id
+        и его параметры: ``SELECT * FROM unnest(%s::int[], %s::int[])``
+        (Postgres, два массива) или ``VALUES (%s, %s), (%s, %s), ...``
+        (MySQL). Один запрос на всю пачку. pairs непустой."""
+        ...
+
     # --- bulk UPDATE with per-row values (single statement) ---
     def make_bulk_update_rows(
         self,
@@ -226,6 +237,13 @@ class PostgresSqlDialect(Dialect):
         unnest_clause = ", ".join(unnest_params)
         return f"SELECT * FROM unnest({unnest_clause})", column_arrays
 
+    def make_link_pairs_source(
+        self, pairs: list[tuple[int, int]]
+    ) -> tuple[str, list]:
+        first = [pair[0] for pair in pairs]
+        second = [pair[1] for pair in pairs]
+        return "SELECT * FROM unnest(%s::int[], %s::int[])", [first, second]
+
     def make_bulk_update_rows(
         self,
         rows: list[dict[str, Any]],
@@ -319,6 +337,12 @@ class _DefaultSqlDialect(Dialect):
 
         values_clause = ", ".join(value_groups)
         return f"VALUES {values_clause}", all_values
+
+    def make_link_pairs_source(
+        self, pairs: list[tuple[int, int]]
+    ) -> tuple[str, list]:
+        groups = ", ".join(["(%s, %s)"] * len(pairs))
+        return f"VALUES {groups}", [value for pair in pairs for value in pair]
 
 
 class MysqlSqlDialect(_DefaultSqlDialect):

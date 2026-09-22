@@ -59,7 +59,7 @@ class CronJob(DotModel):
     id: int = Integer(primary_key=True)
 
     # Основные поля
-    name: str = Char(size=255, required=True, string="Название")
+    name: str = Char(max_length=255, required=True, string="Название")
     active: bool = Boolean(default=True, string="Активна")
 
     # Вариант 1: Код напрямую.
@@ -69,8 +69,8 @@ class CronJob(DotModel):
     code: str = Text(string="Код (Python)")
 
     # Вариант 2: Метод модели (единственный рабочий способ)
-    model_name: str = Char(size=255, string="Модель")
-    method_name: str | None = Char(size=255, string="Метод")
+    model_name: str = Char(max_length=255, string="Модель")
+    method_name: str | None = Char(max_length=255, string="Метод")
     args: str = Text(string="Аргументы (JSON)", default="[]")
     kwargs: str = Text(string="Именованные аргументы (JSON)", default="{}")
 

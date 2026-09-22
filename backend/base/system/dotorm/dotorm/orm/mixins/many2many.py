@@ -113,19 +113,20 @@ class OrmMany2manyMixin(_Base):
         if not values:
             return None
         escape = cls._dialect.escape_identifier
-        query_placeholders = cls._dialect.make_placeholders(len(values[0]))
         if cls._dialect.name == "postgres":
             verb, on_conflict = "INSERT", "ON CONFLICT DO NOTHING"
         else:
             verb, on_conflict = "INSERT IGNORE", ""
-        stmt = f"""{verb} INTO {escape(field.many2many_table)}
-        ({escape(field.column2)}, {escape(field.column1)})
-        VALUES
-        ({query_placeholders})
-        {on_conflict}
-        """
-        # список строк-кортежей, как в контракте session.execute
-        return await session.execute(stmt, values, cursor="executemany")
+        # Все пары (column2, column1) одним запросом — unnest двух массивов
+        # или VALUES (...), ... — а не executemany построчно: N связей =
+        # один round-trip.
+        source, bind = cls._dialect.make_link_pairs_source(values)
+        stmt = (
+            f"{verb} INTO {escape(field.many2many_table)} "
+            f"({escape(field.column2)}, {escape(field.column1)}) "
+            f"{source} {on_conflict}"
+        )
+        return await session.execute(stmt, bind, cursor="void")
 
     @classmethod
     async def unlink_many2many(

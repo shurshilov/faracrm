@@ -98,7 +98,8 @@ class TestUserPerformance:
         ):
             result = await User.search(
                 fields=["id", "name", "login"],
-                filter=[("login", "ilike", "%user_500%")],
+                # ilike = подстрока: %…% добавляет парсер, "_" — литерал
+                filter=[("login", "ilike", "user_500")],
                 limit=100,
             )
         assert len(result) >= 1

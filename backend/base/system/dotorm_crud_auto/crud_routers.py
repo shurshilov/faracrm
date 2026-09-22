@@ -8,7 +8,7 @@
 import asyncio
 from typing import Any, Callable, Literal, Type
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import JSONResponse
 from starlette.status import HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND
 
@@ -322,14 +322,10 @@ class CRUDRouterGenerator(APIRouter):
         Model = self.Model
         schema_input = self._schema_create
 
-        async def route(payload: schema_input):  # type: ignore
+        async def route(req: Request, payload: schema_input):  # type: ignore
+            env = req.app.state.env
             payload_dict = payload.model_dump(exclude_unset=True)
             model_instance = Model(**payload_dict)
-
-            # создаем сначала запись в бд с теми значениями
-            # которые храняться напрямую
-            id = await Model.create(model_instance)
-            record = await Model.get(id)
 
             fields_names = list(payload_dict)
             fields_names = [
@@ -337,9 +333,18 @@ class CRUDRouterGenerator(APIRouter):
                 for field in fields_names
                 if field in model_instance.get_none_update_fields_set()
             ]
-            # замтем обновляем стор поля
-            if record and fields_names:
-                await record.update(model_instance, fields_names)
+            # Запись и её связи — одной транзакцией: отказ row-rule (он
+            # проверяется после INSERT) или ошибка на связях откатывают всё,
+            # «полусохранённой» записи не остаётся.
+            async with env.apps.db.get_transaction():
+                # создаем сначала запись в бд с теми значениями
+                # которые храняться напрямую
+                id = await Model.create(model_instance)
+                record = await Model.get(id)
+
+                # затем обновляем поля связей
+                if record and fields_names:
+                    await record.update(model_instance, fields_names)
 
             return {"id": id}
 

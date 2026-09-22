@@ -102,9 +102,11 @@ class TestPartnerRead:
         await Partner.create(Partner(name="acme industries"))
         await Partner.create(Partner(name="Other Company"))
 
+        # ilike = подстрока: %…% и экранирование %/_ добавляет парсер,
+        # свой шаблон — только через "=ilike"
         partners = await Partner.search(
             fields=["id", "name"],
-            filter=[("name", "ilike", "%acme%")],
+            filter=[("name", "ilike", "acme")],
         )
         assert len(partners) == 2
 

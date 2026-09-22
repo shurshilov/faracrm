@@ -5,10 +5,6 @@ class OrmConfigurationFieldException(Exception):
     """Exception raised when wrong config model or fields."""
 
 
-class OrmUpdateEmptyParamsException(Exception):
-    """Exception raised when ORM doesn't have required params."""
-
-
 class RecordNotFound(Exception):
     """
     Raised when record is not found but was expected to exist.

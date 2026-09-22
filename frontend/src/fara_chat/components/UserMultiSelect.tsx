@@ -50,7 +50,8 @@ export function UserMultiSelect({
   useEffect(() => {
     const filter: any[] = [];
     if (searchQuery.trim()) {
-      filter.push(['name', 'ilike', `%${searchQuery}%`]);
+      // ilike = подстрока: %…% и экранирование добавляет бэкенд
+      filter.push(['name', 'ilike', searchQuery]);
     }
 
     searchUsers({
