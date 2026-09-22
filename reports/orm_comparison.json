@@ -3,385 +3,495 @@
     "module": "raw asyncpg",
     "operation": "create \u2014 single",
     "rows": 1,
-    "elapsed_ms": 1.57,
-    "rps": 637.9
+    "elapsed_ms": 0.37,
+    "p95_ms": 0.52,
+    "runs": 20,
+    "rps": 2685.3
   },
   {
     "module": "raw asyncpg",
     "operation": "create_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 145.96,
-    "rps": 34256.7
+    "elapsed_ms": 156.35,
+    "p95_ms": 167.1,
+    "runs": 3,
+    "rps": 31978.6
   },
   {
     "module": "raw asyncpg",
     "operation": "get \u2014 single by id",
     "rows": 1,
-    "elapsed_ms": 1.11,
-    "rps": 898.2
+    "elapsed_ms": 0.14,
+    "p95_ms": 0.35,
+    "runs": 20,
+    "rps": 6930.0
   },
   {
     "module": "raw asyncpg",
     "operation": "search \u2014 filter user_id",
     "rows": 1000,
-    "elapsed_ms": 0.75,
-    "rps": 1331026.2
+    "elapsed_ms": 0.29,
+    "p95_ms": 0.38,
+    "runs": 20,
+    "rps": 3503854.7
   },
   {
     "module": "raw asyncpg",
     "operation": "search \u2014 filter res_model='lead'",
     "rows": 1000,
-    "elapsed_ms": 3.49,
-    "rps": 286549.4
+    "elapsed_ms": 3.22,
+    "p95_ms": 4.4,
+    "runs": 20,
+    "rps": 310510.8
   },
   {
     "module": "raw asyncpg",
     "operation": "search \u2014 state='overdue'",
     "rows": 1000,
-    "elapsed_ms": 3.94,
-    "rps": 253936.0
+    "elapsed_ms": 4.46,
+    "p95_ms": 5.4,
+    "runs": 20,
+    "rps": 224436.7
   },
   {
     "module": "raw asyncpg",
     "operation": "search_count \u2014 100k",
     "rows": 100000,
-    "elapsed_ms": 6.12,
-    "rps": 16352160.1
+    "elapsed_ms": 8.7,
+    "p95_ms": 10.72,
+    "runs": 20,
+    "rps": 11500069.0
   },
   {
     "module": "raw asyncpg",
     "operation": "update \u2014 single",
     "rows": 1,
-    "elapsed_ms": 1.3,
-    "rps": 771.4
+    "elapsed_ms": 0.37,
+    "p95_ms": 0.61,
+    "runs": 20,
+    "rps": 2733.7
   },
   {
     "module": "raw asyncpg",
     "operation": "update_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 119.99,
-    "rps": 41671.7
+    "elapsed_ms": 90.73,
+    "p95_ms": 109.07,
+    "runs": 3,
+    "rps": 55106.9
   },
   {
     "module": "raw asyncpg",
     "operation": "delete \u2014 single",
     "rows": 1,
-    "elapsed_ms": 0.76,
-    "rps": 1324.5
+    "elapsed_ms": 0.29,
+    "p95_ms": 0.44,
+    "runs": 20,
+    "rps": 3502.6
   },
   {
     "module": "raw asyncpg",
     "operation": "delete_bulk \u2014 2,000",
     "rows": 2000,
-    "elapsed_ms": 4.25,
-    "rps": 470854.1
+    "elapsed_ms": 3.7,
+    "p95_ms": 4.22,
+    "runs": 3,
+    "rps": 540058.9
   },
   {
     "module": "SQLAlchemy",
     "operation": "create \u2014 single",
     "rows": 1,
-    "elapsed_ms": 24.9,
-    "rps": 40.2
+    "elapsed_ms": 1.17,
+    "p95_ms": 1.42,
+    "runs": 20,
+    "rps": 857.0
   },
   {
     "module": "SQLAlchemy",
     "operation": "create_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 337.49,
-    "rps": 14815.2
+    "elapsed_ms": 282.86,
+    "p95_ms": 319.15,
+    "runs": 3,
+    "rps": 17676.7
   },
   {
     "module": "SQLAlchemy",
     "operation": "get \u2014 single by id",
     "rows": 1,
-    "elapsed_ms": 7.42,
-    "rps": 134.8
+    "elapsed_ms": 1.47,
+    "p95_ms": 1.85,
+    "runs": 20,
+    "rps": 679.0
   },
   {
     "module": "SQLAlchemy",
     "operation": "search \u2014 filter user_id",
     "rows": 1000,
-    "elapsed_ms": 3.85,
-    "rps": 259949.6
+    "elapsed_ms": 1.9,
+    "p95_ms": 2.37,
+    "runs": 20,
+    "rps": 525900.6
   },
   {
     "module": "SQLAlchemy",
     "operation": "search \u2014 filter res_model='lead'",
     "rows": 1000,
-    "elapsed_ms": 37.26,
-    "rps": 26836.1
+    "elapsed_ms": 29.88,
+    "p95_ms": 55.56,
+    "runs": 20,
+    "rps": 33471.8
   },
   {
     "module": "SQLAlchemy",
     "operation": "search \u2014 state='overdue'",
     "rows": 1000,
-    "elapsed_ms": 62.29,
-    "rps": 16053.7
+    "elapsed_ms": 28.37,
+    "p95_ms": 51.88,
+    "runs": 20,
+    "rps": 35250.0
   },
   {
     "module": "SQLAlchemy",
     "operation": "search_count \u2014 100k",
     "rows": 100000,
-    "elapsed_ms": 10.1,
-    "rps": 9902264.7
+    "elapsed_ms": 7.24,
+    "p95_ms": 8.78,
+    "runs": 20,
+    "rps": 13804146.8
   },
   {
     "module": "SQLAlchemy",
     "operation": "update \u2014 single",
     "rows": 1,
-    "elapsed_ms": 2.33,
-    "rps": 429.7
+    "elapsed_ms": 1.08,
+    "p95_ms": 1.35,
+    "runs": 20,
+    "rps": 921.9
   },
   {
     "module": "SQLAlchemy",
     "operation": "update_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 119.06,
-    "rps": 41996.5
+    "elapsed_ms": 120.52,
+    "p95_ms": 124.28,
+    "runs": 3,
+    "rps": 41487.1
   },
   {
     "module": "SQLAlchemy",
-    "operation": "delete \u2014 single",
-    "rows": 1,
-    "elapsed_ms": 2.11,
-    "rps": 475.0
-  },
-  {
-    "module": "SQLAlchemy",
-    "operation": "delete_bulk \u2014 2,000",
-    "rows": 2000,
-    "elapsed_ms": 14.71,
-    "rps": 135929.6
-  },
-  {
-    "module": "Tortoise",
-    "operation": "create \u2014 single",
-    "rows": 1,
-    "elapsed_ms": 23.56,
-    "rps": 42.5
-  },
-  {
-    "module": "Tortoise",
-    "operation": "create_bulk \u2014 5,000",
-    "rows": 5000,
-    "elapsed_ms": 249.25,
-    "rps": 20059.9
-  },
-  {
-    "module": "Tortoise",
-    "operation": "get \u2014 single by id",
-    "rows": 1,
-    "elapsed_ms": 2.18,
-    "rps": 458.3
-  },
-  {
-    "module": "Tortoise",
-    "operation": "search \u2014 filter user_id",
-    "rows": 1000,
-    "elapsed_ms": 1.78,
-    "rps": 561198.7
-  },
-  {
-    "module": "Tortoise",
-    "operation": "search \u2014 filter res_model='lead'",
-    "rows": 1000,
-    "elapsed_ms": 24.28,
-    "rps": 41191.9
-  },
-  {
-    "module": "Tortoise",
-    "operation": "search \u2014 state='overdue'",
-    "rows": 1000,
-    "elapsed_ms": 24.86,
-    "rps": 40228.5
-  },
-  {
-    "module": "Tortoise",
-    "operation": "search_count \u2014 100k",
-    "rows": 100000,
-    "elapsed_ms": 9.16,
-    "rps": 10912980.0
-  },
-  {
-    "module": "Tortoise",
-    "operation": "update \u2014 single",
-    "rows": 1,
-    "elapsed_ms": 1.51,
-    "rps": 662.2
-  },
-  {
-    "module": "Tortoise",
-    "operation": "update_bulk \u2014 5,000",
-    "rows": 5000,
-    "elapsed_ms": 110.97,
-    "rps": 45058.9
-  },
-  {
-    "module": "Tortoise",
     "operation": "delete \u2014 single",
     "rows": 1,
     "elapsed_ms": 0.99,
-    "rps": 1011.5
+    "p95_ms": 1.24,
+    "runs": 20,
+    "rps": 1008.1
+  },
+  {
+    "module": "SQLAlchemy",
+    "operation": "delete_bulk \u2014 2,000",
+    "rows": 2000,
+    "elapsed_ms": 12.94,
+    "p95_ms": 16.72,
+    "runs": 3,
+    "rps": 154606.1
+  },
+  {
+    "module": "Tortoise",
+    "operation": "create \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 0.6,
+    "p95_ms": 0.84,
+    "runs": 20,
+    "rps": 1667.8
+  },
+  {
+    "module": "Tortoise",
+    "operation": "create_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 227.95,
+    "p95_ms": 253.38,
+    "runs": 3,
+    "rps": 21934.8
+  },
+  {
+    "module": "Tortoise",
+    "operation": "get \u2014 single by id",
+    "rows": 1,
+    "elapsed_ms": 0.95,
+    "p95_ms": 1.13,
+    "runs": 20,
+    "rps": 1057.0
+  },
+  {
+    "module": "Tortoise",
+    "operation": "search \u2014 filter user_id",
+    "rows": 1000,
+    "elapsed_ms": 1.99,
+    "p95_ms": 2.64,
+    "runs": 20,
+    "rps": 503423.3
+  },
+  {
+    "module": "Tortoise",
+    "operation": "search \u2014 filter res_model='lead'",
+    "rows": 1000,
+    "elapsed_ms": 31.31,
+    "p95_ms": 45.88,
+    "runs": 20,
+    "rps": 31941.4
+  },
+  {
+    "module": "Tortoise",
+    "operation": "search \u2014 state='overdue'",
+    "rows": 1000,
+    "elapsed_ms": 28.28,
+    "p95_ms": 36.1,
+    "runs": 20,
+    "rps": 35366.3
+  },
+  {
+    "module": "Tortoise",
+    "operation": "search_count \u2014 100k",
+    "rows": 100000,
+    "elapsed_ms": 7.17,
+    "p95_ms": 8.21,
+    "runs": 20,
+    "rps": 13945445.4
+  },
+  {
+    "module": "Tortoise",
+    "operation": "update \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 0.62,
+    "p95_ms": 0.75,
+    "runs": 20,
+    "rps": 1612.1
+  },
+  {
+    "module": "Tortoise",
+    "operation": "update_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 111.51,
+    "p95_ms": 123.51,
+    "runs": 3,
+    "rps": 44840.9
+  },
+  {
+    "module": "Tortoise",
+    "operation": "delete \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 0.56,
+    "p95_ms": 0.9,
+    "runs": 20,
+    "rps": 1790.8
   },
   {
     "module": "Tortoise",
     "operation": "delete_bulk \u2014 2,000",
     "rows": 2000,
-    "elapsed_ms": 10.06,
-    "rps": 198775.5
+    "elapsed_ms": 10.1,
+    "p95_ms": 10.11,
+    "runs": 3,
+    "rps": 198008.0
   },
   {
     "module": "dotorm",
     "operation": "create \u2014 single",
     "rows": 1,
-    "elapsed_ms": 2.53,
-    "rps": 395.5
+    "elapsed_ms": 0.65,
+    "p95_ms": 0.79,
+    "runs": 20,
+    "rps": 1549.4
   },
   {
     "module": "dotorm",
     "operation": "create_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 161.35,
-    "rps": 30988.3
+    "elapsed_ms": 165.92,
+    "p95_ms": 181.35,
+    "runs": 3,
+    "rps": 30135.1
   },
   {
     "module": "dotorm",
     "operation": "get \u2014 single by id",
-    "rows": 1,
-    "elapsed_ms": 2.62,
-    "rps": 381.8
-  },
-  {
-    "module": "dotorm",
-    "operation": "search \u2014 filter user_id",
-    "rows": 1000,
-    "elapsed_ms": 2.41,
-    "rps": 415696.7
-  },
-  {
-    "module": "dotorm",
-    "operation": "search \u2014 filter res_model='lead'",
-    "rows": 1000,
-    "elapsed_ms": 8.2,
-    "rps": 121927.4
-  },
-  {
-    "module": "dotorm",
-    "operation": "search \u2014 state='overdue'",
-    "rows": 1000,
-    "elapsed_ms": 9.29,
-    "rps": 107616.0
-  },
-  {
-    "module": "dotorm",
-    "operation": "search_count \u2014 100k",
-    "rows": 100000,
-    "elapsed_ms": 6.67,
-    "rps": 14998125.2
-  },
-  {
-    "module": "dotorm",
-    "operation": "update \u2014 single",
-    "rows": 1,
-    "elapsed_ms": 1.52,
-    "rps": 656.1
-  },
-  {
-    "module": "dotorm",
-    "operation": "update_bulk \u2014 5,000",
-    "rows": 5000,
-    "elapsed_ms": 92.93,
-    "rps": 53806.7
-  },
-  {
-    "module": "dotorm",
-    "operation": "delete \u2014 single",
-    "rows": 1,
-    "elapsed_ms": 1.17,
-    "rps": 855.7
-  },
-  {
-    "module": "dotorm",
-    "operation": "delete_bulk \u2014 2,000",
-    "rows": 2000,
-    "elapsed_ms": 4.46,
-    "rps": 448571.3
-  },
-  {
-    "module": "dotorm_old",
-    "operation": "create \u2014 single",
-    "rows": 1,
-    "elapsed_ms": 1.55,
-    "rps": 643.6
-  },
-  {
-    "module": "dotorm_old",
-    "operation": "create_bulk \u2014 5,000",
-    "rows": 5000,
-    "elapsed_ms": 281.44,
-    "rps": 17765.6
-  },
-  {
-    "module": "dotorm_old",
-    "operation": "get \u2014 single by id",
-    "rows": 1,
-    "elapsed_ms": 2.49,
-    "rps": 401.3
-  },
-  {
-    "module": "dotorm_old",
-    "operation": "search \u2014 filter user_id",
-    "rows": 1000,
-    "elapsed_ms": 1.63,
-    "rps": 611807.9
-  },
-  {
-    "module": "dotorm_old",
-    "operation": "search \u2014 filter res_model='lead'",
-    "rows": 1000,
-    "elapsed_ms": 7.28,
-    "rps": 137294.7
-  },
-  {
-    "module": "dotorm_old",
-    "operation": "search \u2014 state='overdue'",
-    "rows": 1000,
-    "elapsed_ms": 9.36,
-    "rps": 106860.4
-  },
-  {
-    "module": "dotorm_old",
-    "operation": "search_count \u2014 100k",
-    "rows": 100000,
-    "elapsed_ms": 9.85,
-    "rps": 10155377.3
-  },
-  {
-    "module": "dotorm_old",
-    "operation": "update \u2014 single",
     "rows": 1,
     "elapsed_ms": 1.15,
-    "rps": 870.9
+    "p95_ms": 1.33,
+    "runs": 20,
+    "rps": 868.1
+  },
+  {
+    "module": "dotorm",
+    "operation": "search \u2014 filter user_id",
+    "rows": 1000,
+    "elapsed_ms": 1.29,
+    "p95_ms": 1.47,
+    "runs": 20,
+    "rps": 772678.1
+  },
+  {
+    "module": "dotorm",
+    "operation": "search \u2014 filter res_model='lead'",
+    "rows": 1000,
+    "elapsed_ms": 6.12,
+    "p95_ms": 8.66,
+    "runs": 20,
+    "rps": 163513.6
+  },
+  {
+    "module": "dotorm",
+    "operation": "search \u2014 state='overdue'",
+    "rows": 1000,
+    "elapsed_ms": 6.75,
+    "p95_ms": 8.96,
+    "runs": 20,
+    "rps": 148233.8
+  },
+  {
+    "module": "dotorm",
+    "operation": "search_count \u2014 100k",
+    "rows": 100000,
+    "elapsed_ms": 7.22,
+    "p95_ms": 8.85,
+    "runs": 20,
+    "rps": 13854253.2
+  },
+  {
+    "module": "dotorm",
+    "operation": "update \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 0.66,
+    "p95_ms": 0.92,
+    "runs": 20,
+    "rps": 1514.5
+  },
+  {
+    "module": "dotorm",
+    "operation": "update_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 122.35,
+    "p95_ms": 124.96,
+    "runs": 3,
+    "rps": 40866.6
+  },
+  {
+    "module": "dotorm",
+    "operation": "delete \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 0.58,
+    "p95_ms": 0.65,
+    "runs": 20,
+    "rps": 1722.1
+  },
+  {
+    "module": "dotorm",
+    "operation": "delete_bulk \u2014 2,000",
+    "rows": 2000,
+    "elapsed_ms": 4.45,
+    "p95_ms": 4.46,
+    "runs": 3,
+    "rps": 449195.9
+  },
+  {
+    "module": "dotorm_old",
+    "operation": "create \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 0.38,
+    "p95_ms": 0.77,
+    "runs": 20,
+    "rps": 2629.5
+  },
+  {
+    "module": "dotorm_old",
+    "operation": "create_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 291.04,
+    "p95_ms": 347.82,
+    "runs": 3,
+    "rps": 17179.7
+  },
+  {
+    "module": "dotorm_old",
+    "operation": "get \u2014 single by id",
+    "rows": 1,
+    "elapsed_ms": 0.77,
+    "p95_ms": 0.94,
+    "runs": 20,
+    "rps": 1299.0
+  },
+  {
+    "module": "dotorm_old",
+    "operation": "search \u2014 filter user_id",
+    "rows": 1000,
+    "elapsed_ms": 0.73,
+    "p95_ms": 0.92,
+    "runs": 20,
+    "rps": 1365001.4
+  },
+  {
+    "module": "dotorm_old",
+    "operation": "search \u2014 filter res_model='lead'",
+    "rows": 1000,
+    "elapsed_ms": 5.85,
+    "p95_ms": 7.14,
+    "runs": 20,
+    "rps": 170875.9
+  },
+  {
+    "module": "dotorm_old",
+    "operation": "search \u2014 state='overdue'",
+    "rows": 1000,
+    "elapsed_ms": 7.02,
+    "p95_ms": 8.15,
+    "runs": 20,
+    "rps": 142460.3
+  },
+  {
+    "module": "dotorm_old",
+    "operation": "search_count \u2014 100k",
+    "rows": 100000,
+    "elapsed_ms": 7.66,
+    "p95_ms": 8.78,
+    "runs": 20,
+    "rps": 13056193.9
+  },
+  {
+    "module": "dotorm_old",
+    "operation": "update \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 0.25,
+    "p95_ms": 0.39,
+    "runs": 20,
+    "rps": 3962.0
   },
   {
     "module": "dotorm_old",
     "operation": "update_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 103.72,
-    "rps": 48207.4
+    "elapsed_ms": 204.21,
+    "p95_ms": 214.32,
+    "runs": 3,
+    "rps": 24484.2
   },
   {
     "module": "dotorm_old",
     "operation": "delete \u2014 single",
     "rows": 1,
-    "elapsed_ms": 0.69,
-    "rps": 1438.8
+    "elapsed_ms": 0.22,
+    "p95_ms": 0.25,
+    "runs": 20,
+    "rps": 4597.7
   },
   {
     "module": "dotorm_old",
     "operation": "delete_bulk \u2014 2,000",
     "rows": 2000,
-    "elapsed_ms": 4.5,
-    "rps": 444079.3
+    "elapsed_ms": 3.91,
+    "p95_ms": 3.94,
+    "runs": 3,
+    "rps": 511352.0
   }
 ]

@@ -134,6 +134,7 @@ class MemberMixin(DotModel):
         cls,
         container_id: int,
         user_id: int,
+        fields: list[str] | None = None,
     ) -> Self | None:
         """
         Получить активную запись membership для пары (контейнер, пользователь).
@@ -142,10 +143,16 @@ class MemberMixin(DotModel):
         для проверки доступа залогиненного юзера. Для поиска по партнёру
         см. get_membership_by_partner().
 
+        fields: по умолчанию — колонки записи без Many2one. Проверкам доступа
+        нужны права, is_admin и watermark, а каждая связь в fields — это
+        отдельный запрос на догрузку (контейнер, участник, коннектор, аудит).
+        Кому нужна связь — передаёт fields явно.
+
         Returns:
             Экземпляр класса-наследника или None если не найден.
         """
         return await cls.search_one(
+            fields=fields or cls.get_store_fields_omit_m2o(),
             filter=[
                 (cls._member_res_field, "=", container_id),
                 ("user_id", "=", user_id),

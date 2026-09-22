@@ -91,6 +91,7 @@ class ChatRoutingRuleLead(DotModel):
     user_id: "User" = Many2one(
         relation_table=lambda: env.models.user,
         ondelete="restrict",
+        index=True,
         description="Менеджер, на которого будет назначен лид при срабатывании правила.",
     )
     team_id: "TeamCrm | None" = Many2one(

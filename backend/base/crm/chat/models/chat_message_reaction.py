@@ -53,6 +53,8 @@ class ChatMessageReaction(DotModel):
         relation_table=lambda: env.models.user,
         description="Пользователь, поставивший реакцию",
         required=True,
+        # FK на users без индекса = seq scan при удалении пользователя
+        index=True,
     )
 
     # Временная метка

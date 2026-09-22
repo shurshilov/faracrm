@@ -202,11 +202,13 @@ class TestCreateWithRelationsORM:
 
         roles, _ = await _user_links(user_id)
         assert roles == set()
+        # Строки дефолта x2m — json_list записи ({id, name}); вложенные
+        # fields описывают колонки формы, а не состав строк.
         defaults = await User.get_default_values(
-            {"role_ids": {"fields": ["id", "code"]}}
+            {"role_ids": {"fields": ["id", "name"]}}
         )
-        assert [r["code"] for r in defaults["role_ids"]["data"]] == [
-            "base_user"
+        assert [r["name"] for r in defaults["role_ids"]["data"]] == [
+            "Internal User"
         ]
 
     async def test_roles_selected_in_create(self, db_pool):
@@ -597,16 +599,22 @@ class TestCreateAPI:
             json={
                 "fields": [
                     "name",
-                    {"role_ids": ["id", "code"]},
-                    {"lang_ids": ["id", "code"]},
+                    {"role_ids": ["id", "name"]},
+                    {"lang_ids": ["id", "name"]},
                 ]
             },
         )
 
         assert response.status_code == 200, response.text
         data = response.json()["data"]
-        assert [r["code"] for r in data["role_ids"]["data"]] == ["base_user"]
-        assert {l["code"] for l in data["lang_ids"]["data"]} == {"en", "ru"}
+        # Строки дефолта — json_list записи ({id, name}), см. тест ORM выше.
+        assert [r["name"] for r in data["role_ids"]["data"]] == [
+            "Internal User"
+        ]
+        assert {l["name"] for l in data["lang_ids"]["data"]} == {
+            "English",
+            "Русский",
+        }
 
     async def test_update_bulk_roles(self, authenticated_client):
         client, _, _ = authenticated_client

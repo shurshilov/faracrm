@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Perf Report 2026-09-22 19:25:40</title>
+<html><head><meta charset="utf-8"><title>Perf Report 2026-09-22 20:53:29</title>
 <style>
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
        margin: 2em auto; max-width: 960px; color: #333; }
@@ -17,93 +17,94 @@ tr:hover { background:#f8f9fa; }
 </style></head><body>
 <h1>🚀 FARA CRM — Performance Report</h1>
 <table>
-<tr><th>Module</th><th>Operation</th><th>Rows</th><th>Time (ms)</th><th>rows/sec</th></tr>
-<tr class="group"><td colspan="5">Activity</td></tr>
-<tr class="fast"><td>Activity</td><td>create — single</td><td class='num'>1</td><td class='num'>1.35</td><td class='num'>740.1</td></tr>
-<tr class="fast"><td>Activity</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>279.77</td><td class='num'>17,872.0</td></tr>
-<tr class="fast"><td>Activity</td><td>get — single by id</td><td class='num'>1</td><td class='num'>1.13</td><td class='num'>883.0</td></tr>
-<tr class="fast"><td>Activity</td><td>search — filter user_id</td><td class='num'>100</td><td class='num'>1.54</td><td class='num'>65,044.9</td></tr>
-<tr class="fast"><td>Activity</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>3.37</td><td class='num'>296,392.9</td></tr>
-<tr class="fast"><td>Activity</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>10.91</td><td class='num'>91,697.7</td></tr>
-<tr class="fast"><td>Activity</td><td>search_count — 100k table</td><td class='num'>100,000</td><td class='num'>7.46</td><td class='num'>13,397,103.5</td></tr>
-<tr class="fast"><td>Activity</td><td>update — single</td><td class='num'>1</td><td class='num'>1.13</td><td class='num'>884.6</td></tr>
-<tr class="fast"><td>Activity</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>126.33</td><td class='num'>39,578.3</td></tr>
-<tr class="fast"><td>Activity</td><td>delete — single</td><td class='num'>1</td><td class='num'>0.82</td><td class='num'>1,225.0</td></tr>
-<tr class="fast"><td>Activity</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>4.84</td><td class='num'>413,009.8</td></tr>
-<tr class="group"><td colspan="5">Chat</td></tr>
-<tr class="fast"><td>Chat</td><td>message create — single</td><td class='num'>1</td><td class='num'>248.65</td><td class='num'>4.0</td></tr>
-<tr class="fast"><td>Chat</td><td>message create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>352.73</td><td class='num'>14,175.2</td></tr>
-<tr class="fast"><td>Chat</td><td>message get — single by id</td><td class='num'>1</td><td class='num'>1.61</td><td class='num'>620.5</td></tr>
-<tr class="fast"><td>Chat</td><td>message search — chat_id filter, limit 50</td><td class='num'>50</td><td class='num'>2.74</td><td class='num'>18,221.6</td></tr>
-<tr class="fast"><td>Chat</td><td>message search — before_id pagination</td><td class='num'>50</td><td class='num'>2.77</td><td class='num'>18,041.4</td></tr>
-<tr class="fast"><td>Chat</td><td>message search — unread (id > watermark)</td><td class='num'>1,000</td><td class='num'>3.11</td><td class='num'>321,864.2</td></tr>
-<tr class="fast"><td>Chat</td><td>message search — starred=true, limit 100</td><td class='num'>100</td><td class='num'>4.14</td><td class='num'>24,161.0</td></tr>
-<tr class="fast"><td>Chat</td><td>message search_count — 1M table</td><td class='num'>1,000,000</td><td class='num'>68.93</td><td class='num'>14,506,861.0</td></tr>
-<tr class="fast"><td>Chat</td><td>message search_count — single chat</td><td class='num'>10,000</td><td class='num'>13.80</td><td class='num'>724,742.7</td></tr>
-<tr class="fast"><td>Chat</td><td>message update — single</td><td class='num'>1</td><td class='num'>1.69</td><td class='num'>593.1</td></tr>
-<tr class="fast"><td>Chat</td><td>message update_bulk — starred 10,000</td><td class='num'>10,000</td><td class='num'>348.28</td><td class='num'>28,712.2</td></tr>
-<tr class="fast"><td>Chat</td><td>message delete — single</td><td class='num'>1</td><td class='num'>7.22</td><td class='num'>138.4</td></tr>
-<tr class="fast"><td>Chat</td><td>message delete_bulk — 100</td><td class='num'>100</td><td class='num'>9.63</td><td class='num'>10,387.5</td></tr>
-<tr class="fast"><td>Chat</td><td>members search — big chat (5,000)</td><td class='num'>5,000</td><td class='num'>27.38</td><td class='num'>182,613.0</td></tr>
-<tr class="fast"><td>Chat</td><td>members check_membership — single</td><td class='num'>1</td><td class='num'>109.15</td><td class='num'>9.2</td></tr>
-<tr class="fast"><td>Chat</td><td>members search — all chats for user</td><td class='num'>100</td><td class='num'>3.11</td><td class='num'>32,112.0</td></tr>
-<tr class="fast"><td>Chat</td><td>chat search — all active</td><td class='num'>100</td><td class='num'>1.15</td><td class='num'>87,328.6</td></tr>
-<tr class="fast"><td>Chat</td><td>chat search — filter type=channel</td><td class='num'>10</td><td class='num'>1.06</td><td class='num'>9,462.5</td></tr>
-<tr class="group"><td colspan="5">Leads</td></tr>
-<tr class="fast"><td>Leads</td><td>create — single</td><td class='num'>1</td><td class='num'>3.00</td><td class='num'>333.5</td></tr>
-<tr class="fast"><td>Leads</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>279.54</td><td class='num'>17,886.4</td></tr>
-<tr class="fast"><td>Leads</td><td>get — single by id</td><td class='num'>1</td><td class='num'>1.34</td><td class='num'>746.5</td></tr>
-<tr class="fast"><td>Leads</td><td>search — limit 100</td><td class='num'>100</td><td class='num'>2.33</td><td class='num'>42,962.7</td></tr>
-<tr class="fast"><td>Leads</td><td>search — limit 10,000</td><td class='num'>10,000</td><td class='num'>44.23</td><td class='num'>226,115.4</td></tr>
-<tr class="fast"><td>Leads</td><td>search — filter type='opportunity'</td><td class='num'>1,000</td><td class='num'>3.19</td><td class='num'>313,175.3</td></tr>
-<tr class="fast"><td>Leads</td><td>search — filter user_id</td><td class='num'>200</td><td class='num'>1.60</td><td class='num'>124,906.3</td></tr>
-<tr class="fast"><td>Leads</td><td>search — multi-filter (type+active+user)</td><td class='num'>200</td><td class='num'>1.56</td><td class='num'>127,959.1</td></tr>
-<tr class="fast"><td>Leads</td><td>search — name ilike '500'</td><td class='num'>100</td><td class='num'>30.50</td><td class='num'>3,279.2</td></tr>
-<tr class="fast"><td>Leads</td><td>search_count — 100k table</td><td class='num'>100,000</td><td class='num'>11.12</td><td class='num'>8,994,585.2</td></tr>
-<tr class="fast"><td>Leads</td><td>update — single</td><td class='num'>1</td><td class='num'>1.82</td><td class='num'>550.3</td></tr>
-<tr class="fast"><td>Leads</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>101.75</td><td class='num'>49,141.4</td></tr>
-<tr class="fast"><td>Leads</td><td>delete — single</td><td class='num'>1</td><td class='num'>8.06</td><td class='num'>124.1</td></tr>
-<tr class="fast"><td>Leads</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>51.86</td><td class='num'>38,562.1</td></tr>
-<tr class="group"><td colspan="5">SessionCache</td></tr>
-<tr class="medium"><td>SessionCache</td><td>[SEQ] total — DB</td><td class='num'>1,000</td><td class='num'>1,468.25</td><td class='num'>681.1</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] total — Cache (x112.3)</td><td class='num'>1,000</td><td class='num'>13.07</td><td class='num'>76,509.3</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] avg per call — DB</td><td class='num'>1</td><td class='num'>1.47</td><td class='num'>681.1</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] avg per call — Cache (x112.3)</td><td class='num'>1</td><td class='num'>0.01</td><td class='num'>76,509.3</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] p50 — DB</td><td class='num'>1</td><td class='num'>1.41</td><td class='num'>710.7</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] p50 — Cache (x104.2)</td><td class='num'>1</td><td class='num'>0.01</td><td class='num'>74,073.5</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] p95 — DB</td><td class='num'>1</td><td class='num'>2.03</td><td class='num'>492.6</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] p95 — Cache (x130.1)</td><td class='num'>1</td><td class='num'>0.02</td><td class='num'>64,102.6</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] p99 — DB</td><td class='num'>1</td><td class='num'>2.32</td><td class='num'>430.9</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[SEQ] p99 — Cache (x86.3)</td><td class='num'>1</td><td class='num'>0.03</td><td class='num'>37,174.8</td></tr>
-<tr class="medium"><td>SessionCache</td><td>[CONCURRENT 100x10] total — DB</td><td class='num'>1,000</td><td class='num'>883.33</td><td class='num'>1,132.1</td></tr>
-<tr class="fast"><td>SessionCache</td><td>[CONCURRENT 100x10] total — Cache (x56.2)</td><td class='num'>1,000</td><td class='num'>15.71</td><td class='num'>63,672.0</td></tr>
-<tr class="group"><td colspan="5">Sessions</td></tr>
-<tr class="fast"><td>Sessions</td><td>create — single</td><td class='num'>1</td><td class='num'>5.58</td><td class='num'>179.2</td></tr>
-<tr class="medium"><td>Sessions</td><td>create_bulk — 10,000</td><td class='num'>10,000</td><td class='num'>584.14</td><td class='num'>17,119.1</td></tr>
-<tr class="fast"><td>Sessions</td><td>get — single by id</td><td class='num'>1</td><td class='num'>1.41</td><td class='num'>710.4</td></tr>
-<tr class="fast"><td>Sessions</td><td>search — filter user_id (indexed FK)</td><td class='num'>100</td><td class='num'>1.50</td><td class='num'>66,706.7</td></tr>
-<tr class="fast"><td>Sessions</td><td>search — filter active=true, limit 1000</td><td class='num'>1,000</td><td class='num'>8.59</td><td class='num'>116,406.3</td></tr>
-<tr class="fast"><td>Sessions</td><td>search — filter token=exact (indexed)</td><td class='num'>1</td><td class='num'>1.87</td><td class='num'>534.7</td></tr>
-<tr class="fast"><td>Sessions</td><td>session_check — raw SQL auth path</td><td class='num'>1</td><td class='num'>1.15</td><td class='num'>871.0</td></tr>
-<tr class="fast"><td>Sessions</td><td>search_count — 1M table</td><td class='num'>1,000,000</td><td class='num'>78.18</td><td class='num'>12,790,946.1</td></tr>
-<tr class="fast"><td>Sessions</td><td>update — single</td><td class='num'>1</td><td class='num'>1.46</td><td class='num'>682.9</td></tr>
-<tr class="fast"><td>Sessions</td><td>update_bulk — 10,000</td><td class='num'>10,000</td><td class='num'>475.62</td><td class='num'>21,025.1</td></tr>
-<tr class="fast"><td>Sessions</td><td>delete — single</td><td class='num'>1</td><td class='num'>1.11</td><td class='num'>900.0</td></tr>
-<tr class="fast"><td>Sessions</td><td>delete_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>13.87</td><td class='num'>360,583.9</td></tr>
-<tr class="group"><td colspan="5">Users</td></tr>
-<tr class="fast"><td>Users</td><td>create — single</td><td class='num'>1</td><td class='num'>6.11</td><td class='num'>163.6</td></tr>
-<tr class="medium"><td>Users</td><td>create_bulk — 1 000</td><td class='num'>1,000</td><td class='num'>554.08</td><td class='num'>1,804.8</td></tr>
-<tr class="fast"><td>Users</td><td>get — single by id</td><td class='num'>1</td><td class='num'>1.51</td><td class='num'>661.3</td></tr>
-<tr class="fast"><td>Users</td><td>search — limit 1000</td><td class='num'>1,000</td><td class='num'>3.15</td><td class='num'>317,551.0</td></tr>
-<tr class="fast"><td>Users</td><td>search — limit 10000 (full)</td><td class='num'>10,000</td><td class='num'>19.09</td><td class='num'>523,848.2</td></tr>
-<tr class="fast"><td>Users</td><td>search — filter login ilike</td><td class='num'>1</td><td class='num'>8.96</td><td class='num'>111.6</td></tr>
-<tr class="fast"><td>Users</td><td>search — filter is_admin=false</td><td class='num'>10,000</td><td class='num'>12.49</td><td class='num'>800,704.6</td></tr>
-<tr class="fast"><td>Users</td><td>search_count — all</td><td class='num'>10,000</td><td class='num'>1.78</td><td class='num'>5,616,084.3</td></tr>
-<tr class="fast"><td>Users</td><td>update — single</td><td class='num'>1</td><td class='num'>1.41</td><td class='num'>706.9</td></tr>
-<tr class="fast"><td>Users</td><td>update_bulk — 5000</td><td class='num'>5,000</td><td class='num'>101.57</td><td class='num'>49,225.2</td></tr>
-<tr class="fast"><td>Users</td><td>delete — single</td><td class='num'>1</td><td class='num'>23.53</td><td class='num'>42.5</td></tr>
-<tr class="medium"><td>Users</td><td>delete_bulk — 1000</td><td class='num'>1,000</td><td class='num'>550.48</td><td class='num'>1,816.6</td></tr>
+<tr><th>Module</th><th>Operation</th><th>Rows</th><th>p50 (ms)</th><th>p95 (ms)</th><th>runs</th><th>rows/sec</th></tr>
+<tr class="group"><td colspan="7">Activity</td></tr>
+<tr class="fast"><td>Activity</td><td>create — single</td><td class='num'>1</td><td class='num'>0.84</td><td class='num'>1.01</td><td class='num'>20</td><td class='num'>1,185.4</td></tr>
+<tr class="fast"><td>Activity</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>313.14</td><td class='num'>314.37</td><td class='num'>3</td><td class='num'>15,967.5</td></tr>
+<tr class="fast"><td>Activity</td><td>get — single by id</td><td class='num'>1</td><td class='num'>0.53</td><td class='num'>0.69</td><td class='num'>20</td><td class='num'>1,893.9</td></tr>
+<tr class="fast"><td>Activity</td><td>search — filter user_id</td><td class='num'>100</td><td class='num'>1.25</td><td class='num'>1.50</td><td class='num'>20</td><td class='num'>80,102.5</td></tr>
+<tr class="fast"><td>Activity</td><td>search — filter res_model='lead'</td><td class='num'>1,000</td><td class='num'>2.53</td><td class='num'>3.31</td><td class='num'>20</td><td class='num'>395,835.8</td></tr>
+<tr class="fast"><td>Activity</td><td>search — state='overdue'</td><td class='num'>1,000</td><td class='num'>8.94</td><td class='num'>10.60</td><td class='num'>20</td><td class='num'>111,894.4</td></tr>
+<tr class="fast"><td>Activity</td><td>search_count — 100k table</td><td class='num'>100,000</td><td class='num'>7.59</td><td class='num'>9.43</td><td class='num'>20</td><td class='num'>13,177,661.4</td></tr>
+<tr class="fast"><td>Activity</td><td>update — single</td><td class='num'>1</td><td class='num'>0.63</td><td class='num'>0.74</td><td class='num'>20</td><td class='num'>1,598.2</td></tr>
+<tr class="fast"><td>Activity</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>101.80</td><td class='num'>148.47</td><td class='num'>3</td><td class='num'>49,113.7</td></tr>
+<tr class="fast"><td>Activity</td><td>delete — single</td><td class='num'>1</td><td class='num'>0.60</td><td class='num'>0.65</td><td class='num'>20</td><td class='num'>1,672.0</td></tr>
+<tr class="fast"><td>Activity</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>3.90</td><td class='num'>5.01</td><td class='num'>3</td><td class='num'>513,360.2</td></tr>
+<tr class="group"><td colspan="7">Chat</td></tr>
+<tr class="fast"><td>Chat</td><td>message create — single</td><td class='num'>1</td><td class='num'>0.80</td><td class='num'>0.93</td><td class='num'>20</td><td class='num'>1,245.2</td></tr>
+<tr class="fast"><td>Chat</td><td>message create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>347.85</td><td class='num'>366.97</td><td class='num'>3</td><td class='num'>14,374.2</td></tr>
+<tr class="fast"><td>Chat</td><td>message get — single by id</td><td class='num'>1</td><td class='num'>0.42</td><td class='num'>0.67</td><td class='num'>20</td><td class='num'>2,409.1</td></tr>
+<tr class="fast"><td>Chat</td><td>message search — chat_id filter, limit 50</td><td class='num'>50</td><td class='num'>1.69</td><td class='num'>2.03</td><td class='num'>20</td><td class='num'>29,666.5</td></tr>
+<tr class="fast"><td>Chat</td><td>message search — before_id pagination</td><td class='num'>50</td><td class='num'>1.51</td><td class='num'>2.11</td><td class='num'>20</td><td class='num'>33,141.1</td></tr>
+<tr class="fast"><td>Chat</td><td>message search — unread (id > watermark)</td><td class='num'>1,000</td><td class='num'>2.19</td><td class='num'>5.27</td><td class='num'>20</td><td class='num'>455,871.6</td></tr>
+<tr class="fast"><td>Chat</td><td>message search — starred=true, limit 100</td><td class='num'>100</td><td class='num'>1.86</td><td class='num'>2.42</td><td class='num'>20</td><td class='num'>53,902.5</td></tr>
+<tr class="fast"><td>Chat</td><td>message search_count — 1M table</td><td class='num'>1,000,000</td><td class='num'>65.13</td><td class='num'>69.93</td><td class='num'>20</td><td class='num'>15,353,011.8</td></tr>
+<tr class="fast"><td>Chat</td><td>message search_count — single chat</td><td class='num'>10,000</td><td class='num'>10.28</td><td class='num'>12.00</td><td class='num'>20</td><td class='num'>973,037.1</td></tr>
+<tr class="fast"><td>Chat</td><td>message update — single</td><td class='num'>1</td><td class='num'>0.65</td><td class='num'>0.89</td><td class='num'>20</td><td class='num'>1,529.1</td></tr>
+<tr class="fast"><td>Chat</td><td>message update_bulk — starred 10,000</td><td class='num'>10,000</td><td class='num'>324.87</td><td class='num'>333.88</td><td class='num'>3</td><td class='num'>30,781.7</td></tr>
+<tr class="fast"><td>Chat</td><td>message delete — single</td><td class='num'>1</td><td class='num'>1.75</td><td class='num'>3.15</td><td class='num'>20</td><td class='num'>570.3</td></tr>
+<tr class="fast"><td>Chat</td><td>message delete_bulk — 100</td><td class='num'>100</td><td class='num'>4.05</td><td class='num'>5.98</td><td class='num'>3</td><td class='num'>24,721.9</td></tr>
+<tr class="fast"><td>Chat</td><td>members search — big chat (5,000)</td><td class='num'>5,000</td><td class='num'>35.83</td><td class='num'>56.12</td><td class='num'>20</td><td class='num'>139,565.4</td></tr>
+<tr class="fast"><td>Chat</td><td>members check_membership — single</td><td class='num'>1</td><td class='num'>0.41</td><td class='num'>0.71</td><td class='num'>20</td><td class='num'>2,448.6</td></tr>
+<tr class="fast"><td>Chat</td><td>members search — all chats for user</td><td class='num'>100</td><td class='num'>1.15</td><td class='num'>1.41</td><td class='num'>20</td><td class='num'>87,047.4</td></tr>
+<tr class="fast"><td>Chat</td><td>chat search — all active</td><td class='num'>100</td><td class='num'>0.58</td><td class='num'>0.91</td><td class='num'>20</td><td class='num'>171,585.4</td></tr>
+<tr class="fast"><td>Chat</td><td>chat search — filter type=channel</td><td class='num'>10</td><td class='num'>0.41</td><td class='num'>0.67</td><td class='num'>20</td><td class='num'>24,218.9</td></tr>
+<tr class="group"><td colspan="7">Leads</td></tr>
+<tr class="fast"><td>Leads</td><td>create — single</td><td class='num'>1</td><td class='num'>1.26</td><td class='num'>1.92</td><td class='num'>20</td><td class='num'>793.3</td></tr>
+<tr class="fast"><td>Leads</td><td>create_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>309.99</td><td class='num'>314.82</td><td class='num'>3</td><td class='num'>16,129.4</td></tr>
+<tr class="fast"><td>Leads</td><td>get — single by id</td><td class='num'>1</td><td class='num'>0.47</td><td class='num'>0.67</td><td class='num'>20</td><td class='num'>2,116.4</td></tr>
+<tr class="fast"><td>Leads</td><td>search — limit 100</td><td class='num'>100</td><td class='num'>1.47</td><td class='num'>1.80</td><td class='num'>20</td><td class='num'>68,124.5</td></tr>
+<tr class="fast"><td>Leads</td><td>search — limit 10,000</td><td class='num'>10,000</td><td class='num'>19.46</td><td class='num'>45.21</td><td class='num'>20</td><td class='num'>513,938.0</td></tr>
+<tr class="fast"><td>Leads</td><td>search — filter type='opportunity'</td><td class='num'>1,000</td><td class='num'>2.23</td><td class='num'>3.34</td><td class='num'>20</td><td class='num'>448,812.9</td></tr>
+<tr class="fast"><td>Leads</td><td>search — filter user_id</td><td class='num'>200</td><td class='num'>0.93</td><td class='num'>1.10</td><td class='num'>20</td><td class='num'>214,615.3</td></tr>
+<tr class="fast"><td>Leads</td><td>search — multi-filter (type+active+user)</td><td class='num'>200</td><td class='num'>1.11</td><td class='num'>1.51</td><td class='num'>20</td><td class='num'>180,180.2</td></tr>
+<tr class="fast"><td>Leads</td><td>search — name ilike '500'</td><td class='num'>100</td><td class='num'>30.10</td><td class='num'>35.85</td><td class='num'>20</td><td class='num'>3,322.7</td></tr>
+<tr class="fast"><td>Leads</td><td>search_count — 100k table</td><td class='num'>100,000</td><td class='num'>7.17</td><td class='num'>7.87</td><td class='num'>20</td><td class='num'>13,941,945.7</td></tr>
+<tr class="fast"><td>Leads</td><td>update — single</td><td class='num'>1</td><td class='num'>0.79</td><td class='num'>0.96</td><td class='num'>20</td><td class='num'>1,259.4</td></tr>
+<tr class="fast"><td>Leads</td><td>update_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>95.07</td><td class='num'>97.23</td><td class='num'>3</td><td class='num'>52,591.7</td></tr>
+<tr class="fast"><td>Leads</td><td>delete — single</td><td class='num'>1</td><td class='num'>2.10</td><td class='num'>3.04</td><td class='num'>20</td><td class='num'>476.4</td></tr>
+<tr class="fast"><td>Leads</td><td>delete_bulk — 2,000</td><td class='num'>2,000</td><td class='num'>40.01</td><td class='num'>40.99</td><td class='num'>3</td><td class='num'>49,987.1</td></tr>
+<tr class="group"><td colspan="7">SessionCache</td></tr>
+<tr class="medium"><td>SessionCache</td><td>[SEQ] total — DB</td><td class='num'>1,000</td><td class='num'>1,435.77</td><td class='num'>1,435.77</td><td class='num'>1</td><td class='num'>696.5</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] total — Cache (x244.0)</td><td class='num'>1,000</td><td class='num'>5.88</td><td class='num'>5.88</td><td class='num'>1</td><td class='num'>169,943.7</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] avg per call — DB</td><td class='num'>1</td><td class='num'>1.44</td><td class='num'>1.44</td><td class='num'>1</td><td class='num'>696.5</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] avg per call — Cache (x244.0)</td><td class='num'>1</td><td class='num'>0.01</td><td class='num'>0.01</td><td class='num'>1</td><td class='num'>169,943.7</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] p50 — DB</td><td class='num'>1</td><td class='num'>1.39</td><td class='num'>1.39</td><td class='num'>1</td><td class='num'>721.6</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] p50 — Cache (x247.5)</td><td class='num'>1</td><td class='num'>0.01</td><td class='num'>0.01</td><td class='num'>1</td><td class='num'>178,573.8</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] p95 — DB</td><td class='num'>1</td><td class='num'>1.88</td><td class='num'>1.88</td><td class='num'>1</td><td class='num'>531.1</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] p95 — Cache (x229.6)</td><td class='num'>1</td><td class='num'>0.01</td><td class='num'>0.01</td><td class='num'>1</td><td class='num'>121,952.0</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] p99 — DB</td><td class='num'>1</td><td class='num'>2.06</td><td class='num'>2.06</td><td class='num'>1</td><td class='num'>485.5</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[SEQ] p99 — Cache (x239.5)</td><td class='num'>1</td><td class='num'>0.01</td><td class='num'>0.01</td><td class='num'>1</td><td class='num'>116,279.8</td></tr>
+<tr class="medium"><td>SessionCache</td><td>[CONCURRENT 100x10] total — DB</td><td class='num'>1,000</td><td class='num'>924.75</td><td class='num'>924.75</td><td class='num'>1</td><td class='num'>1,081.4</td></tr>
+<tr class="fast"><td>SessionCache</td><td>[CONCURRENT 100x10] total — Cache (x89.5)</td><td class='num'>1,000</td><td class='num'>10.33</td><td class='num'>10.33</td><td class='num'>1</td><td class='num'>96,833.5</td></tr>
+<tr class="group"><td colspan="7">Sessions</td></tr>
+<tr class="fast"><td>Sessions</td><td>create — single</td><td class='num'>1</td><td class='num'>0.64</td><td class='num'>1.01</td><td class='num'>20</td><td class='num'>1,555.7</td></tr>
+<tr class="medium"><td>Sessions</td><td>create_bulk — 10,000</td><td class='num'>10,000</td><td class='num'>569.78</td><td class='num'>574.00</td><td class='num'>3</td><td class='num'>17,550.7</td></tr>
+<tr class="fast"><td>Sessions</td><td>get — single by id</td><td class='num'>1</td><td class='num'>0.53</td><td class='num'>0.74</td><td class='num'>20</td><td class='num'>1,902.6</td></tr>
+<tr class="fast"><td>Sessions</td><td>search — filter user_id (indexed FK)</td><td class='num'>100</td><td class='num'>0.80</td><td class='num'>1.15</td><td class='num'>20</td><td class='num'>125,549.3</td></tr>
+<tr class="fast"><td>Sessions</td><td>search — filter active=true, limit 1000</td><td class='num'>1,000</td><td class='num'>7.41</td><td class='num'>8.43</td><td class='num'>20</td><td class='num'>135,012.9</td></tr>
+<tr class="fast"><td>Sessions</td><td>search — filter token=exact (indexed)</td><td class='num'>1</td><td class='num'>1.07</td><td class='num'>1.28</td><td class='num'>20</td><td class='num'>936.5</td></tr>
+<tr class="fast"><td>Sessions</td><td>session_check — raw SQL auth path</td><td class='num'>1</td><td class='num'>0.46</td><td class='num'>0.67</td><td class='num'>20</td><td class='num'>2,151.9</td></tr>
+<tr class="fast"><td>Sessions</td><td>search_count — 1M table</td><td class='num'>1,000,000</td><td class='num'>73.17</td><td class='num'>86.28</td><td class='num'>20</td><td class='num'>13,666,934.1</td></tr>
+<tr class="fast"><td>Sessions</td><td>update — single</td><td class='num'>1</td><td class='num'>0.69</td><td class='num'>0.89</td><td class='num'>20</td><td class='num'>1,456.2</td></tr>
+<tr class="fast"><td>Sessions</td><td>update_bulk — 10,000</td><td class='num'>10,000</td><td class='num'>293.86</td><td class='num'>1,043.11</td><td class='num'>3</td><td class='num'>34,029.4</td></tr>
+<tr class="fast"><td>Sessions</td><td>delete — single</td><td class='num'>1</td><td class='num'>0.60</td><td class='num'>0.70</td><td class='num'>20</td><td class='num'>1,678.7</td></tr>
+<tr class="fast"><td>Sessions</td><td>delete_bulk — 5,000</td><td class='num'>5,000</td><td class='num'>10.92</td><td class='num'>11.35</td><td class='num'>3</td><td class='num'>458,026.5</td></tr>
+<tr class="group"><td colspan="7">Users</td></tr>
+<tr class="fast"><td>Users</td><td>create — single</td><td class='num'>1</td><td class='num'>2.74</td><td class='num'>4.03</td><td class='num'>20</td><td class='num'>364.4</td></tr>
+<tr class="fast"><td>Users</td><td>create_bulk — 1 000</td><td class='num'>1,000</td><td class='num'>66.96</td><td class='num'>69.80</td><td class='num'>3</td><td class='num'>14,934.9</td></tr>
+<tr class="fast"><td>Users</td><td>get — single by id</td><td class='num'>1</td><td class='num'>0.51</td><td class='num'>0.61</td><td class='num'>20</td><td class='num'>1,952.0</td></tr>
+<tr class="fast"><td>Users</td><td>search — limit 1000</td><td class='num'>1,000</td><td class='num'>1.80</td><td class='num'>2.85</td><td class='num'>20</td><td class='num'>554,538.9</td></tr>
+<tr class="fast"><td>Users</td><td>search — limit 10000 (full)</td><td class='num'>10,000</td><td class='num'>14.63</td><td class='num'>41.02</td><td class='num'>20</td><td class='num'>683,405.5</td></tr>
+<tr class="fast"><td>Users</td><td>search — filter login ilike</td><td class='num'>1</td><td class='num'>9.54</td><td class='num'>10.79</td><td class='num'>20</td><td class='num'>104.8</td></tr>
+<tr class="fast"><td>Users</td><td>search — filter is_admin=false</td><td class='num'>10,000</td><td class='num'>14.73</td><td class='num'>45.41</td><td class='num'>20</td><td class='num'>678,785.2</td></tr>
+<tr class="fast"><td>Users</td><td>search_count — all</td><td class='num'>10,000</td><td class='num'>1.12</td><td class='num'>1.32</td><td class='num'>20</td><td class='num'>8,927,774.1</td></tr>
+<tr class="fast"><td>Users</td><td>update — single</td><td class='num'>1</td><td class='num'>0.60</td><td class='num'>0.76</td><td class='num'>20</td><td class='num'>1,658.4</td></tr>
+<tr class="fast"><td>Users</td><td>update_bulk — 5000</td><td class='num'>5,000</td><td class='num'>104.40</td><td class='num'>106.53</td><td class='num'>3</td><td class='num'>47,891.5</td></tr>
+<tr class="fast"><td>Users</td><td>delete — single</td><td class='num'>1</td><td class='num'>2.67</td><td class='num'>5.89</td><td class='num'>20</td><td class='num'>375.2</td></tr>
+<tr class="fast"><td>Users</td><td>delete_bulk — 1000</td><td class='num'>1,000</td><td class='num'>488.86</td><td class='num'>552.08</td><td class='num'>3</td><td class='num'>2,045.6</td></tr>
 
 </table>
-<p class="meta">Generated 2026-09-22 19:25:40</p>
+<p class="meta">Generated 2026-09-22 20:53:29. Каждая операция: 1 прогрев + 20 повторов
+(массовые — 3); p50/p95 по повторам, rows/sec по p50.</p>
 </body></html>

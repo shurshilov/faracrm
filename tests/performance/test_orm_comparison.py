@@ -6,6 +6,10 @@ Each ORM creates its own table, seeds 100k rows, runs identical benchmarks.
 dotorm тоже на своей bench-таблице (TestDotorm); dotorm_old — старый вариант
 на реальной activity, оставлен для истории (TestDotormOld).
 
+Каждая операция гоняется WARMUP + REPEAT (массовые — REPEAT_BULK) раз, см.
+conftest.perf_run: в таблицу идут p50/p95, а не один холодный замер.
+Объекты/строки для вставки и удаляемые id готовятся вне замера у всех ORM.
+
 Run:
     pip install sqlalchemy[asyncio] asyncpg tortoise-orm
     pytest tests/performance/test_orm_comparison.py -v -s --tb=short
@@ -16,9 +20,7 @@ Prerequisites:
 """
 
 import os
-import time
 from datetime import date, datetime, timezone
-from contextlib import asynccontextmanager
 
 import pytest
 import pytest_asyncio
@@ -51,17 +53,39 @@ SEARCH_LIMIT = 1_000
 # Result collector
 # ──────────────────────────────────────────────
 
-from tests.performance.conftest import PerfReport
+from tests.performance.conftest import (
+    REPEAT,
+    REPEAT_BULK,
+    RUNS,
+    RUNS_BULK,
+    PerfReport,
+    perf_run,
+)
 
 _report = PerfReport()
 
 
-@asynccontextmanager
-async def bench(orm_name: str, operation: str, rows: int):
-    start = time.perf_counter()
-    yield
-    elapsed = time.perf_counter() - start
-    _report.add(orm_name, operation, rows, elapsed)
+async def bench(
+    orm_name: str, operation: str, rows: int, fn, repeat: int = REPEAT
+):
+    """perf_run над отчётом сравнения: прогрев + повторы, p50/p95."""
+    await perf_run(_report, orm_name, operation, rows, fn, repeat)
+
+
+def single_delete_ids():
+    """id для одиночных delete: RUNS строк с конца таблицы, по одному на прогон."""
+    return iter(range(SEED_COUNT, SEED_COUNT - RUNS, -1))
+
+
+def bulk_delete_batches():
+    """Пачки по BULK_DELETE_N id ниже одиночных, по одной на прогон."""
+    top = SEED_COUNT - RUNS
+    return iter(
+        [
+            list(range(top - BULK_DELETE_N * (k + 1), top - BULK_DELETE_N * k))
+            for k in range(RUNS_BULK)
+        ]
+    )
 
 
 @pytest.fixture(scope="module")
@@ -171,8 +195,11 @@ class TestRawAsyncpg:
 
     async def test_create_single(self, raw_pool):
         async with raw_pool.acquire() as conn:
-            async with bench(self.ORM, "create — single", 1):
-                await conn.execute(
+            await bench(
+                self.ORM,
+                "create — single",
+                1,
+                lambda: conn.execute(
                     """INSERT INTO bench_activity_raw
                        (res_model,res_id,summary,date_deadline,user_id,state)
                        VALUES ($1,$2,$3,$4,$5,$6)""",
@@ -182,47 +209,58 @@ class TestRawAsyncpg:
                     datetime.now(timezone.utc),
                     1,
                     "planned",
-                )
+                ),
+            )
 
     async def test_create_bulk(self, raw_pool):
+        # Строки готовятся вне замера — как объекты у ORM.
+        rows = [
+            (
+                "lead",
+                (i % 1000) + 1,
+                f"Bulk {i}",
+                datetime.now(timezone.utc),
+                (i % 10000) + 1,
+                "planned",
+            )
+            for i in range(BULK_CREATE_N)
+        ]
         async with raw_pool.acquire() as conn:
-            async with bench(
-                self.ORM, f"create_bulk — {BULK_CREATE_N:,}", BULK_CREATE_N
-            ):
-                await conn.executemany(
+            await bench(
+                self.ORM,
+                f"create_bulk — {BULK_CREATE_N:,}",
+                BULK_CREATE_N,
+                lambda: conn.executemany(
                     """INSERT INTO bench_activity_raw
                        (res_model,res_id,summary,date_deadline,user_id,state)
                        VALUES ($1,$2,$3,$4,$5,$6)""",
-                    [
-                        (
-                            "lead",
-                            (i % 1000) + 1,
-                            f"Bulk {i}",
-                            datetime.now(timezone.utc),
-                            (i % 10000) + 1,
-                            "planned",
-                        )
-                        for i in range(BULK_CREATE_N)
-                    ],
-                )
+                    rows,
+                ),
+                repeat=REPEAT_BULK,
+            )
 
     async def test_get_single(self, raw_pool):
         async with raw_pool.acquire() as conn:
-            async with bench(self.ORM, "get — single by id", 1):
-                await conn.fetchrow(
+            await bench(
+                self.ORM,
+                "get — single by id",
+                1,
+                lambda: conn.fetchrow(
                     """SELECT a.*, u.id as uid, u.name as uname
                        FROM bench_activity_raw a
                        JOIN bench_user_raw u ON a.user_id = u.id
                        WHERE a.id = $1""",
                     1,
-                )
+                ),
+            )
 
     async def test_search_filter_user(self, raw_pool):
         async with raw_pool.acquire() as conn:
-            async with bench(
-                self.ORM, "search — filter user_id", SEARCH_LIMIT
-            ):
-                rows = await conn.fetch(
+            await bench(
+                self.ORM,
+                "search — filter user_id",
+                SEARCH_LIMIT,
+                lambda: conn.fetch(
                     """SELECT a.id, a.summary, a.state, a.date_deadline,
                               u.id as uid, u.name as uname
                        FROM bench_activity_raw a
@@ -230,14 +268,16 @@ class TestRawAsyncpg:
                        WHERE a.user_id=$1 LIMIT $2""",
                     1,
                     SEARCH_LIMIT,
-                )
+                ),
+            )
 
     async def test_search_filter_member_res_model(self, raw_pool):
         async with raw_pool.acquire() as conn:
-            async with bench(
-                self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
-            ):
-                rows = await conn.fetch(
+            await bench(
+                self.ORM,
+                "search — filter res_model='lead'",
+                SEARCH_LIMIT,
+                lambda: conn.fetch(
                     """SELECT a.id, a.summary, a.state, a.res_id,
                               u.id as uid, u.name as uname
                        FROM bench_activity_raw a
@@ -246,14 +286,16 @@ class TestRawAsyncpg:
                     "lead",
                     False,
                     SEARCH_LIMIT,
-                )
+                ),
+            )
 
     async def test_search_filter_state(self, raw_pool):
         async with raw_pool.acquire() as conn:
-            async with bench(
-                self.ORM, "search — state='overdue'", SEARCH_LIMIT
-            ):
-                rows = await conn.fetch(
+            await bench(
+                self.ORM,
+                "search — state='overdue'",
+                SEARCH_LIMIT,
+                lambda: conn.fetch(
                     """SELECT a.id, a.summary, a.user_id, a.date_deadline,
                               u.id as uid, u.name as uname
                        FROM bench_activity_raw a
@@ -262,55 +304,74 @@ class TestRawAsyncpg:
                     "overdue",
                     False,
                     SEARCH_LIMIT,
-                )
+                ),
+            )
 
     async def test_search_count(self, raw_pool):
         async with raw_pool.acquire() as conn:
-            async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
-                row = await conn.fetchval(
+            await bench(
+                self.ORM,
+                "search_count — 100k",
+                SEED_COUNT,
+                lambda: conn.fetchval(
                     "SELECT count(*) FROM bench_activity_raw"
-                )
+                ),
+            )
 
     async def test_update_single(self, raw_pool):
         async with raw_pool.acquire() as conn:
-            async with bench(self.ORM, "update — single", 1):
-                await conn.execute(
+            await bench(
+                self.ORM,
+                "update — single",
+                1,
+                lambda: conn.execute(
                     "UPDATE bench_activity_raw SET state=$1, done=$2 WHERE id=$3",
                     "done",
                     True,
                     1,
-                )
+                ),
+            )
 
     async def test_update_bulk(self, raw_pool):
         ids = list(range(1, BULK_UPDATE_N + 1))
         async with raw_pool.acquire() as conn:
-            async with bench(
-                self.ORM, f"update_bulk — {BULK_UPDATE_N:,}", BULK_UPDATE_N
-            ):
-                await conn.execute(
+            await bench(
+                self.ORM,
+                f"update_bulk — {BULK_UPDATE_N:,}",
+                BULK_UPDATE_N,
+                lambda: conn.execute(
                     "UPDATE bench_activity_raw SET notification_sent=$1 WHERE id = ANY($2::int[])",
                     True,
                     ids,
-                )
+                ),
+                repeat=REPEAT_BULK,
+            )
 
     async def test_delete_single(self, raw_pool):
+        ids = single_delete_ids()
         async with raw_pool.acquire() as conn:
-            async with bench(self.ORM, "delete — single", 1):
-                await conn.execute(
-                    "DELETE FROM bench_activity_raw WHERE id=$1",
-                    SEED_COUNT,
-                )
+            await bench(
+                self.ORM,
+                "delete — single",
+                1,
+                lambda: conn.execute(
+                    "DELETE FROM bench_activity_raw WHERE id=$1", next(ids)
+                ),
+            )
 
     async def test_delete_bulk(self, raw_pool):
-        ids = list(range(SEED_COUNT - BULK_DELETE_N, SEED_COUNT))
+        batches = bulk_delete_batches()
         async with raw_pool.acquire() as conn:
-            async with bench(
-                self.ORM, f"delete_bulk — {BULK_DELETE_N:,}", BULK_DELETE_N
-            ):
-                await conn.execute(
+            await bench(
+                self.ORM,
+                f"delete_bulk — {BULK_DELETE_N:,}",
+                BULK_DELETE_N,
+                lambda: conn.execute(
                     "DELETE FROM bench_activity_raw WHERE id = ANY($1::int[])",
-                    ids,
-                )
+                    next(batches),
+                ),
+                repeat=REPEAT_BULK,
+            )
 
 
 # ══════════════════════════════════════════════
@@ -450,7 +511,8 @@ class TestSQLAlchemy:
 
     async def test_create_single(self, sa_session):
         async with sa_session() as s:
-            async with bench(self.ORM, "create — single", 1):
+
+            async def run():
                 s.add(
                     SAActivity(
                         res_model="lead",
@@ -463,28 +525,44 @@ class TestSQLAlchemy:
                 )
                 await s.commit()
 
+            await bench(self.ORM, "create — single", 1, run)
+
     async def test_create_bulk(self, sa_session):
-        objects = [
-            SAActivity(
-                res_model="lead",
-                res_id=(i % 1000) + 1,
-                summary=f"Bulk {i}",
-                date_deadline=datetime.now(timezone.utc),
-                user_id=(i % 10000) + 1,
-                state="planned",
-            )
-            for i in range(BULK_CREATE_N)
-        ]
+        # Свои объекты на каждый прогон: сохранённые повторно не вставить.
+        batches = iter(
+            [
+                [
+                    SAActivity(
+                        res_model="lead",
+                        res_id=(i % 1000) + 1,
+                        summary=f"Bulk {i}",
+                        date_deadline=datetime.now(timezone.utc),
+                        user_id=(i % 10000) + 1,
+                        state="planned",
+                    )
+                    for i in range(BULK_CREATE_N)
+                ]
+                for _ in range(RUNS_BULK)
+            ]
+        )
         async with sa_session() as s:
-            async with bench(
-                self.ORM, f"create_bulk — {BULK_CREATE_N:,}", BULK_CREATE_N
-            ):
-                s.add_all(objects)
+
+            async def run():
+                s.add_all(next(batches))
                 await s.commit()
+
+            await bench(
+                self.ORM,
+                f"create_bulk — {BULK_CREATE_N:,}",
+                BULK_CREATE_N,
+                run,
+                repeat=REPEAT_BULK,
+            )
 
     async def test_get_single(self, sa_session):
         async with sa_session() as s:
-            async with bench(self.ORM, "get — single by id", 1):
+
+            async def run():
                 result = await s.execute(
                     select(SAActivity)
                     .options(selectinload(SAActivity.user))
@@ -492,11 +570,12 @@ class TestSQLAlchemy:
                 )
                 result.scalar_one()
 
+            await bench(self.ORM, "get — single by id", 1, run)
+
     async def test_search_filter_user(self, sa_session):
         async with sa_session() as s:
-            async with bench(
-                self.ORM, "search — filter user_id", SEARCH_LIMIT
-            ):
+
+            async def run():
                 result = await s.execute(
                     select(SAActivity)
                     .options(selectinload(SAActivity.user))
@@ -505,11 +584,12 @@ class TestSQLAlchemy:
                 )
                 result.scalars().all()
 
+            await bench(self.ORM, "search — filter user_id", SEARCH_LIMIT, run)
+
     async def test_search_filter_member_res_model(self, sa_session):
         async with sa_session() as s:
-            async with bench(
-                self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
-            ):
+
+            async def run():
                 result = await s.execute(
                     select(SAActivity)
                     .options(selectinload(SAActivity.user))
@@ -521,11 +601,14 @@ class TestSQLAlchemy:
                 )
                 result.scalars().all()
 
+            await bench(
+                self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT, run
+            )
+
     async def test_search_filter_state(self, sa_session):
         async with sa_session() as s:
-            async with bench(
-                self.ORM, "search — state='overdue'", SEARCH_LIMIT
-            ):
+
+            async def run():
                 result = await s.execute(
                     select(SAActivity)
                     .options(selectinload(SAActivity.user))
@@ -536,28 +619,39 @@ class TestSQLAlchemy:
                 )
                 result.scalars().all()
 
+            await bench(
+                self.ORM, "search — state='overdue'", SEARCH_LIMIT, run
+            )
+
     async def test_search_count(self, sa_session):
         async with sa_session() as s:
-            async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
+
+            async def run():
                 result = await s.execute(
                     select(func.count()).select_from(SAActivity)
                 )
                 result.scalar()
 
+            await bench(self.ORM, "search_count — 100k", SEED_COUNT, run)
+
     async def test_update_single(self, sa_session):
         async with sa_session() as s:
             obj = await s.get(SAActivity, 1)
-            async with bench(self.ORM, "update — single", 1):
-                obj.state = "done"
-                obj.done = True
+
+            async def run():
+                # Значения чередуются: одинаковые SA не считает изменением
+                # и повтор был бы пустым commit без UPDATE.
+                obj.done = not obj.done
+                obj.state = "done" if obj.done else "planned"
                 await s.commit()
+
+            await bench(self.ORM, "update — single", 1, run)
 
     async def test_update_bulk(self, sa_session):
         ids = list(range(1, BULK_UPDATE_N + 1))
         async with sa_session() as s:
-            async with bench(
-                self.ORM, f"update_bulk — {BULK_UPDATE_N:,}", BULK_UPDATE_N
-            ):
+
+            async def run():
                 await s.execute(
                     sa_update(SAActivity)
                     .where(SAActivity.id.in_(ids))
@@ -565,24 +659,45 @@ class TestSQLAlchemy:
                 )
                 await s.commit()
 
+            await bench(
+                self.ORM,
+                f"update_bulk — {BULK_UPDATE_N:,}",
+                BULK_UPDATE_N,
+                run,
+                repeat=REPEAT_BULK,
+            )
+
     async def test_delete_single(self, sa_session):
         async with sa_session() as s:
-            obj = await s.get(SAActivity, SEED_COUNT)
-            if obj:
-                async with bench(self.ORM, "delete — single", 1):
-                    await s.delete(obj)
-                    await s.commit()
+            objs = iter(
+                [await s.get(SAActivity, i) for i in single_delete_ids()]
+            )
+
+            async def run():
+                await s.delete(next(objs))
+                await s.commit()
+
+            await bench(self.ORM, "delete — single", 1, run)
 
     async def test_delete_bulk(self, sa_session):
-        ids = list(range(SEED_COUNT - BULK_DELETE_N, SEED_COUNT))
+        batches = bulk_delete_batches()
         async with sa_session() as s:
-            async with bench(
-                self.ORM, f"delete_bulk — {BULK_DELETE_N:,}", BULK_DELETE_N
-            ):
+
+            async def run():
                 await s.execute(
-                    sa_delete(SAActivity).where(SAActivity.id.in_(ids))
+                    sa_delete(SAActivity).where(
+                        SAActivity.id.in_(next(batches))
+                    )
                 )
                 await s.commit()
+
+            await bench(
+                self.ORM,
+                f"delete_bulk — {BULK_DELETE_N:,}",
+                BULK_DELETE_N,
+                run,
+                repeat=REPEAT_BULK,
+            )
 
 
 # ══════════════════════════════════════════════
@@ -703,97 +818,135 @@ class TestTortoise:
     ORM = "Tortoise"
 
     async def test_create_single(self, tortoise_db):
-        async with bench(self.ORM, "create — single", 1):
-            await TortoiseActivity.create(
+        await bench(
+            self.ORM,
+            "create — single",
+            1,
+            lambda: TortoiseActivity.create(
                 res_model="lead",
                 res_id=1,
                 summary="Bench single",
                 date_deadline=datetime.now(timezone.utc),
                 user_id=1,
                 state="planned",
-            )
+            ),
+        )
 
     async def test_create_bulk(self, tortoise_db):
-        objects = [
-            TortoiseActivity(
-                res_model="lead",
-                res_id=(i % 1000) + 1,
-                summary=f"Bulk {i}",
-                date_deadline=datetime.now(timezone.utc),
-                user_id=(i % 10000) + 1,
-                state="planned",
-            )
-            for i in range(BULK_CREATE_N)
-        ]
-        async with bench(
-            self.ORM, f"create_bulk — {BULK_CREATE_N:,}", BULK_CREATE_N
-        ):
-            await TortoiseActivity.bulk_create(objects, batch_size=1000)
+        batches = iter(
+            [
+                [
+                    TortoiseActivity(
+                        res_model="lead",
+                        res_id=(i % 1000) + 1,
+                        summary=f"Bulk {i}",
+                        date_deadline=datetime.now(timezone.utc),
+                        user_id=(i % 10000) + 1,
+                        state="planned",
+                    )
+                    for i in range(BULK_CREATE_N)
+                ]
+                for _ in range(RUNS_BULK)
+            ]
+        )
+        await bench(
+            self.ORM,
+            f"create_bulk — {BULK_CREATE_N:,}",
+            BULK_CREATE_N,
+            lambda: TortoiseActivity.bulk_create(
+                next(batches), batch_size=1000
+            ),
+            repeat=REPEAT_BULK,
+        )
 
     async def test_get_single(self, tortoise_db):
-        async with bench(self.ORM, "get — single by id", 1):
-            await TortoiseActivity.get(id=1).select_related("user")
+        await bench(
+            self.ORM,
+            "get — single by id",
+            1,
+            lambda: TortoiseActivity.get(id=1).select_related("user"),
+        )
 
     async def test_search_filter_user(self, tortoise_db):
-        async with bench(self.ORM, "search — filter user_id", SEARCH_LIMIT):
-            rows = (
-                await TortoiseActivity.filter(user_id=1)
-                .select_related("user")
-                .limit(SEARCH_LIMIT)
-                .all()
-            )
+        await bench(
+            self.ORM,
+            "search — filter user_id",
+            SEARCH_LIMIT,
+            lambda: TortoiseActivity.filter(user_id=1)
+            .select_related("user")
+            .limit(SEARCH_LIMIT)
+            .all(),
+        )
 
     async def test_search_filter_member_res_model(self, tortoise_db):
-        async with bench(
-            self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
-        ):
-            rows = await (
-                TortoiseActivity.filter(res_model="lead", done=False)
-                .select_related("user")
-                .limit(SEARCH_LIMIT)
-                .all()
-            )
+        await bench(
+            self.ORM,
+            "search — filter res_model='lead'",
+            SEARCH_LIMIT,
+            lambda: TortoiseActivity.filter(res_model="lead", done=False)
+            .select_related("user")
+            .limit(SEARCH_LIMIT)
+            .all(),
+        )
 
     async def test_search_filter_state(self, tortoise_db):
-        async with bench(self.ORM, "search — state='overdue'", SEARCH_LIMIT):
-            rows = await (
-                TortoiseActivity.filter(state="overdue", done=False)
-                .select_related("user")
-                .limit(SEARCH_LIMIT)
-                .all()
-            )
+        await bench(
+            self.ORM,
+            "search — state='overdue'",
+            SEARCH_LIMIT,
+            lambda: TortoiseActivity.filter(state="overdue", done=False)
+            .select_related("user")
+            .limit(SEARCH_LIMIT)
+            .all(),
+        )
 
     async def test_search_count(self, tortoise_db):
-        async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
-            await TortoiseActivity.all().count()
+        await bench(
+            self.ORM,
+            "search_count — 100k",
+            SEED_COUNT,
+            lambda: TortoiseActivity.all().count(),
+        )
 
     async def test_update_single(self, tortoise_db):
         obj = await TortoiseActivity.get(id=1)
-        async with bench(self.ORM, "update — single", 1):
+
+        async def run():
             obj.state = "done"
             obj.done = True
             await obj.save()
 
+        await bench(self.ORM, "update — single", 1, run)
+
     async def test_update_bulk(self, tortoise_db):
         ids = list(range(1, BULK_UPDATE_N + 1))
-        async with bench(
-            self.ORM, f"update_bulk — {BULK_UPDATE_N:,}", BULK_UPDATE_N
-        ):
-            await TortoiseActivity.filter(id__in=ids).update(
+        await bench(
+            self.ORM,
+            f"update_bulk — {BULK_UPDATE_N:,}",
+            BULK_UPDATE_N,
+            lambda: TortoiseActivity.filter(id__in=ids).update(
                 notification_sent=True
-            )
+            ),
+            repeat=REPEAT_BULK,
+        )
 
     async def test_delete_single(self, tortoise_db):
-        obj = await TortoiseActivity.get(id=SEED_COUNT)
-        async with bench(self.ORM, "delete — single", 1):
-            await obj.delete()
+        objs = iter(
+            [await TortoiseActivity.get(id=i) for i in single_delete_ids()]
+        )
+        await bench(
+            self.ORM, "delete — single", 1, lambda: next(objs).delete()
+        )
 
     async def test_delete_bulk(self, tortoise_db):
-        ids = list(range(SEED_COUNT - BULK_DELETE_N, SEED_COUNT))
-        async with bench(
-            self.ORM, f"delete_bulk — {BULK_DELETE_N:,}", BULK_DELETE_N
-        ):
-            await TortoiseActivity.filter(id__in=ids).delete()
+        batches = bulk_delete_batches()
+        await bench(
+            self.ORM,
+            f"delete_bulk — {BULK_DELETE_N:,}",
+            BULK_DELETE_N,
+            lambda: TortoiseActivity.filter(id__in=next(batches)).delete(),
+            repeat=REPEAT_BULK,
+        )
 
 
 # ══════════════════════════════════════════════
@@ -921,8 +1074,11 @@ class TestDotorm:
     ORM = "dotorm"
 
     async def test_create_single(self, dotorm_bench_ready, comparison_report):
-        async with bench(self.ORM, "create — single", 1):
-            await DotActivity.create(
+        await bench(
+            self.ORM,
+            "create — single",
+            1,
+            lambda: DotActivity.create(
                 DotActivity(
                     res_model="lead",
                     res_id=1,
@@ -931,97 +1087,135 @@ class TestDotorm:
                     user_id=1,
                     state="planned",
                 )
-            )
+            ),
+        )
 
     async def test_create_bulk(self, dotorm_bench_ready, comparison_report):
-        payload = [
-            DotActivity(
-                res_model="lead",
-                res_id=(i % 1000) + 1,
-                summary=f"Bulk {i}",
-                date_deadline=datetime.now(timezone.utc).date(),
-                user_id=(i % 10000) + 1,
-                state="planned",
-            )
-            for i in range(BULK_CREATE_N)
-        ]
-        async with bench(
-            self.ORM, f"create_bulk — {BULK_CREATE_N:,}", BULK_CREATE_N
-        ):
-            await DotActivity.create_bulk(payload)
+        batches = iter(
+            [
+                [
+                    DotActivity(
+                        res_model="lead",
+                        res_id=(i % 1000) + 1,
+                        summary=f"Bulk {i}",
+                        date_deadline=datetime.now(timezone.utc).date(),
+                        user_id=(i % 10000) + 1,
+                        state="planned",
+                    )
+                    for i in range(BULK_CREATE_N)
+                ]
+                for _ in range(RUNS_BULK)
+            ]
+        )
+        await bench(
+            self.ORM,
+            f"create_bulk — {BULK_CREATE_N:,}",
+            BULK_CREATE_N,
+            lambda: DotActivity.create_bulk(next(batches)),
+            repeat=REPEAT_BULK,
+        )
 
     async def test_get_single(self, dotorm_bench_ready, comparison_report):
-        async with bench(self.ORM, "get — single by id", 1):
-            await DotActivity.get(
+        await bench(
+            self.ORM,
+            "get — single by id",
+            1,
+            lambda: DotActivity.get(
                 1,
                 fields=DotActivity.get_store_fields(),
                 fields_nested=USER_NESTED,
-            )
+            ),
+        )
 
     async def test_search_filter_user(
         self, dotorm_bench_ready, comparison_report
     ):
-        async with bench(self.ORM, "search — filter user_id", SEARCH_LIMIT):
-            await DotActivity.search(
+        await bench(
+            self.ORM,
+            "search — filter user_id",
+            SEARCH_LIMIT,
+            lambda: DotActivity.search(
                 fields=["id", "summary", "state", "date_deadline", "user_id"],
                 fields_nested=USER_NESTED,
                 filter=[("user_id", "=", 1)],
                 limit=SEARCH_LIMIT,
-            )
+            ),
+        )
 
     async def test_search_filter_member_res_model(
         self, dotorm_bench_ready, comparison_report
     ):
-        async with bench(
-            self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
-        ):
-            await DotActivity.search(
+        await bench(
+            self.ORM,
+            "search — filter res_model='lead'",
+            SEARCH_LIMIT,
+            lambda: DotActivity.search(
                 fields=["id", "summary", "state", "res_id", "user_id"],
                 fields_nested=USER_NESTED,
                 filter=[("res_model", "=", "lead"), ("done", "=", False)],
                 limit=SEARCH_LIMIT,
-            )
+            ),
+        )
 
     async def test_search_filter_state(
         self, dotorm_bench_ready, comparison_report
     ):
-        async with bench(self.ORM, "search — state='overdue'", SEARCH_LIMIT):
-            await DotActivity.search(
+        await bench(
+            self.ORM,
+            "search — state='overdue'",
+            SEARCH_LIMIT,
+            lambda: DotActivity.search(
                 fields=["id", "summary", "user_id", "date_deadline"],
                 fields_nested=USER_NESTED,
                 filter=[("state", "=", "overdue"), ("done", "=", False)],
                 limit=SEARCH_LIMIT,
-            )
+            ),
+        )
 
     async def test_search_count(self, dotorm_bench_ready, comparison_report):
-        async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
-            await DotActivity.search_count()
+        await bench(
+            self.ORM,
+            "search_count — 100k",
+            SEED_COUNT,
+            lambda: DotActivity.search_count(),
+        )
 
     async def test_update_single(self, dotorm_bench_ready, comparison_report):
         obj = await DotActivity.get(1)
-        async with bench(self.ORM, "update — single", 1):
-            await obj.update(DotActivity(state="done", done=True))
+        await bench(
+            self.ORM,
+            "update — single",
+            1,
+            lambda: obj.update(DotActivity(state="done", done=True)),
+        )
 
     async def test_update_bulk(self, dotorm_bench_ready, comparison_report):
         ids = list(range(1, BULK_UPDATE_N + 1))
-        async with bench(
-            self.ORM, f"update_bulk — {BULK_UPDATE_N:,}", BULK_UPDATE_N
-        ):
-            await DotActivity.update_bulk(
+        await bench(
+            self.ORM,
+            f"update_bulk — {BULK_UPDATE_N:,}",
+            BULK_UPDATE_N,
+            lambda: DotActivity.update_bulk(
                 ids, DotActivity(notification_sent=True)
-            )
+            ),
+            repeat=REPEAT_BULK,
+        )
 
     async def test_delete_single(self, dotorm_bench_ready, comparison_report):
-        obj = await DotActivity.get(SEED_COUNT)
-        async with bench(self.ORM, "delete — single", 1):
-            await obj.delete()
+        objs = iter([await DotActivity.get(i) for i in single_delete_ids()])
+        await bench(
+            self.ORM, "delete — single", 1, lambda: next(objs).delete()
+        )
 
     async def test_delete_bulk(self, dotorm_bench_ready, comparison_report):
-        ids = list(range(SEED_COUNT - BULK_DELETE_N, SEED_COUNT))
-        async with bench(
-            self.ORM, f"delete_bulk — {BULK_DELETE_N:,}", BULK_DELETE_N
-        ):
-            await DotActivity.delete_bulk(ids)
+        batches = bulk_delete_batches()
+        await bench(
+            self.ORM,
+            f"delete_bulk — {BULK_DELETE_N:,}",
+            BULK_DELETE_N,
+            lambda: DotActivity.delete_bulk(next(batches)),
+            repeat=REPEAT_BULK,
+        )
 
 
 # ══════════════════════════════════════════════
@@ -1113,8 +1307,11 @@ class TestDotormOld:
         types = await ActivityType.search(fields=["id"], limit=1)
 
         async with ContainerTransaction(db_pool) as session:
-            async with bench(self.ORM, "create — single", 1):
-                await Activity.create(
+            await bench(
+                self.ORM,
+                "create — single",
+                1,
+                lambda: Activity.create(
                     Activity(
                         res_model="lead",
                         res_id=1,
@@ -1124,7 +1321,8 @@ class TestDotormOld:
                         activity_type_id=types[0].id,
                         state="planned",
                     )
-                )
+                ),
+            )
 
     async def test_create_bulk(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1138,24 +1336,32 @@ class TestDotormOld:
         types = await ActivityType.search(fields=["id"], limit=1)
         type_id = types[0].id
 
-        payload = [
-            Activity(
-                res_model="lead",
-                res_id=(i % 1000) + 1,
-                summary=f"Bulk {i}",
-                date_deadline=datetime.now(timezone.utc),
-                user_id=(i % 10000) + 1,
-                activity_type_id=type_id,
-                state="planned",
-            )
-            for i in range(BULK_CREATE_N)
-        ]
+        batches = iter(
+            [
+                [
+                    Activity(
+                        res_model="lead",
+                        res_id=(i % 1000) + 1,
+                        summary=f"Bulk {i}",
+                        date_deadline=datetime.now(timezone.utc),
+                        user_id=(i % 10000) + 1,
+                        activity_type_id=type_id,
+                        state="planned",
+                    )
+                    for i in range(BULK_CREATE_N)
+                ]
+                for _ in range(RUNS_BULK)
+            ]
+        )
 
         async with ContainerTransaction(db_pool) as session:
-            async with bench(
-                self.ORM, f"create_bulk — {BULK_CREATE_N:,}", BULK_CREATE_N
-            ):
-                await Activity.create_bulk(payload)
+            await bench(
+                self.ORM,
+                f"create_bulk — {BULK_CREATE_N:,}",
+                BULK_CREATE_N,
+                lambda: Activity.create_bulk(next(batches)),
+                repeat=REPEAT_BULK,
+            )
 
     async def test_get_single(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1166,12 +1372,16 @@ class TestDotormOld:
         )
 
         async with ContainerTransaction(db_pool) as session:
-            async with bench(self.ORM, "get — single by id", 1):
-                await Activity.get(
+            await bench(
+                self.ORM,
+                "get — single by id",
+                1,
+                lambda: Activity.get(
                     1,
                     fields=Activity.get_store_fields(),
                     fields_nested=USER_NESTED,
-                )
+                ),
+            )
 
     async def test_search_filter_user(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1182,10 +1392,11 @@ class TestDotormOld:
         )
 
         async with ContainerTransaction(db_pool) as session:
-            async with bench(
-                self.ORM, "search — filter user_id", SEARCH_LIMIT
-            ):
-                await Activity.search(
+            await bench(
+                self.ORM,
+                "search — filter user_id",
+                SEARCH_LIMIT,
+                lambda: Activity.search(
                     fields=[
                         "id",
                         "summary",
@@ -1196,7 +1407,8 @@ class TestDotormOld:
                     fields_nested=USER_NESTED,
                     filter=[("user_id", "=", 1)],
                     limit=SEARCH_LIMIT,
-                )
+                ),
+            )
 
     async def test_search_filter_member_res_model(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1207,15 +1419,17 @@ class TestDotormOld:
         )
 
         async with ContainerTransaction(db_pool) as session:
-            async with bench(
-                self.ORM, "search — filter res_model='lead'", SEARCH_LIMIT
-            ):
-                await Activity.search(
+            await bench(
+                self.ORM,
+                "search — filter res_model='lead'",
+                SEARCH_LIMIT,
+                lambda: Activity.search(
                     fields=["id", "summary", "state", "res_id", "user_id"],
                     fields_nested=USER_NESTED,
                     filter=[("res_model", "=", "lead"), ("done", "=", False)],
                     limit=SEARCH_LIMIT,
-                )
+                ),
+            )
 
     async def test_search_filter_state(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1226,24 +1440,29 @@ class TestDotormOld:
         )
 
         async with ContainerTransaction(db_pool) as session:
-            async with bench(
-                self.ORM, "search — state='overdue'", SEARCH_LIMIT
-            ):
-                await Activity.search(
+            await bench(
+                self.ORM,
+                "search — state='overdue'",
+                SEARCH_LIMIT,
+                lambda: Activity.search(
                     fields=["id", "summary", "user_id", "date_deadline"],
                     fields_nested=USER_NESTED,
                     filter=[("state", "=", "overdue"), ("done", "=", False)],
                     limit=SEARCH_LIMIT,
-                )
+                ),
+            )
 
     async def test_search_count(
         self, db_pool, dotorm_old_ready, comparison_report
     ):
         from backend.base.crm.activity.models.activity import Activity
 
-        # async with ContainerTransaction(db_pool) as session:
-        async with bench(self.ORM, "search_count — 100k", SEED_COUNT):
-            await Activity.search_count()
+        await bench(
+            self.ORM,
+            "search_count — 100k",
+            SEED_COUNT,
+            lambda: Activity.search_count(),
+        )
 
     async def test_update_single(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1255,8 +1474,12 @@ class TestDotormOld:
 
         obj = await Activity.get(1)
         async with ContainerTransaction(db_pool) as session:
-            async with bench(self.ORM, "update — single", 1):
-                await obj.update(Activity(state="done", done=True))
+            await bench(
+                self.ORM,
+                "update — single",
+                1,
+                lambda: obj.update(Activity(state="done", done=True)),
+            )
 
     async def test_update_bulk(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1268,12 +1491,15 @@ class TestDotormOld:
 
         ids = list(range(1, BULK_UPDATE_N + 1))
         async with ContainerTransaction(db_pool) as session:
-            async with bench(
-                self.ORM, f"update_bulk — {BULK_UPDATE_N:,}", BULK_UPDATE_N
-            ):
-                await Activity.update_bulk(
+            await bench(
+                self.ORM,
+                f"update_bulk — {BULK_UPDATE_N:,}",
+                BULK_UPDATE_N,
+                lambda: Activity.update_bulk(
                     ids, Activity(notification_sent=True)
-                )
+                ),
+                repeat=REPEAT_BULK,
+            )
 
     async def test_delete_single(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1283,10 +1509,11 @@ class TestDotormOld:
             ContainerTransaction,
         )
 
-        obj = await Activity.get(SEED_COUNT)
+        objs = iter([await Activity.get(i) for i in single_delete_ids()])
         async with ContainerTransaction(db_pool) as session:
-            async with bench(self.ORM, "delete — single", 1):
-                await obj.delete()
+            await bench(
+                self.ORM, "delete — single", 1, lambda: next(objs).delete()
+            )
 
     async def test_delete_bulk(
         self, db_pool, dotorm_old_ready, comparison_report
@@ -1296,9 +1523,12 @@ class TestDotormOld:
             ContainerTransaction,
         )
 
-        ids = list(range(SEED_COUNT - BULK_DELETE_N, SEED_COUNT))
+        batches = bulk_delete_batches()
         async with ContainerTransaction(db_pool) as session:
-            async with bench(
-                self.ORM, f"delete_bulk — {BULK_DELETE_N:,}", BULK_DELETE_N
-            ):
-                await Activity.delete_bulk(ids)
+            await bench(
+                self.ORM,
+                f"delete_bulk — {BULK_DELETE_N:,}",
+                BULK_DELETE_N,
+                lambda: Activity.delete_bulk(next(batches)),
+                repeat=REPEAT_BULK,
+            )

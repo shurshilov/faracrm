@@ -30,15 +30,18 @@ class CompanyContractMixin(_Base):
     RequisitesMixin (requisites_ext.py).
     """
 
-    # Ответственные лица
+    # Ответственные лица (index: FK на users без индекса = seq scan при
+    # удалении пользователя)
     chief_id: "User" = Many2one(
         relation_table=lambda: env.models.user,
         string="Руководитель",
         help="Генеральный директор / ИП",
+        index=True,
     )
     accountant_id: "User" = Many2one(
         relation_table=lambda: env.models.user,
         string="Главный бухгалтер",
+        index=True,
     )
 
     # Печать

@@ -237,6 +237,14 @@ class DDLMixin(_Base):
                         f'CREATE UNIQUE INDEX IF NOT EXISTS "uq_{m2m}_{c1}_{c2}" '
                         f'ON "{m2m}" ("{c1}", "{c2}")'
                     )
+                    # Индекс по column2 (сторона владельца): UNIQUE (c1, c2)
+                    # ведёт только по c1. По c2 идут догрузка связей
+                    # владельца (WHERE c2 = ANY(...)) и проверка FK при его
+                    # удалении — без индекса это seq scan по таблице связей.
+                    await session.execute(
+                        f'CREATE INDEX IF NOT EXISTS "idx_{m2m}_{c2}" '
+                        f'ON "{m2m}" ("{c2}")'
+                    )
 
         # Составные индексы из __indexes__ класса модели.
         # Валидация делается здесь (а не при импорте), чтобы получить

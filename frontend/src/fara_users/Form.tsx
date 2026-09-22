@@ -130,6 +130,8 @@ export default function ViewFormUsers(props: ViewFormProps) {
           <FormRow cols={2}>
             <FormCol gap="sm">
               <Field name="login" label={t('fields.login')} />
+              {/* Архив вместо удаления: неактивный не может войти */}
+              <Field name="active" label={t('fields.active')} />
               <Field
                 name="is_admin"
                 label={t('fields.is_admin', 'Суперпользователь')}

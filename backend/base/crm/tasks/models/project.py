@@ -59,6 +59,7 @@ class Project(AuditMixin, DotModel):
         lambda: env.models.user,
         string="Project Manager",
         ondelete="restrict",
+        index=True,
         default=_default_current_user,
     )
 

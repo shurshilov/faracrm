@@ -42,6 +42,7 @@ class SavedFilter(DotModel):
     user_id: "User | None" = Many2one(
         relation_table=User,
         default=_default_current_user,
+        index=True,
     )
 
     # Глобальный фильтр (доступен всем)

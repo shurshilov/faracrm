@@ -2,7 +2,7 @@
 Performance test configuration.
 
 Provides:
-- Timing helpers (perf_timer context manager)
+- Timing helper perf_run (прогрев + повторы, p50/p95)
 - Bulk data seeding fixtures (users, sessions, messages, etc.)
 - HTML/console report generation at session end
 
@@ -11,12 +11,12 @@ Run:
     pytest tests/performance/ -v -m performance -k "users"   # one module
 """
 
+import math
 import os
 import time
 import json
 from datetime import datetime
 from dataclasses import dataclass
-from contextlib import asynccontextmanager
 
 import pytest
 import pytest_asyncio
@@ -50,8 +50,15 @@ class PerfResult:
     module: str
     operation: str
     rows: int
-    elapsed_ms: float
-    rps: float  # rows per second (rows / elapsed)
+    elapsed_ms: float  # p50 по повторам (один замер — он и есть)
+    p95_ms: float
+    runs: int  # число замеров, без прогрева
+    rps: float  # rows per second (rows / p50)
+
+
+def _percentile(samples: list[float], q: float) -> float:
+    """Ближайший ранг по отсортированному списку: q=0.5 — медиана."""
+    return samples[max(0, math.ceil(q * len(samples)) - 1)]
 
 
 class PerfReport:
@@ -60,14 +67,26 @@ class PerfReport:
     def __init__(self):
         self.results: list[PerfResult] = []
 
-    def add(self, module: str, operation: str, rows: int, elapsed: float):
-        rps = rows / elapsed if elapsed > 0 else float("inf")
+    def add(
+        self,
+        module: str,
+        operation: str,
+        rows: int,
+        times: "float | list[float]",
+    ):
+        """times — секунды: один замер или список повторов (perf_run)."""
+        samples = sorted(times) if isinstance(times, list) else [times]
+        p50 = _percentile(samples, 0.5)
+        p95 = _percentile(samples, 0.95)
+        rps = rows / p50 if p50 > 0 else float("inf")
         self.results.append(
             PerfResult(
                 module=module,
                 operation=operation,
                 rows=rows,
-                elapsed_ms=round(elapsed * 1000, 2),
+                elapsed_ms=round(p50 * 1000, 2),
+                p95_ms=round(p95 * 1000, 2),
+                runs=len(samples),
                 rps=round(rps, 1),
             )
         )
@@ -79,26 +98,31 @@ class PerfReport:
             return
 
         print("\n")
-        print("=" * 100)
-        print(f"{'PERFORMANCE REPORT':^100}")
-        print("=" * 100)
+        print("=" * 112)
+        print(f"{'PERFORMANCE REPORT':^112}")
+        print("=" * 112)
 
-        header = f"{'Module':<18} {'Operation':<35} {'Rows':>10} {'Time ms':>12} {'rows/sec':>12}"
+        header = (
+            f"{'Module':<14} {'Operation':<38} {'Rows':>10} "
+            f"{'p50 ms':>10} {'p95 ms':>10} {'runs':>5} {'rows/sec':>12}"
+        )
         print(header)
-        print("-" * 100)
+        print("-" * 112)
 
         current_module = None
         for r in self.results:
             if r.module != current_module:
                 if current_module is not None:
-                    print("-" * 100)
+                    print("-" * 112)
                 current_module = r.module
             rps_str = f"{r.rps:,.1f}" if r.rps != float("inf") else "inf"
             print(
-                f"{r.module:<18} {r.operation:<35} {r.rows:>10,} {r.elapsed_ms:>11,.2f} {rps_str:>12}"
+                f"{r.module:<14} {r.operation:<38} {r.rows:>10,} "
+                f"{r.elapsed_ms:>10,.2f} {r.p95_ms:>10,.2f} {r.runs:>5} "
+                f"{rps_str:>12}"
             )
 
-        print("=" * 100)
+        print("=" * 112)
 
     # ── html ──
 
@@ -112,7 +136,7 @@ class PerfReport:
             if r.module != current_module:
                 current_module = r.module
                 rows_html += (
-                    f'<tr class="group"><td colspan="5">{r.module}</td></tr>\n'
+                    f'<tr class="group"><td colspan="7">{r.module}</td></tr>\n'
                 )
             rps_str = f"{r.rps:,.1f}" if r.rps != float("inf") else "∞"
 
@@ -130,6 +154,8 @@ class PerfReport:
                 f"<td>{r.operation}</td>"
                 f"<td class='num'>{r.rows:,}</td>"
                 f"<td class='num'>{r.elapsed_ms:,.2f}</td>"
+                f"<td class='num'>{r.p95_ms:,.2f}</td>"
+                f"<td class='num'>{r.runs}</td>"
                 f"<td class='num'>{rps_str}</td>"
                 f"</tr>\n"
             )
@@ -154,10 +180,11 @@ tr:hover {{ background:#f8f9fa; }}
 </style></head><body>
 <h1>🚀 FARA CRM — Performance Report</h1>
 <table>
-<tr><th>Module</th><th>Operation</th><th>Rows</th><th>Time (ms)</th><th>rows/sec</th></tr>
+<tr><th>Module</th><th>Operation</th><th>Rows</th><th>p50 (ms)</th><th>p95 (ms)</th><th>runs</th><th>rows/sec</th></tr>
 {rows_html}
 </table>
-<p class="meta">Generated {ts}</p>
+<p class="meta">Generated {ts}. Каждая операция: {WARMUP} прогрев + {REPEAT} повторов
+(массовые — {REPEAT_BULK}); p50/p95 по повторам, rows/sec по p50.</p>
 </body></html>"""
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
@@ -175,6 +202,8 @@ tr:hover {{ background:#f8f9fa; }}
                 "operation": r.operation,
                 "rows": r.rows,
                 "elapsed_ms": r.elapsed_ms,
+                "p95_ms": r.p95_ms,
+                "runs": r.runs,
                 "rps": r.rps,
             }
             for r in self.results
@@ -196,6 +225,8 @@ tr:hover {{ background:#f8f9fa; }}
                 "operation": r.operation,
                 "rows": r.rows,
                 "elapsed_ms": r.elapsed_ms,
+                "p95_ms": r.p95_ms,
+                "runs": r.runs,
                 "rps": r.rps,
             }
             for r in self.results
@@ -340,7 +371,7 @@ _COMPARISON_HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div class="footer">
-    Lower is better (ms). Badges compare <span>ORM-only</span> (excl. raw asyncpg).<br>
+    Lower is better (p50 ms over repeated runs after a warm-up). Badges compare <span>ORM-only</span> (excl. raw asyncpg).<br>
     Re-run <span>pytest tests/performance/test_orm_comparison.py</span> to refresh data.
   </div>
 </div>
@@ -416,9 +447,9 @@ let curMod = null;
 data.forEach(r => {
   if (r.module !== curMod) { curMod = r.module; dBody += `<tr class="group"><td colspan="5">${r.module}</td></tr>`; }
   const cls = r.elapsed_ms < 500 ? 'fast' : r.elapsed_ms < 2000 ? 'medium' : 'slow';
-  dBody += `<tr class="${cls}"><td>${r.module}</td><td>${r.operation}</td><td class="num">${r.rows.toLocaleString()}</td><td class="num">${r.elapsed_ms.toFixed(2)}</td><td class="num">${fmtRps(r.rps)}</td></tr>`;
+  dBody += `<tr class="${cls}"><td>${r.module}</td><td>${r.operation}</td><td class="num">${r.rows.toLocaleString()}</td><td class="num">${r.elapsed_ms.toFixed(2)}</td><td class="num">${(r.p95_ms ?? r.elapsed_ms).toFixed(2)}</td><td class="num">${r.runs ?? 1}</td><td class="num">${fmtRps(r.rps)}</td></tr>`;
 });
-document.getElementById('detail-table').innerHTML = `<table class="detail-table"><thead><tr><th>Module</th><th>Operation</th><th style="text-align:right">Rows</th><th style="text-align:right">Time (ms)</th><th style="text-align:right">rows/sec</th></tr></thead><tbody>${dBody}</tbody></table>`;
+document.getElementById('detail-table').innerHTML = `<table class="detail-table"><thead><tr><th>Module</th><th>Operation</th><th style="text-align:right">Rows</th><th style="text-align:right">p50 (ms)</th><th style="text-align:right">p95 (ms)</th><th style="text-align:right">runs</th><th style="text-align:right">rows/sec</th></tr></thead><tbody>${dBody}</tbody></table>`;
 
 // ═══ Summary cards ═══
 const totalOps = Object.keys(ops).length;
@@ -469,20 +500,43 @@ def _print_report_at_end(perf_report):
 # Timer helper
 # ──────────────────────────────────────────────
 
+# Один холодный вызов сразу после сида измеряет не ORM, а чтение страниц
+# индексов с диска (shared_buffers меньше сида на 1M строк) и первый план
+# запроса. Поэтому: WARMUP вызовов без записи, затем повторы, в отчёт p50/p95.
+WARMUP = 1
+REPEAT = 20  # одиночные операции
+REPEAT_BULK = 3  # массовые (каждый повтор — тысячи строк)
+RUNS = WARMUP + REPEAT  # сколько раз вызовется fn у одиночной операции
+RUNS_BULK = WARMUP + REPEAT_BULK  # у массовой
 
-@asynccontextmanager
-async def perf_timer(
-    report: PerfReport, module: str, operation: str, rows: int
+
+async def perf_run(
+    report: PerfReport,
+    module: str,
+    operation: str,
+    rows: int,
+    fn,
+    repeat: int = REPEAT,
 ):
+    """Замер операции: WARMUP вызовов fn без записи, затем repeat вызовов с
+    таймером; в отчёт — p50/p95 и число замеров.
+
+    fn — корутинная функция без аргументов. Если повтору нужны свои данные
+    (delete, уникальный login), fn берёт их из итератора, подготовленного
+    на RUNS / RUNS_BULK элементов:
+
+        records = iter([await Lead.get(i) for i in ids])
+        await perf_run(perf_report, MODULE, "delete — single", 1,
+                       lambda: next(records).delete())
     """
-    Usage:
-        async with perf_timer(perf_report, "Users", "create_bulk 10_000", 10_000):
-            await User.create_bulk(payload)
-    """
-    start = time.perf_counter()
-    yield
-    elapsed = time.perf_counter() - start
-    report.add(module, operation, rows, elapsed)
+    for _ in range(WARMUP):
+        await fn()
+    times = []
+    for _ in range(repeat):
+        start = time.perf_counter()
+        await fn()
+        times.append(time.perf_counter() - start)
+    report.add(module, operation, rows, times)
 
 
 # ──────────────────────────────────────────────

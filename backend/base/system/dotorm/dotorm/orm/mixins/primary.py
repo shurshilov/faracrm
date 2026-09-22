@@ -10,7 +10,12 @@ from ...access import Operation
 from ...components.dialect import POSTGRES
 from ...model import FieldKind, JsonMode
 from ...decorators import hybridmethod
-from ...fields import Many2one, TranslatedChar, evaluate_default
+from ...fields import (
+    DefaultKind,
+    Many2one,
+    TranslatedChar,
+    evaluate_default,
+)
 
 if TYPE_CHECKING:
     from ..protocol import DotModelProtocol
@@ -506,8 +511,11 @@ class OrmPrimaryMixin(_Base):
             client_fields.update(p.assigned_fields())
         await cls._check_field_access(Operation.CREATE, payload, client_fields)
 
+        # Дефолты-связи (стадия/языки по умолчанию — поиск записи) считаются
+        # один раз на пачку, а не на строку: см. _apply_defaults.
+        shared_defaults: dict = {}
         for p in payload:
-            await cls._apply_defaults(p)
+            await cls._apply_defaults(p, shared_defaults)
 
         # @constrains: вся пачка одним вызовом — правило батчит запросы само;
         # без проверок у модели — ни одного вызова.
@@ -596,7 +604,9 @@ class OrmPrimaryMixin(_Base):
             await getattr(model, method_name)(records)
 
     @staticmethod
-    async def _apply_defaults(payload: "DotModel") -> None:
+    async def _apply_defaults(
+        payload: "DotModel", shared: dict | None = None
+    ) -> None:
         """
         Применить default-значения к незаданным полям payload.
 
@@ -609,6 +619,12 @@ class OrmPrimaryMixin(_Base):
         Args:
             payload: Экземпляр модели с данными для создания записи.
                      Незаданные поля остаются как Field дескрипторы.
+            shared: create_bulk — общий на пачку словарь {поле: значение} для
+                    async-дефолтов связей (M2O/x2m: «стадия по умолчанию»,
+                    «языки по умолчанию»). Это поиск записи, у всех строк
+                    одна и та же — считается один раз, а не SELECT на строку.
+                    Скалярные callable (now(), токен, номер из nextval)
+                    считаются на каждую строку: они бывают уникальными.
         """
 
         # Итерируем ТОЛЬКО поля с дефолтом (предвычислено в _build_field_cache:
@@ -619,10 +635,21 @@ class OrmPrimaryMixin(_Base):
         if not plan:
             return
         assigned = payload.__dict__
+        kinds = payload._cache_all_field_kinds
         for field_name, kind, default in plan:
             if field_name in assigned:
                 continue
-            setattr(payload, field_name, await evaluate_default(kind, default))
+            if (
+                shared is not None
+                and kind is DefaultKind.CALLABLE_ASYNC
+                and kinds[field_name] in (FieldKind.M2O, FieldKind.X2M)
+            ):
+                if field_name not in shared:
+                    shared[field_name] = await evaluate_default(kind, default)
+                value = shared[field_name]
+            else:
+                value = await evaluate_default(kind, default)
+            setattr(payload, field_name, value)
 
     @hybridmethod
     async def get(

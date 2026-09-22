@@ -74,8 +74,9 @@ DEFAULT_WORKSPACE_NAME = "Сотрудник"
 async def _default_workspace():
     """Базовое «Рабочее место» — то, что видит Internal User
     (Общение/Партнёры/Активности/Файлы). Проставляется НЕ-админам в
-    User.create (админу РМ не нужно — он видит всё через байпас); так у
-    обычных юзеров не пустой лаунчер (без РМ ничего не видно)."""
+    User._apply_default_workspace (create и create_bulk; админу РМ не нужно —
+    он видит всё через байпас); так у обычных юзеров не пустой лаунчер (без
+    РМ ничего не видно)."""
     return await env.models.workspace.search_one(
         filter=[("name", "=", DEFAULT_WORKSPACE_NAME)],
         fields=["id", "name"],
@@ -116,6 +117,19 @@ class User(PolymorphicParentMixin):
         default=False, role_create=SUPERUSER, role_update=SUPERUSER
     )
 
+    # Архив вместо удаления (как в Odoo/Django): на users ссылаются 73 FK,
+    # физическое удаление — RI-проверки по всем таблицам и RESTRICT у
+    # партнёров/проектов/правил маршрутизации. Неактивный не может войти
+    # (signin), его сессии закрываются при архивации (update/update_bulk).
+    # default_db: на старой базе колонка появляется сразу с true у всех.
+    # role_update="system_admin": архивирует администратор настроек.
+    active: bool = Boolean(
+        default=True,
+        default_db=True,
+        role_update="system_admin",
+        description="Активен (неактивный не может войти)",
+    )
+
     image: Attachment | None = PolymorphicMany2one(relation_table=Attachment)
 
     # role_update="system_admin": менять роли может только «Администратор
@@ -141,8 +155,8 @@ class User(PolymorphicParentMixin):
     # даёт и не отнимает доступ к данным (это ACL/Rules), только видимость
     # меню. NULL → приложений не видно (кроме is_admin — он видит всё через
     # байпас, поэтому РМ ему НЕ назначается). Базовое РМ проставляется
-    # не-админам в User.create (не field-default: тот не видит is_admin).
-    # Меняется админом (в т.ч. массово через bulk-update списка юзеров).
+    # не-админам в User.create/create_bulk (не field-default: тот не видит
+    # is_admin). Меняется админом (в т.ч. массово через bulk-update списка).
     workspace_id: "Workspace | None" = Many2one(
         relation_table=lambda: env.models.workspace,
         required=False,
@@ -409,22 +423,49 @@ class User(PolymorphicParentMixin):
                 {"content": "CANNOT_REMOVE_THE_LAST_ADMINISTRATOR"}
             )
 
+    @constrains("active")
+    async def _constrains_archive_self(self, records: list[Self]) -> None:
+        """Архивировать себя нельзя: сессии закрылись бы этим же запросом.
+        Одна функция на update и update_bulk."""
+        current = get_access_session().user_id
+        if current is None:
+            return
+        for record in records:
+            if record.id == current.id and record.active is False:
+                raise FaraException({"content": "YOU_CANNOT_ARCHIVE_YOURSELF"})
+
+    @classmethod
+    async def _apply_default_workspace(cls, payloads: list["User"]) -> None:
+        """Базовое «Рабочее место» НЕ-админам без явного workspace_id — один
+        поиск РМ на всю пачку. Одна реализация для create и create_bulk
+        (админ видит всё через байпас, РМ ему не нужно; field-default так не
+        сделать — он не видит is_admin). Явно заданное РМ не трогаем."""
+        todo = [
+            p
+            for p in payloads
+            if not p.is_admin and "workspace_id" not in p.assigned_fields()
+        ]
+        if not todo:
+            return
+        default_ws = await _default_workspace()
+        if default_ws:
+            for p in todo:
+                p.workspace_id = default_ws
+
     @hybridmethod
     async def create(
         self, payload: Self, session=None, depends_jobs=None
     ) -> int:
         """Создание пользователя (уникальность login — @constrains выше)."""
-        # Базовое «Рабочее место» — только НЕ-админам (админ видит всё через
-        # байпас, РМ ему не нужно; field-default нельзя завязать на is_admin,
-        # он его не видит). Если РМ задано явно — не трогаем.
-        if not payload.is_admin and (
-            "workspace_id" not in payload.assigned_fields()
-        ):
-            default_ws = await _default_workspace()
-            if default_ws:
-                payload.workspace_id = default_ws
-
+        await self._apply_default_workspace([payload])
         return await super().create(payload, session, depends_jobs)
+
+    @hybridmethod
+    async def create_bulk(
+        self, payload: list[Self], session=None, depends_jobs=None
+    ):
+        await self._apply_default_workspace(payload)
+        return await super().create_bulk(payload, session, depends_jobs)
 
     async def update(
         self,
@@ -449,6 +490,9 @@ class User(PolymorphicParentMixin):
         # сессию со свежими ролями (а не держали устаревшие до TTL).
         if "role_ids" in fields or "is_admin" in fields:
             await Session.publish_roles_changed([self.id])
+        # Архивация → закрыть все сессии (войти заново он не сможет).
+        if "active" in fields and payload.active is False:
+            await Session.terminate_for_users([self.id])
 
     @hybridmethod
     async def update_bulk(
@@ -461,6 +505,8 @@ class User(PolymorphicParentMixin):
         # role_ids через bulk не идёт (store=False); is_admin — идёт.
         if "is_admin" in payload.assigned_fields():
             await Session.publish_roles_changed(list(ids))
+        if payload.active is False:
+            await Session.terminate_for_users(list(ids))
         return result
 
     @classmethod

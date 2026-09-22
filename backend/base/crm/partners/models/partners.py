@@ -54,7 +54,7 @@ class Partner(AuditMixin, PolymorphicParentMixin):
     user_id: "User | None" = Many2one(
         lambda: env.models.user,
         string="Salesperson",
-        # index=True,
+        index=True,
         ondelete="restrict",
     )
     company_id: "Company | None" = Many2one(

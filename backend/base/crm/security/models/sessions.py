@@ -634,6 +634,24 @@ class Session(DotModel):
         return cached
 
     @classmethod
+    async def terminate_for_users(cls, user_ids: list[int]) -> int:
+        """Закрыть все активные сессии пользователей — архивация
+        (User.active = False): один search + один update_bulk на всю пачку,
+        кэш сессий воркеров — publish_revoked. Под sudo: ACL на sessions
+        есть не у всех, а архивирует system_admin.
+        """
+        sessions = await cls.sudo().search(
+            filter=[("active", "=", True), ("user_id", "in", user_ids)],
+            fields=["id"],
+        )
+        ids = [s.id for s in sessions]
+        if not ids:
+            return 0
+        await cls.sudo().update_bulk(ids, cls(active=False))
+        await cls.publish_revoked(ids)
+        return len(ids)
+
+    @classmethod
     async def publish_revoked(cls, session_ids: list[int]) -> None:
         """
         Опубликовать событие revoke в pg_notify. Все воркеры инвалидируют

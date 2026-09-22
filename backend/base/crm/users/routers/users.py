@@ -189,12 +189,15 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
                 "home_page",
                 "layout_theme",
                 "is_admin",
+                "active",
                 "role_ids",
                 "workspace_id",
             ],
             fields_nested={"role_ids": {"fields": ["id", "code"]}},
         )
-        if not user_id:
+        # Архивный (active=False) для входа не существует: тот же ответ,
+        # что и для неизвестного логина — статус не раскрываем.
+        if not user_id or not user_id.active:
             raise AuthException.UserNotExist()
 
         # сделать хеш из введеного пароля, с использованием старой соли

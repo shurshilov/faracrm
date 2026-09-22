@@ -65,6 +65,10 @@ const TRANSLATIONS: Record<
       title: 'Невозможно удалить последнего суперадмина',
       description: 'В системе должен оставаться хотя бы один суперпользователь',
     },
+    YOU_CANNOT_ARCHIVE_YOURSELF: {
+      title: 'Невозможно архивировать себя',
+      description: 'Архивировать можно только другого пользователя',
+    },
     MEMBER_NOT_FOUND: {
       title: 'Участник не найден',
       description: 'Указанный участник не найден в этом чате.',
@@ -147,6 +151,10 @@ const TRANSLATIONS: Record<
     CANNOT_REMOVE_THE_LAST_ADMINISTRATOR: {
       title: 'Unable to delete last superadmin',
       description: 'There must be at least one superuser left in the system.',
+    },
+    YOU_CANNOT_ARCHIVE_YOURSELF: {
+      title: 'Cannot archive yourself',
+      description: 'Only another user can be archived.',
     },
     MEMBER_NOT_FOUND: {
       title: 'Member Not Found',
