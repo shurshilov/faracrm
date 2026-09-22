@@ -100,7 +100,7 @@ class PhoneNumber(AuditMixin, DotModel):
         description="Сотрудник-оператор линии",
     )
 
-    # Правила лидогенерации на этот номер (как у Odoo cloud.phone.number).
+    # Правила лидогенерации на этот номер.
     lead_generation: str = Selection(
         options=[
             ("self", "Создавать лид (на оператора)"),

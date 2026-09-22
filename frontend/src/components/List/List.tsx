@@ -29,6 +29,7 @@ import { buildRecordNav, RecordNavState } from '@/components/RecordNav';
 import { Field } from './Field';
 import { Toolbar } from './Toolbar';
 import { ColumnsMenu } from './ColumnsMenu';
+import { ListMenu } from './ListMenu';
 import { useColumnConfig } from './useColumnConfig';
 import { useHeaderSlot } from '@/components/ViewWrapper/HeaderSlotContext';
 import {
@@ -36,6 +37,8 @@ import {
   saveViewState,
   useIsReturningToView,
 } from '@/components/ViewWrapper/viewStateStore';
+import { useInstalledApps } from '@/fara_apps/useInstalledApps';
+import { ExportModal, ImportModal } from '@/fara_excel';
 import listClasses from './List.module.css';
 
 const PAGE_SIZES = [10, 20, 40, 500, 1000, 2000];
@@ -114,6 +117,16 @@ export const List = <RecordType extends FaraRecord>({
   }, [filtersKey]);
 
   const [selectedRecords, setSelectedRecords] = useState<RecordType[]>([]);
+
+  // Меню «⋮» в шапке: настройка колонок и (модуль excel) экспорт выборки
+  // с импортом; экспорт выбранных строк — из меню Actions. Открытая
+  // модалка Excel — одна: выборка, выбранные строки или импорт.
+  const [columnsOpen, setColumnsOpen] = useState(false);
+  const { isInstalled } = useInstalledApps();
+  const excelEnabled = isInstalled('excel');
+  const [excelModal, setExcelModal] = useState<
+    'export' | 'selected' | 'import' | null
+  >(null);
 
   // sort
   const [sortStatus, setSortStatus] = useState<DataTableSortStatus<RecordType>>(
@@ -213,7 +226,7 @@ export const List = <RecordType extends FaraRecord>({
   const columnConfig = useColumnConfig(props.model, defaultVisibleFields);
   const { data: allFields } = useGetFieldsQuery(props.model);
 
-  // Слот в шапке ViewWrapper: если он есть — «шестерёнку» настройки колонок
+  // Слот в шапке ViewWrapper: если он есть — меню «⋮» (колонки, Excel)
   // рендерим туда (портал), а не в тулбар списка. Вне ViewWrapper слота нет
   // (null) — тогда фолбэк в собственный тулбар (см. columnsControl ниже).
   const headerSlot = useHeaderSlot();
@@ -232,7 +245,7 @@ export const List = <RecordType extends FaraRecord>({
   // Видимые колонки, очищенные от неизвестных/приватных полей. private-поля
   // (password_hash и т.п.) больше не отдаются в /fields, и их НЕЛЬЗЯ
   // запрашивать в search — иначе 422 и пустой список (а с ним пропадёт и
-  // тулбар с «шестерёнкой», чинить нечем). Такое возможно из устаревшего
+  // тулбар с меню колонок, чинить нечем). Такое возможно из устаревшего
   // сохранённого набора, где private-поле осталось с прошлых версий.
   const selectedColumns = knownFieldNames
     ? columnConfig.selected.filter(n => knownFieldNames.has(n))
@@ -413,10 +426,14 @@ export const List = <RecordType extends FaraRecord>({
     return null;
   }
 
-  // Контрол настройки колонок. Живёт в шапке вида (портал в слот
-  // ViewWrapper), а вне ViewWrapper (слота нет) — в тулбаре списка.
-  const columnsMenu = (
+  // Меню «⋮» списка: колонки + Excel. Поповер колонок якорится на кнопку
+  // меню, поэтому ColumnsMenu оборачивает ListMenu. Живёт в шапке вида
+  // (портал в слот ViewWrapper), а вне ViewWrapper (слота нет) — в тулбаре
+  // списка.
+  const headerControls = (
     <ColumnsMenu
+      opened={columnsOpen}
+      onOpenChange={setColumnsOpen}
       model={props.model}
       selected={selectedColumns}
       isCustom={columnConfig.isCustom}
@@ -426,13 +443,32 @@ export const List = <RecordType extends FaraRecord>({
       onWidgetChange={columnConfig.setWidget}
       onFilterChange={columnConfig.setFilter}
       onReset={columnConfig.reset}
-      onClose={columnConfig.persistIfDirty}
-    />
+      onClose={columnConfig.persistIfDirty}>
+      <ListMenu
+        onColumns={() => setColumnsOpen(true)}
+        excel={
+          excelEnabled
+            ? {
+                export: () => setExcelModal('export'),
+                import: () => setExcelModal('import'),
+              }
+            : undefined
+        }
+      />
+    </ColumnsMenu>
   );
+
+  // Экспорт по умолчанию выгружает колонки списка и ту же выборку, что
+  // ушла в /search (фильтр, сортировка).
+  const excelQuery = {
+    filter: originalArgs?.filter,
+    sort: originalArgs?.sort,
+    order: originalArgs?.order,
+  };
 
   return (
     <>
-      {headerSlot && createPortal(columnsMenu, headerSlot)}
+      {headerSlot && createPortal(headerControls, headerSlot)}
       <Toolbar
         selectedRecords={selectedRecords}
         model={props.model}
@@ -440,8 +476,34 @@ export const List = <RecordType extends FaraRecord>({
         massActions={massActions}
         extraActions={toolbarActions}
         onClearSelection={() => setSelectedRecords([])}
-        columnsControl={headerSlot ? undefined : columnsMenu}
+        onExportSelected={
+          excelEnabled ? () => setExcelModal('selected') : undefined
+        }
+        columnsControl={headerSlot ? undefined : headerControls}
       />
+      {excelEnabled && (
+        <>
+          {/* Одна модалка на экспорт выборки и выбранных строк (ids). */}
+          <ExportModal
+            opened={excelModal === 'export' || excelModal === 'selected'}
+            onClose={() => setExcelModal(null)}
+            model={props.model}
+            columns={selectedColumns}
+            query={excelQuery}
+            ids={
+              excelModal === 'selected'
+                ? selectedRecords.map(record => Number(record.id))
+                : undefined
+            }
+            total={Number(data.total)}
+          />
+          <ImportModal
+            opened={excelModal === 'import'}
+            onClose={() => setExcelModal(null)}
+            model={props.model}
+          />
+        </>
+      )}
       <DataTable
         minHeight={200}
         withTableBorder={false}

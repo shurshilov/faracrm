@@ -285,6 +285,7 @@ from backend.base.crm.captcha.app import CaptchaApp
 from backend.base.crm.payment.app import PaymentApp
 from backend.base.crm.payment_tinkoff.app import PaymentTinkoffApp
 from backend.base.crm.marketplace.app import MarketplaceApp
+from backend.base.system.excel.app import ExcelApp
 
 # services
 from backend.base.system.logger.app import LoggerService
@@ -435,6 +436,7 @@ class Apps(AppsCore):
     payment = PaymentApp()
     payment_tinkoff = PaymentTinkoffApp()
     marketplace = MarketplaceApp()
+    excel = ExcelApp()
 
     dotorm_crud_auto = DotormCrudAutoService()
     # alise

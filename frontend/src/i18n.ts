@@ -98,6 +98,10 @@ import ruMarketplace from './fara_marketplace/locales/ru.json';
 import enDocs from './components/Docs/locales/en.json';
 import ruDocs from './components/Docs/locales/ru.json';
 
+// fara_excel — экспорт/импорт списков через Excel
+import enExcel from './fara_excel/locales/en.json';
+import ruExcel from './fara_excel/locales/ru.json';
+
 
 // ============ Склейка переводов ============
 const resources = {
@@ -126,6 +130,7 @@ const resources = {
     registration: enRegistration,
     marketplace: enMarketplace,
     docs: enDocs,
+    excel: enExcel,
   },
   ru: {
     common: ruCommon,
@@ -151,6 +156,7 @@ const resources = {
     registration: ruRegistration,
     marketplace: ruMarketplace,
     docs: ruDocs,
+    excel: ruExcel,
   },
 };
 
@@ -185,6 +191,7 @@ i18n
       'registration',
       'marketplace',
       'docs',
+      'excel',
     ],
 
     interpolation: {

@@ -7,6 +7,7 @@ docxtpl==0.20.2
 fastapi==0.141.1
 httptools==0.8.0
 httpx==0.28.1
+openpyxl==3.1.5
 phonenumbers==9.0.37
 Pillow==12.1.0
 pydantic==2.13.5

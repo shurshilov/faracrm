@@ -1,18 +1,20 @@
 /**
  * ColumnsMenu — выбор видимых колонок списка.
  *
- * Кнопка в тулбаре открывает поповер со всеми полями модели
- * (из GET /auto/{model}/fields). Галочка = колонка показана; стрелки —
+ * Поповер со всеми полями модели (из GET /auto/{model}/fields) открывает
+ * пункт «Колонки» меню списка (ListMenu); якорь поповера — сама кнопка
+ * меню, она приходит как children, а открыт/закрыт решает родитель
+ * (opened/onOpenChange). Галочка = колонка показана; стрелки —
  * порядок; «По умолчанию» — сброс к колонкам вью. У колонок-связей
  * (One2many/Many2many/полиморфные) — шестерёнка: виджет и фильтр на
  * связанные записи (ColumnRelationSettings). Изменения применяются
  * к таблице сразу (onChange), а на сервер пишутся при закрытии (onClose).
  */
-import { useMemo, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import {
   ActionIcon,
+  Box,
   Popover,
-  Tooltip,
   TextInput,
   ScrollArea,
   Checkbox,
@@ -24,7 +26,6 @@ import {
   Button,
 } from '@mantine/core';
 import {
-  IconAdjustments,
   IconSearch,
   IconChevronUp,
   IconChevronDown,
@@ -47,6 +48,11 @@ const RELATION_TYPES = new Set([
 ]);
 
 interface ColumnsMenuProps {
+  /** Открыт ли поповер — решает родитель (пункт меню открывает). */
+  opened: boolean;
+  onOpenChange: (opened: boolean) => void;
+  /** Якорь поповера — кнопка меню списка. */
+  children: ReactNode;
   model: string;
   /** Видимые колонки в порядке отображения. */
   selected: string[];
@@ -67,6 +73,9 @@ interface ColumnsMenuProps {
 }
 
 export function ColumnsMenu({
+  opened,
+  onOpenChange,
+  children,
   model,
   selected,
   isCustom,
@@ -78,7 +87,6 @@ export function ColumnsMenu({
   onReset,
   onClose,
 }: ColumnsMenuProps) {
-  const [opened, setOpened] = useState(false);
   const [search, setSearch] = useState('');
   // Колонка-связь с раскрытой настройкой (виджет + фильтр).
   const [settingsFor, setSettingsFor] = useState<string | null>(null);
@@ -119,7 +127,7 @@ export function ColumnsMenu({
   };
 
   const handleOpenChange = (isOpen: boolean) => {
-    setOpened(isOpen);
+    onOpenChange(isOpen);
     if (!isOpen) {
       setSearch('');
       setSettingsFor(null);
@@ -178,7 +186,7 @@ export function ColumnsMenu({
     <Popover
       opened={opened}
       onChange={handleOpenChange}
-      position="bottom-start"
+      position="bottom-end"
       shadow="md"
       withinPortal
       trapFocus
@@ -188,16 +196,9 @@ export function ColumnsMenu({
       // фильтр — как у поповера фильтра списка (SearchFilter). Закрыть —
       // Escape или повторный клик по шестерёнке.
       closeOnClickOutside={!settingsFor}>
+      {/* Обёртка: Popover.Target вешает ref на DOM-элемент. */}
       <Popover.Target>
-        <Tooltip label="Настроить колонки">
-          <ActionIcon
-            variant={isCustom || opened ? 'light' : 'subtle'}
-            color={isCustom ? 'blue' : 'gray'}
-            size="md"
-            onClick={() => handleOpenChange(!opened)}>
-            <IconAdjustments size={18} />
-          </ActionIcon>
-        </Tooltip>
+        <Box display="inline-flex">{children}</Box>
       </Popover.Target>
 
       {/* Шире, когда раскрыта настройка связи: там ряды условий фильтра. */}

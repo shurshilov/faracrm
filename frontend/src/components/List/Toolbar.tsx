@@ -14,6 +14,7 @@ export const Toolbar = <RecordType extends FaraRecord>({
   massActions,
   extraActions,
   onClearSelection,
+  onExportSelected,
   columnsControl,
 }: {
   model: string;
@@ -22,7 +23,9 @@ export const Toolbar = <RecordType extends FaraRecord>({
   massActions?: boolean;
   extraActions?: React.ReactNode;
   onClearSelection?: () => void;
-  /** Контрол настройки колонок (рендерится рядом с «Создать»). */
+  /** Экспорт выбранных строк в Excel (пункт меню Actions). */
+  onExportSelected?: () => void;
+  /** Меню «⋮» списка (колонки, Excel); рядом с «Создать», если нет слота. */
   columnsControl?: React.ReactNode;
 }) => {
   const [deleteStatus, setDeleteStatus] = useState<DeleteStatus>('idle');
@@ -126,6 +129,7 @@ export const Toolbar = <RecordType extends FaraRecord>({
               fields={fields}
               massActions={massActions}
               onClearSelection={onClearSelection}
+              onExport={onExportSelected}
               onDeleteStart={handleDeleteStart}
               onDeleteSuccess={handleDeleteSuccess}
               onDeleteError={handleDeleteError}

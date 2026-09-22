@@ -93,7 +93,7 @@ class Field[FieldType]:
     default_db: bool = False
     unique: bool = False
     description: str | None = None
-    # Подсказка к полю для UI (как help= в Odoo); ORM её не читает.
+    # Подсказка к полю для UI; ORM её не читает.
     help: str | None = None
     ondelete: str = "set null"
 

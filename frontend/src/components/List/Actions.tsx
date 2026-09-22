@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { Menu, Button, rem } from '@mantine/core';
-import { IconTrash, IconPencil } from '@tabler/icons-react';
+import {
+  IconTrash,
+  IconPencil,
+  IconFileSpreadsheet,
+} from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { useDeleteBulkMutation } from '@/services/api/crudApi';
 import { FaraRecord, GetListField } from '@/services/api/crudTypes';
 import { MassActionModal } from './MassActionModal';
@@ -11,6 +16,7 @@ export function Actions({
   fields = [],
   massActions = false,
   onClearSelection,
+  onExport,
   onDeleteStart,
   onDeleteSuccess,
   onDeleteError,
@@ -22,10 +28,13 @@ export function Actions({
   /** Показывать ли пункт массового действия. */
   massActions?: boolean;
   onClearSelection?: () => void;
+  /** Экспорт выбранных строк в Excel; без колбэка пункта нет. */
+  onExport?: () => void;
   onDeleteStart?: () => void;
   onDeleteSuccess?: (count: number, undo?: () => void) => void;
   onDeleteError?: () => void;
 }) {
+  const { t } = useTranslation('excel');
   const [deleteBulk] = useDeleteBulkMutation();
   const [massOpen, setMassOpen] = useState(false);
 
@@ -58,16 +67,29 @@ export function Actions({
         </Menu.Target>
 
         <Menu.Dropdown>
-          {massActions && (
+          {(massActions || onExport) && (
             <>
               <Menu.Label>Массовые действия</Menu.Label>
-              <Menu.Item
-                leftSection={
-                  <IconPencil style={{ width: rem(14), height: rem(14) }} />
-                }
-                onClick={() => setMassOpen(true)}>
-                Изменить поле ({selectedIds.length})
-              </Menu.Item>
+              {onExport && (
+                <Menu.Item
+                  leftSection={
+                    <IconFileSpreadsheet
+                      style={{ width: rem(14), height: rem(14) }}
+                    />
+                  }
+                  onClick={onExport}>
+                  {t('exportSelected', { count: selectedIds.length })}
+                </Menu.Item>
+              )}
+              {massActions && (
+                <Menu.Item
+                  leftSection={
+                    <IconPencil style={{ width: rem(14), height: rem(14) }} />
+                  }
+                  onClick={() => setMassOpen(true)}>
+                  Изменить поле ({selectedIds.length})
+                </Menu.Item>
+              )}
               <Menu.Divider />
             </>
           )}

@@ -91,7 +91,7 @@ class User(DotModel):
 ```
 
 - The decorator arguments are trigger fields, as strings or field objects. The check runs when at least one record writes one of them; with no arguments it runs on every write.
-- One call per operation, like `@api.constrains` with a recordset in Odoo. `self` is an empty model instance, as with `hybridmethod` called on the class, so that `self.sudo().search(...)` works. `records` are the payloads being written: one record for `create` and `update`, all rows for bulk. On `create` the record `id` is empty, on `update` it is set.
+- One call per operation. `self` is an empty model instance, as with `hybridmethod` called on the class, so that `self.sudo().search(...)` works. `records` are the payloads being written: one record for `create` and `update`, all rows for bulk. On `create` the record `id` is empty, on `update` it is set.
 - A rule batches its own queries: one `IN` over the values of all records instead of a query per row. Duplicates inside the batch are not in the database yet, they are caught in the same loop.
 - On `update` the payload carries only the changed fields. A rule that needs the others reads them with one `search` by record ids into the unassigned payload attributes. They never reach SQL: `update` writes by its field list, `update_bulk` hands the rule copies.
 - Works from `@extend` extensions: methods are collected into the model cache by marker, not by name, so extensions do not overwrite each other and need no `call_original`.

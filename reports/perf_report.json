@@ -3,77 +3,553 @@
     "module": "Activity",
     "operation": "create \u2014 single",
     "rows": 1,
-    "elapsed_ms": 1.27,
-    "rps": 790.4
+    "elapsed_ms": 1.35,
+    "rps": 740.1
   },
   {
     "module": "Activity",
     "operation": "create_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 170.75,
-    "rps": 29283.1
+    "elapsed_ms": 279.77,
+    "rps": 17872.0
   },
   {
     "module": "Activity",
     "operation": "get \u2014 single by id",
     "rows": 1,
-    "elapsed_ms": 1.19,
-    "rps": 843.0
+    "elapsed_ms": 1.13,
+    "rps": 883.0
   },
   {
     "module": "Activity",
     "operation": "search \u2014 filter user_id",
     "rows": 100,
-    "elapsed_ms": 1.35,
-    "rps": 73833.4
+    "elapsed_ms": 1.54,
+    "rps": 65044.9
   },
   {
     "module": "Activity",
     "operation": "search \u2014 filter res_model='lead'",
     "rows": 1000,
-    "elapsed_ms": 2.77,
-    "rps": 361506.8
+    "elapsed_ms": 3.37,
+    "rps": 296392.9
   },
   {
     "module": "Activity",
     "operation": "search \u2014 state='overdue'",
     "rows": 1000,
-    "elapsed_ms": 28.28,
-    "rps": 35354.6
+    "elapsed_ms": 10.91,
+    "rps": 91697.7
   },
   {
     "module": "Activity",
     "operation": "search_count \u2014 100k table",
     "rows": 100000,
-    "elapsed_ms": 7.95,
-    "rps": 12578616.4
+    "elapsed_ms": 7.46,
+    "rps": 13397103.5
   },
   {
     "module": "Activity",
     "operation": "update \u2014 single",
     "rows": 1,
-    "elapsed_ms": 1.66,
-    "rps": 603.4
+    "elapsed_ms": 1.13,
+    "rps": 884.6
   },
   {
     "module": "Activity",
     "operation": "update_bulk \u2014 5,000",
     "rows": 5000,
-    "elapsed_ms": 54.55,
-    "rps": 91657.2
+    "elapsed_ms": 126.33,
+    "rps": 39578.3
   },
   {
     "module": "Activity",
     "operation": "delete \u2014 single",
     "rows": 1,
-    "elapsed_ms": 0.91,
-    "rps": 1102.5
+    "elapsed_ms": 0.82,
+    "rps": 1225.0
   },
   {
     "module": "Activity",
     "operation": "delete_bulk \u2014 2,000",
     "rows": 2000,
-    "elapsed_ms": 11.27,
-    "rps": 177433.9
+    "elapsed_ms": 4.84,
+    "rps": 413009.8
+  },
+  {
+    "module": "Chat",
+    "operation": "message create \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 248.65,
+    "rps": 4.0
+  },
+  {
+    "module": "Chat",
+    "operation": "message create_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 352.73,
+    "rps": 14175.2
+  },
+  {
+    "module": "Chat",
+    "operation": "message get \u2014 single by id",
+    "rows": 1,
+    "elapsed_ms": 1.61,
+    "rps": 620.5
+  },
+  {
+    "module": "Chat",
+    "operation": "message search \u2014 chat_id filter, limit 50",
+    "rows": 50,
+    "elapsed_ms": 2.74,
+    "rps": 18221.6
+  },
+  {
+    "module": "Chat",
+    "operation": "message search \u2014 before_id pagination",
+    "rows": 50,
+    "elapsed_ms": 2.77,
+    "rps": 18041.4
+  },
+  {
+    "module": "Chat",
+    "operation": "message search \u2014 unread (id > watermark)",
+    "rows": 1000,
+    "elapsed_ms": 3.11,
+    "rps": 321864.2
+  },
+  {
+    "module": "Chat",
+    "operation": "message search \u2014 starred=true, limit 100",
+    "rows": 100,
+    "elapsed_ms": 4.14,
+    "rps": 24161.0
+  },
+  {
+    "module": "Chat",
+    "operation": "message search_count \u2014 1M table",
+    "rows": 1000000,
+    "elapsed_ms": 68.93,
+    "rps": 14506861.0
+  },
+  {
+    "module": "Chat",
+    "operation": "message search_count \u2014 single chat",
+    "rows": 10000,
+    "elapsed_ms": 13.8,
+    "rps": 724742.7
+  },
+  {
+    "module": "Chat",
+    "operation": "message update \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 1.69,
+    "rps": 593.1
+  },
+  {
+    "module": "Chat",
+    "operation": "message update_bulk \u2014 starred 10,000",
+    "rows": 10000,
+    "elapsed_ms": 348.28,
+    "rps": 28712.2
+  },
+  {
+    "module": "Chat",
+    "operation": "message delete \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 7.22,
+    "rps": 138.4
+  },
+  {
+    "module": "Chat",
+    "operation": "message delete_bulk \u2014 100",
+    "rows": 100,
+    "elapsed_ms": 9.63,
+    "rps": 10387.5
+  },
+  {
+    "module": "Chat",
+    "operation": "members search \u2014 big chat (5,000)",
+    "rows": 5000,
+    "elapsed_ms": 27.38,
+    "rps": 182613.0
+  },
+  {
+    "module": "Chat",
+    "operation": "members check_membership \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 109.15,
+    "rps": 9.2
+  },
+  {
+    "module": "Chat",
+    "operation": "members search \u2014 all chats for user",
+    "rows": 100,
+    "elapsed_ms": 3.11,
+    "rps": 32112.0
+  },
+  {
+    "module": "Chat",
+    "operation": "chat search \u2014 all active",
+    "rows": 100,
+    "elapsed_ms": 1.15,
+    "rps": 87328.6
+  },
+  {
+    "module": "Chat",
+    "operation": "chat search \u2014 filter type=channel",
+    "rows": 10,
+    "elapsed_ms": 1.06,
+    "rps": 9462.5
+  },
+  {
+    "module": "Leads",
+    "operation": "create \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 3.0,
+    "rps": 333.5
+  },
+  {
+    "module": "Leads",
+    "operation": "create_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 279.54,
+    "rps": 17886.4
+  },
+  {
+    "module": "Leads",
+    "operation": "get \u2014 single by id",
+    "rows": 1,
+    "elapsed_ms": 1.34,
+    "rps": 746.5
+  },
+  {
+    "module": "Leads",
+    "operation": "search \u2014 limit 100",
+    "rows": 100,
+    "elapsed_ms": 2.33,
+    "rps": 42962.7
+  },
+  {
+    "module": "Leads",
+    "operation": "search \u2014 limit 10,000",
+    "rows": 10000,
+    "elapsed_ms": 44.23,
+    "rps": 226115.4
+  },
+  {
+    "module": "Leads",
+    "operation": "search \u2014 filter type='opportunity'",
+    "rows": 1000,
+    "elapsed_ms": 3.19,
+    "rps": 313175.3
+  },
+  {
+    "module": "Leads",
+    "operation": "search \u2014 filter user_id",
+    "rows": 200,
+    "elapsed_ms": 1.6,
+    "rps": 124906.3
+  },
+  {
+    "module": "Leads",
+    "operation": "search \u2014 multi-filter (type+active+user)",
+    "rows": 200,
+    "elapsed_ms": 1.56,
+    "rps": 127959.1
+  },
+  {
+    "module": "Leads",
+    "operation": "search \u2014 name ilike '500'",
+    "rows": 100,
+    "elapsed_ms": 30.5,
+    "rps": 3279.2
+  },
+  {
+    "module": "Leads",
+    "operation": "search_count \u2014 100k table",
+    "rows": 100000,
+    "elapsed_ms": 11.12,
+    "rps": 8994585.2
+  },
+  {
+    "module": "Leads",
+    "operation": "update \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 1.82,
+    "rps": 550.3
+  },
+  {
+    "module": "Leads",
+    "operation": "update_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 101.75,
+    "rps": 49141.4
+  },
+  {
+    "module": "Leads",
+    "operation": "delete \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 8.06,
+    "rps": 124.1
+  },
+  {
+    "module": "Leads",
+    "operation": "delete_bulk \u2014 2,000",
+    "rows": 2000,
+    "elapsed_ms": 51.86,
+    "rps": 38562.1
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] total \u2014 DB",
+    "rows": 1000,
+    "elapsed_ms": 1468.25,
+    "rps": 681.1
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] total \u2014 Cache (x112.3)",
+    "rows": 1000,
+    "elapsed_ms": 13.07,
+    "rps": 76509.3
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] avg per call \u2014 DB",
+    "rows": 1,
+    "elapsed_ms": 1.47,
+    "rps": 681.1
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] avg per call \u2014 Cache (x112.3)",
+    "rows": 1,
+    "elapsed_ms": 0.01,
+    "rps": 76509.3
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] p50 \u2014 DB",
+    "rows": 1,
+    "elapsed_ms": 1.41,
+    "rps": 710.7
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] p50 \u2014 Cache (x104.2)",
+    "rows": 1,
+    "elapsed_ms": 0.01,
+    "rps": 74073.5
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] p95 \u2014 DB",
+    "rows": 1,
+    "elapsed_ms": 2.03,
+    "rps": 492.6
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] p95 \u2014 Cache (x130.1)",
+    "rows": 1,
+    "elapsed_ms": 0.02,
+    "rps": 64102.6
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] p99 \u2014 DB",
+    "rows": 1,
+    "elapsed_ms": 2.32,
+    "rps": 430.9
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[SEQ] p99 \u2014 Cache (x86.3)",
+    "rows": 1,
+    "elapsed_ms": 0.03,
+    "rps": 37174.8
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[CONCURRENT 100x10] total \u2014 DB",
+    "rows": 1000,
+    "elapsed_ms": 883.33,
+    "rps": 1132.1
+  },
+  {
+    "module": "SessionCache",
+    "operation": "[CONCURRENT 100x10] total \u2014 Cache (x56.2)",
+    "rows": 1000,
+    "elapsed_ms": 15.71,
+    "rps": 63672.0
+  },
+  {
+    "module": "Sessions",
+    "operation": "create \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 5.58,
+    "rps": 179.2
+  },
+  {
+    "module": "Sessions",
+    "operation": "create_bulk \u2014 10,000",
+    "rows": 10000,
+    "elapsed_ms": 584.14,
+    "rps": 17119.1
+  },
+  {
+    "module": "Sessions",
+    "operation": "get \u2014 single by id",
+    "rows": 1,
+    "elapsed_ms": 1.41,
+    "rps": 710.4
+  },
+  {
+    "module": "Sessions",
+    "operation": "search \u2014 filter user_id (indexed FK)",
+    "rows": 100,
+    "elapsed_ms": 1.5,
+    "rps": 66706.7
+  },
+  {
+    "module": "Sessions",
+    "operation": "search \u2014 filter active=true, limit 1000",
+    "rows": 1000,
+    "elapsed_ms": 8.59,
+    "rps": 116406.3
+  },
+  {
+    "module": "Sessions",
+    "operation": "search \u2014 filter token=exact (indexed)",
+    "rows": 1,
+    "elapsed_ms": 1.87,
+    "rps": 534.7
+  },
+  {
+    "module": "Sessions",
+    "operation": "session_check \u2014 raw SQL auth path",
+    "rows": 1,
+    "elapsed_ms": 1.15,
+    "rps": 871.0
+  },
+  {
+    "module": "Sessions",
+    "operation": "search_count \u2014 1M table",
+    "rows": 1000000,
+    "elapsed_ms": 78.18,
+    "rps": 12790946.1
+  },
+  {
+    "module": "Sessions",
+    "operation": "update \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 1.46,
+    "rps": 682.9
+  },
+  {
+    "module": "Sessions",
+    "operation": "update_bulk \u2014 10,000",
+    "rows": 10000,
+    "elapsed_ms": 475.62,
+    "rps": 21025.1
+  },
+  {
+    "module": "Sessions",
+    "operation": "delete \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 1.11,
+    "rps": 900.0
+  },
+  {
+    "module": "Sessions",
+    "operation": "delete_bulk \u2014 5,000",
+    "rows": 5000,
+    "elapsed_ms": 13.87,
+    "rps": 360583.9
+  },
+  {
+    "module": "Users",
+    "operation": "create \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 6.11,
+    "rps": 163.6
+  },
+  {
+    "module": "Users",
+    "operation": "create_bulk \u2014 1 000",
+    "rows": 1000,
+    "elapsed_ms": 554.08,
+    "rps": 1804.8
+  },
+  {
+    "module": "Users",
+    "operation": "get \u2014 single by id",
+    "rows": 1,
+    "elapsed_ms": 1.51,
+    "rps": 661.3
+  },
+  {
+    "module": "Users",
+    "operation": "search \u2014 limit 1000",
+    "rows": 1000,
+    "elapsed_ms": 3.15,
+    "rps": 317551.0
+  },
+  {
+    "module": "Users",
+    "operation": "search \u2014 limit 10000 (full)",
+    "rows": 10000,
+    "elapsed_ms": 19.09,
+    "rps": 523848.2
+  },
+  {
+    "module": "Users",
+    "operation": "search \u2014 filter login ilike",
+    "rows": 1,
+    "elapsed_ms": 8.96,
+    "rps": 111.6
+  },
+  {
+    "module": "Users",
+    "operation": "search \u2014 filter is_admin=false",
+    "rows": 10000,
+    "elapsed_ms": 12.49,
+    "rps": 800704.6
+  },
+  {
+    "module": "Users",
+    "operation": "search_count \u2014 all",
+    "rows": 10000,
+    "elapsed_ms": 1.78,
+    "rps": 5616084.3
+  },
+  {
+    "module": "Users",
+    "operation": "update \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 1.41,
+    "rps": 706.9
+  },
+  {
+    "module": "Users",
+    "operation": "update_bulk \u2014 5000",
+    "rows": 5000,
+    "elapsed_ms": 101.57,
+    "rps": 49225.2
+  },
+  {
+    "module": "Users",
+    "operation": "delete \u2014 single",
+    "rows": 1,
+    "elapsed_ms": 23.53,
+    "rps": 42.5
+  },
+  {
+    "module": "Users",
+    "operation": "delete_bulk \u2014 1000",
+    "rows": 1000,
+    "elapsed_ms": 550.48,
+    "rps": 1816.6
   }
 ]

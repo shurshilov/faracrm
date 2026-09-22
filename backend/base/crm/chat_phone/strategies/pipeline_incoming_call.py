@@ -256,7 +256,7 @@ class IncomingCallPipeline(IncomingMessagePipeline):
 
     async def _resolve_legs(self) -> None:
         """
-        Наша линия и направление — ОТ ЛИНИИ (как Odoo `_find_number_and_calltype`:
+        Наша линия и направление — ОТ ЛИНИИ:
         «в астериске нет понятия входящий/исходящий» — направление выводится).
 
         Приоритет ВЫЗЫВАЕМОГО (dst): наш номер — вызываемый → ВХОДЯЩИЙ (линия =

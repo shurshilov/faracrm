@@ -253,7 +253,7 @@ class AsteriskPhoneStrategy(PhoneStrategyBase):
         # Агент валидирует start/end как AwareDatetime (tz ОБЯЗАТЕЛЕН) — шлём ISO
         # с оффсетом; наивная дата → 422. astimezone(): aware→локальный, наивный→
         # локальный-aware. Для MySQL агент берёт wall-clock (оффсет игнорится),
-        # так что локальное время сохраняется (как в рабочем модуле Odoo).
+        # так что локальное время сохраняется.
         try:
             calls = await self._api_request(
                 connector,
