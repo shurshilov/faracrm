@@ -17,7 +17,8 @@ export class ChatPage {
   readonly messagesContainer: Locator;
 
   constructor(private page: Page) {
-    this.newChatButton = page.locator('[title="Новый чат"], [title="New chat"]').first();
+    // Английский заголовок — как в fara_chat/locales/en.json ("New Chat").
+    this.newChatButton = page.locator('[title="Новый чат"], [title="New Chat"]').first();
     this.messageInput = page.getByPlaceholder(/введите сообщение|type.*message/i).first();
     this.sendButton = page.locator(
       'button[class*="send"], [class*="ChatInput"] button[type="submit"]',

@@ -228,6 +228,36 @@ async function pickCombobox(
 test.describe('test_create_complex', () => {
   test.describe.configure({ mode: 'serial' });
 
+  // Справочники для формы заказа — партнёр и товар — через API: это setup,
+  // не предмет теста. На свежей базе без демо-данных их нет, а другие спеки
+  // свои записи удаляют в afterAll, так что «первая опция в комбобоксе»
+  // ничем не гарантирована (тест падал на пустом дропдауне «Клиент»).
+  // Не удаляем: на них ссылается созданный тестом заказ (он и так остаётся),
+  // а product_id у позиции — nullable Many2one с ondelete=set null: удаление
+  // товара обнуляло товар в позиции.
+  const partnerName = `E2E-Sale-Partner-${Date.now()}`;
+  const productName = `E2E-Sale-Product-${Date.now()}`;
+
+  test.beforeAll(async ({ api, adminSession }) => {
+    await api.createRecord(adminSession, 'partners', { name: partnerName });
+    // У позиции заказа обязательна «Ед. измерения», её подставляет onchange
+    // по товару из product.uom_id — поэтому товар создаём с единицей.
+    // Единицы сидятся модулем products («штуки» и т.д.); если их нет —
+    // заводим свою.
+    const uoms = await api.searchRecords(adminSession, 'uom', {
+      fields: ['id'],
+      limit: 1,
+    });
+    const uomId =
+      uoms.data[0]?.id ??
+      (await api.createRecord(adminSession, 'uom', { name: 'E2E-шт.' })).id;
+    await api.createRecord(adminSession, 'products', {
+      name: productName,
+      list_price: 100,
+      uom_id: uomId,
+    });
+  });
+
   test('sale with order line — создать заказ и позицию', async ({ page }) => {
     const saleName = `E2E-Sale-${Date.now()}`;
 
@@ -237,8 +267,8 @@ test.describe('test_create_complex', () => {
 
     await fillByName(page, 'name', saleName);
 
-    // Клиент (partner_id) — Many2one
-    await pickCombobox(page, 'partner_id', '');
+    // Клиент (partner_id) — Many2one, свой партнёр из beforeAll
+    await pickCombobox(page, 'partner_id', partnerName);
 
     // Стадия — обязательное поле
     await pickCombobox(page, 'stage_id', '');
@@ -295,9 +325,9 @@ test.describe('test_create_complex', () => {
 
     // Внутри модалки ищем поля по data-path. Они тоже рендерятся с
     // form.getInputProps, так что data-path работает и здесь.
-    // Выбираем продукт в модалке — первый доступный.
-    // pickCombobox уже умеет скоупить поиск в dialog.
-    await pickCombobox(page, 'product_id', '', dialog);
+    // Выбираем свой товар из beforeAll. pickCombobox умеет скоупить
+    // поиск в dialog.
+    await pickCombobox(page, 'product_id', productName, dialog);
 
     // Количество
     const qtyInput = dialog.locator('[data-path="product_uom_qty"]').first();

@@ -33,26 +33,25 @@ async function globalSetup(config: FullConfig) {
   try {
     const adminSession = await api.login(ADMIN_LOGIN, ADMIN_PASSWORD);
 
+    // ВАЖНО: бэк требует ОБА header'а — Bearer token И Cookie session_cookie.
+    // Без cookie возвращает 401.
+    const patchAdmin = (body: Record<string, unknown>) =>
+      fetch(`${API_URL}/auto/users/${adminSession.user_id.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${adminSession.token}`,
+          Cookie: `session_cookie=${adminSession.cookieToken}`,
+        },
+        body: JSON.stringify(body),
+      });
+
     // Сбрасываем тему admin в 'modern' перед каждым прогоном тестов.
     // Это защита на случай если какой-то тест (например theme-switch)
     // упал в середине и не успел восстановить тему через try/finally.
     // Один PUT-запрос на весь прогон — дешёвая страховка.
-    //
-    // ВАЖНО: бэк требует ОБА header'а — Bearer token И Cookie session_cookie.
-    // Без cookie возвращает 401.
     try {
-      const resetRes = await fetch(
-        `${API_URL}/auto/users/${adminSession.user_id.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${adminSession.token}`,
-            Cookie: `session_cookie=${adminSession.cookieToken}`,
-          },
-          body: JSON.stringify({ layout_theme: "modern" }),
-        },
-      );
+      const resetRes = await patchAdmin({ layout_theme: "modern" });
       if (!resetRes.ok) {
         console.warn(
           `⚠️ Could not reset admin layout_theme (status ${resetRes.status})`,
@@ -66,6 +65,30 @@ async function globalSetup(config: FullConfig) {
       }
     } catch (e) {
       console.warn("⚠️ Could not reset admin layout_theme:", e);
+    }
+
+    // Язык admin → русский. Локаторы e2e написаны под русский UI (английские
+    // фолбэки есть не везде), а UI после загрузки профиля переключает i18n на
+    // язык пользователя (UserMenu). На свежей базе admin получает язык по
+    // умолчанию «en» (User.lang_id → _default_lang) — чат-тесты падали на
+    // английском «New Chat».
+    try {
+      const langs = await api.searchRecords(adminSession, "language", {
+        fields: ["id", "code"],
+        filter: [["code", "=", "ru"]],
+        limit: 1,
+      });
+      const ru = langs.data[0];
+      const langRes = ru ? await patchAdmin({ lang_id: ru.id }) : null;
+      if (!langRes?.ok) {
+        console.warn(
+          `⚠️ Could not reset admin language (status ${langRes?.status})`,
+        );
+      } else {
+        console.log("✅ Admin language reset to ru");
+      }
+    } catch (e) {
+      console.warn("⚠️ Could not reset admin language:", e);
     }
 
     const adminContext = await browser.newContext();
