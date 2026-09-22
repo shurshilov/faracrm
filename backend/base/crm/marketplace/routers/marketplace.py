@@ -142,13 +142,9 @@ async def list_apps(
     elif free is False:
         filter_.append(("price", ">", 0))
     if search.strip():
-        # Экранирование LIKE — у диалекта (иначе «%»/«_» в запросе — маски).
-        escaped = env.models.marketplace_app._dialect.like_escape(
-            search.strip()
-        )
-        pattern = f"%{escaped}%"
+        term = search.strip()
         filter_.append(
-            [("name", "ilike", pattern), "or", ("summary", "ilike", pattern)]
+            [("name", "ilike", term), "or", ("summary", "ilike", term)]
         )
     sort_field, order = SORTS.get(sort, SORTS["popular"])
 

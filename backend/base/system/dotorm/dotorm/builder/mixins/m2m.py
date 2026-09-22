@@ -12,9 +12,10 @@ class Many2ManyMixin:
 
     __slots__ = ()
 
-    @staticmethod
     def _m2m_filter_clause(
-        relation_table: Type["DotModel"], filter: list | None
+        self: "BuilderProtocol",
+        relation_table: Type["DotModel"],
+        filter: list | None,
     ) -> tuple[str, tuple]:
         """Field.filter у Many2many → доп. условие на связанную таблицу.
 
@@ -26,9 +27,9 @@ class Many2ManyMixin:
         if not filter:
             return "", ()
         clause, values = relation_table._builder.filter_parser.parse(filter)
+        table = self.dialect.escape_identifier(relation_table.__table__)
         return (
-            f" AND p.id IN (SELECT id FROM {relation_table.__table__} "
-            f"WHERE {clause})",
+            f" AND p.id IN (SELECT id FROM {table} WHERE {clause})",
             tuple(values),
         )
 
@@ -48,6 +49,7 @@ class Many2ManyMixin:
         filter: list | None = None,
     ) -> tuple[str, tuple]:
         """Build SELECT for M2M relation. LIMIT только явный (см. get_many2many)."""
+        escape = self.dialect.escape_identifier
         store_fields = relation_table.get_store_fields()
         if not fields:
             fields = store_fields
@@ -57,7 +59,7 @@ class Many2ManyMixin:
 
         # явно указать для sql запроса что эти поля относятся
         # к связанной таблице
-        fields_prefixed = [f"p.{field}" for field in fields]
+        fields_prefixed = [f"p.{escape(field)}" for field in fields]
         fields_select_stmt = ", ".join(fields_prefixed)
         filter_clause, filter_values = self._m2m_filter_clause(
             relation_table, filter
@@ -67,11 +69,11 @@ class Many2ManyMixin:
         # его нет в списке выбранных полей (AmbiguousColumnError).
         stmt = f"""
         SELECT {fields_select_stmt}
-        FROM {relation_table.__table__} p
-        JOIN {many2many_table} pt ON p.id = pt.{column1}
-        JOIN {self.table} t ON pt.{column2} = t.id
+        FROM {escape(relation_table.__table__)} p
+        JOIN {escape(many2many_table)} pt ON p.id = pt.{escape(column1)}
+        JOIN {escape(self.table)} t ON pt.{escape(column2)} = t.id
         WHERE t.id = %s{filter_clause}
-        ORDER BY p.{sort} {order}
+        ORDER BY p.{escape(sort)} {order}
         """
 
         val: tuple = (id, *filter_values)
@@ -107,29 +109,30 @@ class Many2ManyMixin:
         Returns:
             tuple[str, tuple]: SQL statement and parameter values
         """
+        escape = self.dialect.escape_identifier
         if not fields:
             fields = relation_table.get_store_fields()
 
         # явно указать для sql запроса что эти поля относятся
         # к связанной таблице
-        fields_prefixed = [f"p.{field}" for field in fields]
+        fields_prefixed = [f"p.{escape(field)}" for field in fields]
 
         # добавляем ид из таблицы связи для последующего маппинга записей
         # имеется ввиду за один запрос достаются все записи для всех ид
         # а далее в питоне для каждого ид остаются только его
-        fields_prefixed.append(f"pt.{column2} as m2m_id")
+        fields_prefixed.append(f"pt.{escape(column2)} as m2m_id")
 
         fields_select_stmt = ", ".join(fields_prefixed)
-        query_placeholders = ", ".join(["%s"] * len(ids))
+        query_placeholders = self.dialect.make_placeholders(len(ids))
         filter_clause, filter_values = self._m2m_filter_clause(
             relation_table, filter
         )
 
         stmt = f"""
         SELECT {fields_select_stmt}
-        FROM {relation_table.__table__} p
-        JOIN {many2many_table} pt ON p.id = pt.{column1}
-        JOIN {self.table} t ON pt.{column2} = t.id
+        FROM {escape(relation_table.__table__)} p
+        JOIN {escape(many2many_table)} pt ON p.id = pt.{escape(column1)}
+        JOIN {escape(self.table)} t ON pt.{escape(column2)} = t.id
         WHERE t.id IN ({query_placeholders}){filter_clause}
         ORDER BY p.id
         """

@@ -96,7 +96,7 @@ class OrmPrimaryMixin(_Base):
 
         stmt = cls._builder.build_delete_bulk(len(ids))
         if cls._dialect.name == "postgres":
-            # ANY($1::int[]) — ids as single array param
+            # ANY(%s::int[]) — ids as single array param
             result = await session.execute(stmt, [ids], cursor="void")
         else:
             # IN (%s, %s, ...) — ids as individual params
@@ -418,7 +418,7 @@ class OrmPrimaryMixin(_Base):
             Operation.READ, record_ids=[self.id]
         )
         session = self.__class__._get_db_session(session)
-        stmt = f'SELECT "{field_name}" FROM "{self.__class__.__table__}" WHERE id = $1'
+        stmt = f'SELECT "{field_name}" FROM "{self.__class__.__table__}" WHERE id = %s'
         rows = await session.execute(stmt, [self.id], cursor="fetch")
         if not rows:
             return {}
@@ -440,7 +440,7 @@ class OrmPrimaryMixin(_Base):
             Operation.UPDATE, record_ids=[self.id]
         )
         session = self.__class__._get_db_session(session)
-        stmt = f'UPDATE "{self.__class__.__table__}" SET "{field_name}" = $1 WHERE id = $2'
+        stmt = f'UPDATE "{self.__class__.__table__}" SET "{field_name}" = %s WHERE id = %s'
         await session.execute(
             stmt,
             [json.dumps(merged, ensure_ascii=False), self.id],

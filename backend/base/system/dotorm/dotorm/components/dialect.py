@@ -67,26 +67,20 @@ class Dialect(ABC):
             .replace("_", esc + "_")
         )
 
+    # Единственный язык плейсхолдеров в SQL-тексте — ``%s`` (как у DB-API):
+    # так пишут и билдер, и сырой SQL приложения. В ``$1, $2…`` для asyncpg
+    # его переводит один адаптер на границе драйвера (Postgres-сессия);
+    # литералов ``$n`` в тексте запросов нет.
     @abstractmethod
-    def make_placeholders(self, count: int, start: int = 1) -> str:
+    def make_placeholders(self, count: int) -> str:
         """Generate a comma-separated placeholder string for `count` params."""
-        ...
-
-    @abstractmethod
-    def make_placeholder(self, index: int = 1) -> str:
-        """Generate a single placeholder."""
         ...
 
     # --- bulk id-set matching (shared by bulk DELETE and bulk UPDATE) ---
     @abstractmethod
-    def make_ids_predicate(self, count: int, ids_first: bool = False) -> str:
-        """SQL fragment matching a set of `count` ids, e.g. ``id = ANY($1::int[])``
-        (Postgres) or ``id IN (%s, %s, %s)`` (MySQL).
-
-        ids_first=True means the id param is the only/leading bind param (bulk
-        DELETE) — Postgres emits the literal ``$1``. ids_first=False means it
-        trails other params (bulk UPDATE, after the SET values) — Postgres emits
-        ``%s`` and lets the driver number it."""
+    def make_ids_predicate(self, count: int) -> str:
+        """SQL fragment matching a set of `count` ids: ``id = ANY(%s::int[])``
+        (Postgres, one array param) or ``id IN (%s, %s, %s)`` (MySQL)."""
         ...
 
     @abstractmethod
@@ -169,18 +163,12 @@ class PostgresSqlDialect(Dialect):
     placeholder = "$"
     supports_returning = True
 
-    def make_placeholders(self, count: int, start: int = 1) -> str:
-        return ", ".join(f"${i}" for i in range(start, start + count))
+    def make_placeholders(self, count: int) -> str:
+        return ", ".join(["%s"] * count)
 
-    def make_placeholder(self, index: int = 1) -> str:
-        return f"${index}"
-
-    def make_ids_predicate(self, count: int, ids_first: bool = False) -> str:
-        # Single array param, no per-id parse overhead. When ids is the only/
-        # leading param (DELETE) use the literal $1; when it trails the SET
-        # params (UPDATE) use %s and let the driver number it as $N.
-        placeholder = "$1" if ids_first else "%s"
-        return f"id = ANY({placeholder}::int[])"
+    def make_ids_predicate(self, count: int) -> str:
+        # Single array param, no per-id parse overhead.
+        return "id = ANY(%s::int[])"
 
     def bind_ids(self, ids: list[int]) -> list:
         # one array parameter
@@ -216,13 +204,13 @@ class PostgresSqlDialect(Dialect):
     ) -> tuple[str, list]:
         """unnest approach — one array param per column.
 
-        ... SELECT * FROM unnest($1::text[], $2::int4[], $3::bool[])
+        ... SELECT * FROM unnest(%s::text[], %s::int4[], %s::bool[])
         For 5000 rows × 10 fields = 10 params instead of 50,000.
         """
         # Build column arrays (transpose rows→columns)
         column_arrays = []
         unnest_params = []
-        for i, field_name in enumerate(fields_list, 1):
+        for field_name in fields_list:
             col_values = [row[field_name] for row in payloads_dicts]
             column_arrays.append(col_values)
 
@@ -233,7 +221,7 @@ class PostgresSqlDialect(Dialect):
                 pg_type = self._array_cast_type(field_obj.sql_type)
             else:
                 pg_type = "text"
-            unnest_params.append(f"${i}::{pg_type}[]")
+            unnest_params.append(f"%s::{pg_type}[]")
 
         unnest_clause = ", ".join(unnest_params)
         return f"SELECT * FROM unnest({unnest_clause})", column_arrays
@@ -247,7 +235,7 @@ class PostgresSqlDialect(Dialect):
         """Разные значения на строку одним UPDATE через unnest:
 
             UPDATE t SET "f" = v."f", ...
-            FROM unnest($1::int4[], $2::numeric[], ...) AS v("id", "f", ...)
+            FROM unnest(%s::int4[], %s::numeric[], ...) AS v("id", "f", ...)
             WHERE t.id = v.id
 
         По массиву на колонку (первый — id), как в make_bulk_insert_source.
@@ -255,7 +243,7 @@ class PostgresSqlDialect(Dialect):
         columns = ["id", *fields_list]
         arrays: list = []
         casts: list[str] = []
-        for i, name in enumerate(columns, 1):
+        for name in columns:
             arrays.append([row.get(name) for row in rows])
             field_obj = fields.get(name)
             pg_type = (
@@ -263,7 +251,7 @@ class PostgresSqlDialect(Dialect):
                 if field_obj
                 else "text"
             )
-            casts.append(f"${i}::{pg_type}[]")
+            casts.append(f"%s::{pg_type}[]")
         set_clause = ", ".join(
             f"{self.escape_identifier(f)} = v.{self.escape_identifier(f)}"
             for f in fields_list
@@ -292,14 +280,11 @@ class _DefaultSqlDialect(Dialect):
     placeholder = "%s"
     supports_returning = False
 
-    def make_placeholders(self, count: int, start: int = 1) -> str:
+    def make_placeholders(self, count: int) -> str:
         return ", ".join(["%s"] * count)
 
-    def make_placeholder(self, index: int = 1) -> str:
-        return "%s"
-
-    def make_ids_predicate(self, count: int, ids_first: bool = False) -> str:
-        # MySQL/CH: individual placeholders regardless of position.
+    def make_ids_predicate(self, count: int) -> str:
+        # MySQL/CH: individual placeholders.
         return f"id IN ({self.make_placeholders(count)})"
 
     def bind_ids(self, ids: list[int]) -> list:

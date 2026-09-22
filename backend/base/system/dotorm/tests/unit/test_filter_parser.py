@@ -189,18 +189,25 @@ class TestFilterParserLikeOperators:
         assert values == ("%spam%",)
 
     def test_equals_like_operator(self):
-        """Test =like operator"""
-        clause, values = self.parser.parse(("code", "=like", "ABC"))
+        """=like: шаблон целиком от вызывающего — без %…% и без экранирования."""
+        clause, values = self.parser.parse(("code", "=like", "ABC%"))
 
-        assert clause == '"code" =LIKE %s'
-        assert values == ("%ABC%",)
+        assert clause == '"code" LIKE %s'
+        assert values == ("ABC%",)
 
     def test_equals_ilike_operator(self):
-        """Test =ilike operator"""
-        clause, values = self.parser.parse(("code", "=ilike", "abc"))
+        """=ilike: то же, регистронезависимо."""
+        clause, values = self.parser.parse(("code", "=ilike", "a_c"))
 
-        assert clause == '"code" =ILIKE %s'
-        assert values == ("%abc%",)
+        assert clause == '"code" ILIKE %s'
+        assert values == ("a_c",)
+
+    def test_like_escapes_user_wildcards(self):
+        """% и _ пользователя — буквы, а не маски; \\ — экранирующий символ."""
+        clause, values = self.parser.parse(("name", "ilike", "50%_a\\b"))
+
+        assert clause == '"name" ILIKE %s'
+        assert values == ("%50\\%\\_a\\\\b%",)
 
 
 @pytest.mark.unit

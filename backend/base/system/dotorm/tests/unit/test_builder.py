@@ -93,19 +93,19 @@ class TestBuilderDelete:
         """Test DELETE query for single record."""
         stmt = self.builder.build_delete()
 
-        assert stmt == "DELETE FROM users WHERE id=%s"
+        assert stmt == 'DELETE FROM "users" WHERE id=%s'
 
     def test_build_delete_bulk(self):
         """Postgres: bulk DELETE uses a single array param via ANY()."""
         stmt = self.builder.build_delete_bulk(count=3)
 
-        assert stmt == "DELETE FROM users WHERE id = ANY($1::int[])"
+        assert stmt == 'DELETE FROM "users" WHERE id = ANY(%s::int[])'
 
     def test_build_delete_bulk_single(self):
         """Postgres ANY() form is count-independent (still one array param)."""
         stmt = self.builder.build_delete_bulk(count=1)
 
-        assert stmt == "DELETE FROM users WHERE id = ANY($1::int[])"
+        assert stmt == 'DELETE FROM "users" WHERE id = ANY(%s::int[])'
 
     def test_build_delete_bulk_many(self):
         """MySQL: bulk DELETE expands to one placeholder per id."""
@@ -117,7 +117,8 @@ class TestBuilderDelete:
 
         expected_placeholders = ", ".join(["%s"] * 10)
         assert (
-            stmt == f"DELETE FROM users WHERE id IN ({expected_placeholders})"
+            stmt
+            == f"DELETE FROM `users` WHERE id IN ({expected_placeholders})"
         )
 
 
@@ -147,7 +148,7 @@ class TestBuilderCreate:
         payload = {"name": "John"}
         stmt, values = self.builder.build_create(payload)
 
-        assert stmt == "INSERT INTO users (name) VALUES (%s)"
+        assert stmt == 'INSERT INTO "users" ("name") VALUES (%s)'
         assert values == ("John",)
 
     def test_build_create_multiple_fields(self):
@@ -155,9 +156,9 @@ class TestBuilderCreate:
         payload = {"name": "John", "email": "john@example.com"}
         stmt, values = self.builder.build_create(payload)
 
-        assert "INSERT INTO users" in stmt
-        assert "name" in stmt
-        assert "email" in stmt
+        assert 'INSERT INTO "users"' in stmt
+        assert '"name"' in stmt
+        assert '"email"' in stmt
         assert "VALUES" in stmt
         assert values == ("John", "john@example.com")
 
@@ -183,8 +184,8 @@ class TestBuilderCreate:
         stmt, values = self.builder.build_create_bulk(payloads)
 
         assert stmt == (
-            "INSERT INTO users (name, email) "
-            "SELECT * FROM unnest($1::text[], $2::text[])"
+            'INSERT INTO "users" ("name", "email") '
+            "SELECT * FROM unnest(%s::text[], %s::text[])"
         )
         # values transposed rows→columns: one array param per column
         assert values == [
@@ -204,7 +205,7 @@ class TestBuilderCreate:
         ]
         stmt, values = builder.build_create_bulk(payloads)
 
-        assert "INSERT INTO users (name, email) VALUES" in stmt
+        assert "INSERT INTO `users` (`name`, `email`) VALUES" in stmt
         assert stmt.count("(%s, %s)") == 2
         assert values == [
             "John",
@@ -240,7 +241,7 @@ class TestBuilderUpdate:
         payload = {"name": "John Updated"}
         stmt, values = self.builder.build_update(payload, id=1)
 
-        assert stmt == "UPDATE users SET name=%s WHERE id = %s"
+        assert stmt == 'UPDATE "users" SET "name"=%s WHERE id = %s'
         assert values == ("John Updated", 1)
 
     def test_build_update_multiple_fields(self):
@@ -248,9 +249,9 @@ class TestBuilderUpdate:
         payload = {"name": "John", "email": "john@new.com"}
         stmt, values = self.builder.build_update(payload, id=42)
 
-        assert "UPDATE users SET" in stmt
-        assert "name=%s" in stmt
-        assert "email=%s" in stmt
+        assert 'UPDATE "users" SET' in stmt
+        assert '"name"=%s' in stmt
+        assert '"email"=%s' in stmt
         assert "WHERE id = %s" in stmt
         assert values[-1] == 42  # ID is last
 
@@ -264,7 +265,9 @@ class TestBuilderUpdate:
         payload = {"active": False}
         stmt, values = self.builder.build_update_bulk(payload, ids=[1, 2, 3])
 
-        assert stmt == "UPDATE users SET active=%s WHERE id = ANY(%s::int[])"
+        assert stmt == (
+            'UPDATE "users" SET "active"=%s WHERE id = ANY(%s::int[])'
+        )
         assert values == (False, [1, 2, 3])
 
     def test_build_update_bulk_mysql(self):
@@ -277,7 +280,9 @@ class TestBuilderUpdate:
             {"active": False}, ids=[1, 2, 3]
         )
 
-        assert stmt == "UPDATE users SET active=%s WHERE id IN (%s, %s, %s)"
+        assert stmt == (
+            "UPDATE `users` SET `active`=%s WHERE id IN (%s, %s, %s)"
+        )
         assert values == (False, 1, 2, 3)
 
 
@@ -311,7 +316,7 @@ class TestBuilderGet:
         assert '"name"' in stmt
         assert '"email"' in stmt
         assert '"computed"' not in stmt  # Not stored
-        assert "FROM users" in stmt
+        assert 'FROM "users"' in stmt
         assert "WHERE id = %s" in stmt
         assert "LIMIT 1" in stmt
         assert values == [1]
@@ -329,14 +334,14 @@ class TestBuilderGet:
         """Test SELECT with single field."""
         stmt, values = self.builder.build_get(id=99, fields=["name"])
 
-        assert 'SELECT "name" FROM users' in stmt
+        assert 'SELECT "name" FROM "users"' in stmt
         assert values == [99]
 
     def test_build_table_len(self):
         """Test COUNT query."""
         stmt, values = self.builder.build_table_len()
 
-        assert stmt == "SELECT COUNT(*) FROM users"
+        assert stmt == 'SELECT COUNT(*) FROM "users"'
         assert values is None
 
 
@@ -369,7 +374,8 @@ class TestBuilderSearch:
         stmt, values = self.builder.build_search()
 
         assert (
-            'SELECT "id", "name", "email", "age", "active" FROM users' in stmt
+            'SELECT "id", "name", "email", "age", "active" FROM "users"'
+            in stmt
         )
         assert "ORDER BY" not in stmt
         assert "LIMIT" not in stmt
@@ -404,19 +410,19 @@ class TestBuilderSearch:
         """ASC ordering requires both sort and order to be given."""
         stmt, _ = self.builder.build_search(sort="id", order="ASC")
 
-        assert "ORDER BY id ASC" in stmt
+        assert 'ORDER BY "id" ASC' in stmt
 
     def test_build_search_order_desc(self):
         """DESC ordering requires both sort and order to be given."""
         stmt, _ = self.builder.build_search(sort="id", order="desc")
 
-        assert "ORDER BY id DESC" in stmt
+        assert 'ORDER BY "id" DESC' in stmt
 
     def test_build_search_custom_sort(self):
         """Test search with custom sort field."""
         stmt, _ = self.builder.build_search(sort="name", order="ASC")
 
-        assert "ORDER BY name ASC" in stmt
+        assert 'ORDER BY "name" ASC' in stmt
 
     def test_build_search_invalid_order_raises(self):
         """Test search with invalid order raises error."""
@@ -555,10 +561,10 @@ class TestBuilderUpdateBulkRows:
         stmt, values = self.builder.build_update_bulk_rows(rows)
 
         assert stmt == (
-            'UPDATE leads SET "progress" = v."progress", '
+            'UPDATE "leads" SET "progress" = v."progress", '
             '"amount" = v."amount" '
-            "FROM unnest($1::int4[], $2::int4[], $3::numeric[]) "
-            'AS v("id", "progress", "amount") WHERE leads.id = v.id'
+            "FROM unnest(%s::int4[], %s::int4[], %s::numeric[]) "
+            'AS v("id", "progress", "amount") WHERE "leads".id = v.id'
         )
         # по массиву на колонку, первый — id
         assert values == [[1, 2], [20, 40], [10, None]]

@@ -1,7 +1,7 @@
 """Helper functions for SQL building."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from ..fields import Field
@@ -12,6 +12,7 @@ def build_sql_update_from_schema(
     payload_dict: dict[str, Any],
     id: int | list[int],
     fields_map: "dict[str, Field]",
+    escape: Callable[[str], str] | None = None,
 ) -> tuple[str, tuple]:
     """Составляет запрос обновления (update).
 
@@ -25,6 +26,8 @@ def build_sql_update_from_schema(
         payload_dict -- сериализованные данные модели {field_name: value}
         id -- идентификатор или список идентификаторов для WHERE
         fields_map -- карта имя_поля → Field объект (из model._cache_all_fields)
+        escape -- экранирование идентификатора (dialect.escape_identifier);
+                  поле получает уже экранированное имя
 
     Returns:
         sql -- готовый SQL с плейсхолдерами
@@ -37,7 +40,8 @@ def build_sql_update_from_schema(
     values_list: list[Any] = []
     for field_name, value in payload_dict.items():
         field = fields_map[field_name]
-        fragment, bind_value = field.to_sql_update(field_name, value)
+        name = escape(field_name) if escape else field_name
+        fragment, bind_value = field.to_sql_update(name, value)
         set_parts.append(fragment)
         values_list.append(bind_value)
 
@@ -56,12 +60,14 @@ def build_sql_update_from_schema(
 def build_sql_create_from_schema(
     sql: str,
     payload_dict: dict[str, Any],
+    escape: Callable[[str], str] | None = None,
 ) -> tuple[str, tuple]:
     """Составляет запрос создания (insert).
 
     Arguments:
         sql -- текст шаблона запроса
         payload_dict -- сериализованные данные модели
+        escape -- экранирование имён колонок (dialect.escape_identifier)
 
     Returns:
         sql -- текст запроса с подстановками (биндингами)
@@ -71,6 +77,8 @@ def build_sql_create_from_schema(
         raise ValueError("payload_dict cannot be empty")
 
     fields_list, values_list = zip(*payload_dict.items())
+    if escape:
+        fields_list = tuple(escape(name) for name in fields_list)
 
     query_columns = ", ".join(fields_list)
     query_placeholders = ", ".join(["%s"] * len(values_list))

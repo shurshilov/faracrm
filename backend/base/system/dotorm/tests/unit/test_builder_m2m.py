@@ -97,21 +97,21 @@ class TestBuildGetMany2many:
 
     def test_order_by_is_qualified(self):
         stmt, _ = _m2m(fields=["name"], sort="id")
-        assert "ORDER BY p.id desc" in stmt
+        assert 'ORDER BY p."id" desc' in stmt
 
         stmt, _ = _m2m(sort="name", order="asc")
-        assert "ORDER BY p.name asc" in stmt
+        assert 'ORDER BY p."name" asc' in stmt
 
     def test_unknown_sort_falls_back_to_id(self):
         stmt, _ = _m2m(sort="(SELECT pg_sleep(5))")
 
         assert "pg_sleep" not in stmt
-        assert "ORDER BY p.id" in stmt
+        assert 'ORDER BY p."id"' in stmt
 
     def test_filter_narrows_related_rows(self):
         stmt, values = _m2m(filter=[("name", "=", "x")])
 
-        assert 'p.id IN (SELECT id FROM t_m2m_tag WHERE "name" = %s)' in stmt
+        assert 'p.id IN (SELECT id FROM "t_m2m_tag" WHERE "name" = %s)' in stmt
         assert values == (1, "x")
 
 
@@ -122,13 +122,14 @@ class TestBuildGetMany2manyMultiple:
         assert "LIMIT" not in stmt
         assert "ORDER BY p.id" in stmt
         assert "WHERE t.id IN (%s, %s, %s)" in stmt
-        assert "pt.post_id as m2m_id" in stmt
+        assert 'pt."post_id" as m2m_id' in stmt
+        assert 'FROM "t_m2m_tag" p' in stmt
         assert values == (1, 2, 3)
 
     def test_filter_values_follow_ids(self):
         stmt, values = _m2m_multiple([1, 2], filter=[("name", "=", "x")])
 
-        assert 'p.id IN (SELECT id FROM t_m2m_tag WHERE "name" = %s)' in stmt
+        assert 'p.id IN (SELECT id FROM "t_m2m_tag" WHERE "name" = %s)' in stmt
         assert values == (1, 2, "x")
 
 
@@ -145,7 +146,7 @@ class TestBuildSearchRelation:
         req = self._requests()["comment_ids"]
 
         assert '"post_id" = ANY(%s)' in req.stmt
-        assert req.stmt.rstrip().endswith("ORDER BY id ASC")
+        assert req.stmt.rstrip().endswith('ORDER BY "id" ASC')
         assert req.value == ([1, 2],)
 
     def test_m2m_batch_without_limit(self):

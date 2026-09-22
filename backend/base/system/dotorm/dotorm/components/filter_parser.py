@@ -111,7 +111,7 @@ class FilterParser:
             "or",
             [("role", "=", "admin"), ("verified", "=", True)]
         ])
-        # clause: '"active" = $1 OR ("role" = $2 AND "verified" = $3)'
+        # clause: '"active" = %s OR ("role" = %s AND "verified" = %s)'
         # values: (True, "admin", True)
     """
 
@@ -177,16 +177,18 @@ class FilterParser:
                 # FALSE / TRUE, а не невалидный «IN ()».
                 return self.dialect.make_in_predicate(field, op, value)
 
-            elif op in (
-                "like",
-                "ilike",
-                "=like",
-                "=ilike",
-                "not like",
-                "not ilike",
-            ):
+            elif op in ("like", "ilike", "not like", "not ilike"):
+                # Подстрока: % и _ пользователя экранируем
+                # (Dialect.like_escape), шаблон %…% добавляем сами.
                 clause = f"{field} {op.upper()} %s"
-                return clause, ("%" + str(value) + "%",)
+                pattern = "%" + self.dialect.like_escape(str(value)) + "%"
+                return clause, (pattern,)
+
+            elif op in ("=like", "=ilike"):
+                # Шаблон целиком от вызывающего:
+                # подстановочные знаки его, ничего не добавляем и не экранируем.
+                clause = f"{field} {op[1:].upper()} %s"
+                return clause, (str(value),)
 
             elif op in ("=", "!=", ">", "<", ">=", "<="):
                 # None -> IS NULL / IS NOT NULL

@@ -534,14 +534,12 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
 
         Для модалки поиска в открытом чате (лупа в шапке). Удалённые не
         ищем; поля — как у закреплённых: это список результатов, не лента.
-        Спецсимволы LIKE экранирует диалект (Dialect.like_escape).
         """
-        escaped = self._dialect.like_escape(query)
         return await self.search(
             filter=[
                 ("chat_id", "=", chat_id),
                 ("is_deleted", "=", False),
-                ("body", "ilike", f"%{escaped}%"),
+                ("body", "ilike", query),
             ],
             fields=[
                 "id",

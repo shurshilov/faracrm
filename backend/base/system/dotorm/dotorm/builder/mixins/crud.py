@@ -31,27 +31,32 @@ class CRUDMixin:
 
     __slots__ = ()
 
+    # Идентификаторы (таблица, колонки, sort) всегда через
+    # dialect.escape_identifier: поле с именем order/user/end иначе работает
+    # в SELECT, но ломает INSERT/UPDATE.
     def build_delete(self: "BuilderProtocol") -> str:
-        return f"DELETE FROM {self.table} WHERE id=%s"
+        table = self.dialect.escape_identifier(self.table)
+        return f"DELETE FROM {table} WHERE id=%s"
 
     def build_delete_bulk(self: "BuilderProtocol", count: int) -> str:
         """Build bulk DELETE by ids.
 
-        Postgres: ANY($1::int[]) — single array param, no parse overhead.
+        Postgres: ANY(%s::int[]) — single array param, no parse overhead.
         MySQL:    IN (%s, %s, ...) — individual params (no array type).
         """
-        return (
-            f"DELETE FROM {self.table} "
-            f"WHERE {self.dialect.make_ids_predicate(count, ids_first=True)}"
-        )
+        table = self.dialect.escape_identifier(self.table)
+        return f"DELETE FROM {table} WHERE {self.dialect.make_ids_predicate(count)}"
 
     def build_create(
         self: "BuilderProtocol",
         payload_dict: dict[str, Any],
     ) -> tuple[str, tuple]:
         """Build INSERT query from dict."""
-        stmt = f"INSERT INTO {self.table} (%s) VALUES (%s)"
-        stmt, values_list = build_sql_create_from_schema(stmt, payload_dict)
+        table = self.dialect.escape_identifier(self.table)
+        stmt = f"INSERT INTO {table} (%s) VALUES (%s)"
+        stmt, values_list = build_sql_create_from_schema(
+            stmt, payload_dict, escape=self.dialect.escape_identifier
+        )
         return stmt, values_list
 
     def build_create_bulk(
@@ -61,7 +66,7 @@ class CRUDMixin:
         """Build bulk INSERT query.
 
         Postgres: unnest approach — one array param per column.
-          INSERT INTO t (a, b, c) SELECT * FROM unnest($1::text[], $2::int4[], $3::bool[])
+          INSERT INTO t (a, b, c) SELECT * FROM unnest(%s::text[], %s::int4[], %s::bool[])
           For 5000 rows × 10 fields = 10 params instead of 50,000.
 
         MySQL: VALUES (%s,%s,...), (%s,%s,...) — individual params.
@@ -69,15 +74,16 @@ class CRUDMixin:
         if not payloads_dicts:
             raise ValueError("payloads_dicts cannot be empty")
 
+        escape = self.dialect.escape_identifier
         fields_list = list(payloads_dicts[0].keys())
-        columns = ", ".join(fields_list)
+        columns = ", ".join(escape(name) for name in fields_list)
 
         # Dialect fills the source clause after "INSERT INTO t (cols)":
         # unnest(...) for Postgres, VALUES (...), ... for MySQL.
         source, values = self.dialect.make_bulk_insert_source(
             payloads_dicts, fields_list, self.fields
         )
-        stmt = f"INSERT INTO {self.table} ({columns}) {source}"
+        stmt = f"INSERT INTO {escape(self.table)} ({columns}) {source}"
         return stmt, values
 
     def build_update(
@@ -90,9 +96,14 @@ class CRUDMixin:
         Передаёт self.fields в helper — поля сами генерируют свои
         SQL-фрагменты через to_sql_update (см. Field API).
         """
-        stmt = f"UPDATE {self.table} SET %s WHERE id = %s"
+        table = self.dialect.escape_identifier(self.table)
+        stmt = f"UPDATE {table} SET %s WHERE id = %s"
         stmt, values_list = build_sql_update_from_schema(
-            stmt, payload_dict, id, self.fields
+            stmt,
+            payload_dict,
+            id,
+            self.fields,
+            escape=self.dialect.escape_identifier,
         )
         return stmt, values_list
 
@@ -109,14 +120,15 @@ class CRUDMixin:
         if not payload_dict:
             raise ValueError("payload_dict cannot be empty")
 
+        escape = self.dialect.escape_identifier
         fields_list = list(payload_dict.keys())
         values_list = [payload_dict[f] for f in fields_list]
 
-        # SET field1=%s, field2=%s (dialect-agnostic)
-        set_clause = ", ".join(f"{field}=%s" for field in fields_list)
+        # SET "field1"=%s, "field2"=%s (dialect-agnostic)
+        set_clause = ", ".join(f"{escape(field)}=%s" for field in fields_list)
 
         stmt = (
-            f"UPDATE {self.table} SET {set_clause} "
+            f"UPDATE {escape(self.table)} SET {set_clause} "
             f"WHERE {self.dialect.make_ids_predicate(len(ids))}"
         )
         values = tuple(values_list) + tuple(self.dialect.bind_ids(ids))
@@ -144,9 +156,10 @@ class CRUDMixin:
         if made is None:
             return None
         set_clause, from_clause, values = made
+        table = self.dialect.escape_identifier(self.table)
         stmt = (
-            f"UPDATE {self.table} SET {set_clause} {from_clause} "
-            f"WHERE {self.table}.id = v.id"
+            f"UPDATE {table} SET {set_clause} {from_clause} "
+            f"WHERE {table}.id = v.id"
         )
         return stmt, values
 
@@ -169,12 +182,14 @@ class CRUDMixin:
         fields_stmt = ", ".join(
             f"{escape}{name}{escape}" for name in selected_fields
         )
+        table = self.dialect.escape_identifier(self.table)
 
-        stmt = f"SELECT {fields_stmt} FROM {self.table} WHERE id = %s LIMIT 1"
+        stmt = f"SELECT {fields_stmt} FROM {table} WHERE id = %s LIMIT 1"
         return stmt, [id]
 
     def build_table_len(self: "BuilderProtocol") -> tuple[str, None]:
-        stmt = f"SELECT COUNT(*) FROM {self.table}"
+        table = self.dialect.escape_identifier(self.table)
+        stmt = f"SELECT COUNT(*) FROM {table}"
         return stmt, None
 
     def build_search(
@@ -233,9 +248,10 @@ class CRUDMixin:
             where_clause, where_values = self.filter_parser.parse(filter)
             where = f"WHERE {where_clause}"
 
-        stmt = f"SELECT {fields_store_stmt} FROM {self.table} " f"{where} "
+        table = self.dialect.escape_identifier(self.table)
+        stmt = f"SELECT {fields_store_stmt} FROM {table} {where} "
         if sort and order:
-            stmt += f"ORDER BY {sort} {order_upper} "
+            stmt += f"ORDER BY {escape}{sort}{escape} {order_upper} "
 
         val: tuple = ()
 
@@ -281,7 +297,8 @@ class CRUDMixin:
             where_clause, where_values = self.filter_parser.parse(filter)
             where = f"WHERE {where_clause}"
 
-        stmt = f"SELECT COUNT(*) as count FROM {self.table} {where}"
+        table = self.dialect.escape_identifier(self.table)
+        stmt = f"SELECT COUNT(*) as count FROM {table} {where}"
 
         return stmt, where_values
 
@@ -305,6 +322,7 @@ class CRUDMixin:
             where_clause, where_values = self.filter_parser.parse(filter)
             where = f"WHERE {where_clause}"
 
-        stmt = f"SELECT 1 FROM {self.table} {where} LIMIT 1"
+        table = self.dialect.escape_identifier(self.table)
+        stmt = f"SELECT 1 FROM {table} {where} LIMIT 1"
 
         return stmt, where_values

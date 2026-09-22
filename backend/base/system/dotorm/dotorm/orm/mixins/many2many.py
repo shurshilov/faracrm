@@ -112,13 +112,14 @@ class OrmMany2manyMixin(_Base):
         session = cls._get_db_session(session)
         if not values:
             return None
-        query_placeholders = ", ".join(["%s"] * len(values[0]))
+        escape = cls._dialect.escape_identifier
+        query_placeholders = cls._dialect.make_placeholders(len(values[0]))
         if cls._dialect.name == "postgres":
             verb, on_conflict = "INSERT", "ON CONFLICT DO NOTHING"
         else:
             verb, on_conflict = "INSERT IGNORE", ""
-        stmt = f"""{verb} INTO {field.many2many_table}
-        ({field.column2}, {field.column1})
+        stmt = f"""{verb} INTO {escape(field.many2many_table)}
+        ({escape(field.column2)}, {escape(field.column1)})
         VALUES
         ({query_placeholders})
         {on_conflict}
@@ -140,10 +141,12 @@ class OrmMany2manyMixin(_Base):
         if not ids:
             return None
         session = cls._get_db_session(session)
-        args: str = ",".join(["%s"] * len(ids))
+        escape = cls._dialect.escape_identifier
+        args = cls._dialect.make_placeholders(len(ids))
         stmt = (
-            f"DELETE FROM {field.many2many_table} "
-            f"WHERE {field.column1} in ({args}) AND {field.column2} = %s"
+            f"DELETE FROM {escape(field.many2many_table)} "
+            f"WHERE {escape(field.column1)} IN ({args}) "
+            f"AND {escape(field.column2)} = %s"
         )
         return await session.execute(stmt, [*ids, owner_id])
 

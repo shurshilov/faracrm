@@ -44,7 +44,8 @@ class FakeSession:
         return [c for c in self.calls if c[0].startswith("UPDATE")]
 
     def updated_tables(self) -> list[str]:
-        return [stmt.split()[1] for stmt, _ in self.updates()]
+        # имя таблицы в кавычках (dialect.escape_identifier) — снимаем их
+        return [stmt.split()[1].strip('"') for stmt, _ in self.updates()]
 
 
 # ── локальный compute с M2O-prefetch (как Lead.progress по стадии) ──
@@ -207,9 +208,9 @@ class TestLocalComputeBulk:
         stmt, values = session.updates()[0]
         assert len(session.updates()) == 1
         assert stmt == (
-            'UPDATE t_bulk_lead SET "progress" = v."progress" '
-            "FROM unnest($1::int4[], $2::int4[]) "
-            'AS v("id", "progress") WHERE t_bulk_lead.id = v.id'
+            'UPDATE "t_bulk_lead" SET "progress" = v."progress" '
+            "FROM unnest(%s::int4[], %s::int4[]) "
+            'AS v("id", "progress") WHERE "t_bulk_lead".id = v.id'
         )
         assert values == [[1, 2, 3], [10, 30, 10]]
 
@@ -267,7 +268,7 @@ class TestParentComputeBulk:
 
         stmt, values = session.updates()[0]
         assert len(session.updates()) == 1
-        assert stmt.startswith('UPDATE t_bulk_order SET "total" = v."total"')
+        assert stmt.startswith('UPDATE "t_bulk_order" SET "total" = v."total"')
         assert values == [[1, 2], [12, 11]]
 
     async def test_delete_and_create_in_one_scope_recompute_parent_once(
