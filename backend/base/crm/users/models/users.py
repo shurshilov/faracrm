@@ -120,11 +120,15 @@ class User(PolymorphicParentMixin):
 
     # role_update="system_admin": менять роли может только «Администратор
     # настроек» (или суперпользователь — он обходит проверку). Защита от
-    # самоповышения привилегий обычным пользователем. Только update: m2m на
-    # создании не пишется (store=False, проставляется отдельным update'ом).
+    # самоповышения привилегий обычным пользователем.
+    # default_orm=False: base_user подставляется только в форме
+    # (get_default_values); при создании кодом ORM роли не привязывает —
+    # Anonymous и портальные пользователи заводятся без base_user, роли им
+    # задают явно (сидеры, регистрация).
     role_ids: list["Role"] = Many2many(
         role_update="system_admin",
         default=_default_roles,
+        default_orm=False,
         store=False,
         relation_table=lambda: env.models.role,
         many2many_table="user_role_many2many",
@@ -173,7 +177,9 @@ class User(PolymorphicParentMixin):
         description="Язык интерфейса пользователя",
         default=_default_lang,
     )
-    # Доступные языки для выбора пользователю
+    # Доступные языки для выбора пользователю. default (en + ru) ORM
+    # привязывает после INSERT — и из формы, и при создании кодом
+    # (сидеры, регистрация, копирование, импорт), если lang_ids не передан.
     lang_ids: list["Language"] = Many2many(
         store=False,
         relation_table=lambda: env.models.language,

@@ -309,10 +309,11 @@ class DotModel(
         #     get_json диспатчит по нему без per-row isinstance (в т.ч. без
         #     медленного ABC isinstance(value, DotModel)) — выигрыш и на записи
         #     (create_bulk), и на чтении (search/get → LIST/FORM, много строк).
-        #  2. _cache_default_plan — (имя, DefaultKind, default) только
-        #     STORE-полей С дефолтом; вид считается здесь один раз
-        #     (Field.default_kind), _apply_defaults итерирует лишь их и не
-        #     гоняет iscoroutinefunction на каждую строку.
+        #  2. _cache_default_plan — (имя, DefaultKind, default) полей с
+        #     дефолтом для ORM (default_orm; False — только для формы);
+        #     вид считается здесь один раз (Field.default_kind),
+        #     _apply_defaults итерирует лишь их и не гоняет
+        #     iscoroutinefunction на каждую строку.
         all_kinds: dict[str, FieldKind] = {}
         default_plan: list = []
         for _name, _field in cls._cache_all_fields.items():
@@ -332,7 +333,7 @@ class DotModel(
             else:
                 all_kinds[_name] = FieldKind.SCALAR
 
-            if _field.store and _field.default is not None:
+            if _field.default is not None and _field.default_orm:
                 default_plan.append(
                     (_name, _field.default_kind, _field.default)
                 )

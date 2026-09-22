@@ -172,7 +172,7 @@ class DotModelProtocol(Protocol):
         cls,
         field: Any,
         ids: list,
-        owner_id: int,
+        owner_id: int | list[int],
         session: Any = None,
     ) -> Any: ...
 
@@ -201,6 +201,7 @@ class DotModelProtocol(Protocol):
         update_fields: list[str],
         session: Any,
         depends_jobs: Any = None,
+        ids: list[int] | None = None,
     ) -> None: ...
 
     async def _update_store(

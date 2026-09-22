@@ -27,6 +27,28 @@ else:
 _M = TypeVar("_M", bound="DotModel")
 
 
+def _relation_commands(value):
+    """Значение x2m-поля → команды {created, selected, …}.
+
+    Из API приходят команды; из кода и дефолтов (_apply_defaults) — список
+    записей или id: запись без id — created (её поля), запись с id или
+    голый id — selected (у One2many такой команды нет: там смысл имеют
+    только новые дети). Команды проходят как есть.
+    """
+    if not isinstance(value, list):
+        return value
+    commands: dict = {"created": [], "selected": []}
+    for item in value:
+        item_id = getattr(item, "id", item)
+        if item_id is None:
+            commands["created"].append(
+                {name: getattr(item, name) for name in item.assigned_fields()}
+            )
+        else:
+            commands["selected"].append(item_id)
+    return commands
+
+
 class OrmRelationsMixin(_Base):
     """
     Mixin providing ORM operations for relations.
@@ -407,6 +429,7 @@ class OrmRelationsMixin(_Base):
         update_fields: list[str],
         session=None,
         depends_jobs=None,
+        ids: list[int] | None = None,
     ):
         """
         Обновить запись с поддержкой relation полей (M2M, O2M, attachments).
@@ -418,8 +441,11 @@ class OrmRelationsMixin(_Base):
             payload: Экземпляр модели с новыми значениями полей
             update_fields: Список полей для обновления
             session: DB сессия
+            ids: Владельцы связей M2M/O2M (update_bulk: одни команды на
+                 много записей, запрос на поле). По умолчанию — self.
         """
         session = self._get_db_session(session)
+        ids = ids or [self.id]
 
         # Handle attachments
         fields_attachments = [
@@ -432,7 +458,9 @@ class OrmRelationsMixin(_Base):
             for name, field in fields_attachments:
                 if isinstance(field, PolymorphicMany2one):
                     field_obj = getattr(payload, name)
-                    if field_obj and field.relation_table:
+                    # Словарь — новое вложение (файл в content). id или
+                    # запись — только связать: столбец пишет _update_store.
+                    if isinstance(field_obj, dict) and field.relation_table:
                         # TODO: всегда создавать новую строку аттачмент с файлом
                         # также надо продумать механизм обновления уже существующего файла
                         # надо ли? или проще удалять
@@ -466,6 +494,8 @@ class OrmRelationsMixin(_Base):
 
             for name, field in fields_relation:
                 field_obj = getattr(payload, name)
+                if not isinstance(field, One2one):
+                    field_obj = _relation_commands(field_obj)
 
                 if isinstance(field, One2one):
                     # из API связь приходит словарём полей связанной записи,
@@ -486,24 +516,27 @@ class OrmRelationsMixin(_Base):
                         )
 
                 if isinstance(field, (One2many, PolymorphicOne2many)):
-                    # заменить в связанных полях виртуальный ид на вновь созданный
-                    for obj in field_obj.get("created", []):
-                        for k, v in obj.items():
-                            f = getattr(field.relation_table, k)
-                            if (
-                                isinstance(f, (Many2one, PolymorphicMany2one))
-                                and v == "VirtualId"
-                            ):
-                                obj[k] = self.id
-
-                    data_created = [
-                        field.relation_table(**obj)
-                        for obj in field_obj.get("created", [])
-                    ]
-
-                    if isinstance(field, PolymorphicOne2many):
-                        for obj in data_created:
-                            obj.res_id = self.id
+                    # Дети — каждому владельцу свои: VirtualId (форма) и
+                    # незаданный FK (код, дефолт) → владелец, полиморфному
+                    # ещё res_model. Словарь формы не мутируем.
+                    parent = field.relation_table_field
+                    data_created = []
+                    for owner_id in ids:
+                        for obj in field_obj.get("created", []):
+                            child = field.relation_table(**obj)
+                            for k, v in obj.items():
+                                f = getattr(field.relation_table, k)
+                                if v == "VirtualId" and isinstance(
+                                    f, (Many2one, PolymorphicMany2one)
+                                ):
+                                    setattr(child, k, owner_id)
+                            if not child.is_assigned(parent):
+                                setattr(child, parent, owner_id)
+                            if isinstance(field, PolymorphicOne2many):
+                                child.res_id = owner_id
+                                if not child.is_assigned("res_model"):
+                                    child.res_model = self.__table__
+                            data_created.append(child)
 
                     if field_obj.get("created", []):
                         request_list.append(
@@ -527,7 +560,6 @@ class OrmRelationsMixin(_Base):
                                 depends_jobs=depends_jobs,
                             )
                         )
-
                     # Inline editing: обновление существующих записей
                     # updated = {record_id: {field: value, ...}, ...}
                     for rec_id, changes in field_obj.get(
@@ -570,8 +602,11 @@ class OrmRelationsMixin(_Base):
                         ]
 
                     if field_obj.get("selected"):
+                        # все пары владелец × связь — одним INSERT
                         data_selected = [
-                            (self.id, id) for id in field_obj["selected"]
+                            (owner_id, id)
+                            for owner_id in ids
+                            for id in field_obj["selected"]
                         ]
                         request_list.append(
                             self.link_many2many(field, data_selected)
@@ -580,7 +615,7 @@ class OrmRelationsMixin(_Base):
                     if field_obj.get("unselected"):
                         request_list.append(
                             self.unlink_many2many(
-                                field, field_obj["unselected"], self.id
+                                field, field_obj["unselected"], ids
                             )
                         )
 

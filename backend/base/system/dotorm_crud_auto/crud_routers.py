@@ -325,26 +325,12 @@ class CRUDRouterGenerator(APIRouter):
         async def route(req: Request, payload: schema_input):  # type: ignore
             env = req.app.state.env
             payload_dict = payload.model_dump(exclude_unset=True)
-            model_instance = Model(**payload_dict)
-
-            fields_names = list(payload_dict)
-            fields_names = [
-                field
-                for field in fields_names
-                if field in model_instance.get_none_update_fields_set()
-            ]
-            # Запись и её связи — одной транзакцией: отказ row-rule (он
-            # проверяется после INSERT) или ошибка на связях откатывают всё,
-            # «полусохранённой» записи не остаётся.
+            # Запись и её связи (create пишет их сам, update после INSERT)
+            # — одной транзакцией: отказ row-rule (он проверяется после
+            # INSERT) или ошибка на связях откатывают всё, «полусохранённой»
+            # записи не остаётся.
             async with env.apps.db.get_transaction():
-                # создаем сначала запись в бд с теми значениями
-                # которые храняться напрямую
-                id = await Model.create(model_instance)
-                record = await Model.get(id)
-
-                # затем обновляем поля связей
-                if record and fields_names:
-                    await record.update(model_instance, fields_names)
+                id = await Model.create(Model(**payload_dict))
 
             return {"id": id}
 

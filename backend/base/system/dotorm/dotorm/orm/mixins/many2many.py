@@ -130,9 +130,14 @@ class OrmMany2manyMixin(_Base):
 
     @classmethod
     async def unlink_many2many(
-        cls, field: Many2many, ids: list, owner_id: int, session=None
+        cls,
+        field: Many2many,
+        ids: list,
+        owner_id: int | list[int],
+        session=None,
     ):
-        """Отвязать записи M2M ТОЛЬКО у конкретного владельца (owner_id).
+        """Отвязать записи M2M ТОЛЬКО у конкретных владельцев (owner_id —
+        один или список, update_bulk), одним DELETE.
 
         owner_id обязателен: без условия по column2 (сторона владельца)
         DELETE снимал связь у ВСЕХ записей. Например
@@ -141,15 +146,17 @@ class OrmMany2manyMixin(_Base):
         см. link_many2many, кладущий self.id в column2)."""
         if not ids:
             return None
+        owners = owner_id if isinstance(owner_id, list) else [owner_id]
         session = cls._get_db_session(session)
         escape = cls._dialect.escape_identifier
         args = cls._dialect.make_placeholders(len(ids))
+        owner_args = cls._dialect.make_placeholders(len(owners))
         stmt = (
             f"DELETE FROM {escape(field.many2many_table)} "
             f"WHERE {escape(field.column1)} IN ({args}) "
-            f"AND {escape(field.column2)} = %s"
+            f"AND {escape(field.column2)} IN ({owner_args})"
         )
-        return await session.execute(stmt, [*ids, owner_id])
+        return await session.execute(stmt, [*ids, *owners])
 
     @classmethod
     async def _records_list_get_relation(

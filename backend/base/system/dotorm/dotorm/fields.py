@@ -83,7 +83,9 @@ class Field[FieldType]:
     index: bool = False
     primary_key: bool = False
     null: bool = True
-    # default_orm — применять default при INSERT в Python (callable выполняется здесь).
+    # default_orm — применять default при создании в Python (callable
+    # выполняется здесь; у связей O2M/M2M — update после INSERT). False —
+    # дефолт только для формы (get_default_values), код без него.
     # default_db — применять default как DDL DEFAULT (только литералы, опт-ин).
     # default по умолчанию работает как раньше: ORM-применение включено,
     # DDL-default — нет (чтобы не менять существующие миграции).

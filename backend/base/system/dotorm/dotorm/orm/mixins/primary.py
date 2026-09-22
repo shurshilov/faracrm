@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Self, TypeVar
 from ...exceptions import RecordNotFound
 from ...access import Operation
 from ...components.dialect import POSTGRES
-from ...model import JsonMode
+from ...model import FieldKind, JsonMode
 from ...decorators import hybridmethod
-from ...fields import TranslatedChar, evaluate_default
+from ...fields import Many2one, TranslatedChar, evaluate_default
 
 if TYPE_CHECKING:
     from ..protocol import DotModelProtocol
@@ -295,8 +295,23 @@ class OrmPrimaryMixin(_Base):
                 filter=[("id", "in", list(ids))], session=session
             )
 
-        stmt, values = cls._builder.build_update_bulk(payload_dict, ids)
-        result = await session.execute(stmt, values, cursor="void")
+        # UPDATE — только если есть store-поля: payload из одних связей
+        # (create_bulk с x2m-дефолтами) даёт пустой SET.
+        result = None
+        if payload_dict:
+            stmt, values = cls._builder.build_update_bulk(payload_dict, ids)
+            result = await session.execute(stmt, values, cursor="void")
+
+        # Связи M2M/O2M — одни команды на все ids, запрос на поле.
+        relations = [
+            name
+            for name in cls._assigned_relations(payload)
+            if cls._cache_all_field_kinds[name] is FieldKind.X2M
+        ]
+        if relations:
+            await payload._update_relations(
+                payload, relations, session, depends_jobs, ids=ids
+            )
 
         # @depends на НОВОМ состоянии: пометить по затронутым полям (FK
         # нового родителя, если был в payload, поднимет и его).
@@ -392,10 +407,27 @@ class OrmPrimaryMixin(_Base):
         # это цена единого пути create/update; pre-INSERT compute убран
         # ради одной точки запуска @depends.
         payload.id = record_id
+        # Связи (команды или списки записей, в т.ч. дефолты) — update после
+        # INSERT, как раньше делал create-роут: столбца у них нет.
+        relations = cls._assigned_relations(payload)
+        if relations:
+            await payload.update(payload, relations, session, depends_jobs)
         cls._depends_mark_always(depends_jobs)
         cls._depends_mark([payload], payload.assigned_fields(), depends_jobs)
         await cls._depends_flush(depends_jobs, owner, session)
         return record_id
+
+    @classmethod
+    def _assigned_relations(cls, payload: "DotModel") -> list[str]:
+        """Непустые связи payload, кроме Many2one (он столбец INSERT)."""
+        assigned = payload.assigned_fields()
+        return [
+            name
+            for name, field in cls.get_relation_fields()
+            if not isinstance(field, Many2one)
+            and name in assigned
+            and getattr(payload, name)
+        ]
 
     def _check_translated_field(self, field_name):
         """Проверяет что поле существует и это TranslatedChar. Возвращает field."""
@@ -512,6 +544,17 @@ class OrmPrimaryMixin(_Base):
             await cls._check_access(Operation.CREATE, record_ids=created_ids)
             for p, rid in zip(payload, created_ids):
                 p.id = rid
+            # Связи — x2m-дефолты, одни на всю пачку → один update_bulk
+            # (свои связи строкам create_bulk не передают).
+            first = payload[0]
+            relations = cls._assigned_relations(first)
+            if relations:
+                await cls.update_bulk(
+                    created_ids,
+                    cls(**{name: getattr(first, name) for name in relations}),
+                    session,
+                    depends_jobs,
+                )
             cls._depends_mark_always(depends_jobs)
             if cls._depends_local_triggers or cls._depends_parent_triggers:
                 changed: set[str] = set()
@@ -555,7 +598,7 @@ class OrmPrimaryMixin(_Base):
     @staticmethod
     async def _apply_defaults(payload: "DotModel") -> None:
         """
-        Применить default-значения к незаданным store-полям payload.
+        Применить default-значения к незаданным полям payload.
 
         Вызывается из create()/create_bulk() ПЕРЕД сериализацией.
         Разделение ответственности (как в SQLAlchemy/Django):
