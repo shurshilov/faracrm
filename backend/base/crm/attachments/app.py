@@ -88,6 +88,7 @@ class AttachmentsApp(App):
                 ("name", "=", FILTER_NAME),
                 ("is_global", "=", True),
             ],
+            fields=["id", "filter_data"],
         )
 
         expected_filter_data = json.dumps(FILTER_DATA)
@@ -132,12 +133,14 @@ class AttachmentsApp(App):
         async def create_rule_if_missing(name, domain, perms):
             attachment_model = await env.models.model.search_one(
                 filter=[("name", "=", "attachment")],
+                fields=["id"],
             )
             if not attachment_model:
                 logger.warning("Model 'attachment' not found")
                 return
             existing = await env.models.rule.search_one(
                 filter=[("name", "=", name)],
+                fields=["id"],
             )
             if existing:
                 return
@@ -199,7 +202,7 @@ class AttachmentsApp(App):
     async def _init_default_storage(self, env: "Environment"):
         """Создаёт дефолтное хранилище типа file (id=1)."""
         storage = await env.models.attachment_storage.search_one(
-            filter=[("id", "=", 1)]
+            filter=[("id", "=", 1)], fields=["id"]
         )
         if not storage:
             from backend.base.crm.attachments.models.attachments_storage import (
@@ -220,7 +223,9 @@ class AttachmentsApp(App):
             AttachmentRoute,
         )
 
-        storages = await env.models.attachment_storage.search(filter=[])
+        storages = await env.models.attachment_storage.search(
+            filter=[], fields=["id", "type"]
+        )
         for storage in storages:
             if storage.type == "file":
                 await AttachmentRoute.ensure_default_route_for_storage(storage)

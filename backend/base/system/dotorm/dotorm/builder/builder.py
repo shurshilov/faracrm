@@ -54,7 +54,14 @@ class Builder(
     all attributes that mixins expect.
     """
 
-    __slots__ = ("table", "fields", "dialect", "filter_parser", "store_fields")
+    __slots__ = (
+        "table",
+        "fields",
+        "dialect",
+        "filter_parser",
+        "store_fields",
+        "store_set",
+    )
 
     def __init__(
         self,
@@ -71,6 +78,9 @@ class Builder(
         self.store_fields = [
             name for name, field in fields.items() if field.store
         ]
+        # Проверка «поле хранится» в build_search — по множеству: `name in
+        # list` на каждое поле у широкой модели давало O(n²).
+        self.store_set = frozenset(self.store_fields)
 
     def get_store_fields(self) -> list[str]:
         """Field names stored in DB (store=True), precomputed in __init__."""

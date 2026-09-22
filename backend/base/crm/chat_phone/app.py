@@ -117,6 +117,7 @@ class ChatPhoneApp(App):
                     ("name", "=", name),
                     ("is_global", "=", True),
                 ],
+                fields=["id", "filter_data"],
             )
             if existing:
                 if existing.filter_data == filter_data:

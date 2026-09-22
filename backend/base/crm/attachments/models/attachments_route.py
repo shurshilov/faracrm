@@ -290,10 +290,10 @@ class AttachmentRoute(DotModel):
 
     async def _check_record_in_filter(self, res_id: int) -> bool:
         if isinstance(self.filter, list) and self.filter and self.model_id:
-            ids = await env.models._get_model(self.model_id.name).search(
-                filter=self.filter
+            records = await env.models._get_model(self.model_id.name).search(
+                filter=self.filter, fields=["id"]
             )
-            return res_id in ids
+            return any(record.id == res_id for record in records)
         return True
 
     async def _get_records_ids(self) -> list[int]:
@@ -476,7 +476,7 @@ class AttachmentRoute(DotModel):
 
         # Get attachments for this model that are not yet synced
         attachments = await Attachment.search(
-            filter=filter_common + filter_additional
+            filter=filter_common + filter_additional, fields=["id"]
         )
 
         return [a.id for a in attachments]
@@ -506,6 +506,7 @@ class AttachmentRoute(DotModel):
                 ("storage_id", "=", storage_id.id),
                 ("model_id", "=", None),
             ],
+            fields=["id"],
         )
 
         if existing:

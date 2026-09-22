@@ -688,6 +688,7 @@ class Chat(AuditMixin, DotModel):
                 ("user_id", "=", user_id),
                 ("is_active", "=", True),
             ],
+            fields=["id"],
         )
         if member:
             now = datetime.now(timezone.utc)

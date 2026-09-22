@@ -108,7 +108,13 @@ class ChatExternalMessage(DotModel):
         Проверить существует ли сообщение с данным внешним ID.
         Используется для избежания дублей при обработке вебхуков.
         """
-        existing = await self.find_by_external_id(external_id, connector_id)
+        existing = await self.search_one(
+            filter=[
+                ("external_id", "=", external_id),
+                ("connector_id", "=", connector_id),
+            ],
+            fields=["id"],
+        )
         return existing is not None
 
     @hybridmethod

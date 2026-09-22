@@ -72,7 +72,7 @@ class UserApp(App):
     async def _init_admin_user(self, env: "Environment"):
         """Создаёт пользователя-администратора (id=1)."""
         user_admin = await env.models.user.search_one(
-            filter=[("id", "=", ADMIN_USER_ID)]
+            filter=[("id", "=", ADMIN_USER_ID)], fields=["id"]
         )
         if not user_admin:
             await env.models.user.create(
@@ -88,7 +88,7 @@ class UserApp(App):
     async def _init_system_user(self, env: "Environment"):
         """Создаёт системного пользователя (id=2) для автоматических операций."""
         user_system = await env.models.user.search_one(
-            filter=[("id", "=", SYSTEM_USER_ID)]
+            filter=[("id", "=", SYSTEM_USER_ID)], fields=["id"]
         )
         if not user_system:
             await env.models.user.create(
@@ -109,7 +109,7 @@ class UserApp(App):
         — доступ ограничен whitelist'ом таблиц в use_anonymous_session.
         """
         user_anon = await env.models.user.search_one(
-            filter=[("id", "=", ANONYMOUS_USER_ID)]
+            filter=[("id", "=", ANONYMOUS_USER_ID)], fields=["id"]
         )
         if not user_anon:
             await env.models.user.create(
@@ -128,7 +128,7 @@ class UserApp(App):
         Используется как прототип при создании
         """
         existing = await env.models.user.search_one(
-            filter=[("id", "=", TEMPLATE_USER_ID)]
+            filter=[("id", "=", TEMPLATE_USER_ID)], fields=["id"]
         )
         if existing:
             return
@@ -140,6 +140,7 @@ class UserApp(App):
 
         default_user = await env.models.user.search_one(
             filter=[("login", "=", "default_internal")],
+            fields=["id"],
         )
         if default_user:
             return
@@ -172,6 +173,7 @@ class UserApp(App):
         # Получаем model_id для user
         user_model_id = await env.models.model.search_one(
             filter=[("name", "=", "user")],
+            fields=["id"],
         )
         if not user_model_id:
             return
@@ -251,6 +253,7 @@ class UserApp(App):
         for rule_data in rules:
             existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
+                fields=["id"],
             )
             if existing:
                 continue

@@ -407,11 +407,13 @@ class SecurityApp(Service):
         # Правило для chat: можно удалять только свои чаты (creator_id = user_id)
         session_model = await env.models.model.search_one(
             filter=[("name", "=", "session")],
+            fields=["id"],
         )
         if session_model:
             rule_name = "User can read only own sessions"
             existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_name)],
+                fields=["id"],
             )
             if not existing:
                 await env.models.rule.create(

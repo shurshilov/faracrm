@@ -44,6 +44,7 @@ class ChatWebPushApp(App):
     async def _ensure_contact_type(env):
         existing = await env.models.contact_type.search_one(
             filter=[("name", "=", "web_push")],
+            fields=["id"],
         )
         if not existing:
             await env.models.contact_type.create(
@@ -96,12 +97,14 @@ class ChatWebPushApp(App):
     async def _ensure_seed_connector(env):
         existing = await env.models.chat_connector.search_one(
             filter=[("type", "=", "web_push")],
+            fields=["id"],
         )
         if existing:
             return
 
         ct = await env.models.contact_type.search_one(
             filter=[("name", "=", "web_push")],
+            fields=["id"],
         )
 
         # Auto-generate VAPID keys
@@ -159,6 +162,7 @@ class ChatWebPushApp(App):
 
         contact_model = await env.models.model.search_one(
             filter=[("name", "=", "contact")],
+            fields=["id"],
         )
         if not contact_model:
             logger.warning(
@@ -168,6 +172,7 @@ class ChatWebPushApp(App):
 
         web_push_type = await env.models.contact_type.search_one(
             filter=[("name", "=", "web_push")],
+            fields=["id"],
         )
         if not web_push_type:
             logger.warning(
@@ -178,6 +183,7 @@ class ChatWebPushApp(App):
         rule_name = "Only admin can edit/delete web_push contacts"
         existing = await env.models.rule.search_one(
             filter=[("name", "=", rule_name)],
+            fields=["id"],
         )
         if existing:
             return

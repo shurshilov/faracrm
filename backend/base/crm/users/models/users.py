@@ -88,6 +88,7 @@ async def _default_langs():
 
     default_langs = await env.models.language.search(
         filter=[("code", "in", ["en", "ru"]), ("active", "=", True)],
+        fields=["id", "name", "code"],
     )
     return default_langs or []
 
@@ -96,6 +97,7 @@ async def _default_lang():
     """Язык по умолчанию для одиночного поля lang_id."""
     return await env.models.language.search_one(
         filter=[("code", "=", "en"), ("active", "=", True)],
+        fields=["id", "name", "code"],
     )
 
 

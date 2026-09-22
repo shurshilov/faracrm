@@ -51,6 +51,7 @@ class PartnersApp(App):
         for type_data in INITIAL_CONTACT_TYPES:
             existing = await env.models.contact_type.search(
                 filter=[("name", "=", type_data["name"])],
+                fields=["id"],
             )
             if not existing:
                 await env.models.contact_type.create(

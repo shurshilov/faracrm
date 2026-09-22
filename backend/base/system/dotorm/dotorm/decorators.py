@@ -10,11 +10,12 @@
 Эта версия улучшает типизацию через:
 1. Generic типы с ParamSpec для точных параметров
 2. @overload для корректной работы IDE
-3. __slots__ для производительности
+3. Связывание через types.MethodType — без обёртки на каждый вызов
 """
 
 from __future__ import annotations
 import functools
+from types import MethodType
 from typing import (
     TYPE_CHECKING,
     TypeVar,
@@ -96,8 +97,6 @@ class hybridmethod(Generic[_T, _P, _R]):
         - @overload для корректной работы IDE в обоих контекстах
     """
 
-    __slots__ = ("func", "__wrapped__", "name", "__dict__")
-
     func: Callable[..., Coroutine[Any, Any, _R]]
     __wrapped__: Callable[..., Any]
     __annotations__: dict[str, Any]
@@ -136,34 +135,23 @@ class hybridmethod(Generic[_T, _P, _R]):
         - Model.get(1) -> IDE знает что возвращает Self
         - self.get(1) -> IDE знает что возвращает Self
 
+        Вызов из класса (instance is None) идёт на пустом экземпляре
+        owner(). Связывание — types.MethodType, а не замыкание с
+        functools.wraps: __get__ срабатывает на КАЖДЫЙ вызов ORM
+        (Model.search(...)), обёртка стоила 1,5 мкс и лишний слой корутины,
+        MethodType — 0,2 мкс; атрибуты функции (__name__, __doc__,
+        __wrapped__, __annotations__) bound method проксирует сам.
+
         Args:
             instance: Экземпляр класса или None (если вызов из класса)
             owner: Класс владелец
 
         Returns:
-            Async функция с сохраненными типами параметров и результата
+            Bound method с сохраненными типами параметров и результата
         """
         if instance is None:
-            # Вызов из класса: Model.method(...)
-            # Автоматически создаем пустой instance
-            @functools.wraps(self.func)
-            async def class_method(*args: _P.args, **kwargs: _P.kwargs) -> _R:
-                empty_instance = owner()
-                return await self.func(empty_instance, *args, **kwargs)
-
-            class_method.__annotations__ = self.__annotations__
-            return class_method
-        else:
-            # Вызов из instance: self.method(...)
-            # Используем существующий instance
-            @functools.wraps(self.func)
-            async def instance_method(
-                *args: _P.args, **kwargs: _P.kwargs
-            ) -> _R:
-                return await self.func(instance, *args, **kwargs)
-
-            instance_method.__annotations__ = self.__annotations__
-            return instance_method
+            instance = owner()
+        return MethodType(self.func, instance)
 
     def __set_name__(self, owner: type[Any], name: str) -> None:
         """Сохраняем имя метода для отладки."""

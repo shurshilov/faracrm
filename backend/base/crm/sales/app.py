@@ -123,20 +123,20 @@ class SalesApp(App):
 
         # Получаем модели
         sale_model_rec = await env.models.model.search_one(
-            filter=[("name", "=", "sale")]
+            filter=[("name", "=", "sale")], fields=["id"]
         )
         sale_line_model_rec = await env.models.model.search_one(
-            filter=[("name", "=", "sale_line")]
+            filter=[("name", "=", "sale_line")], fields=["id"]
         )
         if not sale_model_rec or not sale_line_model_rec:
             return
 
         # Получаем роли
         role_user = await env.models.role.search_one(
-            filter=[("code", "=", "sale_user")]
+            filter=[("code", "=", "sale_user")], fields=["id"]
         )
         role_manager = await env.models.role.search_one(
-            filter=[("code", "=", "sale_manager")]
+            filter=[("code", "=", "sale_manager")], fields=["id"]
         )
         if not role_user or not role_manager:
             return
@@ -197,6 +197,7 @@ class SalesApp(App):
         for rule_data in rules_to_create:
             existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
+                fields=["id"],
             )
             if existing:
                 continue

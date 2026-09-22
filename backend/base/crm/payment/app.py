@@ -69,7 +69,7 @@ class PaymentApp(App):
         from backend.base.crm.security.models.rules import Rule
 
         model = await env.models.model.search_one(
-            filter=[("name", "=", "payment")]
+            filter=[("name", "=", "payment")], fields=["id"]
         )
         system_admin = await env.models.role.search_one(
             filter=[("code", "=", "system_admin")], fields=["id"]
@@ -93,7 +93,7 @@ class PaymentApp(App):
         ]
         for name, role, domain, perms in rules:
             existing = await env.models.rule.search_one(
-                filter=[("name", "=", name)]
+                filter=[("name", "=", name)], fields=["id"]
             )
             if existing:
                 continue

@@ -53,6 +53,7 @@ class ActivityApp(App):
         for type_data in INITIAL_ACTIVITY_TYPES:
             existing = await env.models.activity_type.search(
                 filter=[("name", "=", type_data["name"])],
+                fields=["id"],
             )
             if not existing:
                 await env.models.activity_type.create(

@@ -187,19 +187,19 @@ class LeadsApp(App):
         from backend.base.crm.security.models.rules import Rule
 
         lead_model_rec = await env.models.model.search_one(
-            filter=[("name", "=", "lead")]
+            filter=[("name", "=", "lead")], fields=["id"]
         )
         if not lead_model_rec:
             return
 
         role_user = await env.models.role.search_one(
-            filter=[("code", "=", "crm_user")]
+            filter=[("code", "=", "crm_user")], fields=["id"]
         )
         role_manager = await env.models.role.search_one(
-            filter=[("code", "=", "crm_manager")]
+            filter=[("code", "=", "crm_manager")], fields=["id"]
         )
         role_admin = await env.models.role.search_one(
-            filter=[("code", "=", "crm_admin")]
+            filter=[("code", "=", "crm_admin")], fields=["id"]
         )
         if not role_user or not role_manager or not role_admin:
             return
@@ -244,6 +244,7 @@ class LeadsApp(App):
         for rule_data in rules_to_create:
             existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
+                fields=["id"],
             )
             if existing:
                 continue

@@ -156,6 +156,19 @@ class ChatRoutingRuleLead(DotModel):
             filter_conditions.append(("connector_id", "=", None))
 
         rules = await self.search(
+            fields=[
+                "id",
+                "name",
+                "field_name",
+                "condition",
+                "value",
+                "user_id",
+                "team_id",
+            ],
+            fields_nested={
+                "user_id": {"fields": ["id", "name"]},
+                "team_id": {"fields": ["id", "name"]},
+            },
             filter=filter_conditions,
             sort="sequence",
             order="ASC",

@@ -63,6 +63,7 @@ async def subscribe(req: Request, body: PushSubscriptionData):
     MAX_SUBSCRIPTIONS = 5
 
     existing = await env.models.contact.search(
+        fields=["id", "name", "active"],
         filter=[
             ("user_id", "=", user_id),
             ("contact_type_id", "=", contact_type_id),
@@ -151,6 +152,7 @@ async def unsubscribe(req: Request, body: PushSubscriptionData):
         )
 
     contacts = await env.models.contact.search(
+        fields=["id", "name"],
         filter=[
             ("user_id", "=", user_id),
             ("contact_type_id", "=", contact_type.id),

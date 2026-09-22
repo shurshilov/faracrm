@@ -127,22 +127,22 @@ class TasksApp(App):
         from backend.base.crm.security.models.rules import Rule
 
         project_model_rec = await env.models.model.search_one(
-            filter=[("name", "=", "project")]
+            filter=[("name", "=", "project")], fields=["id"]
         )
         task_model_rec = await env.models.model.search_one(
-            filter=[("name", "=", "task")]
+            filter=[("name", "=", "task")], fields=["id"]
         )
         if not project_model_rec or not task_model_rec:
             return
 
         role_user = await env.models.role.search_one(
-            filter=[("code", "=", "project_user")]
+            filter=[("code", "=", "project_user")], fields=["id"]
         )
         role_manager = await env.models.role.search_one(
-            filter=[("code", "=", "project_manager")]
+            filter=[("code", "=", "project_manager")], fields=["id"]
         )
         role_admin = await env.models.role.search_one(
-            filter=[("code", "=", "project_admin")]
+            filter=[("code", "=", "project_admin")], fields=["id"]
         )
         if not role_user or not role_manager or not role_admin:
             return
@@ -204,6 +204,7 @@ class TasksApp(App):
         for rule_data in rules_to_create:
             existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
+                fields=["id"],
             )
             if existing:
                 continue

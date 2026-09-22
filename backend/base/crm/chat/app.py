@@ -239,6 +239,7 @@ class ChatApp(Service):
         async def create_rule_if_missing(name, model_name, domain, perms):
             model_rec = await env.models.model.search_one(
                 filter=[("name", "=", model_name)],
+                fields=["id"],
             )
             if not model_rec:
                 logger.warning(
@@ -249,6 +250,7 @@ class ChatApp(Service):
                 return
             existing = await env.models.rule.search_one(
                 filter=[("name", "=", name)],
+                fields=["id"],
             )
             if existing:
                 return

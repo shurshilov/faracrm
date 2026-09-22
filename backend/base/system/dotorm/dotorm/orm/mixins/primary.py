@@ -12,7 +12,10 @@ from ...model import FieldKind, JsonMode
 from ...decorators import hybridmethod
 from ...fields import (
     DefaultKind,
+    JSONField,
+    Many2many,
     Many2one,
+    One2many,
     TranslatedChar,
     evaluate_default,
 )
@@ -381,9 +384,13 @@ class OrmPrimaryMixin(_Base):
         # json() только сериализует — он не вычисляет дефолты.
         await cls._apply_defaults(payload)
 
+        # Присвоенные поля после дефолтов — одни и те же для @constrains и
+        # пометки @depends ниже (id и связи набор ключей не меняют).
+        assigned = payload.assigned_fields()
+
         # @constrains: после дефолтов, до INSERT.
         if cls._cache_constrains:
-            await cls._run_constrains([payload], payload.assigned_fields())
+            await cls._run_constrains([payload], assigned)
 
         payload_dict = payload.json(
             exclude=payload.get_none_update_fields_set(),
@@ -418,7 +425,7 @@ class OrmPrimaryMixin(_Base):
         if relations:
             await payload.update(payload, relations, session, depends_jobs)
         cls._depends_mark_always(depends_jobs)
-        cls._depends_mark([payload], payload.assigned_fields(), depends_jobs)
+        cls._depends_mark([payload], assigned, depends_jobs)
         await cls._depends_flush(depends_jobs, owner, session)
         return record_id
 
@@ -496,12 +503,6 @@ class OrmPrimaryMixin(_Base):
         session = cls._get_db_session(session)
         depends_jobs, owner = cls._depends_open(depends_jobs)
 
-        exclude_fields = {
-            name
-            for name, field in cls.get_fields().items()
-            if field.primary_key
-        }
-
         # Field-level доступ на КЛИЕНТСКИ назначенных полях — ДО дефолтов,
         # как в create(). Сюда приходят и вложенные created из update()
         # связей (O2M/M2M), иначе restricted-поле (is_admin) обходило бы
@@ -517,22 +518,23 @@ class OrmPrimaryMixin(_Base):
         for p in payload:
             await cls._apply_defaults(p, shared_defaults)
 
+        # Колонки INSERT — объединение присвоенных полей всех строк после
+        # дефолтов (как у create(): незаданную колонку не шлём, и её DB
+        # DEFAULT работает). Строка без поля из объединения получает NULL:
+        # unnest-билдеру нужен одинаковый набор ключей у всех строк.
+        columns: set[str] = set()
+        for p in payload:
+            columns.update(p.assigned_fields())
+
         # @constrains: вся пачка одним вызовом — правило батчит запросы само;
         # без проверок у модели — ни одного вызова.
         if cls._cache_constrains:
-            written: set[str] = set()
-            for p in payload:
-                written.update(p.assigned_fields())
-            await cls._run_constrains(payload, written)
+            await cls._run_constrains(payload, columns)
 
-        # Горячий путь: get_json диспатчит по предвычисленным видам полей
-        # (без per-row isinstance). exclude_unset=False (по умолчанию) →
-        # неприсвоенные поля = None, у всех строк одинаковый набор ключей —
-        # этого требует unnest-билдер. НЕ json() — тот дропает None-ключи.
+        # exclude_unset=False (по умолчанию) → неприсвоенные поля = None.
+        # НЕ json() — тот дропает None-ключи.
         payloads_dicts = [
-            p.get_json(
-                only_store=True, mode=JsonMode.CREATE, exclude=exclude_fields
-            )
+            p.get_json(only_store=True, mode=JsonMode.CREATE, include=columns)
             for p in payload
         ]
 
@@ -565,10 +567,7 @@ class OrmPrimaryMixin(_Base):
                 )
             cls._depends_mark_always(depends_jobs)
             if cls._depends_local_triggers or cls._depends_parent_triggers:
-                changed: set[str] = set()
-                for p in payload:
-                    changed.update(p.assigned_fields())
-                cls._depends_mark(payload, changed, depends_jobs)
+                cls._depends_mark(payload, columns, depends_jobs)
 
         await cls._depends_flush(depends_jobs, owner, session)
         return records
@@ -864,8 +863,6 @@ class OrmPrimaryMixin(_Base):
 
         Идемпотентно: при повторном вызове таблицы переинициализируются.
         """
-        from ...fields import One2many, Many2many, Many2one
-
         models = list(models)
         for klass in models:
             klass._depends_local_triggers = {}
@@ -1076,8 +1073,6 @@ class OrmPrimaryMixin(_Base):
         Одна запись — обычный UPDATE (_update_store). Много — один
         UPDATE ... FROM unnest (Postgres); построчно, если диалект так не
         умеет (MySQL) или поле требует своего SQL (JSON: jsonb_set)."""
-        from ...fields import JSONField
-
         store = cls.get_store_fields_dict()
         plain = [f for f in fields if f in store]
         if not plain:
@@ -1127,8 +1122,6 @@ class OrmPrimaryMixin(_Base):
         Идемпотентно: M2O уже DotModel со всеми tail'ами и O2M-список, чей
         первый элемент несёт tail'ы, не трогаем — это покрывает записи,
         загруженные с fields_nested или подложенные тестами/onchange."""
-        from ...fields import Many2one, One2many
-
         prefetch_map = cls._depends_prefetch.get(method_name)
         if not prefetch_map:
             return
@@ -1146,7 +1139,7 @@ class OrmPrimaryMixin(_Base):
                 need: dict[int, list] = {}  # fk → записи, которым он нужен
                 for rec in records:
                     fk_val = cls._prefetch_fk_id(
-                        getattr(rec, head, None), tails
+                        related_model, getattr(rec, head, None), tails
                     )
                     if fk_val is not None:
                         need.setdefault(fk_val, []).append(rec)
@@ -1173,7 +1166,7 @@ class OrmPrimaryMixin(_Base):
                     rec
                     for rec in records
                     if cls._prefetch_o2m_pending(
-                        getattr(rec, head, None), tails
+                        related_model, getattr(rec, head, None), tails
                     )
                 ]
                 parent_ids: list[int] = []
@@ -1204,18 +1197,16 @@ class OrmPrimaryMixin(_Base):
                         setattr(rec, head, grouped.get(rec.id, []))
 
     @staticmethod
-    def _prefetch_fk_id(current, tails) -> int | None:
+    def _prefetch_fk_id(related_model, current, tails) -> int | None:
         """id M2O-головы, которую нужно догрузить: int, {id: ...} от фронта
-        или модель без нужных tail'ов. None — догружать нечего или незачем
-        (уже «толстая»)."""
-        from ...model import DotModel as _DM
-
+        или запись related_model без нужных tail'ов. None — догружать нечего
+        или незачем (уже «толстая»)."""
         if isinstance(current, int):
             return current
         if isinstance(current, dict):
             candidate = current.get("id")
             return candidate if isinstance(candidate, int) else None
-        if isinstance(current, _DM):
+        if isinstance(current, related_model):
             missing = [
                 t for t in tails if t != "id" and not current.is_assigned(t)
             ]
@@ -1225,16 +1216,15 @@ class OrmPrimaryMixin(_Base):
         return None
 
     @staticmethod
-    def _prefetch_o2m_pending(current, tails) -> bool:
+    def _prefetch_o2m_pending(related_model, current, tails) -> bool:
         """Нужно ли догружать O2M-голову: пустой список — нет (детей нет),
-        список моделей со всеми tail'ами — нет, всё остальное — да."""
-        from ...model import DotModel as _DM
-
+        список записей related_model со всеми tail'ами — нет, всё остальное
+        — да."""
         if isinstance(current, list):
             if not current:
                 return False
             first = current[0]
-            if isinstance(first, _DM):
+            if isinstance(first, related_model):
                 return any(
                     t != "id" and not first.is_assigned(t) for t in tails
                 )

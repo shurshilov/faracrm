@@ -41,7 +41,7 @@ class LanguageApp(App):
         # Создание начальных языков
         for lang_data in INITIAL_LANGUAGES:
             existing_langs = await env.models.language.search(
-                filter=[("code", "=", lang_data["code"])]
+                filter=[("code", "=", lang_data["code"])], fields=["id"]
             )
             if not existing_langs:
                 await env.models.language.create(

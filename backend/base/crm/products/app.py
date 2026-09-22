@@ -65,6 +65,7 @@ class ProductsApp(App):
         for uom_data in initial_product_uom:
             existing = await env.models.uom.search(
                 filter=[("name", "=", uom_data["name"])],
+                fields=["id"],
             )
             if not existing:
                 await env.models.uom.create(
@@ -75,6 +76,7 @@ class ProductsApp(App):
         # Создаётся только если в системе ещё нет ни одного товара.
         existing_pants = await env.models.product.search_one(
             filter=[("name", "=", "Брюки")],
+            fields=["id"],
         )
         if not existing_pants:
             # Привязываем к UoM "штуки" если она есть

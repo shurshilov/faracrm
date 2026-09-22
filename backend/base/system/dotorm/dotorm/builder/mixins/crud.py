@@ -218,6 +218,7 @@ class CRUDMixin:
         """
         escape = self.dialect.escape
         store_fields = self.get_store_fields()
+        store_set = self.store_set
 
         if fields is None:
             fields = store_fields
@@ -227,7 +228,7 @@ class CRUDMixin:
             order_upper = order.upper()
             if order_upper not in _ALLOWED_ORDER:
                 raise ValueError(f"Invalid order: {order}")
-        if sort and sort not in store_fields:
+        if sort and sort not in store_set:
             sort = store_fields[0]
             # raise ValueError(f"Invalid sort field: {sort}")
 
@@ -238,7 +239,7 @@ class CRUDMixin:
         fields_store_stmt = ", ".join(
             f"{escape}{name}{escape}"
             for name in fields_with_id
-            if name in store_fields
+            if name in store_set
         )
 
         where = ""

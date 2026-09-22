@@ -246,12 +246,12 @@ class MarketplaceApp(App):
 
         for name, model_name, rule_role_id, domain, perms in rules:
             existing = await env.models.rule.search_one(
-                filter=[("name", "=", name)]
+                filter=[("name", "=", name)], fields=["id"]
             )
             if existing:
                 continue
             model = await env.models.model.search_one(
-                filter=[("name", "=", model_name)]
+                filter=[("name", "=", model_name)], fields=["id"]
             )
             if not model:
                 continue

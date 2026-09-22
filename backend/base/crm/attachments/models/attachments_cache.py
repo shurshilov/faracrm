@@ -100,6 +100,7 @@ class AttachmentCache(DotModel):
                 ("route_id", "=", route_id),
                 ("res_model", "=", res_model),
             ],
+            fields=["id"],
         )
 
         if existing:

@@ -127,6 +127,7 @@ class SavedFiltersApp(App):
 
         model_id = await env.models.model.search_one(
             filter=[("name", "=", "saved_filter")],
+            fields=["id"],
         )
         if not model_id:
             return
@@ -187,6 +188,7 @@ class SavedFiltersApp(App):
         for rule_data in rules:
             existing = await env.models.rule.search_one(
                 filter=[("name", "=", rule_data["name"])],
+                fields=["id"],
             )
             if existing:
                 continue

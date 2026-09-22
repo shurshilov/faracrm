@@ -136,6 +136,7 @@ class ContactType(DotModel):
 
         value = value.strip()
         all_types = await cls.search(
+            fields=["id", "name", "pattern"],
             filter=[("active", "=", True)],
             sort="sequence",
         )

@@ -331,6 +331,7 @@ class CronJob(DotModel):
         """Создаёт или обновляет задачу по имени."""
         existing = await env.models.cron_job.search_one(
             filter=[("name", "=", name)],
+            fields=["id", "method_name"],
         )
 
         if existing:

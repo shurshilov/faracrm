@@ -19,6 +19,8 @@ class BuilderProtocol(Protocol):
     fields: dict[str, "Field"]
     dialect: "Dialect"
     filter_parser: "FilterParser"
+    store_fields: list[str]
+    store_set: frozenset[str]
 
     def get_store_fields(self) -> list[str]:
         """Returns field names that are stored in DB."""
