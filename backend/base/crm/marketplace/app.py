@@ -32,6 +32,12 @@ PORTAL_ACL = {
     "user": ACLPerms(create=False, read=True, update=True, delete=False),
     "language": ACL.READ_ONLY,
     "attachment": ACL.FULL,
+    # Загрузка файла (Attachment.create) под сессией юзера ищет маршрут и
+    # папку: читает реестр моделей, маршруты и кэш папок, а при первой
+    # загрузке в модель пишет строку кэша — без этих прав любой upload = 403.
+    "model": ACL.READ_ONLY,
+    "attachment_route": ACL.READ_ONLY,
+    "attachment_cache": ACL.CREATE_READ,
     "saved_filter": ACL.FULL,
     "column_setting": ACL.FULL,
     "payment": ACL.READ_ONLY,

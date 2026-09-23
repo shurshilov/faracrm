@@ -35,7 +35,10 @@ class AttachmentsApp(App):
         "attachment": ACL.FULL,
         "attachment_storage": ACL.READ_ONLY,
         "attachment_route": ACL.READ_ONLY,
-        "attachment_cache": ACL.READ_ONLY,
+        # Строка кэша корневой папки создаётся при первой загрузке в модель
+        # (AttachmentCache.set_folder) под сессией юзера — без create первую
+        # загрузку в «новую» модель мог сделать только суперпользователь.
+        "attachment_cache": ACL.CREATE_READ,
     }
     ROLE_ACL = {
         "system_admin": {
