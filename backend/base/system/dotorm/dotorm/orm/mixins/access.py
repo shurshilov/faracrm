@@ -18,6 +18,18 @@ else:
     _Base = object
 
 
+def _filter_field_names(expr) -> set[str]:
+    """Имена полей из триплетов фильтра — так же, как их видит FilterParser."""
+    names: set[str] = set()
+    if isinstance(expr, (list, tuple)):
+        if len(expr) == 3 and isinstance(expr[0], str):
+            names.add(expr[0])
+        else:
+            for item in expr:
+                names |= _filter_field_names(item)
+    return names
+
+
 class AccessMixin(_Base):
     """
     Mixin добавляющий проверку доступа в CRUD операции.
@@ -100,59 +112,62 @@ class AccessMixin(_Base):
     async def _check_field_access(
         cls,
         operation: Operation,
-        payload,
         fields,
-    ) -> None:
-        """Проверяет право записи отдельных полей (role_*).
+        filter: list | None = None,
+        sort: str | None = None,
+    ) -> list[str]:
+        """Field-level доступ (атрибуты role_*). Какие поля сессии запрещены,
+        решает чекер; здесь — что с ними делать.
 
-        Защита от privilege escalation через mass-assignment: например,
-        обычный пользователь, выставляющий себе role_ids или is_admin.
+        Запись (CREATE/UPDATE): запрещённое поле в payload — AccessDenied,
+        операция отклоняется целиком. Защита от privilege escalation через
+        mass-assignment: например, обычный пользователь, выставляющий себе
+        role_ids или is_admin. Presence-based (как Odoo groups=): проверяется
+        любое присутствие поля. КОНТРАКТ: фронт НЕ шлёт restricted-поле юзеру,
+        который его не меняет (форма отправляет только изменённые поля).
 
-        Presence-based (как Odoo groups=): любое присутствие role_*-поля
-        в payload проверяется у checker'а.
+        Чтение (READ): запрещённые поля вырезаются, как будто их нет, —
+        запрос проходит, из базы они не читаются. Фильтр и сортировка по
+        ним — ошибка, как по неизвестному полю: иначе значение подбиралось
+        бы посимвольно.
 
-        КОНТРАКТ: фронт НЕ должен слать restricted-поле юзеру, который его
-        не меняет — иначе его легитимная правка будет отклонена целиком.
-        Т.к. форма сейчас шлёт is_admin при каждом сохранении, для
-        не-суперпользователя это поле надо скрывать/не отправлять
-        (UI-reflection).
-
-        Вызывается из write-пути ПОСЛЕ _check_access (ACL+Rules).
+        Без сессии ничего не проверяем: _check_access (на записи — до, на
+        чтении — сразу после) откажет сам при require_session, иначе доступ
+        открыт (автономный dotorm).
 
         Args:
-            operation: CREATE или UPDATE (READ проверяется при выборке).
-            payload: модель с новыми значениями.
-            fields: имена назначенных полей.
+            operation: READ, CREATE или UPDATE.
+            fields: на записи — назначенные поля, на чтении — выбираемые.
+            filter, sort: только чтение — что клиент прислал в запросе.
+
+        Returns:
+            Поля, которые остаются (на записи — fields как есть).
 
         Raises:
-            AccessDenied: если хотя бы одно поле запрещено для записи.
+            AccessDenied: запись запрещённого поля.
+            ValueError: фильтр или сортировка по запрещённому для чтения полю.
         """
-        all_fields = cls.get_fields()
-        to_check: list[str] = []
-        for name in fields:
-            field = all_fields.get(name)
-            if field is not None and field.required_roles(operation.value):
-                to_check.append(name)
-
-        if not to_check:
-            return
-
         session = get_access_session()
-        checker = get_access_checker()
         if session is None:
-            # Как и в _check_access: жёстко только при require_session=True.
-            if checker.require_session:
-                raise AccessDenied(
-                    f"No session in DotORM context for field-level "
-                    f"{operation.value} on {cls.__table__}."
-                )
-            return
+            return list(fields)
 
-        denied = await checker.check_field_access(
-            session, cls.__table__, operation, to_check
-        )
-        if denied:
-            raise AccessDenied(
-                f"No permission to set field(s) {denied} "
-                f"on {cls.__table__}"
+        used = _filter_field_names(filter)
+        if sort:
+            used.add(sort)
+        denied = set(
+            await get_access_checker().check_field_access(
+                session, cls.__table__, operation, [*fields, *used]
             )
+        )
+        if operation != Operation.READ:
+            if denied:
+                raise AccessDenied(
+                    f"No permission to set field(s) {sorted(denied)} "
+                    f"on {cls.__table__}"
+                )
+            return list(fields)
+        if denied & used:
+            raise ValueError(
+                f"Unknown or private filter field: {sorted(denied & used)!r}"
+            )
+        return [name for name in fields if name not in denied]

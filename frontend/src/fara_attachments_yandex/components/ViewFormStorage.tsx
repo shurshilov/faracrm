@@ -218,11 +218,8 @@ registerExtension(
   [
     'yandex_client_id',
     'yandex_client_secret',
-    'yandex_access_token',
-    'yandex_refresh_token',
     'yandex_token_expires_at',
     'yandex_auth_state',
-    'yandex_verify_code',
     'yandex_folder_path',
   ],
 );

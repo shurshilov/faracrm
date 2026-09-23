@@ -104,12 +104,17 @@ class ChatConnector(AuditMixin, DotModel):
         description="URL API коннектора (например, https://api.telegram.org)",
     )
 
-    # Webhook настройки
+    # Webhook настройки. Адрес содержит хеш, поэтому role_read на обоих:
+    # прочитав их, можно подделать входящий вебхук.
     webhook_url: str | None = Char(
-        max_length=500, description="URL вебхука для приёма сообщений"
+        max_length=500,
+        role_read="system_admin",
+        description="URL вебхука для приёма сообщений",
     )
     webhook_hash: str | None = Char(
-        max_length=128, description="Секретный хеш для валидации вебхуков"
+        max_length=128,
+        role_read="system_admin",
+        description="Секретный хеш для валидации вебхуков",
     )
     webhook_state: str = Selection(
         options=[
@@ -121,12 +126,17 @@ class ChatConnector(AuditMixin, DotModel):
         description="Статус вебхука",
     )
 
-    # Токены авторизации
-    access_token: str | None = Text(description="Access Token для API")
+    # Токены авторизации. role_read: вводит администратор настроек, а
+    # сервер читает их под sudo, когда действует от имени сотрудника.
+    access_token: str | None = Text(
+        role_read="system_admin", description="Access Token для API"
+    )
     access_token_expired: datetime | None = Datetime(
         description="Срок действия access token"
     )
-    refresh_token: str | None = Text(description="Refresh Token")
+    refresh_token: str | None = Text(
+        role_read="system_admin", description="Refresh Token"
+    )
     refresh_token_expired: datetime | None = Datetime(
         description="Срок действия refresh token"
     )

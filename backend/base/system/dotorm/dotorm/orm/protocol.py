@@ -77,9 +77,10 @@ class DotModelProtocol(Protocol):
     async def _check_field_access(
         cls,
         operation: "Operation",
-        payload: Any,
         fields: Any,
-    ) -> None: ...
+        filter: list | None = None,
+        sort: str | None = None,
+    ) -> list[str]: ...
 
     # @constrains (from OrmPrimaryMixin)
     @classmethod

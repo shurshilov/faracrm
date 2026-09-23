@@ -124,24 +124,28 @@ class User(PolymorphicParentMixin):
     # партнёров/проектов/правил маршрутизации. Неактивный не может войти
     # (signin), его сессии закрываются при архивации (update/update_bulk).
     # default_db: на старой базе колонка появляется сразу с true у всех.
-    # role_update="system_admin": архивирует администратор настроек.
+    # role_create/role_update="system_admin": задаёт (при создании) и
+    # архивирует администратор настроек.
     active: bool = Boolean(
         default=True,
         default_db=True,
+        role_create="system_admin",
         role_update="system_admin",
         description="Активен (неактивный не может войти)",
     )
 
     image: Attachment | None = PolymorphicMany2one(relation_table=Attachment)
 
-    # role_update="system_admin": менять роли может только «Администратор
-    # настроек» (или суперпользователь — он обходит проверку). Защита от
-    # самоповышения привилегий обычным пользователем.
+    # role_create/role_update="system_admin": задавать роли — и при создании,
+    # и при правке — может только «Администратор настроек» (или
+    # суперпользователь — он обходит проверку). Защита от самоповышения
+    # привилегий; на создании отказ приходит ДО INSERT.
     # default_orm=False: base_user подставляется только в форме
     # (get_default_values); при создании кодом ORM роли не привязывает —
     # Anonymous и портальные пользователи заводятся без base_user, роли им
     # задают явно (сидеры, регистрация).
     role_ids: list["Role"] = Many2many(
+        role_create="system_admin",
         role_update="system_admin",
         default=_default_roles,
         default_orm=False,

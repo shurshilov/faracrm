@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 else:
     _Base = object
 
+from ...access import Operation
 from ...fields import (
     PolymorphicMany2one,
     Many2many,
@@ -67,6 +68,11 @@ class OrmMany2manyMixin(_Base):
         ]
         if not fields_store:
             fields_store = comodel.get_store_fields()
+        # role_read связанной модели: закрытые поля не читаем, фильтр и
+        # сортировка по ним — ошибка, как в её собственном поиске.
+        fields_store = await comodel._check_field_access(
+            Operation.READ, fields_store, filter, sort
+        )
         stmt, values = cls._builder.build_get_many2many(
             id,
             comodel,
@@ -168,6 +174,16 @@ class OrmMany2manyMixin(_Base):
     ):
         """Load relations for a list of records (batch)."""
         cls._dialect
+
+        # Фильтр вложенной связи идёт на связанную модель: по её закрытым
+        # полям фильтровать нельзя, как и в её собственном поиске.
+        if fields_nested:
+            for name, field in fields_relation:
+                nested = fields_nested.get(name)
+                if nested and field.relation_table:
+                    await field.relation_table._check_field_access(
+                        Operation.READ, [], field.nested_filter(nested)
+                    )
 
         request_list = cls._builder.build_search_relation(
             fields_relation, records, fields_nested

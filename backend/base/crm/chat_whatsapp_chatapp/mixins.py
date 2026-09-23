@@ -37,7 +37,9 @@ class ChatConnectorWhatsAppChatAppMixin(_Base):
     # Поля специфичные для WhatsApp ChatApp
     email: str | None = Char(max_length=255, description="Email (ChatApp)")
     password: str | None = Char(
-        max_length=255, description="Password (ChatApp)"
+        max_length=255,
+        role_read="system_admin",
+        description="Password (ChatApp)",
     )
     license_id: str | None = Char(
         max_length=255, description="License ID (ChatApp)"

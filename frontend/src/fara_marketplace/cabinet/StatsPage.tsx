@@ -2,6 +2,7 @@ import {
   Badge,
   Container,
   Paper,
+  ScrollArea,
   SimpleGrid,
   Table,
   Text,
@@ -34,52 +35,58 @@ export default function StatsPage() {
   const money = (value: number) => `${value.toLocaleString('ru-RU')} ₽`;
 
   return (
-    <Container size="lg" py="md">
-      <Title order={3} mb="md">
-        {t('stats.title')}
-      </Title>
+    // AppShell.Main живёт с height:100dvh и overflow:hidden — страница
+    // скроллится сама, как остальные кастомные страницы (см. AppsPage).
+    <ScrollArea h="100%" type="auto">
+      <Container size="lg" py="md">
+        <Title order={3} mb="md">
+          {t('stats.title')}
+        </Title>
 
-      <SimpleGrid cols={{ base: 2, sm: 4 }} mb="lg">
-        <StatCard label={t('stats.apps')} value={rows.length} />
-        <StatCard label={t('stats.downloads')} value={sum('downloads')} />
-        <StatCard label={t('stats.purchases')} value={sum('purchases')} />
-        <StatCard label={t('stats.revenue')} value={money(sum('revenue'))} />
-      </SimpleGrid>
+        <SimpleGrid cols={{ base: 2, sm: 4 }} mb="lg">
+          <StatCard label={t('stats.apps')} value={rows.length} />
+          <StatCard label={t('stats.downloads')} value={sum('downloads')} />
+          <StatCard label={t('stats.purchases')} value={sum('purchases')} />
+          <StatCard label={t('stats.revenue')} value={money(sum('revenue'))} />
+        </SimpleGrid>
 
-      <Table striped highlightOnHover>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>{t('fields.name')}</Table.Th>
-            <Table.Th>{t('fields.published')}</Table.Th>
-            <Table.Th>{t('fields.price')}</Table.Th>
-            <Table.Th>{t('stats.downloads')}</Table.Th>
-            <Table.Th>{t('stats.purchases')}</Table.Th>
-            <Table.Th>{t('stats.revenue')}</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          {rows.map(row => (
-            <Table.Tr key={row.id}>
-              <Table.Td>{row.name}</Table.Td>
-              <Table.Td>
-                <Badge variant="light" color={row.published ? 'teal' : 'gray'}>
-                  {row.published ? t('stats.published') : t('stats.draft')}
-                </Badge>
-              </Table.Td>
-              <Table.Td>{money(row.price)}</Table.Td>
-              <Table.Td>{row.downloads}</Table.Td>
-              <Table.Td>{row.purchases}</Table.Td>
-              <Table.Td>{money(row.revenue)}</Table.Td>
+        <Table striped highlightOnHover>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>{t('fields.name')}</Table.Th>
+              <Table.Th>{t('fields.published')}</Table.Th>
+              <Table.Th>{t('fields.price')}</Table.Th>
+              <Table.Th>{t('stats.downloads')}</Table.Th>
+              <Table.Th>{t('stats.purchases')}</Table.Th>
+              <Table.Th>{t('stats.revenue')}</Table.Th>
             </Table.Tr>
-          ))}
-        </Table.Tbody>
-      </Table>
+          </Table.Thead>
+          <Table.Tbody>
+            {rows.map(row => (
+              <Table.Tr key={row.id}>
+                <Table.Td>{row.name}</Table.Td>
+                <Table.Td>
+                  <Badge
+                    variant="light"
+                    color={row.published ? 'teal' : 'gray'}>
+                    {row.published ? t('stats.published') : t('stats.draft')}
+                  </Badge>
+                </Table.Td>
+                <Table.Td>{money(row.price)}</Table.Td>
+                <Table.Td>{row.downloads}</Table.Td>
+                <Table.Td>{row.purchases}</Table.Td>
+                <Table.Td>{money(row.revenue)}</Table.Td>
+              </Table.Tr>
+            ))}
+          </Table.Tbody>
+        </Table>
 
-      {!isLoading && rows.length === 0 && (
-        <Text c="dimmed" ta="center" py="lg">
-          {t('stats.empty')}
-        </Text>
-      )}
-    </Container>
+        {!isLoading && rows.length === 0 && (
+          <Text c="dimmed" ta="center" py="lg">
+            {t('stats.empty')}
+          </Text>
+        )}
+      </Container>
+    </ScrollArea>
   );
 }

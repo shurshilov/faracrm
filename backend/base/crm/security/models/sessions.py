@@ -3,6 +3,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from backend.base.crm.auth_token.session_cache import CachedSession
+from backend.base.system.dotorm.dotorm import access as dotorm_access
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
@@ -32,12 +33,13 @@ from backend.base.system.core.enviroment import env
 #         return {"id": self.id, "is_admin": True}
 
 
-class SystemSession:
+class SystemSession(dotorm_access.SystemSession):
     """
     Системная сессия для инициализации.
 
     Используется в post_init для выполнения операций
-    от имени системного пользователя.
+    от имени системного пользователя. Наследует маркер dotorm: по нему
+    ядро узнаёт системную сессию (фильтр по private-полям — только ей).
 
     Args:
         user_id: ID системного пользователя
@@ -112,10 +114,14 @@ class Session(DotModel):
     user_id: "User" = Many2one(
         relation_table=lambda: env.models.user, index=True
     )
-    token: str = Char(max_length=256, index=True)
+    # private: токены наружу через API не уходят (иначе скрипт страницы
+    # прочитал бы и куку HttpOnly). Вход сверяет их прямым SQL, веб-сокеты
+    # ищут сессию по токену под sudo (фильтр по private — системной сессии).
+    token: str = Char(max_length=256, index=True, private=True)
     cookie_token: str | None = Char(
         max_length=256,
         index=True,
+        private=True,
         description="HttpOnly cookie token for XSS protection (Token Binding)",
     )
     ttl: int = Integer()

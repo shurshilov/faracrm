@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Button, Container, Text, TextInput, Title } from '@mantine/core';
+import {
+  Button,
+  Container,
+  ScrollArea,
+  Text,
+  TextInput,
+  Title,
+} from '@mantine/core';
 import { notifications } from '@mantine/notifications';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -36,20 +43,24 @@ export default function VendorSettings() {
   };
 
   return (
-    <Container size="sm" py="md">
-      <Title order={3}>{t('vendor.title')}</Title>
-      <Text c="dimmed" size="sm" mb="md">
-        {t('vendor.hint')}
-      </Text>
-      <TextInput
-        label={t('vendor.payoutAccount')}
-        placeholder="ShopCode"
-        value={value}
-        onChange={e => setValue(e.currentTarget.value)}
-      />
-      <Button mt="md" onClick={save} loading={isLoading}>
-        {t('vendor.save')}
-      </Button>
-    </Container>
+    // AppShell.Main — 100dvh + overflow:hidden: без своего скролла форма
+    // обрезается на телефоне с открытой клавиатурой.
+    <ScrollArea h="100%" type="auto">
+      <Container size="sm" py="md">
+        <Title order={3}>{t('vendor.title')}</Title>
+        <Text c="dimmed" size="sm" mb="md">
+          {t('vendor.hint')}
+        </Text>
+        <TextInput
+          label={t('vendor.payoutAccount')}
+          placeholder="ShopCode"
+          value={value}
+          onChange={e => setValue(e.currentTarget.value)}
+        />
+        <Button mt="md" onClick={save} loading={isLoading}>
+          {t('vendor.save')}
+        </Button>
+      </Container>
+    </ScrollArea>
   );
 }

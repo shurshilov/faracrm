@@ -268,10 +268,7 @@ registerExtension(
   'after:FormTab:connection',
   [
     'google_json_credentials',
-    'google_credentials',
-    'google_refresh_token',
     'google_auth_state',
-    'google_verify_code',
     'google_folder_id',
     'google_team_enabled',
     'google_team_id',

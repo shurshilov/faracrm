@@ -32,7 +32,9 @@ class ChatConnectorAvitoMixin(_Base):
 
     # Поля специфичные для Avito
     client_secret: str | None = Char(
-        max_length=255, description="Client secret (Avito)"
+        max_length=255,
+        role_read="system_admin",
+        description="Client secret (Avito)",
     )
 
     DEFAULT_CONNECTOR_URL_AVITO = "https://api.avito.ru/messenger/"

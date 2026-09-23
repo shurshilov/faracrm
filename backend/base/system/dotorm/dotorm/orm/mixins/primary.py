@@ -165,7 +165,7 @@ class OrmPrimaryMixin(_Base):
 
         # Field-level доступ: запрет писать role_*-поля без нужной роли
         # (presence-based — любое присутствие restricted-поля проверяется).
-        await self._check_field_access(Operation.UPDATE, payload, fields)
+        await self._check_field_access(Operation.UPDATE, fields)
 
         # @constrains по записываемым полям — до UPDATE. id — чтобы правило
         # исключало «себя» и дочитывало поля записи.
@@ -254,7 +254,7 @@ class OrmPrimaryMixin(_Base):
         # проверяется; role_ids не идёт (store=False). Закрывает дыру,
         # которой точечный гард в User.update не покрывал bulk-путь.
         await cls._check_field_access(
-            Operation.UPDATE, payload, payload.assigned_fields()
+            Operation.UPDATE, payload.assigned_fields()
         )
 
         # @constrains: один payload на много записей — правило получает
@@ -374,7 +374,7 @@ class OrmPrimaryMixin(_Base):
         # попал бы в assigned_fields и проверка отклонила бы ЛЮБОЕ создание
         # не-суперпользователем.
         await cls._check_field_access(
-            Operation.CREATE, payload, payload.assigned_fields()
+            Operation.CREATE, payload.assigned_fields()
         )
 
         session = cls._get_db_session(session)
@@ -510,7 +510,7 @@ class OrmPrimaryMixin(_Base):
         client_fields: set[str] = set()
         for p in payload:
             client_fields.update(p.assigned_fields())
-        await cls._check_field_access(Operation.CREATE, payload, client_fields)
+        await cls._check_field_access(Operation.CREATE, client_fields)
 
         # Дефолты-связи (стадия/языки по умолчанию — поиск записи) считаются
         # один раз на пачку, а не на строку: см. _apply_defaults.
@@ -745,6 +745,11 @@ class OrmPrimaryMixin(_Base):
             fields_store = list(store_fields)
         if "id" not in fields_store:
             fields_store.append("id")
+        # role_read: закрытые сессии колонки не читаем (после дефолта «все
+        # колонки», иначе пустой после вырезания список вернул бы их обратно)
+        fields_store = await cls._check_field_access(
+            Operation.READ, fields_store
+        )
 
         stmt, values = cls._builder.build_get(id, fields_store)
         record = await session.execute(

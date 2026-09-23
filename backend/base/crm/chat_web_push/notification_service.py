@@ -33,8 +33,9 @@ async def notify_on_new_message(
     3. Send notification via connector strategy
     """
     try:
-        # 1. Find all active notify-connectors
-        notify_connectors = await env.models.chat_connector.search(
+        # 1. Find all active notify-connectors. sudo: access_token — role_read,
+        # а уведомление шлёт сервер (коннектор выбирает не сотрудник).
+        notify_connectors = await env.models.chat_connector.sudo().search(
             filter=[
                 ("active", "=", True),
                 ("notify", "=", True),

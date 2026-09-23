@@ -49,7 +49,9 @@ async def websocket_endpoint(websocket: WebSocket):
         return
 
     try:
-        session = await env.models.session.search_one(
+        # sudo: token — private-поле, фильтр по нему разрешён только
+        # системной сессии (условие пишет код, клиент даёт лишь значение).
+        session = await env.models.session.sudo().search_one(
             filter=[("token", "=", token), ("active", "=", True)],
             fields=["id", "user_id"],
         )

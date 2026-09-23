@@ -67,8 +67,12 @@ class PhoneNumber(AuditMixin, DotModel):
     # на форме номера виджетом пароля (widget="password"), владельцу линии
     # уезжает в /telephony/sip/config. Учтите, что раз поле не private, оно
     # видно всем, у кого есть доступ на чтение phone_number.
+    # role_read: пароль видит администратор настроек; владельцу номера его
+    # отдаёт звонилка (telephony/sip/config читает под sudo свою линию).
     sip_password: str | None = Char(
-        max_length=128, description="Пароль SIP-регистрации"
+        max_length=128,
+        role_read="system_admin",
+        description="Пароль SIP-регистрации",
     )
 
     # Тип номера (унифицирован по провайдерам; у Asterisk = asterisk_type).

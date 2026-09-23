@@ -37,18 +37,23 @@ class AttachmentStorageGoogleMixin(_Base):
     # Расширяем Selection поле type
     type: str = Selection(selection_add=[("google", "Google Drive")])
 
-    # OAuth2 авторизация
+    # OAuth2 авторизация. credentials.json вводит администратор настроек —
+    # role_read; выданные Google токены пишет и читает только сервер —
+    # private, наружу через API не уходят.
     google_json_credentials: dict | list | None = JSONField(
+        role_read="system_admin",
         string="Credentials JSON",
         help="Contents of credentials.json file from Google Cloud Console",
     )
 
     google_credentials: str | None = Text(
+        private=True,
         string="Credentials (internal)",
         help="Serialized OAuth2 credentials. Do not edit manually.",
     )
 
     google_refresh_token: str | None = Char(
+        private=True,
         string="Refresh Token",
         help="OAuth2 refresh token for automatic token refresh",
     )
@@ -64,7 +69,10 @@ class AttachmentStorageGoogleMixin(_Base):
         string="Authorization State",
     )
 
+    # state OAuth: генерирует ручка старта, по нему ответ находит хранилище
+    # (фильтр по private — системная сессия).
     google_verify_code: str | None = Char(
+        private=True,
         string="Verification Code",
     )
 

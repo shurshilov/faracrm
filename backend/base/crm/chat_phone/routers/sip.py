@@ -138,7 +138,9 @@ async def sip_ws_proxy(websocket: WebSocket):
         await websocket.close(_CLOSE_UNAUTHORIZED, "Missing token")
         return
 
-    session = await env.models.session.search_one(
+    # sudo: token — private-поле, фильтр по нему разрешён только системной
+    # сессии (условие пишет код, клиент даёт лишь значение).
+    session = await env.models.session.sudo().search_one(
         filter=[("token", "=", token), ("active", "=", True)],
         fields=["id", "user_id"],
     )

@@ -2,9 +2,11 @@
 Регрессионные тесты на инъекции и утечки в auto-CRUD (dotorm_crud_auto).
 
 Решение, которое фиксируют тесты:
-  * имя поля в filter ОБЯЗАНО быть не-private полем модели — одна проверка
+  * имя поля в filter ОБЯЗАНО быть полем модели — одна проверка
     в FilterParser (через него проходят ВСЕ фильтры: API, rules-домены,
     домены папок чата); ValueError → роут search отвечает 400;
+  * private-поле в filter — только системной сессии (sudo, фон): такое
+    условие пишет код, клиент даёт лишь значение;
   * из API-схем private режется в одном месте — DotModel.get_public_fields().
 
 Запуск:
@@ -14,6 +16,8 @@
 валидацию ввода, а не ACL. ACL-гейт search_many2many — в integration/security.
 """
 
+from contextlib import contextmanager
+
 import pytest
 
 from tests.conftest import auto
@@ -21,8 +25,13 @@ from tests.conftest import auto
 pytestmark = [pytest.mark.integration, pytest.mark.api]
 
 
-from backend.base.crm.users.models.users import User
+from backend.base.crm.users.models.users import SYSTEM_USER_ID, User
 from backend.base.crm.security.models.roles import Role
+from backend.base.crm.security.models.sessions import SystemSession
+from backend.base.system.dotorm.dotorm.access import (
+    get_access_session,
+    set_access_session,
+)
 
 INJECTION_NAME = (
     'id" = 1 OR (SELECT COUNT(*) FROM "user" '
@@ -30,6 +39,17 @@ INJECTION_NAME = (
 )
 
 _seq = 0
+
+
+@contextmanager
+def _access_session(session):
+    """Временно подменить сессию доступа (conftest ставит системную)."""
+    previous = get_access_session()
+    set_access_session(session)
+    try:
+        yield
+    finally:
+        set_access_session(previous)
 
 
 def _uniq(prefix: str) -> str:
@@ -268,9 +288,23 @@ class TestFilterParserWhitelist:
             self._parser(User.get_fields()).parse(("no_such_column", "=", 1))
 
     def test_private_field_rejected(self):
-        """private-поле есть в модели, но в WHERE не допускается."""
-        with pytest.raises(ValueError):
-            self._parser(User.get_fields()).parse(("password_hash", ">", "x"))
+        """private-поле есть в модели, но в WHERE не допускается — любой
+        сессии, кроме системной."""
+        with _access_session(None):
+            with pytest.raises(ValueError):
+                self._parser(User.get_fields()).parse(
+                    ("password_hash", ">", "x")
+                )
+
+    def test_private_field_allowed_for_system_session(self):
+        """Системной сессии (sudo, фон) можно: условие пишет код, клиент
+        даёт лишь значение (так ищут сессию по токену)."""
+        with _access_session(SystemSession(user_id=SYSTEM_USER_ID)):
+            clause, values = self._parser(User.get_fields()).parse(
+                ("password_hash", "=", "x")
+            )
+        assert clause == '"password_hash" = %s'
+        assert values == ("x",)
 
     def test_known_field_passes(self):
         clause, values = self._parser(User.get_fields()).parse(

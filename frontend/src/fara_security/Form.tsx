@@ -174,9 +174,6 @@ export function ViewFormSessions(props: ViewFormProps) {
           <Field name="user_id" />
           <Field name="active" />
         </FormRow>
-        <FormRow cols={2}>
-          <Field name="token" />
-        </FormRow>
       </FormSection>
 
       {/* Время жизни */}

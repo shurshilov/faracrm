@@ -43,6 +43,7 @@ class AttachmentStorageGitMixin(_Base):
     )
     git_token: str | None = Char(
         max_length=255,
+        role_read="system_admin",
         string="Access token",
         help=(
             "Токен GitHub только на чтение содержимого: приватные "

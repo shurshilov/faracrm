@@ -42,17 +42,21 @@ class AttachmentStorageYandexMixin(_Base):
     )
 
     yandex_client_secret: str | None = Char(
+        role_read="system_admin",
         string="Client Secret",
         help="OAuth Client Secret, полученный на https://oauth.yandex.ru",
     )
 
-    # Токены OAuth2 (заполняются после авторизации)
+    # Токены OAuth2 (заполняются после авторизации). private: пишет и
+    # читает только сервер, наружу через API не уходят.
     yandex_access_token: str | None = Text(
+        private=True,
         string="Access Token (internal)",
         help="OAuth2 access token. Не редактируйте вручную.",
     )
 
     yandex_refresh_token: str | None = Char(
+        private=True,
         string="Refresh Token",
         help="OAuth2 refresh token для автоматического обновления access token",
     )
@@ -73,7 +77,10 @@ class AttachmentStorageYandexMixin(_Base):
         string="Authorization State",
     )
 
+    # state OAuth: генерирует ручка старта, по нему ответ находит хранилище
+    # (фильтр по private — системная сессия).
     yandex_verify_code: str | None = Char(
+        private=True,
         string="Verification Code",
     )
 

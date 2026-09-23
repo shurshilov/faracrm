@@ -97,6 +97,7 @@ class ChatConnectorEmailMixin(_Base):
     )
     email_password: str | None = Char(
         max_length=255,
+        role_read="system_admin",
         description="Пароль для авторизации",
     )
 

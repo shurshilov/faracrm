@@ -7,6 +7,7 @@ Extracted to avoid code duplication in builders.
 
 from typing import TYPE_CHECKING, Any, Literal, Union
 
+from ..access import SystemSession, get_access_session
 from .dialect import Dialect
 
 if TYPE_CHECKING:
@@ -155,10 +156,14 @@ class FilterParser:
             name, op, value = filter_expr
             if self.fields:
                 # Имя подставляется в SQL как идентификатор, поэтому ОБЯЗАНО
-                # быть не-private полем модели (единая проверка для всех
-                # фильтров: API, rules-домены, домены папок чата).
+                # быть полем модели (единая проверка для всех фильтров: API,
+                # rules-домены, домены папок чата). private — только системной
+                # сессии (sudo, фон): такой фильтр пишет код, а не клиент.
                 model_field = self.fields.get(name)
-                if model_field is None or model_field.private:
+                if model_field is None or (
+                    model_field.private
+                    and not isinstance(get_access_session(), SystemSession)
+                ):
                     raise ValueError(
                         f"Unknown or private filter field: {name!r}"
                     )

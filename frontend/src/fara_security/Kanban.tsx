@@ -173,7 +173,6 @@ interface SessionData {
   id: number;
   active: boolean;
   user_id?: { id: number; name: string } | null;
-  token?: string;
   create_datetime?: string;
   ttl?: number;
 }
@@ -261,14 +260,6 @@ function SessionCard({
           </Group>
         )}
       </Stack>
-
-      {session.token && (
-        <Tooltip label={session.token}>
-          <Text size="xs" c="dimmed" mt="xs" lineClamp={1} ff="monospace">
-            {session.token.substring(0, 20)}...
-          </Text>
-        </Tooltip>
-      )}
     </Card>
   );
 }
@@ -277,7 +268,7 @@ export function ViewKanbanSessions() {
   const navigate = useNavigate();
   const { data } = useFilteredSearchQuery({
     model: 'sessions',
-    fields: ['id', 'active', 'user_id', 'token', 'create_datetime', 'ttl'],
+    fields: ['id', 'active', 'user_id', 'create_datetime', 'ttl'],
     limit: 100,
     order: 'desc',
     sort: 'id',

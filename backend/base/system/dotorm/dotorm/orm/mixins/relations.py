@@ -140,6 +140,11 @@ class OrmRelationsMixin(_Base):
 
         if fields is None:
             fields = self.get_store_fields()
+        # role_read: закрытые сессии поля вырезаются, фильтр/сортировка по
+        # ним — ошибка (до домена правил: проверяем то, что прислали)
+        fields = await cls._check_field_access(
+            Operation.READ, fields, filter, sort
+        )
         # Access check + apply domain filter
         filter = await cls._check_access(Operation.READ, filter=filter)
 
@@ -224,6 +229,8 @@ class OrmRelationsMixin(_Base):
         """
         cls = self.__class__
 
+        # role_read: фильтр по закрытому сессии полю — ошибка
+        await cls._check_field_access(Operation.READ, [], filter)
         # Access check + apply domain filter — иначе count приходит без
         # учёта rules и в UI пагинация показывает завышенное число
         filter = await cls._check_access(Operation.READ, filter=filter)
@@ -257,6 +264,8 @@ class OrmRelationsMixin(_Base):
         """
         cls = self.__class__
 
+        # role_read: фильтр по закрытому сессии полю — ошибка
+        await cls._check_field_access(Operation.READ, [], filter)
         # Access check + apply domain filter — иначе exists вернёт True
         # для записей которые юзер не должен видеть
         filter = await cls._check_access(Operation.READ, filter=filter)

@@ -460,9 +460,12 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
             a.serialize_for_chat() for a in attachments_content_data
         ]
 
-        # Если указан connector_id - отправляем во внешний сервис
+        # Если указан connector_id - отправляем во внешний сервис.
+        # Право отправлять — право писать в чат (check_can_write выше),
+        # коннектор здесь только канал. Токены (role_read) для отправки
+        # сервер читает под sudo и наружу не отдаёт.
         if body.connector_id:
-            connector = await env.models.chat_connector.search_one(
+            connector = await env.models.chat_connector.sudo().search_one(
                 filter=[("id", "=", body.connector_id)],
                 fields_nested={
                     "outbox_account_id": {"fields": ["id", "external_id"]}

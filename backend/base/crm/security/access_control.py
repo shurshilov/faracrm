@@ -150,11 +150,12 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         field_names: list[str],
     ) -> list[str]:
         """
-        Field-level доступ: какие поля сессия НЕ вправе писать.
+        Field-level доступ: какие поля сессия НЕ вправе читать или писать.
 
-        Третья ось доступа (ACL=таблица, Rules=строка, тут=поле). Вызывается
-        из ORM write-пути уже после ACL/Rules и только для меняющихся
-        role_*-полей (отбор делает ORM). Здесь — только проверка роли.
+        Третья ось доступа (ACL=таблица, Rules=строка, тут=поле). ORM отдаёт
+        сюда все поля операции (выбираемые, фильтр и сортировку на чтении;
+        назначенные на записи), а ограниченные role_*-поля отбирает цикл
+        ниже: остальные пропускаются.
 
         Правила role_* трактуются так:
         - токен SUPERUSER → разрешено только is_admin (полный доступ уже
@@ -166,13 +167,10 @@ class SecurityAccessChecker(AccessChecker["Session"]):
             Список запрещённых полей (пустой = всё можно).
         """
         # admin / SystemSession — полный доступ, поля не ограничиваем.
+        # AnonymousSession ролей не несёт: ограниченные поля цикл запретит
+        # ей сам, остальные пропустит.
         if self._is_full_access(session):
             return []
-
-        # AnonymousSession не пишет ничего (сюда обычно и не доходит, но
-        # на всякий случай запрещаем все кандидаты явно).
-        if isinstance(session, AnonymousSession):
-            return list(field_names)
 
         model_name = self.env.models._get_model_name_by_table(model)
         Model = self.env.models._get_model(model_name)
