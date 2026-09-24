@@ -10,11 +10,7 @@ from backend.base.system.dotorm.dotorm.access import (
     new_access_memo,
     set_access_session,
 )
-from backend.base.crm.security.models.sessions import (
-    SystemSession,
-    AnonymousSession,
-)
-from backend.base.crm.users.models.users import SYSTEM_USER_ID
+from backend.base.crm.security.models.sessions import AnonymousSession
 from backend.base.crm.security.exceptions.AuthException import (
     SessionErrorFormat,
     SessionExpired,
@@ -202,21 +198,6 @@ class AuthTokenApp(App, AuthStrategyAbstract):
             )
         """
         set_access_session(AnonymousSession())
-
-    @staticmethod
-    async def use_system_session():
-        """
-        Dependency для public-эндпоинтов которые **доверены** и нуждаются
-        в полном доступе: webhook'и (от телефонии), OAuth callbacks (от
-        Google), signin (создаёт сессию пользователю).
-
-        Использовать ТОЛЬКО когда:
-        1. Эндпоинт принимает данные от доверенного источника (или
-           подтверждает подпись/токен внутри handler);
-        2. Логика handler'а сама проверяет права (например, signin
-           проверяет пароль перед созданием session).
-        """
-        set_access_session(SystemSession(user_id=SYSTEM_USER_ID))
 
     def handler_errors(self, app_server: FastAPI):
         async def catch_exception_handler_auth(

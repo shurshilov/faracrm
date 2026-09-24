@@ -22,10 +22,19 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
 ]
 
+# Колбэк — без входа (сюда редиректит Google), доверие даёт state: под
+# анонимной сессией хранилище по нему читаем и правим через sudo.
 router_public = APIRouter(
     tags=["Attachments Google OAuth"],
     prefix="/google",
-    dependencies=[Depends(AuthTokenApp.use_system_session)],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
+)
+# Старт авторизации — только для вошедшего: он пишет verify_code в
+# хранилище, значит нужны права на его изменение, их решают ACL.
+router_private = APIRouter(
+    tags=["Attachments Google OAuth"],
+    prefix="/google",
+    dependencies=[Depends(AuthTokenApp.verify_access)],
 )
 
 
@@ -104,7 +113,7 @@ async def oauth2_callback(req: Request):
     # Ищем storage по verify_code
     # Specify the state when creating the flow in the callback so that it can
     # verified in the authorization server response.
-    storage = await env.models.attachment_storage.search_one(
+    storage = await env.models.attachment_storage.sudo().search_one(
         filter=[
             ("type", "=", "google"),
             ("google_verify_code", "=", state),
@@ -161,7 +170,7 @@ async def oauth2_callback(req: Request):
             state=storage.google_verify_code,
         )
 
-        api_url = await env.models.system_settings.get_api_url()
+        api_url = await env.models.system_settings.sudo().get_api_url()
         # Приводим localhost чтобы работало локально, политика гугл
         if api_url.startswith(r"http://127.0.0.1"):
             api_url = "http://localhost" + api_url[16:]
@@ -213,7 +222,7 @@ async def oauth2_callback(req: Request):
             google_auth_state=auth_state,
             google_verify_code=None,  # Очищаем использованный код
         )
-        await storage.update(payload=storage_new)
+        await storage.sudo().update(payload=storage_new)
 
         logger.info(
             "Google Drive authorized successfully for storage %s", storage.id
@@ -254,7 +263,7 @@ async def oauth2_callback(req: Request):
             google_verify_code=None,  # Очищаем использованный код
         )
         # Обновляем статус на failed
-        await storage.update(payload=storage_new)
+        await storage.sudo().update(payload=storage_new)
 
         return HTMLResponse(
             content=f"""
@@ -271,12 +280,14 @@ async def oauth2_callback(req: Request):
         )
 
 
-@router_public.get("/auth/{storage_id}")
+@router_private.get("/auth/{storage_id}")
 async def oauth2_start(req: Request, storage_id: int):
     """
     Начинает процесс OAuth2 авторизации для Google Drive.
 
-    Возвращает authorization_url для редиректа на Google.
+    Возвращает authorization_url для редиректа на Google. Под сессией
+    пользователя: verify_code пишется в хранилище, права на это дают ACL
+    (system_admin), остальным — отказ.
 
     Path parameters:
     - storage_id: ID storage для авторизации
@@ -343,7 +354,7 @@ async def oauth2_start(req: Request, storage_id: int):
         # redirect_uri берётся из SystemSettings (core.api_url).
         # Должен совпадать с URL, зарегистрированным в Google Cloud Console.
         # См. комментарий в oauth2_callback выше.
-        api_url = await env.models.system_settings.get_api_url()
+        api_url = await env.models.system_settings.sudo().get_api_url()
         # Приводим localhost чтобы работало локально, политика гугл
         if api_url.startswith(r"http://127.0.0.1"):
             api_url = "http://localhost" + api_url[16:]

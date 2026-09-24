@@ -19,9 +19,11 @@ from backend.base.system.dotorm.dotorm.model import JsonMode
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
+# Вход без сессии: анонимная сессия, доверие даёт пароль. Пользователя,
+# сессию и рабочее место читаем и пишем через sudo — точечно.
 router_public = APIRouter(
     tags=["User"],
-    dependencies=[Depends(AuthTokenApp.use_system_session)],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 
 router_private = APIRouter(
@@ -179,7 +181,7 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
 
     async with env.apps.db.get_transaction():
         # проверить существует ли пользователь по введеному логину
-        user_id = await env.models.user.search_one(
+        user_id = await env.models.user.sudo().search_one(
             filter=[("login", "=", payload.login)],
             fields=[
                 "id",
@@ -215,7 +217,7 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
 
         # создать сессию
         now = datetime.now(timezone.utc)
-        ttl = await Session.get_ttl()
+        ttl = await Session.sudo().get_ttl()
         # оставить только поля id, name, home_page
         # чтобы не хранить хеш и соль в сессии на фронте для безопасности
         clear_user_id = User(
@@ -240,11 +242,11 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
         )
         # TODO: сделать гидратацию, потому что при инициализации вставляются как есть
         session.user_id.role_ids = user_id.role_ids
-        id = await env.models.session.create(payload=session)
+        id = await env.models.session.sudo().create(payload=session)
         session.id = id
 
         # Лимит активных сессий на пользователя.
-        await env.models.session.enforce_session_limit(user_id.id)
+        await env.models.session.sudo().enforce_session_limit(user_id.id)
 
         response.set_cookie(
             key=env.settings.auth.cookie_name,
@@ -263,7 +265,7 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
         # видно, кроме is_admin) и показывает бейдж с именем РМ. Курирование
         # презентационное — доступ к данным держат ACL/Rules на сервере.
         if user_id.workspace_id:
-            ws = await env.models.workspace.search_one(
+            ws = await env.models.workspace.sudo().search_one(
                 filter=[("id", "=", user_id.workspace_id.id)],
                 fields=["id", "name", "app_ids"],
                 fields_nested={"app_ids": {"fields": ["id", "ui_menu_name"]}},

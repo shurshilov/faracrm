@@ -22,6 +22,8 @@ import {
   IconExternalLink,
 } from '@tabler/icons-react';
 import { useParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectCurrentSession } from '@/slices/authSlice';
 
 /**
  * Расширение формы хранилища для Яндекс.Диска.
@@ -30,6 +32,7 @@ import { useParams } from 'react-router-dom';
 export function ViewFormStorageYandex() {
   const form = useFormContext();
   const { id } = useParams<{ id: string }>();
+  const session = useSelector(selectCurrentSession);
   const storageType = form.values?.type;
   const [isLoading, setIsLoading] = useState(false);
 
@@ -52,7 +55,11 @@ export function ViewFormStorageYandex() {
 
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/yandex/auth/${id}`);
+      // Ручка приватная: бэк требует и Bearer, и guard-куку.
+      const response = await fetch(`${API_BASE_URL}/yandex/auth/${id}`, {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${session?.token}` },
+      });
       const data = await response.json();
 
       if (data.authorization_url) {

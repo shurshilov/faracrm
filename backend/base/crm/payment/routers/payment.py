@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Подпись уведомления проверяет сам провайдер (handle_notification),
-# платёж меняется от системной сессии — как чат-вебхуки.
+# Без входа: анонимная сессия. Доверие даёт подпись уведомления, её сверяет
+# провайдер; разбор и смена платежа — под sudo, точечно, как чат-вебхуки.
 router_public = APIRouter(
     tags=["Payment"],
-    dependencies=[Depends(AuthTokenApp.use_system_session)],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 
 
@@ -28,10 +28,10 @@ async def payment_webhook(req: Request, provider_type: str):
     env: "Environment" = req.app.state.env
     provider = get_provider(provider_type)
     payload = await req.json()
-    external_id, state = await provider.handle_notification(payload)
+    external_id, state = await provider.sudo().handle_notification(payload)
 
     async with env.apps.db.get_transaction():
-        payment = await env.models.payment.search_one(
+        payment = await env.models.payment.sudo().search_one(
             filter=[
                 ("provider", "=", provider_type),
                 ("external_id", "=", external_id),
@@ -46,8 +46,8 @@ async def payment_webhook(req: Request, provider_type: str):
                 external_id,
             )
         elif state == "paid":
-            await payment.mark_paid()
+            await payment.sudo().mark_paid()
         elif state == "failed":
-            await payment.mark_failed()
+            await payment.sudo().mark_failed()
 
     return PlainTextResponse(provider.notification_response)

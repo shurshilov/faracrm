@@ -7,6 +7,7 @@ import logging
 import mimetypes
 
 from backend.base.system.core.enviroment import env
+from backend.base.system.dotorm.dotorm.access import SudoAccessor
 from backend.base.crm.chat.strategies.pipeline_incoming import (
     IncomingMessagePipeline,
 )
@@ -37,6 +38,11 @@ class ChatStrategyBase(ABC):
     входящих сообщений. Конкретные стратегии переопределяют только
     create_message_adapter для парсинга специфичного формата.
     """
+
+    # Как у моделей: вебхук без входа зовёт `strategy.sudo().handle_webhook`
+    # — весь конвейер входящего сообщения идёт с полным доступом, доверие
+    # уже проверено хешем вебхука.
+    sudo = SudoAccessor()
 
     # Уникальный тип стратегии (должен совпадать с connector.type)
     strategy_type: str = ""

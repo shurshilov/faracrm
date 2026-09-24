@@ -3,6 +3,8 @@
 
 from typing import TYPE_CHECKING
 
+from backend.base.system.dotorm.dotorm.access import SudoAccessor
+
 if TYPE_CHECKING:
     from backend.base.crm.payment.models.payment import Payment
 
@@ -15,6 +17,10 @@ class PaymentProviderBase:
     оплату, разобрать уведомление о результате (обязательно сверив подпись).
     Что делать с оплаченной записью — решает модель Payment.
     """
+
+    # Как у моделей: вебхук без входа зовёт `provider.sudo().handle_notification`
+    # — разбор уведомления читает настройки провайдера из БД.
+    sudo = SudoAccessor()
 
     provider_type: str = ""
     # Что ответить провайдеру на уведомление, чтобы он перестал его слать.

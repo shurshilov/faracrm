@@ -14,11 +14,11 @@ from backend.base.crm.registration.schemas.registration import (
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
 
-# Ручки пишут в БД (заявка, затем пользователь), поэтому не анонимная
-# сессия, а системная — как /signin. Защита — код из письма.
+# Без входа: анонимная сессия, а заявку и пользователя пишет sudo — по
+# одному вызову модели на ручку, защита внутри них (капча, код из письма).
 router_public = APIRouter(
     tags=["Registration"],
-    dependencies=[Depends(AuthTokenApp.use_system_session)],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 
 
@@ -27,7 +27,7 @@ async def registration_start(req: Request, payload: RegistrationStartInput):
     """Создать заявку и отправить код подтверждения выбранным каналом."""
     env: "Environment" = req.app.state.env
     async with env.apps.db.get_transaction():
-        registration = await env.models.registration.start(
+        registration = await env.models.registration.sudo().start(
             name=payload.name,
             login=payload.login,
             password=payload.password,
@@ -50,7 +50,7 @@ async def registration_confirm(
     """Сверить код и создать пользователя. Дальше фронт делает /signin."""
     env: "Environment" = req.app.state.env
     async with env.apps.db.get_transaction():
-        user_id = await env.models.registration.confirm(
+        user_id = await env.models.registration.sudo().confirm(
             login=payload.login, code=payload.code
         )
     return {"data": {"user_id": user_id}}

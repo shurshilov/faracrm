@@ -23,9 +23,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# Без входа: анонимная сессия. Доверие даёт секретный хеш в URL: коннектор
+# по нему читаем под sudo, и под sudo же идёт конвейер входящего сообщения.
 router_public = APIRouter(
     tags=["Chat Webhook"],
-    dependencies=[Depends(AuthTokenApp.use_system_session)],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 
 
@@ -58,7 +60,7 @@ async def chat_webhook(
     env: "Environment" = req.app.state.env
 
     # 1. Получаем коннектор и валидируем
-    connector = await env.models.chat_connector.search_one(
+    connector = await env.models.chat_connector.sudo().search_one(
         filter=[
             ("id", "=", connector_id),
             ("webhook_hash", "=", webhook_hash),
@@ -99,7 +101,7 @@ async def chat_webhook(
 
     # 3. Делегируем обработку стратегии (вне транзакции - стратегия сама управляет транзакциями)
     strategy = connector.strategy
-    result = await strategy.handle_webhook(
+    result = await strategy.sudo().handle_webhook(
         connector=connector,
         payload=payload,
         env=env,

@@ -31,10 +31,19 @@ YANDEX_TOKEN_URL = "https://oauth.yandex.ru/token"
 # Сами scopes в /authorize Яндекс не принимает — они зашиты в приложение,
 # но мы их перечисляем в комментарии для документации.
 
+# Колбэк — без входа (сюда редиректит Яндекс), доверие даёт state: под
+# анонимной сессией хранилище по нему читаем и правим через sudo.
 router_public = APIRouter(
     tags=["Attachments Yandex OAuth"],
     prefix="/yandex",
-    dependencies=[Depends(AuthTokenApp.use_system_session)],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
+)
+# Старт авторизации — только для вошедшего: он пишет verify_code в
+# хранилище, значит нужны права на его изменение, их решают ACL.
+router_private = APIRouter(
+    tags=["Attachments Yandex OAuth"],
+    prefix="/yandex",
+    dependencies=[Depends(AuthTokenApp.verify_access)],
 )
 
 
@@ -110,7 +119,7 @@ async def oauth2_callback(req: Request):
     env: "Environment" = req.app.state.env
 
     # Ищем storage по verify_code
-    storage = await env.models.attachment_storage.search_one(
+    storage = await env.models.attachment_storage.sudo().search_one(
         filter=[
             ("type", "=", "yandex"),
             ("yandex_verify_code", "=", state),
@@ -157,7 +166,7 @@ async def oauth2_callback(req: Request):
         )
 
     try:
-        api_url = await env.models.system_settings.get_api_url()
+        api_url = await env.models.system_settings.sudo().get_api_url()
         api_url = _normalize_api_url(api_url)
         redirect_uri = f"{api_url}/yandex/callback"
 
@@ -202,7 +211,7 @@ async def oauth2_callback(req: Request):
             yandex_auth_state="authorized",
             yandex_verify_code=None,  # Очищаем использованный код
         )
-        await storage.update(payload=storage_new)
+        await storage.sudo().update(payload=storage_new)
 
         logger.info(
             "Yandex Disk authorized successfully for storage %s", storage.id
@@ -240,7 +249,7 @@ async def oauth2_callback(req: Request):
             yandex_auth_state="failed",
             yandex_verify_code=None,
         )
-        await storage.update(payload=storage_new)
+        await storage.sudo().update(payload=storage_new)
 
         return HTMLResponse(
             content=f"""
@@ -257,12 +266,14 @@ async def oauth2_callback(req: Request):
         )
 
 
-@router_public.get("/auth/{storage_id}")
+@router_private.get("/auth/{storage_id}")
 async def oauth2_start(req: Request, storage_id: int):
     """
     Начинает процесс OAuth2 авторизации для Яндекс.Диска.
 
-    Возвращает authorization_url для редиректа на oauth.yandex.ru.
+    Возвращает authorization_url для редиректа на oauth.yandex.ru. Под
+    сессией пользователя: verify_code пишется в хранилище, права на это
+    дают ACL (system_admin), остальным — отказ.
 
     Path parameters:
     - storage_id: ID storage для авторизации
@@ -307,7 +318,7 @@ async def oauth2_start(req: Request, storage_id: int):
         )
         await storage.update(payload=storage_new)
 
-        api_url = await env.models.system_settings.get_api_url()
+        api_url = await env.models.system_settings.sudo().get_api_url()
         api_url = _normalize_api_url(api_url)
         redirect_uri = f"{api_url}/yandex/callback"
 
