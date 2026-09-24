@@ -41,6 +41,7 @@ class AppInfo(TypedDict):
 
 # Импортируем после определения AppInfo чтобы избежать циклических импортов
 from backend.base.crm.security.acl_post_init_mixin import ACLPostInitMixin
+from backend.base.system.dotorm.dotorm.access import SudoAccessor
 
 
 class App(ACLPostInitMixin):
@@ -66,6 +67,10 @@ class App(ACLPostInitMixin):
     """
 
     info: AppInfo
+
+    # Как у моделей: `await service.sudo().post_init(app)` — сидеры модуля
+    # с полным доступом при установке из интерфейса (Environment.install_apps).
+    sudo = SudoAccessor()
 
     def __init__(self) -> None:
         super().__init__()

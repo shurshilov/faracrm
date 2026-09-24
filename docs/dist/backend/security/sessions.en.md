@@ -260,7 +260,7 @@ The last row is the non-obvious one. An orphan cookie points at no session, so d
 | `verify_access` | Bearer + cookie | Every `router_private` — the main mode |
 | `verify_access_by_cookie` | Cookie only | `router_content` in `backend/base/crm/attachments/routers/attachments.py` — serving files and previews |
 | `use_system_session` | Nothing, grants full access | `/signin`, webhooks, OAuth callbacks |
-| `use_anonymous_session([...])` | Nothing, READ over a table whitelist | WebSocket routes, public icons |
+| `use_anonymous_session` | Nothing, grants no access: the handler reads what it needs via `.sudo()` | Public config and branding, marketplace catalog, WebSocket routes, public icons |
 
 !!! info "Why content needs its own scheme"
     `<img src>`, `<a href>`, `<audio src>` and `window.open()` cannot carry an `Authorization` header — the browser only sends the cookie. That is why attachments have a pair of routes authorized by a reverse session lookup on `cookie_token`.

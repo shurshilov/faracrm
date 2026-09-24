@@ -187,41 +187,21 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         return session
 
     @staticmethod
-    def use_anonymous_session(allowed_tables: list[str]):
+    async def use_anonymous_session():
         """
-        Factory: возвращает FastAPI dependency для public-эндпоинтов.
+        Dependency для public-эндпоинтов: сессия без прав.
 
-        Каждый public-роутер декларирует список таблиц к которым
-        разрешён READ для анонимного пользователя — принцип
-        минимальных привилегий. WRITE запрещён всегда.
+        Анонимной сессии не разрешено ничего — ни чтение, ни запись.
+        Что публичной ручке нужно, она читает сама через .sudo(): по
+        точному id/фильтру, с явным списком полей, ответ собирает
+        руками. Забытый sudo даёт AccessDenied, а не тихую утечку.
 
         Применение:
             router_public = APIRouter(
-                dependencies=[
-                    Depends(AuthTokenApp.use_anonymous_session(
-                        ["company", "attachments"]
-                    )),
-                ],
+                dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
             )
-
-        Args:
-            allowed_tables: список имён таблиц (__table__) к которым
-                разрешён READ. Передаются в AnonymousSession и
-                проверяются в SecurityAccessChecker.
-
-        Returns:
-            async dependency-функцию которую FastAPI вызовет на каждом
-            запросе к этому роутеру.
         """
-        # Замораживаем список для безопасности (frozenset не мутабелен).
-        tables = frozenset(allowed_tables)
-
-        async def _dep():
-            # Создаём сессию заново на каждый запрос — её allowed_tables
-            # связан с конкретным роутером, а не глобален.
-            set_access_session(AnonymousSession(allowed_tables=tables))
-
-        return _dep
+        set_access_session(AnonymousSession())
 
     @staticmethod
     async def use_system_session():

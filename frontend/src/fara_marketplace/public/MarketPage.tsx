@@ -22,6 +22,8 @@ type Pricing = 'all' | 'free' | 'paid';
 type Sort = 'popular' | 'new' | 'price';
 
 const PAGE_SIZE = 24;
+// Как max_length параметра search на бэке: длиннее ручка не примет (422).
+const SEARCH_MAX_LENGTH = 100;
 
 /** Публичный каталог: поиск, категория, платные/бесплатные, сортировка. */
 export default function MarketPage() {
@@ -65,6 +67,7 @@ export default function MarketPage() {
             leftSection={<IconSearch size={16} />}
             placeholder={t('public.searchPlaceholder')}
             value={search}
+            maxLength={SEARCH_MAX_LENGTH}
             onChange={e => setSearch(e.currentTarget.value)}
           />
           <Select

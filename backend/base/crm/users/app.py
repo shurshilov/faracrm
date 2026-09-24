@@ -105,8 +105,9 @@ class UserApp(App):
         """Создаёт anonymous-пользователя (id=4) для public-эндпоинтов.
 
         Используется как identity для AnonymousSession. Login невозможен
-        (пустой password_hash), is_admin=False. Никаких ролей не имеет
-        — доступ ограничен whitelist'ом таблиц в use_anonymous_session.
+        (пустой password_hash), is_admin=False. Никаких ролей не имеет —
+        прав у анонимной сессии нет, публичные ручки читают нужное через
+        .sudo().
         """
         user_anon = await env.models.user.search_one(
             filter=[("id", "=", ANONYMOUS_USER_ID)], fields=["id"]

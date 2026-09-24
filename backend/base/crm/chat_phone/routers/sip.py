@@ -33,7 +33,7 @@ router_private = APIRouter(
 # Прокси-сокет авторизуется сам (токеном в query), как /ws/chat.
 router_public = APIRouter(
     tags=["Telephony SIP"],
-    dependencies=[Depends(AuthTokenApp.use_anonymous_session(["sessions"]))],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 
 # Коды закрытия WebSocket (как в chat/routers/ws.py).
@@ -50,12 +50,11 @@ async def _my_lines(env: "Environment", user_id: int) -> dict:
     одну «свою». sip_password правится на форме номера, ORM
     читает его как обычное store-поле — отдельный SQL за паролем не нужен.
     """
-    # sudo: ручку /ws/sip обслуживает AnonymousSession с белым списком из
-    # одной таблицы sessions — под ней чтение phone_number падает с
-    # AccessDenied ДО accept(), и браузер получает 403 на рукопожатии, а
-    # звонилка показывает «нет связи с АТС». Расширять белый список нельзя:
-    # он общий для всех публичных ручек роутера. Прав это не даёт: выборка
-    # жёстко сужена до линий ЭТОГО user_id, а он взят из проверенной сессии.
+    # sudo: ручку /ws/sip обслуживает анонимная сессия, которой не разрешено
+    # ничего — без sudo чтение phone_number падает с AccessDenied ДО
+    # accept(), браузер получает 403 на рукопожатии, а звонилка показывает
+    # «нет связи с АТС». Прав это не даёт: выборка жёстко сужена до линий
+    # ЭТОГО user_id, а он взят из проверенной сессии.
     rows = await env.models.phone_number.sudo().search(
         filter=[("user_id", "=", user_id), ("active", "=", True)],
         fields=["id", "extension", "number", "sip_password", "connector_id"],
@@ -156,9 +155,9 @@ async def sip_ws_proxy(websocket: WebSocket):
     lines = await _my_lines(env, session.user_id.id)
     url = None
     if connector_id in lines:
-        # Тот же случай: chat_connector в белом списке анонимной сессии нет,
-        # а адрес АТС нужен. Коннектор берём только если линия сотрудника в
-        # нём есть (проверка строкой выше).
+        # Тот же случай: адрес АТС нужен, а анонимной сессии чтение
+        # запрещено. Коннектор берём только если линия сотрудника в нём
+        # есть (проверка строкой выше).
         connector = await env.models.chat_connector.sudo().get(connector_id)
         url = connector.sip_ws_url
 

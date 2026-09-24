@@ -118,22 +118,19 @@ class Environment:
         """Установить приложения (с недостающими зависимостями).
 
         Для каждого: флаг installed → post_init (сидеры идемпотентны, это
-        тот же код, что на старте). Под системной сессией и тем же
-        advisory-локом, что и стартовые сидеры.
+        тот же код, что на старте). Под sudo и тем же advisory-локом, что и
+        стартовые сидеры.
         """
-        from backend.base.system.dotorm.dotorm.access import system_access
-
         order = self.apps.install_order(codes, self.installed)
         if not order:
             return []
         async with self.apps.db.advisory_lock(POST_INIT_LOCK_ID):
-            async with system_access():
-                for code in order:
-                    await self._set_installed(code, True)
-                    self.installed.add(code)
-                    service = self.apps.get(code)
-                    if service.info.get("post_init"):
-                        await service.post_init(app)
+            for code in order:
+                await self._set_installed(code, True)
+                self.installed.add(code)
+                service = self.apps.get(code)
+                if service.info.get("post_init"):
+                    await service.sudo().post_init(app)
         await self.apps_changed(app)
         return order
 
@@ -146,24 +143,23 @@ class Environment:
         вырезаются, меню прячется, а повторная установка возвращает всё
         без потерь.
         """
-        from backend.base.system.dotorm.dotorm.access import system_access
-
         order = self.apps.uninstall_order(codes, self.installed)
         if not order:
             return []
-        async with system_access():
-            for code in order:
-                await self._set_installed(code, False)
-                self.installed.discard(code)
+        for code in order:
+            await self._set_installed(code, False)
+            self.installed.discard(code)
         await self.apps_changed(app)
         return order
 
     async def _set_installed(self, code: str, value: bool) -> None:
-        row = await self.models.app.search_one(
+        """Флаг installed — под sudo: ставит его админ из интерфейса, ACL на
+        apps у его ролей может не быть."""
+        row = await self.models.app.sudo().search_one(
             filter=[("code", "=", code)], fields=["id"]
         )
         if row:
-            await row.update(payload=self.models.app(installed=value))
+            await row.sudo().update(payload=self.models.app(installed=value))
 
     async def apps_changed(self, app: FastAPI) -> None:
         """Флаги изменились: свои роуты — сразу, остальным воркерам — событие

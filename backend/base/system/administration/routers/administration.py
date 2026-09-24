@@ -17,13 +17,7 @@ from ..app import AdministrationApp
 
 router_public = APIRouter(
     tags=[f"{AdministrationApp.info.get("name")}"],
-    dependencies=[
-        Depends(
-            AuthTokenApp.use_anonymous_session(
-                ["company", "system_settings", "attachments"]
-            )
-        )
-    ],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 
 router_private = APIRouter(
@@ -107,8 +101,9 @@ def _public_home() -> str | None:
 
 
 async def _get_first_company():
-    """Первая активная компания или None."""
-    return await env.models.company.search_one(
+    """Первая активная компания или None. Под sudo: анонимной сессии
+    ничего не разрешено, а поля перечислены явно."""
+    return await env.models.company.sudo().search_one(
         filter=[("active", "=", True)],
         order="asc",
         sort="sequence",
@@ -264,7 +259,7 @@ def _title_from_manifest(value: Any) -> str | None:
 @router_public.get("/public/config/", response_model=PublicConfig)
 async def public_config():
     """Конфиг для фронта (страница логина и т.п.)."""
-    demo = await env.models.system_settings.get_value(
+    demo = await env.models.system_settings.sudo().get_value(
         "ui.demo_mode", default=False
     )
     company = await _get_first_company()
@@ -358,9 +353,9 @@ async def branding_file(
 ):
     """Публичная отдача файла из Company.<field>.
 
-    Использует sudo() для доступа к Attachment по конкретному ID —
-    AnonymousSession имеет READ только к whitelist'у, и хотя attachments
-    в нём, для удобства идём через sudo (явный обход).
+    Вложение читаем под sudo по id из самой компании; read_content тоже
+    под sudo — стратегия Google/Яндекс может по пути обновить OAuth-токен
+    в хранилище, а запись анонимной сессии запрещена.
     """
 
     company = await _get_first_company()
@@ -370,7 +365,7 @@ async def branding_file(
     attachment_ref = getattr(company, field)
     attachment_id = attachment_ref.id
 
-    attach = await env.models.attachment.search_one(
+    attach = await env.models.attachment.sudo().search_one(
         filter=[("id", "=", attachment_id)],
         fields=[
             "id",
@@ -395,5 +390,5 @@ async def branding_file(
             "Cache-Control": "public, max-age=300",
         },
         media_type=attach.mimetype,
-        content=await attach.read_content(),
+        content=await attach.sudo().read_content(),
     )

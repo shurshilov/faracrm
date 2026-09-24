@@ -22,12 +22,12 @@
     clear_access_session()
 
 В DotModel вызывается автоматически перед/во время CRUD:
-    check_access() → (has_access, domain-фильтр для search).
+    is_full_access() → можно всё, дальше не проверяем;
+    check_access()   → (has_access, domain-фильтр для search).
 """
 
 import functools
 import inspect
-from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from enum import StrEnum
 from typing import Callable, TypeVar, Generic, overload
@@ -77,12 +77,19 @@ class SystemSession:
     is_system = True
     user_id = None
 
+    def get_lang(self) -> str:
+        """Контракт TranslatedChar._current_lang: язык сессии."""
+        return "en"
+
 
 class AnonymousSession:
     """Публичная сессия без аутентифицированного пользователя."""
 
     is_system = False
     user_id = None
+
+    def get_lang(self) -> str:
+        return "en"
 
 
 class AccessChecker(Generic[TSession]):
@@ -102,16 +109,16 @@ class AccessChecker(Generic[TSession]):
     #     (default-deny; так делает FARA AccessChecker).
     require_session: bool = False
 
-    def system_session(self):
+    def is_full_access(self, session) -> bool:
         """
-        Сессия полного доступа — её подставляет .sudo().
+        Можно всё — ACL, правила и поля не проверяются. ORM спрашивает
+        только здесь (см. AccessMixin), уже с сессией в контексте; больше на
+        sudo и тип сессии никто не смотрит.
 
-        Точка расширения: базовая версия отдаёт маркер dotorm, но проект со
-        своей проверкой должен вернуть СВОЮ сессию. FARA, например, сверяет
-        полный доступ через isinstance с собственной SystemSession, и чужой
-        маркер она бы не признала.
+        База — is_sudo(): .sudo() или системная сессия в контексте. Проект
+        дополняет своим; FARA — суперпользователь.
         """
-        return SystemSession()
+        return is_sudo()
 
     async def check_access(
         self,
@@ -135,45 +142,6 @@ class AccessChecker(Generic[TSession]):
             - domain_filter: фильтр для search (пустой если не нужен)
         """
         return True, []
-
-    async def check_table_access(
-        self,
-        session: TSession,
-        model: str,
-        operation: Operation,
-    ) -> bool:
-        """
-        Проверяет доступ к таблице (ACL уровень).
-        """
-        return True
-
-    async def check_row_access(
-        self,
-        session: TSession,
-        model: str,
-        operation: Operation,
-        record_ids: list[int],
-    ) -> bool:
-        """
-        Проверяет доступ к записям (Rules уровень).
-
-        Для одной или нескольких записей проверяет что они
-        попадают под domain из Rules.
-        """
-        return True
-
-    async def get_domain_filter(
-        self,
-        session: TSession,
-        model: str,
-        operation: Operation,
-    ) -> list:
-        """
-        Возвращает domain-фильтр для ограничения выборки.
-
-        Используется для search — добавляется к filter ДО запроса.
-        """
-        return []
 
     async def check_field_access(
         self,
@@ -228,6 +196,11 @@ _access_session: ContextVar = ContextVar("access_session", default=None)
 # Вне запроса (фон, cron, тесты) — None: считается каждый раз.
 _access_memo: ContextVar[dict | None] = ContextVar("access_memo", default=None)
 
+# Флаг .sudo(): полный доступ на время одного вызова. Сессия при этом не
+# подменяется — как su у окружения Odoo: права отдельно, пользователь
+# отдельно. Читается только в is_sudo().
+_access_sudo: ContextVar[bool] = ContextVar("access_sudo", default=False)
+
 
 # ============================================================
 # Public API
@@ -272,25 +245,25 @@ def get_access_memo() -> dict | None:
     return _access_memo.get()
 
 
+def is_sudo() -> bool:
+    """
+    Полный доступ от кода, а не от клиента — как su у окружения Odoo:
+    .sudo() на время вызова либо системная сессия в контексте (старт, cron,
+    вебхуки; SystemSession и её наследники в проекте).
+
+    Единственное место, где это решается: на него опираются
+    AccessChecker.is_full_access и разборщик фильтров (private-поля в
+    фильтре пишет только код; суперпользователю их не дают — по ним можно
+    было бы подобрать хеш посимвольно).
+    """
+    return _access_sudo.get() or isinstance(
+        get_access_session(), SystemSession
+    )
+
+
 # ============================================================
 # sudo: выполнить операцию с полным доступом
 # ============================================================
-
-
-@asynccontextmanager
-async def system_access():
-    """
-    Выполнить блок с полным доступом, вернув прежнюю сессию после выхода.
-
-    Нужен там, где код читает СЛУЖЕБНЫЕ данные в контексте обычного
-    пользователя: конфиг, справочник, счётчик. Прикладной код обычно вызывает
-    не его, а .sudo() (см. ниже) — так намерение видно прямо в строке вызова.
-    """
-    token = _access_session.set(get_access_checker().system_session())
-    try:
-        yield
-    finally:
-        _access_session.reset(token)
 
 
 class Sudo:
@@ -300,10 +273,16 @@ class Sudo:
         rows = await env.models.system_settings.sudo().get_by_module("turn")
         await record.sudo().update(payload)
 
+    Как sudo() в Odoo: на время вызова поднимается флаг (is_sudo), а сессия
+    в контексте остаётся прежней — автор записи (create_user_id), владелец
+    по умолчанию и язык берутся у вызывающего, а не у системного
+    пользователя. Нужен там, где код читает СЛУЖЕБНЫЕ данные в контексте
+    обычного пользователя: конфиг, справочник, счётчик.
+
     ВАЖНО: любой вызов через прокси возвращает awaitable, даже если сам метод
     синхронный. Права должны действовать ровно на время выполнения, а для
-    корутины «время выполнения» наступает только на await — иначе сессия
-    вернулась бы обратно раньше, чем метод дошёл бы до запроса.
+    корутины «время выполнения» наступает только на await — иначе флаг
+    снялся бы раньше, чем метод дошёл бы до запроса.
     """
 
     __slots__ = ("_target",)
@@ -318,11 +297,14 @@ class Sudo:
 
         @functools.wraps(attr)
         async def with_full_access(*args, **kwargs):
-            async with system_access():
+            token = _access_sudo.set(True)
+            try:
                 result = attr(*args, **kwargs)
                 if inspect.isawaitable(result):
                     result = await result
                 return result
+            finally:
+                _access_sudo.reset(token)
 
         return with_full_access
 

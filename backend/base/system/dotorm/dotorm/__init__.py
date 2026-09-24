@@ -59,6 +59,7 @@ from .access import (
     clear_access_session,
     set_access_checker,
     get_access_checker,
+    is_sudo,
 )
 
 __version__ = "2.3.0"
@@ -110,4 +111,5 @@ __all__ = [
     "clear_access_session",
     "set_access_checker",
     "get_access_checker",
+    "is_sudo",
 ]

@@ -27,22 +27,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Каталог без входа. Анонимной сессии разрешено только чтение этих таблиц,
-# правила доступа к ней не применяются — поэтому published фильтруем сами.
+# Каталог без входа. Анонимной сессии не разрешено ничего: нужное читаем
+# под sudo, явными полями. Правила доступа при этом не применяются —
+# поэтому published фильтруем сами.
 router_public = APIRouter(
     tags=["Marketplace"],
-    dependencies=[
-        Depends(
-            AuthTokenApp.use_anonymous_session(
-                [
-                    "marketplace_app",
-                    "users",
-                    "attachments",
-                    "attachment_storage",
-                ]
-            )
-        )
-    ],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 router_private = APIRouter(
     tags=["Marketplace"],
@@ -72,6 +62,10 @@ SORTS: dict[str, tuple[str, Literal["desc", "asc"]]] = {
     "new": ("id", "desc"),
     "price": ("price", "asc"),
 }
+# Строка поиска с публичной ручки: длина ограничена (ILIKE по двум колонкам
+# на каждый запрос без входа; то же ограничение стоит на поле ввода), NUL
+# запрещён — Postgres не принимает его в тексте, запрос падал бы в 500.
+SEARCH_MAX_LENGTH = 100
 
 
 def _not_found() -> FaraException:
@@ -107,7 +101,7 @@ def _serialize(app: MarketplaceApplication, cover_id: int | None) -> dict:
 async def _published(
     env: "Environment", app_id: int, fields: list[str]
 ) -> MarketplaceApplication:
-    row = await env.models.marketplace_app.search_one(
+    row = await env.models.marketplace_app.sudo().search_one(
         fields=fields,
         fields_nested=VENDOR_NESTED,
         filter=[("id", "=", app_id), ("published", "=", True)],
@@ -120,7 +114,9 @@ async def _published(
 @router_public.get("/marketplace/apps")
 async def list_apps(
     req: Request,
-    search: str = "",
+    search: str = Query(
+        "", max_length=SEARCH_MAX_LENGTH, pattern=r"^[^\x00]*$"
+    ),
     category: str = "",
     free: bool | None = None,
     sort: str = "popular",
@@ -148,8 +144,10 @@ async def list_apps(
         )
     sort_field, order = SORTS.get(sort, SORTS["popular"])
 
-    total = await env.models.marketplace_app.search_count(filter=filter_)
-    apps = await env.models.marketplace_app.search(
+    total = await env.models.marketplace_app.sudo().search_count(
+        filter=filter_
+    )
+    apps = await env.models.marketplace_app.sudo().search(
         fields=APP_FIELDS,
         fields_nested=VENDOR_NESTED,
         filter=filter_,
@@ -159,7 +157,7 @@ async def list_apps(
         limit=limit,
     )
     covers: dict[int, int] = {}
-    screenshots = await env.models.marketplace_app.get_screenshots(
+    screenshots = await env.models.marketplace_app.sudo().get_screenshots(
         [app.id for app in apps]
     )
     for shot in screenshots:
@@ -174,13 +172,15 @@ async def list_apps(
 async def get_app(req: Request, app_id: Id):
     env: "Environment" = req.app.state.env
     app = await _published(env, app_id, APP_FIELDS + ["description"])
-    screenshots = await env.models.marketplace_app.get_screenshots([app.id])
+    screenshots = await env.models.marketplace_app.sudo().get_screenshots(
+        [app.id]
+    )
     data = _serialize(app, screenshots[0].id if screenshots else None)
     data["description"] = app.description
     data["screenshots"] = [{"id": s.id, "name": s.name} for s in screenshots]
     # Архив из git-хранилища — ссылка на исходники. У файлового хранилища
     # storage_file_url — путь на диске, его наружу не отдаём.
-    archive = await app.get_archive()
+    archive = await app.sudo().get_archive()
     data["source_url"] = (
         archive.storage_file_url
         if archive and getattr(archive.storage_id, "type", None) == "git"
@@ -235,7 +235,7 @@ async def app_image(
     env: "Environment" = req.app.state.env
     await _published(env, app_id, ["id"])
 
-    attachment = await env.models.attachment.search_one(
+    attachment = await env.models.attachment.sudo().search_one(
         fields=ATTACHMENT_CONTENT_FIELDS,
         filter=[
             ("id", "=", attachment_id),
@@ -246,7 +246,7 @@ async def app_image(
     )
     if not attachment:
         raise _not_found()
-    content = await attachment.read_content()
+    content = await attachment.sudo().read_content()
     if content is None:
         raise _not_found()
 
@@ -273,7 +273,7 @@ async def download_free(req: Request, app_id: Id):
     авторизованная ручка download ниже.
     """
     env: "Environment" = req.app.state.env
-    app = await env.models.marketplace_app.search_one(
+    app = await env.models.marketplace_app.sudo().search_one(
         fields=["id", "name", "price"],
         filter=[("id", "=", app_id), ("published", "=", True)],
     )
@@ -282,8 +282,8 @@ async def download_free(req: Request, app_id: Id):
     if Decimal.to_decimal(app.price) > 0:
         raise _not_found()
 
-    archive = await app.get_archive()
-    content = await archive.read_content() if archive else None
+    archive = await app.sudo().get_archive()
+    content = await archive.sudo().read_content() if archive else None
     if content is None:
         raise _not_found()
 

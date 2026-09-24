@@ -35,11 +35,13 @@ from backend.base.system.core.enviroment import env
 
 class SystemSession(dotorm_access.SystemSession):
     """
-    Системная сессия для инициализации.
+    Системная сессия: полный доступ.
 
-    Используется в post_init для выполнения операций
-    от имени системного пользователя. Наследует маркер dotorm: по нему
-    ядро узнаёт системную сессию (фильтр по private-полям — только ей).
+    Ставится там, где вызывающего нет (post_init, cron, вебхуки). .sudo()
+    её не подставляет: он поднимает флаг на время вызова, а сессия в
+    контексте остаётся прежней — автор записей вызывающий, а не System.
+    Наследует маркер dotorm: по нему ядро узнаёт системную сессию (фильтр
+    по private-полям — ей и sudo), и get_lang() = "en".
 
     Args:
         user_id: ID системного пользователя
@@ -58,29 +60,25 @@ class SystemSession(dotorm_access.SystemSession):
         )
 
 
-class AnonymousSession:
+class AnonymousSession(dotorm_access.AnonymousSession):
     """
     Анонимная сессия для публичных эндпоинтов (без авторизации).
 
     Используется в public-роутах вместо None, чтобы DotORM применял
     security-правила вместо тихого допуска ко всему.
 
+    Прав у неё нет: любая операция — AccessDenied. Что публичной ручке
+    действительно нужно, она читает сама через .sudo() — по точному
+    id/фильтру и с явным списком полей; всё остальное в обработчике
+    остаётся запрещённым, включая запись. Под sudo пользователь остаётся
+    анонимным: записи публичных ручек — за Anonymous, а не за System.
+
     user_id ссылается на реальную запись в БД (id=4, login="anonymous"),
-    которую UserApp.post_init создаёт при инициализации. Это позволит
-    в будущем настраивать ACL/Rules для anonymous через UI как для
-    обычной роли. Сейчас доступ ограничен whitelist'ом таблиц,
-    передаваемым через allowed_tables — каждый public-роутер
-    декларирует ровно те таблицы которые ему нужны
-    (принцип минимальных привилегий). WRITE запрещён всегда.
+    которую UserApp.post_init создаёт при инициализации. Наследует маркер
+    dotorm — get_lang() = "en".
     """
 
-    def __init__(self, allowed_tables: frozenset[str] = frozenset()):
-        """
-        Args:
-            allowed_tables: имена таблиц (__table__) к которым
-                разрешён READ. WRITE для anonymous полностью запрещён
-                независимо от этого списка.
-        """
+    def __init__(self):
         from backend.base.crm.users.models.users import (
             User,
             ANONYMOUS_USER_ID,
@@ -94,7 +92,6 @@ class AnonymousSession:
             password_hash="",
             password_salt="",
         )
-        self.allowed_tables: frozenset[str] = allowed_tables
 
 
 class Session(DotModel):

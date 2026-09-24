@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 router_public = APIRouter(
     tags=["Chat WebSocket"],
-    dependencies=[Depends(AuthTokenApp.use_anonymous_session(["sessions"]))],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 
 

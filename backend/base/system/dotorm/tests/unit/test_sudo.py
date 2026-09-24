@@ -2,9 +2,11 @@
 Unit-тесты .sudo() — выполнения операций с полным доступом.
 
 Проверяем ровно то, что ломает безопасность или ломает работу:
-- права действуют ВНУТРИ вызова (иначе sudo бесполезен);
-- прежняя сессия возвращается после вызова, в том числе после исключения
-  (иначе полный доступ протёк бы на весь остаток запроса);
+- флаг поднят ВНУТРИ вызова (иначе sudo бесполезен);
+- флаг снят после вызова, в том числе после исключения (иначе полный
+  доступ протёк бы на весь остаток запроса);
+- сессия в контексте не подменяется — как sudo() в Odoo: автор записи
+  и владелец по умолчанию остаются вызывающего;
 - работает и от класса, и от записи.
 
 No database, no network. Pure function tests.
@@ -15,67 +17,50 @@ import asyncio
 import pytest
 
 from dotorm.access import (
-    AccessChecker,
     Sudo,
     SudoAccessor,
     get_access_session,
-    set_access_checker,
+    is_sudo,
     set_access_session,
 )
 
 
-class Marker:
-    """Опознаваемая «системная» сессия конкретного проекта."""
-
-
-class CheckerWithOwnSession(AccessChecker):
-    """
-    Чекер, у которого своя сессия полного доступа.
-
-    Так делает FARA: её _is_full_access сверяет тип через isinstance, и
-    маркер из dotorm полным доступом признан бы не был.
-    """
-
-    def system_session(self):
-        return Marker()
-
-
 class Model:
-    """Двойник модели: методы записывают, какая сессия была на момент вызова."""
+    """Двойник модели: методы записывают, что видели на момент вызова."""
 
     sudo = SudoAccessor()
 
     def __init__(self, name="record"):
         self.name = name
-        self.seen = None
+        self.seen_sudo = None
+        self.seen_session = None
 
     async def read(self):
-        self.seen = get_access_session()
+        self.seen_sudo = is_sudo()
+        self.seen_session = get_access_session()
         return self.name
 
     async def boom(self):
-        self.seen = get_access_session()
+        self.seen_sudo = is_sudo()
         raise RuntimeError("операция упала")
 
     def sync_call(self):
-        self.seen = get_access_session()
+        self.seen_sudo = is_sudo()
         return "sync"
 
     table = "fake_table"
 
     @classmethod
     async def class_read(cls):
-        return get_access_session()
+        return is_sudo()
 
 
 @pytest.fixture(autouse=True)
-def own_checker():
-    """Свой чекер на время теста, прежняя сессия — «обычный пользователь»."""
-    set_access_checker(CheckerWithOwnSession())
+def user_session():
+    """Прежняя сессия — «обычный пользователь»."""
     set_access_session("user-session")
     yield
     set_access_session(None)
-    set_access_checker(AccessChecker())
 
 
 class TestSudo:
@@ -84,30 +69,38 @@ class TestSudo:
 
         await record.sudo().read()
 
-        assert isinstance(record.seen, Marker)
+        assert record.seen_sudo is True
 
-    async def test_previous_session_restored_after_call(self):
+    async def test_flag_dropped_after_call(self):
         record = Model()
 
         await record.sudo().read()
 
-        assert get_access_session() == "user-session"
+        assert is_sudo() is False
 
-    async def test_previous_session_restored_after_exception(self):
+    async def test_flag_dropped_after_exception(self):
         """Упавшая операция не должна оставлять полный доступ включённым."""
         record = Model()
 
         with pytest.raises(RuntimeError):
             await record.sudo().boom()
 
-        assert isinstance(record.seen, Marker)
+        assert record.seen_sudo is True
+        assert is_sudo() is False
+
+    async def test_session_stays_the_callers(self):
+        """Права поднимаются, сессия прежняя: автор записи под sudo — тот,
+        кто вызвал, а не системный пользователь."""
+        record = Model()
+
+        await record.sudo().read()
+
+        assert record.seen_session == "user-session"
         assert get_access_session() == "user-session"
 
     async def test_works_from_class(self):
-        session = await Model.sudo().class_read()
-
-        assert isinstance(session, Marker)
-        assert get_access_session() == "user-session"
+        assert await Model.sudo().class_read() is True
+        assert is_sudo() is False
 
     async def test_keeps_the_record(self):
         """От записи sudo обязан сохранить именно ЭТУ запись, а не класс."""
@@ -125,7 +118,7 @@ class TestSudo:
         record = Model()
 
         assert await record.sudo().sync_call() == "sync"
-        assert isinstance(record.seen, Marker)
+        assert record.seen_sudo is True
 
     async def test_non_callable_attribute_passes_through(self):
         assert Sudo(Model()).table == "fake_table"
@@ -141,7 +134,7 @@ class TestSudo:
 
         async def neighbour():
             await asyncio.sleep(0.01)
-            seen_by_neighbour.append(get_access_session())
+            seen_by_neighbour.append(is_sudo())
 
         async def under_sudo():
             record = Model()
@@ -149,4 +142,4 @@ class TestSudo:
 
         await asyncio.gather(neighbour(), under_sudo())
 
-        assert seen_by_neighbour == ["user-session"]
+        assert seen_by_neighbour == [False]

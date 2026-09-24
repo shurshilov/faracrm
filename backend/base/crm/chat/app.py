@@ -230,8 +230,8 @@ class ChatApp(Service):
         - chat_message_reaction: видят те, у кого есть доступ к message
 
         Все правила создаются с role_id=None — применяются ко всем
-        ролям. is_admin / SystemSession проскакивают сами на уровне
-        _is_full_access.
+        ролям. sudo, SystemSession и is_admin проскакивают сами на уровне
+        AccessChecker.is_full_access.
         """
         from backend.base.crm.security.models.rules import Rule
 

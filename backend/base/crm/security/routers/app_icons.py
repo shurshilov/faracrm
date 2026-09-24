@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, Response
 router_public = APIRouter(
     prefix="/static/app-icons",
     tags=["static"],
-    dependencies=[Depends(AuthTokenApp.use_anonymous_session([]))],
+    dependencies=[Depends(AuthTokenApp.use_anonymous_session)],
 )
 
 # Словарь путей к иконкам приложений (заполняется при старте)

@@ -15,11 +15,9 @@ from backend.base.system.dotorm.dotorm.access import (
     Operation,
     get_access_memo,
     get_access_session,
+    is_sudo,
 )
-from backend.base.crm.security.models.sessions import (
-    SystemSession,
-    AnonymousSession,
-)
+from backend.base.crm.security.models.sessions import AnonymousSession
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
     SqlFragment,
 )
@@ -75,17 +73,13 @@ class SecurityAccessChecker(AccessChecker["Session"]):
             - has_access: True если доступ разрешён
             - domain_filter: фильтр для search (пустой если не нужен)
         """
-        if self._is_full_access(session):
-            return True, []
+        # Полный доступ (sudo, системная сессия, суперпользователь) отсечён
+        # в ORM через is_full_access — сюда приходят только обычные сессии.
 
-        # AnonymousSession: разрешён только READ к таблицам, явно
-        # перечисленным в session.allowed_tables — список передаётся
-        # из public-роутера (см. AuthTokenApp.use_anonymous_session).
-        # Принцип минимальных привилегий: каждый роутер декларирует
-        # ровно те таблицы которые ему нужны.
+        # AnonymousSession: публичной ручке не разрешено ничего — что ей
+        # нужно, она читает сама через .sudo() (см.
+        # AuthTokenApp.use_anonymous_session).
         if isinstance(session, AnonymousSession):
-            if operation == Operation.READ and model in session.allowed_tables:
-                return True, []
             return False, []
 
         # Конвертируем имя таблицы в имя модели: "users" → "user"
@@ -158,20 +152,16 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         ниже: остальные пропускаются.
 
         Правила role_* трактуются так:
-        - токен SUPERUSER → разрешено только is_admin (полный доступ уже
-          отсечён выше, значит для остальных — запрет);
+        - токен SUPERUSER → разрешено только is_admin (полный доступ отсечён
+          в ORM через is_full_access, значит здесь — запрет);
         - иначе у пользователя должна быть хотя бы одна из перечисленных
           ролей (по code, с учётом наследования based_role_ids).
 
         Returns:
             Список запрещённых полей (пустой = всё можно).
         """
-        # admin / SystemSession — полный доступ, поля не ограничиваем.
         # AnonymousSession ролей не несёт: ограниченные поля цикл запретит
         # ей сам, остальные пропустит.
-        if self._is_full_access(session):
-            return []
-
         model_name = self.env.models._get_model_name_by_table(model)
         Model = self.env.models._get_model(model_name)
         if Model is None:
@@ -207,24 +197,14 @@ class SecurityAccessChecker(AccessChecker["Session"]):
 
         return denied
 
+    def is_full_access(self, session: "Session") -> bool:
+        """Единственное место «можно всё» для FARA: sudo (флаг или системная
+        сессия — is_sudo из ядра) либо суперпользователь."""
+        return is_sudo() or session.user_id.is_admin
+
     # =========================================================================
     # Private: базовые проверки
     # =========================================================================
-
-    def system_session(self) -> "SystemSession":
-        """
-        Сессия для .sudo(). Именно НАША: _is_full_access сверяет тип через
-        isinstance, и маркер из dotorm полным доступом признан не будет.
-        """
-        from backend.base.crm.users.models.users import SYSTEM_USER_ID
-
-        return SystemSession(user_id=SYSTEM_USER_ID)
-
-    def _is_full_access(self, session: "Session") -> bool:
-        """Проверяет, есть ли полный доступ (SystemSession или admin)."""
-        if isinstance(session, SystemSession):
-            return True
-        return session.user_id.is_admin
 
     async def _get_user_roles(self, user_id: int) -> list[int]:
         """

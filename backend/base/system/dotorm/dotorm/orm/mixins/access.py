@@ -41,7 +41,8 @@ class AccessMixin(_Base):
         сессии в контексте операция запрещается с AccessDenied (защита от
         забытого Depends / неинициализированного контекста). Публичные роуты
         ставят AnonymousSession, фон/тесты — свою через set_access_session.
-    SystemSession даёт полный доступ.
+    Полный доступ решает одно место — AccessChecker.is_full_access: .sudo(),
+    системная сессия в контексте, у FARA ещё суперпользователь.
     """
 
     # Выполнить операцию с полным доступом — как .sudo() в Odoo:
@@ -77,6 +78,11 @@ class AccessMixin(_Base):
                     f"{cls.__table__}. Public routes must set AnonymousSession "
                     f"explicitly via Depends(AuthTokenApp.use_anonymous_session)."
                 )
+            return filter
+
+        # Полный доступ (sudo, системная сессия, у FARA admin): правила не
+        # применяются — фильтр как есть.
+        if checker.is_full_access(session):
             return filter
 
         has_access, domain = await checker.check_access(
@@ -131,9 +137,8 @@ class AccessMixin(_Base):
         ним — ошибка, как по неизвестному полю: иначе значение подбиралось
         бы посимвольно.
 
-        Без сессии ничего не проверяем: _check_access (на записи — до, на
-        чтении — сразу после) откажет сам при require_session, иначе доступ
-        открыт (автономный dotorm).
+        Без сессии — AccessDenied при require_session, иначе доступ открыт
+        (автономный dotorm). При полном доступе — тоже.
 
         Args:
             operation: READ, CREATE или UPDATE.
@@ -148,14 +153,20 @@ class AccessMixin(_Base):
             ValueError: фильтр или сортировка по запрещённому для чтения полю.
         """
         session = get_access_session()
-        if session is None:
+        checker = get_access_checker()
+        if session is None and checker.require_session:
+            raise AccessDenied(
+                f"No session in DotORM context for {operation.value} on "
+                f"{cls.__table__}"
+            )
+        if session is None or checker.is_full_access(session):
             return list(fields)
 
         used = _filter_field_names(filter)
         if sort:
             used.add(sort)
         denied = set(
-            await get_access_checker().check_field_access(
+            await checker.check_field_access(
                 session, cls.__table__, operation, [*fields, *used]
             )
         )

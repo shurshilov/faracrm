@@ -18,11 +18,6 @@ from typing import ClassVar
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from ...system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
-from backend.base.system.dotorm.dotorm.access import (
-    get_access_session,
-    set_access_session,
-)
-from backend.base.crm.security.models.sessions import SystemSession
 
 logger = logging.getLogger(__name__)
 
@@ -92,8 +87,8 @@ class PolymorphicParentMixin(DotModel):
 
         Best-effort: ошибка на одной модели не мешает другим.
 
-        ВАЖНО: используем SystemSession для обхода rules. Это нужно
-        по двум причинам:
+        ВАЖНО: поиск и удаление детей — под sudo (пользователь остаётся
+        вызывающего). Это нужно по двум причинам:
           1. После удаления parent его children становятся "orphan'ами" —
              rules @has_polymorphic_parent_access вернут пустой список,
              и search не найдёт что удалять.
@@ -104,65 +99,46 @@ class PolymorphicParentMixin(DotModel):
 
         table_name = cls.__table__
 
-        # Сохраняем текущую сессию, переключаемся на SystemSession
-        prev_session = get_access_session()
-        # SystemSession требует user_id, но в рамках cascade достаточно
-        # любого валидного — sysadmin id=1 (создаётся первым в системе).
-        # Если в твоей системе другой id — поправь или передай явно.
-        try:
-            from ..users.models.users import SYSTEM_USER_ID
+        for child_info in cls._polymorphic_children():
+            child_model_name, model_field, id_field = child_info
 
-            sys_session = SystemSession(user_id=SYSTEM_USER_ID)
-        except Exception:
-            # Fallback: если SystemSession сейчас недоступна — пробуем
-            # как есть с текущей сессией.
-            sys_session = prev_session
+            child_cls = getattr(env.models, child_model_name, None)
+            if child_cls is None:
+                logger.debug(
+                    "PolymorphicParentMixin: child model '%s' not found",
+                    child_model_name,
+                )
+                continue
 
-        set_access_session(sys_session)
-        try:
-            for child_info in cls._polymorphic_children():
-                child_model_name, model_field, id_field = child_info
-
-                child_cls = getattr(env.models, child_model_name, None)
-                if child_cls is None:
-                    logger.debug(
-                        "PolymorphicParentMixin: child model '%s' not found",
-                        child_model_name,
-                    )
+            try:
+                children = await child_cls.sudo().search(
+                    filter=[
+                        (model_field, "=", table_name),
+                        (id_field, "in", parent_ids),
+                    ],
+                    fields=["id"],
+                )
+                if not children:
                     continue
 
-                try:
-                    children = await child_cls.search(
-                        filter=[
-                            (model_field, "=", table_name),
-                            (id_field, "in", parent_ids),
-                        ],
-                        fields=["id"],
-                    )
-                    if not children:
-                        continue
+                child_ids = [c.id for c in children]
+                # delete_bulk у Attachment имеет свой кастомный код
+                # для удаления физических файлов из storage.
+                await child_cls.sudo().delete_bulk(child_ids, session=session)
 
-                    child_ids = [c.id for c in children]
-                    # delete_bulk у Attachment имеет свой кастомный код
-                    # для удаления физических файлов из storage.
-                    await child_cls.delete_bulk(child_ids, session=session)
-
-                    logger.info(
-                        "PolymorphicParentMixin: deleted %d %s for %s ids=%s",
-                        len(child_ids),
-                        child_model_name,
-                        table_name,
-                        parent_ids,
-                    )
-                except Exception as e:
-                    logger.warning(
-                        "PolymorphicParentMixin: failed to delete %s "
-                        "children for %s ids=%s: %s",
-                        child_model_name,
-                        table_name,
-                        parent_ids,
-                        e,
-                    )
-        finally:
-            # Восстанавливаем исходную сессию
-            set_access_session(prev_session)
+                logger.info(
+                    "PolymorphicParentMixin: deleted %d %s for %s ids=%s",
+                    len(child_ids),
+                    child_model_name,
+                    table_name,
+                    parent_ids,
+                )
+            except Exception as e:
+                logger.warning(
+                    "PolymorphicParentMixin: failed to delete %s "
+                    "children for %s ids=%s: %s",
+                    child_model_name,
+                    table_name,
+                    parent_ids,
+                    e,
+                )
