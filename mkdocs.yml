@@ -136,6 +136,7 @@ plugins:
             Безопасность: Security
             Фронтенд: Frontend
             Управление состоянием: "State management"
+            Расширения без правки ядра: "Extensions without core changes"
             Модули: Modules
             Сервисы: Services
             "CRUD API сервис": "CRUD API service"
@@ -191,6 +192,7 @@ nav:
       - Архитектура:
           - Обзор: frontend/architecture/overview.md
           - Управление состоянием: frontend/architecture/state.md
+      - Расширения без правки ядра: frontend/extensions.md
       - Модули:
           - Модуль чата: frontend/modules/chat.md
       - Сервисы:

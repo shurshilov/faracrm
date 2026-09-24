@@ -9,9 +9,16 @@ import type { FaraRecord } from '@/services/api/crudTypes';
  * - 'after:FormTab:connection'   — после контента таба "connection"
  * - 'inside:FormTab:connection'  — внутри таба "connection" (в конце, алиас для after)
  * - 'replace:FormTab:auth'       — полностью заменить контент таба "auth"
+ * - 'before:FormTabs'            — секция над блоком вкладок
+ * - 'after:FormTabs'             — секция под блоком вкладок
+ * - 'after:FormSheet'            — секция под основным блоком FormSheet
  * - 'before:KanbanCard'          — над стандартным содержимым карточки канбана
  * - 'after:KanbanCard'           — под ним (прогресс-бар, доп. строки и т.п.)
  * - 'replace:KanbanCard'         — вместо него целиком
+ *
+ * Модули-расширения подключаются из config/models.ts (extensions) или
+ * автоматически из frontend/src/business/<имя>/index.ts — см.
+ * useModelExtensions и docs/dist/frontend/extensions.md.
  *
  * Расширение карточки получает { record, model } (KanbanCardExtensionProps);
  * поля, которые ему нужны, объявляются 4-м аргументом registerExtension —
@@ -270,8 +277,9 @@ export function getExtensionsForKanbanCard(model: string): ExtensionsForTarget {
 export const ExtensionsContext = createContext<string | null>(null);
 
 /**
- * Хук для получения расширений по позиции (точное совпадение).
- * @deprecated Используйте useTabExtensions для табов
+ * Хук для получения расширений по позиции (точное совпадение) — для позиций
+ * без параметра: 'after:FormSheet', 'before:FormTabs', 'after:FormTabs'.
+ * Для контента вкладок — useTabExtensions.
  */
 export function useExtensions(position: string): ComponentType<any>[] {
   const model = useContext(ExtensionsContext);

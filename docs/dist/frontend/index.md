@@ -51,6 +51,7 @@ frontend/src/
 ├── shared/                 # Shared utilities
 ├── types/                  # Global TypeScript types
 ├── assets/                 # Images, icons
+├── business/               # Модули под клиента — подхватываются сами, ядро не правится
 │
 ├── fara_chat/              # Модуль чата
 ├── fara_leads/             # Модуль лидов
@@ -68,5 +69,6 @@ frontend/src/
 
 - [Архитектура](architecture/overview.md) — компоненты, модули, routing
 - [State Management](architecture/state.md) — Redux store, RTK Query
+- [Расширения без правки ядра](extensions.md) — поля и секции форм из `business/`-модулей
 - [Модули](modules/chat.md) — Chat UI
 - [API-сервисы](services/crud-api.md) — CRUD API клиент

@@ -1,7 +1,11 @@
 import { ReactNode, ReactElement, Children, isValidElement } from 'react';
 import { Tabs, Box, Badge } from '@mantine/core';
 import classes from './FormLayout.module.css';
-import { useFormTabExtensions, useTabExtensions } from '@/shared/extensions';
+import {
+  useExtensions,
+  useFormTabExtensions,
+  useTabExtensions,
+} from '@/shared/extensions';
 
 interface FormTabProps {
   name: string;
@@ -56,7 +60,8 @@ interface FormTabsProps {
  *
  * После вкладок из разметки идут вкладки модулей-расширений
  * (registerFormTab для модели формы), например «Реквизиты» партнёра
- * из fara_contract.
+ * из fara_contract. Секции расширений вокруг всего блока вкладок —
+ * позиции 'before:FormTabs' и 'after:FormTabs' (как 'after:FormSheet').
  *
  * @example
  * <FormTabs defaultTab="general">
@@ -75,6 +80,8 @@ export function FormTabs({
   orientation = 'horizontal',
 }: FormTabsProps) {
   const extensionTabs = useFormTabExtensions();
+  const extensionsBefore = useExtensions('before:FormTabs');
+  const extensionsAfter = useExtensions('after:FormTabs');
 
   // Извлекаем props из детей FormTab
   const tabs: FormTabProps[] = Children.toArray(children)
@@ -98,42 +105,50 @@ export function FormTabs({
   const defaultValue = defaultTab || firstTabName;
 
   return (
-    <Box className={classes.tabsContainer}>
-      <Tabs
-        defaultValue={defaultValue}
-        variant={variant}
-        orientation={orientation}
-        classNames={{
-          root: classes.tabsRoot,
-          list: classes.tabsList,
-          tab: classes.tab,
-          panel: classes.tabPanel,
-        }}>
-        <Tabs.List>
-          {tabs.map(tab => (
-            <Tabs.Tab
-              key={tab.name}
-              value={tab.name}
-              leftSection={tab.icon}
-              rightSection={
-                tab.badge !== undefined ? (
-                  <Badge size="sm" variant="filled" radius="xl">
-                    {tab.badge}
-                  </Badge>
-                ) : undefined
-              }>
-              {tab.label}
-            </Tabs.Tab>
-          ))}
-        </Tabs.List>
+    <>
+      {extensionsBefore.map((Ext, i) => (
+        <Ext key={i} />
+      ))}
+      <Box className={classes.tabsContainer}>
+        <Tabs
+          defaultValue={defaultValue}
+          variant={variant}
+          orientation={orientation}
+          classNames={{
+            root: classes.tabsRoot,
+            list: classes.tabsList,
+            tab: classes.tab,
+            panel: classes.tabPanel,
+          }}>
+          <Tabs.List>
+            {tabs.map(tab => (
+              <Tabs.Tab
+                key={tab.name}
+                value={tab.name}
+                leftSection={tab.icon}
+                rightSection={
+                  tab.badge !== undefined ? (
+                    <Badge size="sm" variant="filled" radius="xl">
+                      {tab.badge}
+                    </Badge>
+                  ) : undefined
+                }>
+                {tab.label}
+              </Tabs.Tab>
+            ))}
+          </Tabs.List>
 
-        {tabs.map(tab => (
-          <Tabs.Panel key={tab.name} value={tab.name} pt="md">
-            <TabContent name={tab.name}>{tab.children}</TabContent>
-          </Tabs.Panel>
-        ))}
-      </Tabs>
-    </Box>
+          {tabs.map(tab => (
+            <Tabs.Panel key={tab.name} value={tab.name} pt="md">
+              <TabContent name={tab.name}>{tab.children}</TabContent>
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Box>
+      {extensionsAfter.map((Ext, i) => (
+        <Ext key={i} />
+      ))}
+    </>
   );
 }
 
