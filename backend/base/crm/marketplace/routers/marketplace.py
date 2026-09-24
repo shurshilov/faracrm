@@ -189,6 +189,40 @@ async def get_app(req: Request, app_id: Id):
     return {"data": data}
 
 
+@router_public.get("/marketplace/apps/{app_id}/reviews")
+async def list_reviews(req: Request, app_id: Id):
+    """Отзывы о приложении, новые первыми (без входа). Отзывы публичны:
+    читаем под sudo ровно отзывы этого приложения и отдаём только нужное."""
+    env: "Environment" = req.app.state.env
+    reviews = await env.models.marketplace_review.sudo().search(
+        fields=["id", "rating", "text", "create_datetime", "create_user_id"],
+        fields_nested={"create_user_id": {"fields": ["id", "name"]}},
+        filter=[("app_id", "=", app_id)],
+        sort="id",
+        order="desc",
+        limit=1000,
+    )
+    return {
+        "data": [
+            {
+                "id": review.id,
+                "rating": review.rating,
+                "text": review.text,
+                "date": review.create_datetime,
+                "author": (
+                    {
+                        "id": review.create_user_id.id,
+                        "name": review.create_user_id.name,
+                    }
+                    if review.create_user_id
+                    else None
+                ),
+            }
+            for review in reviews
+        ]
+    }
+
+
 @router_public.get("/marketplace/apps/{app_id}/image/{attachment_id}")
 async def app_image(
     req: Request,
@@ -207,7 +241,7 @@ async def app_image(
             ("id", "=", attachment_id),
             ("res_model", "=", MarketplaceApplication.__table__),
             ("res_id", "=", app_id),
-            ("mimetype", "like", IMAGE_MIMETYPE_PATTERN),
+            ("mimetype", "=like", IMAGE_MIMETYPE_PATTERN),
         ],
     )
     if not attachment:
@@ -296,8 +330,9 @@ async def buy_app(req: Request, app_id: Id):
 
 @router_private.post("/marketplace/git-sync")
 async def git_sync(req: Request):
-    """Импорт модулей репозитория в каталог (суперпользователь). Записи не
-    опубликованы — админ проверяет карточки и публикует сам."""
+    """Импорт модулей репозитория в каталог (суперпользователь). Новые
+    записи не опубликованы — админ проверяет карточки и публикует сам; у
+    импортированных раньше обновляются версия и размер архива."""
     env: "Environment" = req.app.state.env
     if not req.state.session.user_id.is_admin:
         raise FaraException(
@@ -308,8 +343,8 @@ async def git_sync(req: Request):
             }
         )
     async with env.apps.db.get_transaction():
-        created = await env.models.marketplace_app.sync_from_git()
-    return {"data": {"created": created}}
+        result = await env.models.marketplace_app.sync_from_git()
+    return {"data": result}
 
 
 @router_private.get("/marketplace/my/stats")

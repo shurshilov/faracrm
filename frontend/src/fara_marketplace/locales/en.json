@@ -28,7 +28,10 @@
   },
   "tabs": {
     "main": "General",
-    "files": "Files"
+    "reviews": "Reviews"
+  },
+  "form": {
+    "saveFirst": "Save the app first."
   },
   "sections": {
     "app": "App"
@@ -41,12 +44,21 @@
     "add": "Add archive",
     "added": "Repository archive added",
     "sync": "Import from GitHub",
-    "synced": "Modules added: {{count}}",
+    "synced": "Modules added: {{created}}, updated: {{updated}}",
     "noStorage": "No attachment storage of type GitHub: create one in “Files → Storages”."
   },
   "files": {
-    "hint": "Upload screenshots (png/jpg — the first one becomes the cover) and the module zip archive. Publishing requires the archive.",
-    "saveFirst": "Save the app to upload files."
+    "hint": "Upload screenshots and the module zip archive to “Attachments” (the paperclip at the top). Images become screenshots, the first one is the catalog cover. Publishing requires the archive."
+  },
+  "reviews": {
+    "title": "Reviews",
+    "empty": "No reviews yet",
+    "summary": "{{average}} · reviews: {{count}}",
+    "signIn": "Sign in to leave a review",
+    "already": "You have already reviewed this app",
+    "placeholder": "Tell how the app helped and what could be better",
+    "submit": "Leave a review",
+    "sent": "Thank you! Your review is published"
   },
   "purchases": {
     "download": "Download",

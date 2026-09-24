@@ -25,9 +25,11 @@ import {
 } from '../api';
 import { VendorCheck, VerifiedBadge, formatPrice } from './AppCard';
 import { MarketHeader } from './MarketHeader';
+import { ReviewForm } from './ReviewForm';
+import { ReviewList } from './ReviewList';
 import classes from './market.module.css';
 
-/** Страница приложения: описание, скриншоты, покупка/скачивание. */
+/** Страница приложения: описание, скриншоты, отзывы, покупка/скачивание. */
 export default function AppPage() {
   const { id } = useParams<{ id: string }>();
   const appId = Number(id);
@@ -206,6 +208,14 @@ export default function AppPage() {
             {app.description}
           </Text>
         )}
+
+        <Title order={2} fz="h3" mt="xl" mb="md">
+          {t('reviews.title')}
+        </Title>
+        <Stack gap="lg">
+          <ReviewForm appId={app.id} vendorId={app.vendor?.id ?? null} />
+          <ReviewList appId={app.id} />
+        </Stack>
       </>
     );
   }

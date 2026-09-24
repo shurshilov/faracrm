@@ -15,10 +15,13 @@ ROLE_CODE = "marketplace_user"
 WORKSPACE_NAME = "Маркетплейс"
 
 # Что может любой пользователь маркетплейса (и сотрудник): свои приложения
-# — целиком, покупки — создавать и видеть свои. Строки режут правила ниже.
+# — целиком, покупки — создавать и видеть свои, отзывы — читать все и
+# оставлять свои (править и удалять — администратор). Строки режут правила
+# ниже.
 MARKET_ACL = {
     "marketplace_app": ACL.FULL,
     "marketplace_purchase": ACL.CREATE_READ,
+    "marketplace_review": ACL.CREATE_READ,
 }
 
 # Портальная роль НЕ наследует base_user (иначе видела бы партнёров, чаты и
@@ -90,6 +93,7 @@ class MarketplaceApp(App):
         "system_admin": {
             "marketplace_app": ACL.FULL,
             "marketplace_purchase": ACL.FULL,
+            "marketplace_review": ACL.FULL,
         },
     }
 
@@ -181,6 +185,14 @@ class MarketplaceApp(App):
                 None,
                 own_user,
                 {"create": True, "read": True},
+            ),
+            # Отзыв — только от своего имени: автор = create_user_id.
+            (
+                "Marketplace review: author writes own",
+                "marketplace_review",
+                None,
+                [["create_user_id", "=", "{{user_id}}"]],
+                {"create": True},
             ),
             # Портальная роль: свой профиль, свои фильтры и колонки — те же
             # правила, что у base_user в users / saved_filters / view_settings.

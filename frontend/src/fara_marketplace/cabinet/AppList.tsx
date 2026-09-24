@@ -34,7 +34,10 @@ function GitSyncButton({ onDone }: { onDone: () => void }) {
     }
     const result = await sync().unwrap();
     notifications.show({
-      message: t('git.synced', { count: result.data.created }),
+      message: t('git.synced', {
+        created: result.data.created,
+        updated: result.data.updated,
+      }),
     });
     onDone();
   };

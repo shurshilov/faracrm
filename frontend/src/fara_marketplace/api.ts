@@ -57,6 +57,21 @@ export interface BuyResult {
   payment_url: string | null;
 }
 
+export interface MarketReview {
+  id: number;
+  /** Оценка 1–5. */
+  rating: number;
+  text: string | null;
+  date: string;
+  author: { id: number; name: string } | null;
+}
+
+export interface GitSyncResult {
+  created: number;
+  /** Импортированные раньше модули, у которых сменились версия или архив. */
+  updated: number;
+}
+
 export interface VendorStat {
   id: number;
   name: string;
@@ -116,6 +131,11 @@ const marketplaceApi = api.injectEndpoints({
       query: appId => `/marketplace/apps/${appId}`,
     }),
 
+    // Отзывы публичны: читает и гость, и кабинет поставщика.
+    getMarketReviews: build.query<{ data: MarketReview[] }, number>({
+      query: appId => `/marketplace/apps/${appId}/reviews`,
+    }),
+
     buyMarketApp: build.mutation<{ data: BuyResult }, number>({
       query: appId => ({
         url: `/marketplace/apps/${appId}/buy`,
@@ -128,7 +148,7 @@ const marketplaceApi = api.injectEndpoints({
     }),
 
     // Импорт модулей репозитория git-хранилища (только суперпользователь).
-    syncGitApps: build.mutation<{ data: { created: number } }, void>({
+    syncGitApps: build.mutation<{ data: GitSyncResult }, void>({
       query: () => ({ url: '/marketplace/git-sync', method: 'POST' }),
     }),
   }),
@@ -137,6 +157,7 @@ const marketplaceApi = api.injectEndpoints({
 export const {
   useListMarketAppsQuery,
   useGetMarketAppQuery,
+  useGetMarketReviewsQuery,
   useBuyMarketAppMutation,
   useGetMarketStatsQuery,
   useSyncGitAppsMutation,

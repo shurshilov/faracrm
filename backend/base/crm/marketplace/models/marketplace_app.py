@@ -17,6 +17,7 @@ from backend.base.system.dotorm.dotorm.fields import (
 from backend.base.crm.attachments_git.strategies.strategy import (
     fetch_archive,
     list_modules,
+    repack,
 )
 from backend.base.crm.security.polymorphic_parent import (
     PolymorphicParentMixin,
@@ -40,6 +41,8 @@ CATEGORIES = [
 # нет: скачивается последний загруженный zip. Архив из репозитория — такое же
 # вложение, только в хранилище типа git (модуль attachments_git).
 ARCHIVE_MIMETYPES = ["application/zip", "application/x-zip-compressed"]
+# Шаблон LIKE целиком свой — поэтому оператор «=like»: у «like» парсер
+# экранирует % и искал бы буквально «image/%».
 IMAGE_MIMETYPE_PATTERN = "image/%"
 
 # Поля вложения, нужные для отдачи содержимого (как в роутере вложений).
@@ -152,7 +155,7 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
             filter=[
                 ("res_model", "=", cls.__table__),
                 ("res_id", "in", app_ids),
-                ("mimetype", "like", IMAGE_MIMETYPE_PATTERN),
+                ("mimetype", "=like", IMAGE_MIMETYPE_PATTERN),
             ],
             sort="id",
             order="asc",
@@ -160,14 +163,17 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
         )
 
     @classmethod
-    async def sync_from_git(cls) -> int:
+    async def sync_from_git(cls) -> dict[str, int]:
         """
         Импорт модулей из git-хранилища: по записи на каждый модуль
         репозитория (папка с app.py и словарём info; сервисы —
         инфраструктура, пропускаются) + архив-вложение «:код» на ветке
-        хранилища. Известные коды не трогаются — повторный запуск добавляет
-        только новые модули. Записи не публикуются: админ смотрит и
-        публикует сам.
+        хранилища. Записи не публикуются: админ смотрит и публикует сам.
+
+        Повторный запуск добавляет новые модули, а у импортированных раньше
+        (архив «:код» этого хранилища у своего приложения) обновляет версию
+        и размер архива. Приложения поставщиков с тем же кодом и архивы,
+        добавленные вручную, не трогаются.
         """
         storage = await env.models.attachment_storage.search_one(
             fields=["id", "git_repo_url", "git_ref", "git_token"],
@@ -196,37 +202,69 @@ class MarketplaceApplication(AuditMixin, PolymorphicParentMixin):
                     "status_code": 502,
                 }
             )
-        existing = {
-            row.code
-            for row in await cls.search(fields=["id", "code"], limit=1000)
+        apps = {
+            row.code: row
+            for row in await cls.search(
+                fields=["id", "code", "version"], limit=1000
+            )
+        }
+        imported = {
+            (row.res_id, row.storage_file_id): row
+            for row in await env.models.attachment.search(
+                fields=["id", "res_id", "storage_file_id", "size"],
+                filter=[
+                    ("res_model", "=", cls.__table__),
+                    ("storage_id", "=", storage.id),
+                ],
+            )
         }
 
-        created = 0
+        created = updated = 0
         for code, info in list_modules(archive).items():
-            if info.get("service") or code in existing:
+            if info.get("service"):
                 continue
-            app_id = await cls.create(
-                payload=cls(
-                    code=code,
-                    name=info.get("name", code),
-                    summary=info.get("summary"),
-                    category=_category_for(code, info),
-                    version=str(info.get("version", "1.0.0")),
-                    price=0,
-                    verified=True,
+            version = str(info.get("version", "1.0.0"))
+            # Размер того самого архива, который отдаст GitStorageStrategy.
+            size = len(repack(archive, [code]))
+            app = apps.get(code)
+            if app is None:
+                app_id = await cls.create(
+                    payload=cls(
+                        code=code,
+                        name=info.get("name", code),
+                        summary=info.get("summary"),
+                        category=_category_for(code, info),
+                        version=version,
+                        price=0,
+                        verified=True,
+                    )
                 )
-            )
-            await env.models.attachment.create(
-                payload=env.models.attachment(
-                    name=f"{code}.zip",
-                    mimetype="application/zip",
-                    res_model=cls.__table__,
-                    res_id=app_id,
-                    storage_id=storage.id,
-                    storage_file_id=f":{code}",
-                    storage_file_url=f"{storage.git_repo_url}/tree/{ref}",
-                    show_preview=False,
+                await env.models.attachment.create(
+                    payload=env.models.attachment(
+                        name=f"{code}.zip",
+                        mimetype="application/zip",
+                        size=size,
+                        res_model=cls.__table__,
+                        res_id=app_id,
+                        storage_id=storage.id,
+                        storage_file_id=f":{code}",
+                        storage_file_url=f"{storage.git_repo_url}/tree/{ref}",
+                        show_preview=False,
+                    )
                 )
-            )
-            created += 1
-        return created
+                created += 1
+                continue
+
+            attachment = imported.get((app.id, f":{code}"))
+            if attachment is None:
+                continue
+            changed = False
+            if app.version != version:
+                await app.update(cls(version=version))
+                changed = True
+            if attachment.size != size:
+                await attachment.update(env.models.attachment(size=size))
+                changed = True
+            if changed:
+                updated += 1
+        return {"created": created, "updated": updated}

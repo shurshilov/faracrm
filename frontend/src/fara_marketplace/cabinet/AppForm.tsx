@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@mantine/core';
-import { IconInfoCircle, IconPaperclip } from '@tabler/icons-react';
+import { IconInfoCircle, IconMessageStar } from '@tabler/icons-react';
 import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
@@ -13,8 +13,8 @@ import {
   FormTab,
   FormTabs,
 } from '@/components/Form/Layout';
-import { AttachmentsPanel } from '@/components/Form/Panels';
 import { selectCurrentSession } from '@/slices/authSlice';
+import { ReviewList } from '../public/ReviewList';
 import { GitArchiveForm } from './GitArchiveForm';
 
 /** Суперпользователь или «Администратор настроек»: им доступны флаг
@@ -27,9 +27,9 @@ export function useIsMarketAdmin(): boolean {
   );
 }
 
-// Форма приложения поставщика. Файлы — обычные вложения записи: картинки
-// становятся скриншотами (первая — обложкой), zip — архивом модуля (админ
-// может вместо загрузки указать папки репозитория GitHub).
+// Форма приложения поставщика. Файлы — обычные «Вложения» записи (скрепка
+// вверху): картинки — скриншоты (первая — обложка), zip — архив модуля;
+// админ может вместо загрузки указать папки репозитория GitHub.
 // Публикация без zip отклоняется бэкендом.
 export function ViewFormMarketplaceApp(props: ViewFormProps) {
   const { t } = useTranslation('marketplace');
@@ -66,22 +66,20 @@ export function ViewFormMarketplaceApp(props: ViewFormProps) {
               )}
             </FormRow>
           </FormSection>
+          <Text size="sm" c="dimmed" mb="md">
+            {t('files.hint')}
+          </Text>
+          {isAdmin && id && <GitArchiveForm appId={Number(id)} />}
         </FormTab>
         <FormTab
-          name="files"
-          label={t('tabs.files')}
-          icon={<IconPaperclip size={16} />}>
+          name="reviews"
+          label={t('tabs.reviews')}
+          icon={<IconMessageStar size={16} />}>
           {id ? (
-            <>
-              <Text size="sm" c="dimmed" mb="sm">
-                {t('files.hint')}
-              </Text>
-              {isAdmin && <GitArchiveForm appId={Number(id)} />}
-              <AttachmentsPanel resModel="marketplace_app" resId={Number(id)} />
-            </>
+            <ReviewList appId={Number(id)} />
           ) : (
             <Text size="sm" c="dimmed">
-              {t('files.saveFirst')}
+              {t('form.saveFirst')}
             </Text>
           )}
         </FormTab>

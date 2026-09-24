@@ -237,6 +237,9 @@ from backend.base.crm.marketplace.models.marketplace_app import (
 from backend.base.crm.marketplace.models.marketplace_purchase import (
     MarketplacePurchase,
 )
+from backend.base.crm.marketplace.models.marketplace_review import (
+    MarketplaceReview,
+)
 
 # @extend(User): счёт для выплат поставщику маркетплейса (payout_account)
 from backend.base.crm.marketplace.models.user_ext import (  # noqa: F401
@@ -390,6 +393,7 @@ class Models(ModelsCore, ExtensibleMixin):
     payment = Payment
     marketplace_app = MarketplaceApplication
     marketplace_purchase = MarketplacePurchase
+    marketplace_review = MarketplaceReview
 
 
 class Apps(AppsCore):
