@@ -20,6 +20,7 @@ import { useDebouncedValue } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useSearchMessagesQuery } from '@/services/api/chat';
+import { getMessagePreview } from './ChatList';
 
 const MIN_CHARS = 2;
 
@@ -88,7 +89,7 @@ export function MessageSearchModal({
                     : ''}
                 </Text>
                 <Text size="sm" lineClamp={3}>
-                  {msg.body}
+                  {getMessagePreview(msg, t)}
                 </Text>
               </Paper>
             ))}

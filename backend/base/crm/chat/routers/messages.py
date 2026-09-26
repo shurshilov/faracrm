@@ -204,6 +204,7 @@ async def search_messages(
                 "id": msg.id,
                 "body": msg.body,
                 "message_type": msg.message_type,
+                "connector_type": msg.connector_type,
                 "create_datetime": (
                     msg.create_datetime.isoformat()
                     if msg.create_datetime
@@ -837,6 +838,7 @@ async def get_pinned_messages(req: Request, chat_id: int):
                 "id": msg.id,
                 "body": msg.body,
                 "message_type": msg.message_type,
+                "connector_type": msg.connector_type,
                 "create_datetime": msg.create_datetime.isoformat(),
                 "author": format_message_author(msg),
             }

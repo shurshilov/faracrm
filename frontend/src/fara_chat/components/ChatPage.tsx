@@ -23,7 +23,7 @@ import {
   useSetChatDefaultConnectorMutation,
 } from '@/services/api/chat';
 import { useChatWebSocketContext } from '../context';
-import { ChatList } from './ChatList';
+import { ChatList, getMessagePreview } from './ChatList';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
 import { ChatInput } from './ChatInput';
@@ -493,7 +493,7 @@ export function ChatPage({
                       ? new Date(msg.create_datetime).toLocaleString()
                       : ''}
                   </Text>
-                  <Text size="sm">{msg.body}</Text>
+                  <Text size="sm">{getMessagePreview(msg, t)}</Text>
                 </Paper>
               ))}
             </Stack>

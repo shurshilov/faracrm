@@ -35,7 +35,6 @@ import {
   usePinChatMutation,
   useRestoreChatMutation,
   Chat,
-  ChatLastMessage,
 } from '@/services/api/chat';
 import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
 import styles from './ChatList.module.css';
@@ -52,12 +51,16 @@ function stripHtml(html: string): string {
 }
 
 /**
- * Возвращает текст превью последнего сообщения.
+ * Возвращает текст превью сообщения: последнего в списке чатов, а также
+ * в результатах поиска и в закреплённых.
  * Для email (по message_type) — очищает через DOMPurify.
  * Для system — парсит JSON {event, params} и форматирует через i18n.
  */
-function getMessagePreview(
-  lastMessage: ChatLastMessage | null | undefined,
+export function getMessagePreview(
+  lastMessage:
+    | { body?: string; message_type?: string; connector_type?: string }
+    | null
+    | undefined,
   t: (key: string, options?: Record<string, unknown>) => string,
 ): string | null {
   if (!lastMessage) return null;

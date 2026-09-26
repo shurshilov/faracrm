@@ -198,7 +198,10 @@ class EmailMessageAdapter(ChatMessageAdapter):
             {
                 "subject": self.subject or "",
                 "html": self.html or self.text or "",
-            }
+            },
+            # Кириллица как есть, а не \uXXXX: иначе ILIKE-поиск по
+            # сообщениям её не находит (issue #28).
+            ensure_ascii=False,
         )
 
     def _get_email_body(self, prefer_html: bool = False) -> str:
