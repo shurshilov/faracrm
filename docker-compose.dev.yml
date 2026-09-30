@@ -79,6 +79,10 @@ services:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
+      args:
+        # LibreOffice в образе — точная вёрстка PDF-отчётов (см. .env.sample).
+        # Аргумент сборки: после смены — docker compose up -d --build
+        WITH_LIBREOFFICE: ${WITH_LIBREOFFICE:-1}
     restart: unless-stopped
     depends_on:
       postgres:

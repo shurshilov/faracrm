@@ -1,18 +1,24 @@
 # Copyright 2025 FARA CRM
 # Report DOCX module — report generation router
 
+import asyncio
 import json
 import logging
 from typing import TYPE_CHECKING
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import Response, JSONResponse
-from starlette.status import HTTP_404_NOT_FOUND, HTTP_400_BAD_REQUEST
+from starlette.status import (
+    HTTP_400_BAD_REQUEST,
+    HTTP_403_FORBIDDEN,
+    HTTP_404_NOT_FOUND,
+)
 
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.schemas.base_schema import Id
 from backend.base.system.dotorm.dotorm.exceptions import RecordNotFound
+from ..utils.engine import DocxReportEngine
 
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
@@ -98,3 +104,29 @@ async def generate_report(
     except Exception as e:
         return error_response(e)
     return file_response(report)
+
+
+@router_private.get("/reports/pdf-engine")
+async def pdf_engine(
+    req: Request,
+    recheck: bool = Query(
+        False,
+        description="Заново поискать LibreOffice (поставили без рестарта)",
+    ),
+):
+    """
+    Каким движком собираются PDF — индикатор в тулбаре списка шаблонов:
+    {"engine": "libreoffice"|"builtin", "path", "version"}.
+
+    Только администратору (как и правка шаблонов): путь к бинарнику и версия
+    — детали сервера, рядовому пользователю они ничего не объясняют.
+    """
+    user = req.state.session.user_id
+    if not (
+        user.is_admin
+        or any(role.code == "system_admin" for role in (user.role_ids or []))
+    ):
+        raise HTTPException(HTTP_403_FORBIDDEN, "ADMIN_REQUIRED")
+    # Поиск запускает процесс `soffice --version` — не в event loop
+    info = await asyncio.to_thread(DocxReportEngine.pdf_engine_info, recheck)
+    return {"data": info}

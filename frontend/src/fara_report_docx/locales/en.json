@@ -16,5 +16,13 @@
   "designer": {
     "open": "Designer",
     "configure": "Configure template"
+  },
+  "pdfEngine": {
+    "libreoffice": "PDF: LibreOffice {{version}}",
+    "builtin": "PDF: built-in converter",
+    "unknown": "PDF: engine unknown",
+    "hintLibreoffice": "Exact Word layout. Command: {{path}}",
+    "hintBuiltin": "Simplified layout: text, tables, pictures. For exact Word layout set WITH_LIBREOFFICE=1 in .env and rebuild the image: docker compose up -d --build. Without Docker install libreoffice-writer and press \"Check again\".",
+    "recheck": "Check again"
   }
 }

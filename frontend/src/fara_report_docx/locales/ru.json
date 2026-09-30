@@ -16,5 +16,13 @@
   "designer": {
     "open": "Конструктор",
     "configure": "Настроить шаблон"
+  },
+  "pdfEngine": {
+    "libreoffice": "PDF: LibreOffice {{version}}",
+    "builtin": "PDF: встроенный конвертер",
+    "unknown": "PDF: движок неизвестен",
+    "hintLibreoffice": "Точная вёрстка Word. Команда: {{path}}",
+    "hintBuiltin": "Упрощённая вёрстка: текст, таблицы, картинки. Для точной вёрстки Word включите WITH_LIBREOFFICE=1 в .env и пересоберите образ: docker compose up -d --build. Без Docker установите libreoffice-writer и нажмите «Проверить снова».",
+    "recheck": "Проверить снова"
   }
 }

@@ -108,8 +108,10 @@ DOCX → PDF conversion has two modes, picked automatically:
 
 | Mode | When | Result |
 |------|------|--------|
-| LibreOffice headless | `libreoffice`/`soffice` is installed | Exact Word layout. Not part of the Docker image (+~400 MB): add `libreoffice-writer` to `docker/backend.Dockerfile` |
+| LibreOffice headless | `libreoffice`/`soffice` is installed | Exact Word layout. Included in the Docker image by default: build argument `WITH_LIBREOFFICE=1` (`.env`, +~400 MB, the layer is cached and not re-downloaded on `down`/`up`); `WITH_LIBREOFFICE=0` and `docker compose up -d --build` give an image without it. Without Docker — `apt install libreoffice-writer` |
 | Built-in (python-docx + fpdf2) | LibreOffice not found | Text with emphasis, sizes and alignment, indents, numbered and bulleted lists, tables (per-cell borders — white and zero-width lines count as hidden, as in Word forms; merges, column widths), pictures in paragraphs and cells, floating pictures (the invoice stamp and signatures, at their anchor offset from the paragraph), page breaks |
+
+An administrator sees which engine is active in the toolbar of the "Report templates" list: the badge "PDF: LibreOffice 7.6" or "PDF: built-in converter" (`GET /reports/pdf-engine`, administrators only). "Check again" (`?recheck=1`) looks for LibreOffice anew — after installing it on the server without a restart; "not found" is also re-checked once a minute in every worker. LibreOffice conversions run one at a time per process with a per-worker profile (`-env:UserInstallation`), otherwise parallel `soffice` runs interfere with each other.
 
 The built-in mode does not carry headers/footers, colors, shapes or text wrapping — enough for "text + tables" forms (invoices, contracts, summaries). It needs a TTF font with Cyrillic glyphs: DejaVu Sans (`fonts-dejavu-core` package, already in the Dockerfile) or Arial (Windows, macOS). Without a font the conversion fails with a clear error.
 

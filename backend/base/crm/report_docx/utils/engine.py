@@ -11,13 +11,51 @@ import functools
 import io
 import logging
 import os
+import pathlib
+import re
 import subprocess
 import tempfile
+import threading
+import time
 from typing import Any
 
 from .sdt import unwrap_content_controls
 
 log = logging.getLogger(__name__)
+
+# «LibreOffice не найден» перепроверяем не чаще раза в минуту: у каждого
+# воркера свой кэш, и после установки без рестарта они подхватят его сами
+_LO_RECHECK_SECONDS = 60
+# Конверсия через LibreOffice — по одной за раз в процессе (см. convert_to_pdf)
+_LIBREOFFICE_LOCK = threading.Lock()
+
+
+def _libreoffice_profile_uri() -> str:
+    """Профиль LibreOffice этого процесса (file://…): у каждого воркера свой,
+    чтобы они не блокировали друг друга через общий ~/.config."""
+    path = os.path.join(
+        tempfile.gettempdir(), f"fara_libreoffice_{os.getpid()}"
+    )
+    return pathlib.Path(path).as_uri()
+
+
+def _probe_libreoffice() -> tuple[str, str] | None:
+    """(команда, версия) LibreOffice или None, если он не установлен."""
+    for cmd in ["libreoffice", "soffice", "/usr/bin/libreoffice"]:
+        try:
+            r = subprocess.run(
+                [cmd, "--version"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if r.returncode == 0:
+            output = r.stdout.decode("utf-8", errors="replace")
+            found = re.search(r"\d+(?:\.\d+)+", output)
+            return cmd, found.group(0) if found else output.strip()[:40]
+    return None
 
 
 # ---- Jinja-фильтры шаблонов: {{ amount_total|money }}, {{ date_order|date }} ----
@@ -129,7 +167,10 @@ class DocxReportEngine:
 
             return docx_to_pdf(docx_bytes, title)
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        # Один профиль на процесс и одна конверсия за раз: два soffice с общим
+        # профилем мешают друг другу (второй молча передаёт документ первому и
+        # выходит без PDF), а свежий профиль на каждый вызов — это ещё +2 с
+        with _LIBREOFFICE_LOCK, tempfile.TemporaryDirectory() as tmpdir:
             docx_path = os.path.join(tmpdir, "report.docx")
             with open(docx_path, "wb") as f:
                 f.write(docx_bytes)
@@ -138,6 +179,7 @@ class DocxReportEngine:
                 result = subprocess.run(
                     [
                         lo_cmd,
+                        f"-env:UserInstallation={_libreoffice_profile_uri()}",
                         "--headless",
                         "--norestore",
                         "--convert-to",
@@ -167,25 +209,43 @@ class DocxReportEngine:
             with open(pdf_path, "rb") as f:
                 return f.read()
 
+    # (когда проверяли, что нашли) — кэш поиска LibreOffice на процесс
+    _lo_probe: tuple[float, tuple[str, str] | None] = (0.0, None)
+
+    @classmethod
+    def _libreoffice_info(
+        cls, recheck: bool = False
+    ) -> tuple[str, str] | None:
+        """(команда, версия) LibreOffice или None. Найденный помним весь срок
+        процесса (проверка запускает процесс); «не найден» перепроверяем раз
+        в минуту или сразу по recheck (кнопка «Проверить снова»)."""
+        checked_at, info = cls._lo_probe
+        if info is not None and not recheck:
+            return info
+        if not recheck and time.monotonic() - checked_at < _LO_RECHECK_SECONDS:
+            return None
+        info = _probe_libreoffice()
+        cls._lo_probe = (time.monotonic(), info)
+        return info
+
     @staticmethod
-    @functools.cache
     def _find_libreoffice() -> str | None:
-        """Команда LibreOffice или None, если он не установлен. Результат
-        кэшируется: проверка запускает процесс, а состав системы не меняется.
-        """
-        for cmd in ["libreoffice", "soffice", "/usr/bin/libreoffice"]:
-            try:
-                r = subprocess.run(
-                    [cmd, "--version"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    timeout=5,
-                )
-                if r.returncode == 0:
-                    return cmd
-            except (FileNotFoundError, subprocess.TimeoutExpired):
-                continue
-        return None
+        """Команда LibreOffice или None, если он не установлен."""
+        info = DocxReportEngine._libreoffice_info()
+        return info[0] if info else None
+
+    @staticmethod
+    def pdf_engine_info(recheck: bool = False) -> dict[str, Any]:
+        """Каким движком собираются PDF — для индикатора администратора:
+        {"engine": "libreoffice"|"builtin", "path", "version"}."""
+        info = DocxReportEngine._libreoffice_info(recheck)
+        if info:
+            return {
+                "engine": "libreoffice",
+                "path": info[0],
+                "version": info[1],
+            }
+        return {"engine": "builtin", "path": None, "version": None}
 
     @staticmethod
     def generate(

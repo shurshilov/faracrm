@@ -21,8 +21,7 @@ WORKDIR /app
 
 # System deps for asyncpg, Pillow, etc.
 # fonts-dejavu-core — шрифт с кириллицей для встроенной конверсии отчётов в PDF
-# (report_docx). Для точной вёрстки Word добавьте libreoffice-writer (~400 МБ):
-# движок сам предпочтёт его, если найдёт.
+# (report_docx), когда LibreOffice ниже выключен.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
@@ -30,6 +29,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zlib1g-dev \
     fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
+
+# LibreOffice для точной вёрстки Word при конверсии отчётов в PDF (report_docx
+# сам предпочтёт его встроенному конвертеру). Аргумент WITH_LIBREOFFICE берёт
+# из .env docker compose (build args), по умолчанию включён: +~400 МБ к образу,
+# слой собирается один раз и живёт в кэше — down/up его не перекачивают.
+# WITH_LIBREOFFICE=0 — образ без него, PDF рисует встроенный конвертер.
+# fonts-liberation — метрические аналоги Arial/Times: ширины строк как в Word.
+ARG WITH_LIBREOFFICE=1
+RUN if [ "$WITH_LIBREOFFICE" = "1" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends \
+    libreoffice-writer \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 
 COPY requirements.txt .
