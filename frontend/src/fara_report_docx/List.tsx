@@ -12,6 +12,7 @@ export function ViewListReportTemplate(props: ViewListProps) {
       <Field name="name" label="Название" />
       <Field name="model_name" label="Модель" />
       <Field name="python_function" label="Функция" />
+      <Field name="report_type" label="Тип" />
       <Field name="output_format" label="Формат" />
       <Field name="active" label="Активен" />
     </List>

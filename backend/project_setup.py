@@ -131,6 +131,14 @@ from backend.base.crm.contract.models.company_ext import CompanyContractMixin
 from backend.base.crm.contract.models.requisites_ext import RequisitesMixin
 from backend.base.crm.contract.models.sale_ext import SaleContractMixin
 
+# @extend(Sale) / @extend(Contract): функции данных печатных форм и отчётов
+from backend.base.crm.sales_report_docx.models.sale_ext import (  # noqa: F401
+    SaleReportMixin,
+)
+from backend.base.crm.sales_report_docx.models.contract_ext import (  # noqa: F401
+    ContractReportMixin,
+)
+
 # @extend(Partner) / @extend(Contact): правила контроля дубликатов
 from backend.base.crm.duplicates.models.duplicates_ext import (  # noqa: F401
     ContactDuplicatesMixin,
@@ -279,7 +287,9 @@ from backend.base.crm.chat_vk.app import ChatVkApp
 from backend.base.crm.tasks.app import TasksApp
 from backend.base.crm.activity.app import ActivityApp
 from backend.base.crm.report_docx.app import ReportDocxApp
+from backend.base.crm.report_docx_design.app import ReportDocxDesignApp
 from backend.base.crm.contract.app import ContractApp
+from backend.base.crm.sales_report_docx.app import SalesReportDocxApp
 from backend.base.crm.dadata.app import DadataApp
 from backend.base.crm.duplicates.app import DuplicatesApp
 from backend.base.crm.registration.app import RegistrationApp
@@ -431,7 +441,9 @@ class Apps(AppsCore):
     task = TasksApp()
     activity = ActivityApp()
     report_docx = ReportDocxApp()
+    report_docx_design = ReportDocxDesignApp()
     contract = ContractApp()
+    sales_report_docx = SalesReportDocxApp()
     dadata = DadataApp()
     duplicates = DuplicatesApp()
     captcha = CaptchaApp()

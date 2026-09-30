@@ -118,6 +118,13 @@
     "pressPlusToAdd": "Press «+» to add a contact",
     "saveFailed": "Failed to save the contact"
   },
+  "docxEditor": {
+    "edit": "Edit document",
+    "saved": "Document saved",
+    "saveFailed": "Failed to save the document",
+    "loadFailed": "Failed to open the document",
+    "unsavedClose": "There are unsaved changes. Close without saving?"
+  },
   "dropzone": {
     "dropFile": "Drag a file here or click to select",
     "dropFiles": "Drag files here or click to select",

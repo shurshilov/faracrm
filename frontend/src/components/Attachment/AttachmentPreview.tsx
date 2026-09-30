@@ -13,14 +13,21 @@ import {
 import {
   IconTrash,
   IconDownload,
+  IconEdit,
   IconRefresh,
   IconX,
   IconPhotoOff,
 } from '@tabler/icons-react';
 import { FileIcon } from './FileIcon';
 import { ImagePreviewModal } from './ImagePreviewModal';
+import { DocxEditorModal } from './DocxEditorModal';
 import { AudioPlayer } from './AudioPlayer';
-import { isImageMimetype, isAudioMimetype, formatFileSize } from './fileIcons';
+import {
+  isImageMimetype,
+  isAudioMimetype,
+  isDocxMimetype,
+  formatFileSize,
+} from './fileIcons';
 import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
 import classes from './AttachmentPreview.module.css';
 
@@ -79,6 +86,7 @@ export function AttachmentPreview({
   const [isLoadingOriginal] = useState(false);
 
   const [imageModalOpened, setImageModalOpened] = useState(false);
+  const [editorOpened, setEditorOpened] = useState(false);
 
   // Трекаем id чтобы не сбрасывать при ререндерах с тем же id
   const loadedForIdRef = useRef<number | string | null>(null);
@@ -86,6 +94,11 @@ export function AttachmentPreview({
 
   const isImage = isImageMimetype(attachment.mimetype);
   const isAudio = isAudioMimetype(attachment.mimetype);
+  // Правка docx во встроенном редакторе — только у сохранённого вложения
+  const canEditDocx =
+    typeof attachment.id === 'number' &&
+    attachment.id > 0 &&
+    isDocxMimetype(attachment.mimetype, attachment.name);
 
   const canFetchFromApi =
     isImage &&
@@ -370,6 +383,20 @@ export function AttachmentPreview({
                     </ActionIcon>
                   </Tooltip>
                 )}
+                {canEditDocx && (
+                  <Tooltip label="Редактировать">
+                    <ActionIcon
+                      variant="subtle"
+                      size="sm"
+                      color="blue"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setEditorOpened(true);
+                      }}>
+                      <IconEdit size={16} />
+                    </ActionIcon>
+                  </Tooltip>
+                )}
                 {onReplace && (
                   <Tooltip label="Заменить">
                     <ActionIcon
@@ -402,6 +429,16 @@ export function AttachmentPreview({
             )}
           </Stack>
         </Paper>
+      )}
+
+      {/* Встроенный редактор docx */}
+      {canEditDocx && (
+        <DocxEditorModal
+          attachmentId={attachment.id as number}
+          filename={attachment.name}
+          opened={editorOpened}
+          onClose={() => setEditorOpened(false)}
+        />
       )}
 
       {/* Модальное окно — оригинал */}

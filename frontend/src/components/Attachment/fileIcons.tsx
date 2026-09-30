@@ -172,6 +172,22 @@ export function isAudioMimetype(mimetype?: string | null): boolean {
   return mimetype.startsWith('audio/');
 }
 
+const DOCX_MIMETYPE =
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+
+/**
+ * Проверить, является ли файл документом Word (.docx) — такие можно править
+ * во встроенном редакторе (DocxEditorModal). Имя — запасной признак: файлы
+ * с общим octet-stream, но расширением .docx.
+ */
+export function isDocxMimetype(
+  mimetype?: string | null,
+  name?: string | null,
+): boolean {
+  if (mimetype === DOCX_MIMETYPE) return true;
+  return !!name && name.toLowerCase().endsWith('.docx');
+}
+
 /**
  * Форматировать размер файла
  */

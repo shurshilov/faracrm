@@ -56,6 +56,26 @@ export function attachmentDownloadUrl(id: number | string): string {
  * Content-Disposition: attachment часто блокируется и файл не скачивается.
  * Должен вызываться синхронно внутри обработчика клика (user gesture).
  */
+/**
+ * Имя файла из заголовка Content-Disposition: сначала RFC 5987
+ * `filename*=utf-8''имя` (бэк шлёт кириллицу так), иначе `filename="имя"`.
+ */
+export function filenameFromDisposition(
+  header: string | null | undefined,
+): string | undefined {
+  if (!header) return undefined;
+  const encoded = header.match(/filename\*=utf-8''([^;]+)/i);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1].trim());
+    } catch {
+      // битая кодировка — пробуем обычный filename ниже
+    }
+  }
+  const plain = header.match(/filename="?([^";]+)"?/);
+  return plain ? plain[1].trim() : undefined;
+}
+
 export function triggerDownload(href: string, filename?: string): void {
   const a = document.createElement('a');
   a.href = href;

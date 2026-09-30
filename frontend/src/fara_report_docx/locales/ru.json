@@ -7,9 +7,14 @@
     "name": "Название",
     "model_name": "Модель",
     "python_function": "Функция данных",
+    "report_type": "Тип отчёта",
     "template_file": "Шаблон DOCX",
     "output_format": "Формат",
     "description": "Описание",
     "active": "Активен"
+  },
+  "designer": {
+    "open": "Конструктор",
+    "configure": "Настроить шаблон"
   }
 }

@@ -33,6 +33,7 @@ import {
 } from '@mantine/core';
 import {
   IconDownload,
+  IconEdit,
   IconEye,
   IconFolder,
   IconLock,
@@ -45,10 +46,12 @@ import {
 import { useFormContext } from '@/components/Form/FormContext';
 import { FileIcon } from './FileIcon';
 import { ImagePreviewModal } from './ImagePreviewModal';
+import { DocxEditorModal } from './DocxEditorModal';
 import {
   isImageMimetype,
   isAudioMimetype,
   isVideoMimetype,
+  isDocxMimetype,
   formatFileSize,
 } from './fileIcons';
 import {
@@ -74,6 +77,7 @@ export function AttachmentPreviewCard({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +104,8 @@ export function AttachmentPreviewCard({
   const isVideo = mimetype ? isVideoMimetype(mimetype) : false;
 
   const hasFile = !!(id || newFileContent);
+  // Правка docx во встроенном редакторе — только сохранённого файла
+  const canEditDocx = !!id && !newFileContent && isDocxMimetype(mimetype, name);
 
   // URL изображения по приоритету
   let imageSrc: string | null = null;
@@ -351,6 +357,19 @@ export function AttachmentPreviewCard({
                   </ActionIcon>
                 </Tooltip>
               )}
+              {canEditDocx && (
+                <Tooltip label={t('docxEditor.edit')}>
+                  <ActionIcon
+                    variant="light"
+                    color="blue"
+                    onClick={e => {
+                      e.stopPropagation();
+                      setEditorOpen(true);
+                    }}>
+                    <IconEdit size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
               <Tooltip label="Заменить файл">
                 <ActionIcon
                   variant="light"
@@ -452,6 +471,15 @@ export function AttachmentPreviewCard({
           onClose={() => setPreviewOpen(false)}
           src={imageSrc}
           filename={name}
+        />
+      )}
+
+      {canEditDocx && (
+        <DocxEditorModal
+          attachmentId={Number(id)}
+          filename={name}
+          opened={editorOpen}
+          onClose={() => setEditorOpen(false)}
         />
       )}
 

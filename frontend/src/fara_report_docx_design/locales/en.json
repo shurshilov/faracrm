@@ -1,0 +1,32 @@
+{
+  "designer": {
+    "title": "Template designer",
+    "back": "Back to template",
+    "noFile": "No file yet — it will be created on save",
+    "unsavedMark": "unsaved",
+    "unsaved": "There are unsaved changes. Leave without saving?",
+    "saved": "Template saved",
+    "saveFailed": "Failed to save the template",
+    "loadFailed": "Failed to open the template file",
+    "insertFailed": "Place the cursor in the document and try again",
+    "insertHint": "Place the cursor in the document and click a field",
+    "search": "Search field",
+    "noFields": "No fields",
+    "functionFields": "Data function fields",
+    "recordFields": "Record fields",
+    "relationName": "Name",
+    "loopStart": "Loop start",
+    "loopEnd": "Loop end",
+    "record": "Record for preview",
+    "recordId": "Record ID for preview",
+    "noRecords": "No records found",
+    "params": "Function parameters (JSON)",
+    "badParams": "Parameters are not a JSON object",
+    "selectRecord": "Select a record for preview",
+    "auto": "Auto",
+    "refresh": "Refresh",
+    "download": "Download preview",
+    "rendering": "Rendering preview…",
+    "noPreview": "Preview appears after a record is selected"
+  }
+}

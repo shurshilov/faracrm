@@ -201,7 +201,11 @@ class IncomingMessagePipeline:
                 external_id=ctx.counterparty_external_id,
                 contact_value=ctx.counterparty_external_id,
                 display_name=ctx.counterparty_external_name,
-                raw=json.dumps(ctx.adapter.raw) if ctx.adapter.raw else None,
+                raw=(
+                    json.dumps(ctx.adapter.raw, ensure_ascii=False)
+                    if ctx.adapter.raw
+                    else None
+                ),
             )
         )
 

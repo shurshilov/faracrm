@@ -20,11 +20,15 @@ FROM python:3.14-slim
 WORKDIR /app
 
 # System deps for asyncpg, Pillow, etc.
+# fonts-dejavu-core — шрифт с кириллицей для встроенной конверсии отчётов в PDF
+# (report_docx). Для точной вёрстки Word добавьте libreoffice-writer (~400 МБ):
+# движок сам предпочтёт его, если найдёт.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     libjpeg62-turbo-dev \
     zlib1g-dev \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 

@@ -44,10 +44,12 @@ import {
   ImageGalleryModal,
   GalleryItem,
 } from '@/components/Attachment/ImageGalleryModal';
+import { DocxEditorModal } from '@/components/Attachment/DocxEditorModal';
 import {
   isImageMimetype,
   isAudioMimetype,
   isVideoMimetype,
+  isDocxMimetype,
   formatFileSize,
 } from '@/components/Attachment/fileIcons';
 import {
@@ -130,10 +132,14 @@ function AttachmentCard({
   const [thumbSrc, setThumbSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [manuallyLoaded, setManuallyLoaded] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
 
   const isImage = isImageMimetype(attachment.mimetype);
   const isAudio = isAudioMimetype(attachment.mimetype);
   const isVideo = isVideoMimetype(attachment.mimetype);
+  // Правка docx во встроенном редакторе (DocxEditorModal)
+  const canEditDocx =
+    !!attachment.id && isDocxMimetype(attachment.mimetype, attachment.name);
 
   // Определяем, является ли хранилище облачным (type != 'file')
   const isCloudStorage = useMemo(() => {
@@ -384,6 +390,22 @@ function AttachmentCard({
               </ActionIcon>
             </Tooltip>
 
+            {/* Редактировать docx во встроенном редакторе */}
+            {canEditDocx && (
+              <Tooltip label="Редактировать">
+                <ActionIcon
+                  size="sm"
+                  variant="light"
+                  color="blue"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setEditorOpen(true);
+                  }}>
+                  <IconEdit size={14} />
+                </ActionIcon>
+              </Tooltip>
+            )}
+
             {/* Открыть в облаке (webViewLink для Google Drive) */}
             {isCloudStorage && attachment.storage_file_url && (
               <Tooltip label="Открыть в облаке">
@@ -427,6 +449,16 @@ function AttachmentCard({
           </Group>
         </Stack>
       </Card>
+
+      {/* Модалка — сестра карточки, чтобы клики в ней не открывали форму */}
+      {canEditDocx && (
+        <DocxEditorModal
+          attachmentId={Number(attachment.id)}
+          filename={attachment.name}
+          opened={editorOpen}
+          onClose={() => setEditorOpen(false)}
+        />
+      )}
     </>
   );
 }

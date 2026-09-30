@@ -78,6 +78,10 @@ import ruColumnSettings from './fara_view_settings/locales/ru.json';
 import enReports from './fara_report_docx/locales/en.json';
 import ruReports from './fara_report_docx/locales/ru.json';
 
+// fara_report_docx_design — конструктор шаблонов
+import enReportsDesign from './fara_report_docx_design/locales/en.json';
+import ruReportsDesign from './fara_report_docx_design/locales/ru.json';
+
 // fara_workspace
 import enWorkspace from './fara_workspace/locales/en.json';
 import ruWorkspace from './fara_workspace/locales/ru.json';
@@ -125,6 +129,7 @@ const resources = {
     saved_filters: enSavedFilters,
     column_settings: enColumnSettings,
     reports: enReports,
+    reportsDesign: enReportsDesign,
     workspace: enWorkspace,
     apps: enApps,
     registration: enRegistration,
@@ -151,6 +156,7 @@ const resources = {
     saved_filters: ruSavedFilters,
     column_settings: ruColumnSettings,
     reports: ruReports,
+    reportsDesign: ruReportsDesign,
     workspace: ruWorkspace,
     apps: ruApps,
     registration: ruRegistration,

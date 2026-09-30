@@ -1,6 +1,8 @@
 import { useContext } from 'react';
+import { useParams } from 'react-router-dom';
 import type { ContractRecord as Contract } from '@/types/records';
 import { Form } from '@/components/Form/Form';
+import { PrintButton } from '@/fara_report_docx/PrintButton';
 import { Field } from '@/components/List/Field';
 import {
   FormFieldsContext,
@@ -150,18 +152,23 @@ function ContractHeaderSummary() {
  * (длинный текст ломал бы summary).
  */
 export function ViewFormContract(props: ViewFormProps) {
+  const { id } = useParams<{ id: string }>();
   return (
     <Form<Contract> model="contract" {...props}>
       <FormHeader
         title={<ContractHeaderSummary />}
         actions={
-          <Field
-            name="sale_ids"
-            widget="x2mButton"
-            label="Заказы"
-            icon={<IconShoppingCart size={18} />}
-            color="blue"
-          />
+          <Group gap="xs">
+            {/* Печатные формы договора (шаблоны report_template на contract) */}
+            <PrintButton model="contract" recordId={id} />
+            <Field
+              name="sale_ids"
+              widget="x2mButton"
+              label="Заказы"
+              icon={<IconShoppingCart size={18} />}
+              color="blue"
+            />
+          </Group>
         }>
         {/* children пусто — всё внутри title + actions slot */}
         <></>

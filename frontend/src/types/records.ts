@@ -549,6 +549,7 @@ export interface ReportTemplateRecord extends BaseRecord {
   name: string;
   active: boolean;
   model_name: string;
+  report_type: 'record' | 'summary';
 }
 
 // ============================================================

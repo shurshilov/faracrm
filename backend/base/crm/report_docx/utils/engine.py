@@ -1,9 +1,13 @@
 """
 Движок генерации отчётов DOCX.
-docxtpl + LibreOffice headless для PDF.
+docxtpl + PDF: LibreOffice headless, если установлен, иначе простая
+конвертация на python-docx + fpdf2 (docx_to_pdf.py).
 """
 
 import base64
+import datetime
+import decimal
+import functools
 import io
 import logging
 import os
@@ -11,16 +15,59 @@ import subprocess
 import tempfile
 from typing import Any
 
+from .sdt import unwrap_content_controls
+
 log = logging.getLogger(__name__)
+
+
+# ---- Jinja-фильтры шаблонов: {{ amount_total|money }}, {{ date_order|date }} ----
+
+
+def money_filter(value: Any) -> Any:
+    """1234567.8 → «1 234 567,80»; не число — как есть."""
+    if isinstance(value, bool) or not isinstance(
+        value, (int, float, decimal.Decimal)
+    ):
+        return value
+    return f"{value:,.2f}".replace(",", " ").replace(".", ",")
+
+
+def date_filter(value: Any, fmt: str = "%d.%m.%Y") -> Any:
+    """date/datetime/ISO-строка → «30.09.2026»; остальное — как есть."""
+    if isinstance(value, str):
+        try:
+            value = datetime.datetime.fromisoformat(value)
+        except ValueError:
+            return value
+    if isinstance(value, (datetime.date, datetime.datetime)):
+        return value.strftime(fmt)
+    return value
+
+
+def datetime_filter(value: Any, fmt: str = "%d.%m.%Y %H:%M") -> Any:
+    return date_filter(value, fmt)
 
 
 class DocxReportEngine:
     """
     Рендер DOCX-шаблонов:
-    - Jinja2: {{ variable }}, {% for %}, {% if %}
+    - Jinja2: {{ variable }}, {% for %}, {% if %} + фильтры money/date/datetime
+    - Content controls конструктора (w:sdt) разворачиваются перед рендером
     - Замена изображений 1.jpg, 2.jpg (печати/подписи)
-    - Конверсия PDF через LibreOffice
+    - Конверсия PDF: LibreOffice (точная вёрстка) или встроенная простая
     """
+
+    @staticmethod
+    @functools.cache
+    def jinja_env():
+        """Окружение Jinja с фильтрами форматирования (одно на процесс)."""
+        from jinja2 import Environment
+
+        environment = Environment()
+        environment.filters.update(
+            money=money_filter, date=date_filter, datetime=datetime_filter
+        )
+        return environment
 
     @staticmethod
     def render(
@@ -30,7 +77,9 @@ class DocxReportEngine:
         """Рендерит DOCX-шаблон. Возвращает DOCX bytes."""
         from docxtpl import DocxTemplate
 
-        templ = DocxTemplate(io.BytesIO(template_bytes))
+        templ = DocxTemplate(
+            io.BytesIO(unwrap_content_controls(template_bytes))
+        )
 
         # Замена изображений (печати/подписи) внутри docx
         # Шаблон содержит 1.jpg, 2.jpg, 3.jpg — заменяем на реальные
@@ -49,21 +98,41 @@ class DocxReportEngine:
                     templ.pic_to_replace[f"{i}.jpg"] = imgdata
                 i += 1
 
-        templ.render(context)
+        templ.render(context, jinja_env=DocxReportEngine.jinja_env())
 
         output = io.BytesIO()
         templ.save(output)
         return output.getvalue()
 
     @staticmethod
-    def convert_to_pdf(docx_bytes: bytes) -> bytes:
-        """Конвертирует DOCX → PDF через LibreOffice headless."""
+    def convert_to_pdf(docx_bytes: bytes, title: str | None = None) -> bytes:
+        """Конвертирует DOCX → PDF.
+
+        LibreOffice headless, если он есть в системе (точная вёрстка Word),
+        иначе — простая конвертация без внешних программ (docx_to_pdf.py):
+        текст, таблицы, картинки; без колонтитулов и точной вёрстки.
+        title — заголовок PDF в метаданных (встроенный режим): его
+        показывает вкладка просмотрщика и подставляет имя при сохранении.
+        """
+        lo_cmd = DocxReportEngine._find_libreoffice()
+        if lo_cmd is None:
+            try:
+                from .docx_to_pdf import docx_to_pdf
+            except ImportError as e:
+                # Старый PyFPDF (fpdf 1.x) и fpdf2 ставятся под одним именем
+                # модуля: с ним падает `fpdf.enums`. Нужен именно fpdf2.
+                raise RuntimeError(
+                    "PDF: нужен пакет fpdf2 из requirements.txt "
+                    "(pip uninstall fpdf; pip install fpdf2), "
+                    f"импорт не удался: {e}"
+                ) from e
+
+            return docx_to_pdf(docx_bytes, title)
+
         with tempfile.TemporaryDirectory() as tmpdir:
             docx_path = os.path.join(tmpdir, "report.docx")
             with open(docx_path, "wb") as f:
                 f.write(docx_bytes)
-
-            lo_cmd = DocxReportEngine._find_libreoffice()
 
             try:
                 result = subprocess.run(
@@ -99,7 +168,11 @@ class DocxReportEngine:
                 return f.read()
 
     @staticmethod
-    def _find_libreoffice() -> str:
+    @functools.cache
+    def _find_libreoffice() -> str | None:
+        """Команда LibreOffice или None, если он не установлен. Результат
+        кэшируется: проверка запускает процесс, а состав системы не меняется.
+        """
         for cmd in ["libreoffice", "soffice", "/usr/bin/libreoffice"]:
             try:
                 r = subprocess.run(
@@ -112,22 +185,24 @@ class DocxReportEngine:
                     return cmd
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 continue
-        return "libreoffice"
+        return None
 
     @staticmethod
     def generate(
         template_bytes: bytes,
         context: dict[str, Any],
         output_format: str = "docx",
+        title: str | None = None,
     ) -> tuple[bytes, str]:
         """
-        Полный цикл: рендер + конверсия.
+        Полный цикл: рендер + конверсия (title — заголовок PDF, см.
+        convert_to_pdf).
         Returns: (file_bytes, content_type)
         """
         docx_bytes = DocxReportEngine.render(template_bytes, context)
 
         if output_format == "pdf":
-            pdf_bytes = DocxReportEngine.convert_to_pdf(docx_bytes)
+            pdf_bytes = DocxReportEngine.convert_to_pdf(docx_bytes, title)
             return pdf_bytes, "application/pdf"
 
         return (
