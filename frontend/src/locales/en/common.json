@@ -23,6 +23,7 @@
   "unlink": "Unlink",
   "confirm": "Confirm",
   "actions": "Actions",
+  "print": "Print",
   "language": "Language",
   "settings": "Settings",
   "profile": "Profile",
@@ -58,6 +59,8 @@
   "loadMore": "Load more",
   "copy": "Copy",
   "copyFailed": "Copy failed",
+  "copyConfirmTitle": "Copy this record?",
+  "copyConfirmText": "A copy of this record will be created and opened.",
   "autofillNotFound": "Nothing found",
   "menu": {
     "communication": "Communication",

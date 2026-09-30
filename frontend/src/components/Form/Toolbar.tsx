@@ -14,6 +14,7 @@ import { useCallback, useMemo, useState, useRef, ReactNode } from 'react';
 import { FormPanelsBadges, PanelType } from './Panels';
 import { IconCheck } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { PrintButton } from './PrintButton';
 
 export const Toolbar = ({
   model,
@@ -155,6 +156,10 @@ export const Toolbar = ({
             onToggle={onTogglePanel!}
           />
         )}
+
+        {/* «Печать» — у любой сохранённой записи; что печатать, подсказывают
+            модули (registerPrintProvider), без пунктов кнопки нет */}
+        {!isCreateForm && id && <PrintButton model={model} recordId={id} />}
 
         {/* Custom actions from individual forms */}
         {!isCreateForm && id && actions}

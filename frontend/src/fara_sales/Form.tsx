@@ -25,8 +25,6 @@ import {
   IconPackage,
   IconServicemark,
 } from '@tabler/icons-react';
-import { useParams } from 'react-router-dom';
-import { PrintButton } from '@/fara_report_docx/PrintButton';
 import { FieldContacts } from '@/components/ContactsWidget';
 import { CopyRecordButton } from '@/components/Form/CopyRecordButton';
 import { useTranslation } from 'react-i18next';
@@ -36,18 +34,10 @@ import { useTranslation } from 'react-i18next';
  */
 export function ViewFormSales(props: ViewFormProps) {
   const { t } = useTranslation('sales');
-  const { id } = useParams<{ id: string }>();
 
+  // Кнопка «Печать» — у тулбара формы, отдельно подключать не нужно
   return (
-    <Form<SaleRecord>
-      model="sales"
-      {...props}
-      actions={
-        <>
-          <PrintButton model="sales" recordId={id} />
-          <CopyRecordButton />
-        </>
-      }>
+    <Form<SaleRecord> model="sales" {...props} actions={<CopyRecordButton />}>
       {/* Основная информация */}
       <FormSection
         title="Основная информация"

@@ -7,8 +7,8 @@
 | | Бэкенд | Фронтенд |
 |---|---|---|
 | Папка | `backend/business/` | `frontend/src/business/` |
-| Что подхватывается | `*_ext.py` и пакеты `extensions/` — `ExtensibleMixin._autodiscover` | `<модуль>/index.ts` или `index.tsx` — `import.meta.glob` в `useModelExtensions` |
-| Чем расширяет | `@extend(Model)`: поля, методы, `selection_add`; колонки создаёт авто-DDL | `registerExtension` и `registerFormTab`: секции и вкладки форм, карточки канбана |
+| Что подхватывается | `*_ext.py` и пакеты `extensions/` — `ExtensibleMixin._autodiscover` | `<модуль>/index.ts` или `index.tsx` — `import.meta.glob` в `useModelExtensions`; у модулей ядра ещё `fara_<модуль>/extensions.ts` |
+| Чем расширяет | `@extend(Model)`: поля, методы, `selection_add`; колонки создаёт авто-DDL | `registerExtension` и `registerFormTab`: секции и вкладки форм, карточки канбана; `registerPrintProvider`: пункты кнопки «Печать» |
 | Когда загружается | На старте сервера | При открытии формы или канбана, после модулей ядра |
 
 ## Модуль
@@ -101,6 +101,12 @@ registerExtension('partners', PartnerClientSection, 'before:FormTabs', [
 - Список `fields` обязателен: форма добавляет его к полям разметки в запросе записи и `default_values`. Без него поля придут без данных и метаданных и не отрисуются.
 - Внутри расширения — конкретные компоненты полей (`FieldChar`, `FieldMany2one`, … из `components/Form/Fields`), а не `<Field>`: подстановка компонента по типу с сервера работает только для детей `<Form>`. Обязательность, варианты `Selection` и связанную модель компоненты берут из контекста формы сами.
 - Значения соседних полей — `useFormContext().getValues()`. Тип записи с новыми полями объявляется в модуле (`interface PartnerClientRecord extends PartnerRecord`), править `types/records.ts` не нужно.
+
+## Для всех моделей сразу: кнопка «Печать»
+
+Кнопка «Печать» в тулбаре формы принадлежит ядру (`components/Form/PrintButton.tsx`), а что печатать, подсказывают модули: `registerPrintProvider(key, Provider)` из `@/shared/extensions/print`. Провайдер — невидимый компонент с пропсами `{ model, recordId, onItems }`: он сам делает запросы и проверяет права и отдаёт пункты `{ key, label, icon?, group?, onSelect }` через `onItems` (ссылку на массив держите стабильной — `useMemo`). Пока ни один провайдер ничего не отдал, кнопки на форме нет; один пункт — действие сразу по клику, несколько — меню, `group` даёт заголовок группы. Пример — `fara_report_docx/PrintProvider.tsx`: DOCX-шаблоны записи и, администратору, пункты «Настроить шаблон».
+
+Регистрация, общая для всех моделей, живёт в `extensions.ts` в корне модуля ядра (`fara_report_docx/extensions.ts`) или в `index.ts` business-модуля: `useModelExtensions` грузит их вместе с расширениями модели.
 
 ## Что так не расширяется
 

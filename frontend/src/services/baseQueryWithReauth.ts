@@ -78,10 +78,20 @@ function parseApiError(data: unknown, status: number): ApiError | null {
   return null;
 }
 
+/**
+ * extraOptions эндпоинта: silent — фоновый запрос, отказ доступа (403) не
+ * показывать модалкой; компонент сам решает, что делать с ошибкой (например,
+ * кнопка «Печать» в тулбаре просто не рисуется).
+ */
+export interface QueryExtraOptions {
+  silent?: boolean;
+}
+
 export const baseQueryWithReauth: BaseQueryFn<
   string | FetchArgs,
   unknown,
-  FetchBaseQueryError
+  FetchBaseQueryError,
+  QueryExtraOptions
 > = async (args, api, extraOptions) => {
   const result = await baseQuery(args, api, extraOptions);
 
@@ -106,9 +116,9 @@ export const baseQueryWithReauth: BaseQueryFn<
       //   return result;
       // }
 
-      // Ошибка прав - показываем модальное окно
+      // Ошибка прав - показываем модальное окно (кроме фоновых запросов)
       const apiError = parseApiError(data, status as number);
-      if (apiError) {
+      if (apiError && !extraOptions?.silent) {
         apiErrorEmitter.emit(apiError);
       }
     }

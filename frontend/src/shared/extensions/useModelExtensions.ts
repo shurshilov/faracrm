@@ -15,6 +15,18 @@ const businessModules = import.meta.glob([
 ]);
 
 /**
+ * Расширения ядра от модулей — файл extensions.ts(x) в корне fara_<модуль>:
+ * то, что модуль даёт всем моделям сразу (источник печати для кнопки
+ * «Печать» и т.п.), а не конкретной форме. Подхватываются глобом, как
+ * business-модули, — ядро о них не знает; регистрируются сами
+ * (registerPrintProvider, …).
+ */
+const moduleExtensions = import.meta.glob([
+  '../../fara_*/extensions.ts',
+  '../../fara_*/extensions.tsx',
+]);
+
+/**
  * Загружает модули-расширения модели (modelsConfig[model].extensions —
  * ленивые import()) и business-модули; возвращает true, когда все они
  * загружены для ЭТОЙ модели.
@@ -34,6 +46,8 @@ export function useModelExtensions(model: string): boolean {
     const loadExtensions = async () => {
       const loaders = modelsConfig[model]?.extensions ?? [];
       await Promise.all(loaders.map(load => load()));
+      // Общие расширения модулей — один раз на приложение (кэш import())
+      await Promise.all(Object.values(moduleExtensions).map(load => load()));
       // Business-модули — после модулей ядра и по одному в алфавитном
       // порядке папок: порядок регистрации детерминирован, их секции идут
       // после секций ядра на той же позиции, а replace:… перекрывает ядро.

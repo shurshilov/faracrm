@@ -15,7 +15,7 @@ Name of the data function: a `@staticmethod` `async def name(env, **params) -> d
 <div class="field" markdown>
 `model_name` <span class="field-type">Char</span>
 
-The model that holds the data function, by table name as in `/auto/{model}`: `sales`, `partners`. For a per-record document its form shows a "Print" button (`PrintButton` component) when at least one active template of that type exists.
+The model that holds the data function, by table name as in `/auto/{model}`: `sales`, `partners`. The "Print" button is part of the core (`components/Form/PrintButton.tsx`, the toolbar of every form): the module registers its source of menu items there (`fara_report_docx/extensions.ts` → `registerPrintProvider`), and the button appears as soon as the model has at least one active per-record template. Nothing has to be added to the forms.
 </div>
 
 <div class="field" markdown>

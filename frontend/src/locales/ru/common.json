@@ -23,6 +23,7 @@
   "unlink": "Отвязать",
   "confirm": "Подтвердить",
   "actions": "Действия",
+  "print": "Печать",
   "language": "Язык",
   "settings": "Настройки",
   "profile": "Профиль",
@@ -58,6 +59,8 @@
   "loadMore": "Загрузить ещё",
   "copy": "Копировать",
   "copyFailed": "Не удалось скопировать",
+  "copyConfirmTitle": "Копировать запись?",
+  "copyConfirmText": "Будет создана копия этой записи, и вы перейдёте в неё.",
   "autofillNotFound": "Ничего не найдено",
   "menu": {
     "communication": "Общение",

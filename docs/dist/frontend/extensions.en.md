@@ -7,8 +7,8 @@ Backend and frontend work the same way:
 | | Backend | Frontend |
 |---|---|---|
 | Folder | `backend/business/` | `frontend/src/business/` |
-| What is picked up | `*_ext.py` and `extensions/` packages — `ExtensibleMixin._autodiscover` | `<module>/index.ts` or `index.tsx` — `import.meta.glob` in `useModelExtensions` |
-| How it extends | `@extend(Model)`: fields, methods, `selection_add`; columns are created by auto-DDL | `registerExtension` and `registerFormTab`: form sections and tabs, kanban cards |
+| What is picked up | `*_ext.py` and `extensions/` packages — `ExtensibleMixin._autodiscover` | `<module>/index.ts` or `index.tsx` — `import.meta.glob` in `useModelExtensions`; core modules also `fara_<module>/extensions.ts` |
+| How it extends | `@extend(Model)`: fields, methods, `selection_add`; columns are created by auto-DDL | `registerExtension` and `registerFormTab`: form sections and tabs, kanban cards; `registerPrintProvider`: items of the "Print" button |
 | When it loads | At server start | When a form or kanban opens, after the core modules |
 
 ## Module
@@ -101,6 +101,12 @@ Three rules:
 - The `fields` list is mandatory: the form merges it with the markup fields in the record request and in `default_values`. Without it the fields arrive with neither data nor metadata and do not render.
 - Inside an extension use the concrete field components (`FieldChar`, `FieldMany2one`, … from `components/Form/Fields`), not `<Field>`: dispatch by server type works only for children of `<Form>`. Required flags, `Selection` options and the related model come from the form context.
 - Neighbouring values are read with `useFormContext().getValues()`. The record type with the new fields is declared in the module (`interface PartnerClientRecord extends PartnerRecord`); `types/records.ts` needs no edit.
+
+## For all models at once: the "Print" button
+
+The "Print" button in the form toolbar belongs to the core (`components/Form/PrintButton.tsx`); what to print is supplied by modules through `registerPrintProvider(key, Provider)` from `@/shared/extensions/print`. A provider is an invisible component with props `{ model, recordId, onItems }`: it runs its own queries and permission checks and hands over items `{ key, label, icon?, group?, onSelect }` via `onItems` (keep the array reference stable with `useMemo`). While no provider has handed over anything, the form has no button; a single item runs on click, several items open a menu, and `group` adds a group heading. Example: `fara_report_docx/PrintProvider.tsx` — the record's DOCX templates and, for an administrator, the "Configure template" items.
+
+A registration shared by all models lives in `extensions.ts` at the root of a core module (`fara_report_docx/extensions.ts`) or in the `index.ts` of a business module: `useModelExtensions` loads them together with the model's extensions.
 
 ## What cannot be extended this way
 
