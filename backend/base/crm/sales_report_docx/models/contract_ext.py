@@ -197,6 +197,7 @@ class ContractReportMixin(_Base):
                         "price_unit",
                         "price_total",
                         "product_id",
+                        "product_uom_id",
                         "notes",
                     ]
                 }
@@ -208,15 +209,24 @@ class ContractReportMixin(_Base):
         products = await _by_id(
             env.models.product, raw_lines, ("product_id",), ["id", "name"]
         )
+        uoms = await _by_id(
+            env.models.uom, raw_lines, ("product_uom_id",), ["id", "name"]
+        )
         order_line = []
         for line in raw_lines:
             product = products.get(_rel_id(line.product_id))
+            uom = uoms.get(_rel_id(line.product_uom_id))
+            name = (product.name if product else "") or line.notes or ""
             order_line.append(
                 {
                     "index": len(order_line) + 1,
-                    "name": (product.name if product else "")
-                    or line.notes
-                    or "",
+                    "name": name,
+                    # Образцы берут товар и единицу парами (id, имя), как
+                    # Many2one в Odoo: {{line.product_id[1]}}
+                    "product_id": (product.id if product else None, name),
+                    "product_uom": (
+                        (uom.id, uom.name or "") if uom else (None, "")
+                    ),
                     "product_uom_qty": float(line.product_uom_qty or 0),
                     "price_unit": _format_money(float(line.price_unit or 0)),
                     "price_total": _format_money(float(line.price_total or 0)),
