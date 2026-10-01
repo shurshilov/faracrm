@@ -155,6 +155,7 @@ export function ViewFormProject(props: ViewFormProps) {
             <Field name="can_write" label={t('project_member.can_write')} />
             <Field name="can_assign" label={t('project_member.can_assign')} />
             <Field name="can_invite" label={t('project_member.can_invite')} />
+            <Field name="can_remove" label={t('project_member.can_remove')} />
             <Field name="can_archive" label={t('project_member.can_archive')} />
           </Field>
         </FormTab>
@@ -243,9 +244,10 @@ export function ViewFormProjectMember(props: ViewFormProps) {
           <Field name="can_read" label={t('project_member.can_read')} />
           <Field name="can_write" label={t('project_member.can_write')} />
         </FormRow>
-        <FormRow cols={3}>
+        <FormRow cols={4}>
           <Field name="can_assign" label={t('project_member.can_assign')} />
           <Field name="can_invite" label={t('project_member.can_invite')} />
+          <Field name="can_remove" label={t('project_member.can_remove')} />
           <Field name="can_archive" label={t('project_member.can_archive')} />
         </FormRow>
       </FormSheet>

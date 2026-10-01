@@ -6,6 +6,10 @@
 # - webhook управление (set/unset/info)
 # - типы коннекторов
 #
+# Ручки настройки (все, кроме /connectors/my) — для администратора настроек
+# (Session.check_system_admin): то же правило, что ACL chat_connector
+# (ChatApp.ROLE_ACL).
+#
 # Webhook callback endpoint находится в webhook.py
 
 from typing import TYPE_CHECKING, Literal
@@ -39,6 +43,8 @@ async def set_connector_webhook(req: Request, connector_id: int):
     Отправляет запрос к внешнему API (например, Telegram)
     для регистрации webhook URL.
     """
+    auth_session: "Session" = req.state.session
+    auth_session.check_system_admin()
     env: "Environment" = req.app.state.env
 
     connector = await env.models.chat_connector.get(connector_id)
@@ -64,6 +70,8 @@ async def unset_connector_webhook(req: Request, connector_id: int):
 
     Отправляет запрос к внешнему API для удаления webhook.
     """
+    auth_session: "Session" = req.state.session
+    auth_session.check_system_admin()
     env: "Environment" = req.app.state.env
 
     connector = await env.models.chat_connector.get(connector_id)
@@ -82,6 +90,8 @@ async def delete_connector_webhook_by_url(req: Request, connector_id: int):
     Тело: {"url": "<webhook_url>"}. Поддерживается провайдерами со списком
     подписок (MAX). Для остальных стратегия бросит NotImplementedError.
     """
+    auth_session: "Session" = req.state.session
+    auth_session.check_system_admin()
     env: "Environment" = req.app.state.env
 
     payload = await req.json()
@@ -106,6 +116,8 @@ async def get_connector_webhook_info(req: Request, connector_id: int):
 
     Возвращает текущее состояние webhook по данным провайдера.
     """
+    auth_session: "Session" = req.state.session
+    auth_session.check_system_admin()
     env: "Environment" = req.app.state.env
 
     connector = await env.models.chat_connector.get(connector_id)
@@ -124,6 +136,8 @@ async def test_connector_connection(req: Request, connector_id: int):
     ли сервер и пароль. Для типов без поддержки проверки возвращает
     ok=false с пояснением (см. ChatStrategyBase.test_connection).
     """
+    auth_session: "Session" = req.state.session
+    auth_session.check_system_admin()
     env: "Environment" = req.app.state.env
 
     connector = await env.models.chat_connector.get(connector_id)
@@ -137,6 +151,8 @@ async def sync_connector_numbers(req: Request, connector_id: int):
     """
     Синхронизировать номера / операторские линии из АТС.
     """
+    auth_session: "Session" = req.state.session
+    auth_session.check_system_admin()
     env: "Environment" = req.app.state.env
 
     connector = await env.models.chat_connector.get(connector_id)
@@ -166,6 +182,8 @@ async def fetch_connector_history(
     через тот же пайплайн, что и webhook. Для типов без поддержки — ok=false
     (см. базовый ChatStrategyBase.import_history).
     """
+    auth_session: "Session" = req.state.session
+    auth_session.check_system_admin()
     env: "Environment" = req.app.state.env
 
     # Импорт гоняет записи через тот же пайплайн, что и webhook, поэтому и
@@ -196,7 +214,8 @@ async def get_connector_self_account(req: Request, connector_id: int):
     `external_account_id` из API провайдера (например, Avito возвращает
     {id, name, email, phone, profile_url}).
     """
-
+    auth_session: "Session" = req.state.session
+    auth_session.check_system_admin()
     env: "Environment" = req.app.state.env
 
     connector = await env.models.chat_connector.get(connector_id)

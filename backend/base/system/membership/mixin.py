@@ -1,6 +1,7 @@
 # Copyright 2025 FARA CRM
 # Generic polymorphic membership mixin.
 
+from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, ClassVar, Self
 
@@ -14,6 +15,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Many2one,
 )
 from ..dotorm.dotorm.model import DotModel
+from .permissions import MemberPermissions
 
 if TYPE_CHECKING:
     from backend.base.crm.partners.models.partners import Partner
@@ -26,9 +28,9 @@ class MemberMixin(DotModel):
 
     Предоставляет:
       • общие поля: user_id, partner_id, is_active, is_admin, joined_at, left_at
+      • состав: add / remove / active_user_ids / count_admins
       • методы членства: get_membership / check_membership
-      • методы прав: has_permission / check_permission
-      • шорткаты: check_admin
+      • права: require (по can_*-полю участника) / check_admin
 
     Модель-наследник ДОЛЖЕН объявить:
       __table__ — имя таблицы (например "chat_member")
@@ -40,8 +42,8 @@ class MemberMixin(DotModel):
       id — если нужен кастомный primary key (иначе возьми Integer(primary_key=True))
       FK на контейнер — отдельным Many2one (миксин НЕ создаёт его сам,
                         потому что у каждой модели своё имя колонки)
-      can_* поля — обычные Boolean-колонки, которые будут автоматически
-                   распознаны методом has_permission()
+      can_* поля — обычные Boolean-колонки; право проверяют по самому
+                   полю: member.require(member.can_pin)
       свои специфичные поля: last_read_message_id, muted, hourly_rate, ...
 
     Пример:
@@ -97,37 +99,88 @@ class MemberMixin(DotModel):
     )
     left_at: datetime | None = Datetime(description="Дата выхода")
 
-    def has_permission(self, permission: str) -> bool:
+    def require(self, allowed: bool) -> None:
         """
-        Проверить есть ли у участника конкретное право.
-        Админ (is_admin=True) имеет все права.
+        Потребовать у участника право — его can_*-поле:
 
-        Args:
-            permission: имя булева поля — обычно с префиксом "can_"
-                        (can_read, can_write, can_pin, ...) или "is_admin"
+            member = await ChatMember.check_membership(chat_id, user_id)
+            member.require(member.can_pin)
 
-        Returns:
-            True если право есть, False если нет или поля не существует.
+        Админу (is_admin) можно всё, остальным — по самому праву.
+
+        Raises:
+            FaraException PERMISSION_DENIED (403) если права нет.
         """
-        if self.is_admin:
-            return True
-        return bool(getattr(self, permission, False))
+        if not (self.is_admin or allowed):
+            raise FaraException(
+                {
+                    "content": "PERMISSION_DENIED",
+                    "status_code": HTTP_403_FORBIDDEN,
+                }
+            )
 
-    def get_permissions(self) -> dict[str, bool]:
-        """
-        Собрать словарь всех can_* прав + is_admin.
-        Админ перекрывает все can_* в True.
+    @classmethod
+    async def add(
+        cls,
+        container_id: int,
+        permissions: MemberPermissions,
+        *,
+        user_id: int | None = None,
+        partner_id: int | None = None,
+    ) -> int:
+        """Добавить участника — пользователя или партнёра — с правами."""
+        member = cls(
+            **{
+                cls._member_res_field: cls._member_res_model()(id=container_id)
+            },
+            **asdict(permissions),
+        )
+        if user_id:
+            member.user_id = env.models.user(id=user_id)
+        if partner_id:
+            member.partner_id = env.models.partner(id=partner_id)
+        return await cls.create(payload=member)
 
-        Автоматически находит все атрибуты, начинающиеся на 'can_',
-        так что при добавлении нового can_-поля метод НЕ надо править.
+    @classmethod
+    async def remove(cls, container_id: int, user_id: int) -> bool:
+        """Убрать пользователя из участников (мягко: is_active=False).
+        False — участником он не был."""
+        member = await cls.get_membership(container_id, user_id, fields=["id"])
+        if not member:
+            return False
+        await member.update(
+            cls(is_active=False, left_at=datetime.now(timezone.utc))
+        )
+        return True
+
+    @classmethod
+    async def active_user_ids(cls, container_id: int) -> list[int]:
+        """Пользователи-участники контейнера (у чата — адресаты WS-событий).
+
+        Сырой SQL через _get_db_session(): внутри транзакции это ЕЁ соединение,
+        поэтому участник, добавленный в этой же транзакции, в список попадёт.
+        И без правил доступа — состав не должен зависеть от того, что видит
+        текущий пользователь. Партнёров не берём.
         """
-        result: dict[str, bool] = {"is_admin": self.is_admin}
-        for attr in dir(self):
-            if attr.startswith("can_"):
-                value = getattr(self, attr, False)
-                if isinstance(value, bool):
-                    result[attr] = value or self.is_admin
-        return result
+        rows = await cls._get_db_session().execute(
+            f"SELECT user_id FROM {cls.__table__} "
+            f"WHERE {cls._member_res_field} = %s "
+            "AND user_id IS NOT NULL AND is_active = true",
+            (container_id,),
+        )
+        return [row["user_id"] for row in rows]
+
+    @classmethod
+    async def count_admins(cls, container_id: int) -> int:
+        """Сколько у контейнера админов. sudo: вступающий участников ещё
+        не видит."""
+        return await cls.sudo().search_count(
+            filter=[
+                (cls._member_res_field, "=", container_id),
+                ("is_admin", "=", True),
+                ("is_active", "=", True),
+            ]
+        )
 
     @classmethod
     async def get_membership(
@@ -177,34 +230,6 @@ class MemberMixin(DotModel):
             raise FaraException(
                 {
                     "content": "ACCESS_DENIED",
-                    "status_code": HTTP_403_FORBIDDEN,
-                }
-            )
-        return member
-
-    @classmethod
-    async def check_permission(
-        cls,
-        container_id: int,
-        user_id: int,
-        permission: str,
-    ):
-        """
-        Проверить членство + конкретное право.
-
-        Args:
-            permission: имя boolean-поля (can_read / can_write / is_admin / ...).
-
-        Raises:
-            FaraException ACCESS_DENIED если не член.
-            FaraException PERMISSION_DENIED если нет права.
-        """
-        member = await cls.check_membership(container_id, user_id)
-        if not member.has_permission(permission):
-            raise FaraException(
-                {
-                    "content": "PERMISSION_DENIED",
-                    "detail": f"Required permission: {permission}",
                     "status_code": HTTP_403_FORBIDDEN,
                 }
             )

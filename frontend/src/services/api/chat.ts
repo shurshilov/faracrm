@@ -127,6 +127,7 @@ const chatApi = api.injectEndpoints({
         can_read?: boolean;
         can_write?: boolean;
         can_invite?: boolean;
+        can_remove?: boolean;
         can_pin?: boolean;
         can_delete_others?: boolean;
         is_admin?: boolean;
@@ -157,6 +158,7 @@ const chatApi = api.injectEndpoints({
         default_can_read?: boolean;
         default_can_write?: boolean;
         default_can_invite?: boolean;
+        default_can_remove?: boolean;
         default_can_pin?: boolean;
         default_can_delete_others?: boolean;
       }
@@ -367,6 +369,7 @@ const chatApi = api.injectEndpoints({
                       data.data.create_datetime ||
                       optimisticMessage.create_datetime,
                     attachments: data.data.attachments,
+                    send_failed: data.data.send_failed,
                   };
                 }
               },
@@ -747,6 +750,7 @@ export interface MemberPermissions {
   can_read?: boolean;
   can_write?: boolean;
   can_invite?: boolean;
+  can_remove?: boolean;
   can_pin?: boolean;
   can_delete_others?: boolean;
   is_admin?: boolean;
@@ -813,6 +817,7 @@ export interface Chat {
   default_can_read?: boolean;
   default_can_write?: boolean;
   default_can_invite?: boolean;
+  default_can_remove?: boolean;
   default_can_pin?: boolean;
   default_can_delete_others?: boolean;
 }
@@ -851,6 +856,8 @@ export interface ChatMessage {
   pinned?: boolean;
   is_edited?: boolean;
   is_read?: boolean;
+  /** Во внешний канал сообщение не ушло — осталось только в ленте. */
+  send_failed?: boolean;
   reactions?: MessageReaction[];
   // Call fields (message_type='call' — WebRTC; 'call_external' — телефония)
   call_direction?: 'incoming' | 'outgoing';
@@ -966,6 +973,7 @@ export interface SendMessageResponse {
     body: string;
     create_datetime?: string;
     attachments?: MessageAttachment[];
+    send_failed?: boolean;
   };
 }
 

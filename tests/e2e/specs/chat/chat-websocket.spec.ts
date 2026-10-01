@@ -233,7 +233,6 @@ test.describe("WebSocket — presence", () => {
 
   test("online при подключении и offline при отключении", async ({
     adminWS,
-    user3Token,
     user3Session,
   }) => {
     test.setTimeout(60_000);
@@ -242,7 +241,7 @@ test.describe("WebSocket — presence", () => {
     // Ни одного общего чата у admin и user3 нет — и это не должно мешать.
     adminWS.clearMessages();
 
-    const user3ws = new WSClient(WS_URL, user3Token);
+    const user3ws = new WSClient(WS_URL, user3Session);
     await user3ws.connect();
 
     const online = await adminWS.waitForPresence(userId, "online", 15_000);

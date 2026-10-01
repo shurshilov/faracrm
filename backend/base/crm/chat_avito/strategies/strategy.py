@@ -39,7 +39,8 @@ class AvitoStrategy(ChatStrategyBase):
     - webhook_url: URL для приёма webhook
     - access_token: генерируется автоматически
     - access_token_expired: время истечения токена
-    - external_account_id: ID аккаунта Avito (опционально)
+    - external_account_id: ID аккаунта Avito — от его имени идут запросы
+      к API (в форме коннектора подтягивается кнопкой)
 
     Документация API: https://developers.avito.ru/api-catalog/messenger/documentation
     """
@@ -196,6 +197,16 @@ class AvitoStrategy(ChatStrategyBase):
             response = await client.post(url, headers=headers)
             return response.json()
 
+    @staticmethod
+    def _account_id(connector: "ChatConnector") -> str:
+        """ID аккаунта Avito, от имени которого идёт отправка."""
+        if not connector.external_account_id:
+            raise ValueError(
+                "Avito: у коннектора не заполнен ID аккаунта "
+                "(external_account_id)"
+            )
+        return connector.external_account_id
+
     async def chat_send_message(
         self,
         connector: "ChatConnector",
@@ -213,7 +224,7 @@ class AvitoStrategy(ChatStrategyBase):
 
         Args:
             connector: Коннектор Avito
-            user_from: Аккаунт отправителя (external_account)
+            user_from: Не используется — ID аккаунта берётся из коннектора
             body: Текст сообщения
             chat_id: ID чата в Avito
             recipients_ids: Не используется
@@ -224,10 +235,7 @@ class AvitoStrategy(ChatStrategyBase):
         if not chat_id:
             raise ValueError("Cannot send Avito message without chat_id")
 
-        # user_from.external_id содержит ID аккаунта Avito
-        # user_id = user_from.external_id
-        # TODO: подумать над рефакторингом
-        user_id = user_from.external_id
+        user_id = self._account_id(connector)
 
         url = (
             f"{connector.connector_url or self.MESSENGER_URL}"
@@ -286,7 +294,7 @@ class AvitoStrategy(ChatStrategyBase):
 
         Args:
             connector: Коннектор Avito
-            user_from: Аккаунт отправителя
+            user_from: Не используется — ID аккаунта берётся из коннектора
             chat_id: ID чата
             attachment: Вложение для отправки
 
@@ -296,7 +304,7 @@ class AvitoStrategy(ChatStrategyBase):
         if not chat_id:
             raise ValueError("Cannot send Avito file without chat_id")
 
-        user_id = user_from.external_id
+        user_id = self._account_id(connector)
 
         # Шаг 1: Загружаем изображение
         image_id = await self._upload_image(connector, user_id, attachment)

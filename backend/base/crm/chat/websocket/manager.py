@@ -565,7 +565,9 @@ class ConnectionManager:
 
         # ── WebRTC call signaling ─────────────────────────────────────
         # Тупая пересылка второму участнику звонка: адресата клиент уже
-        # указал в to_user_id. Бизнес-логики ноль.
+        # указал в to_user_id. Бизнес-логики ноль. Отправителя подписывает
+        # сервер (from_user_id): получатель сверяет его с собеседником по
+        # звонку, чтобы в чужой звонок нельзя было вбросить свой SDP/ICE.
         #
         # Раньше сервер вычислял адресата сам — читал call-сообщение из БД и
         # искал второго участника чата, и делал это на КАЖДЫЙ кадр (а их за
@@ -580,7 +582,9 @@ class ConnectionManager:
         ):
             to_user_id = data.get("to_user_id")
             if to_user_id:
-                await self.send_to_user(int(to_user_id), data)
+                await self.send_to_user(
+                    int(to_user_id), {**data, "from_user_id": user_id}
+                )
             else:
                 logger.warning(
                     "call signal %s without to_user_id (from user %s)",

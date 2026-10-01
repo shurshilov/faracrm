@@ -53,6 +53,7 @@ interface MemberPermissions {
   can_read: boolean;
   can_write: boolean;
   can_invite: boolean;
+  can_remove: boolean;
   can_pin: boolean;
   can_delete_others: boolean;
   is_admin: boolean;
@@ -62,6 +63,7 @@ interface ChatDefaultPermissions {
   default_can_read: boolean;
   default_can_write: boolean;
   default_can_invite: boolean;
+  default_can_remove: boolean;
   default_can_pin: boolean;
   default_can_delete_others: boolean;
 }
@@ -105,6 +107,11 @@ function PermissionsBlock({
       key: 'can_invite',
       defaultKey: 'default_can_invite',
       label: t('permissions.canInvite'),
+    },
+    {
+      key: 'can_remove',
+      defaultKey: 'default_can_remove',
+      label: t('permissions.canRemove'),
     },
     {
       key: 'can_pin',
@@ -185,6 +192,7 @@ function MemberPermissionsModal({
     can_read: true,
     can_write: true,
     can_invite: false,
+    can_remove: false,
     can_pin: false,
     can_delete_others: false,
     is_admin: false,
@@ -257,7 +265,8 @@ function MemberPermissionsModal({
 function MembersList({
   members,
   currentUserId,
-  isGroupChat,
+  canManage,
+  canRemove,
   onRemove,
   onEditPermissions,
   isBusy,
@@ -266,7 +275,10 @@ function MembersList({
 }: {
   members: (ChatMember & { permissions?: MemberPermissions })[];
   currentUserId: number;
-  isGroupChat: boolean;
+  /** Текущий пользователь — админ группы: меняет права участников */
+  canManage: boolean;
+  /** Текущий пользователь удаляет участников: админ или право can_remove */
+  canRemove: boolean;
   onRemove: (id: number) => void;
   onEditPermissions: (
     member: ChatMember & { permissions?: MemberPermissions },
@@ -341,10 +353,17 @@ function MembersList({
         </Text>
       ) : (
         filteredMembers.map(member => {
-          const isCurrentUser = member.id === currentUserId;
+          // id партнёра может совпасть с id пользователя — сверяем и тип.
+          // Права и удаление — только у пользователей: ручки участников
+          // работают по user_id.
+          const isUser = member.member_type !== 'partner';
+          const isCurrentUser = isUser && member.id === currentUserId;
+          const canManageMember = canManage && isUser;
 
           return (
-            <Group key={member.id} justify="space-between">
+            <Group
+              key={`${member.member_type}-${member.id}`}
+              justify="space-between">
               <Group gap="sm">
                 <Avatar
                   color={isCurrentUser ? 'green' : 'blue'}
@@ -373,8 +392,7 @@ function MembersList({
               </Group>
 
               <Group gap="xs">
-                {/* Edit permissions button - for group chats, not for self */}
-                {isGroupChat && (
+                {canManageMember && (
                   <Tooltip
                     label={
                       t('permissions.memberPermissions') || 'Edit permissions'
@@ -383,6 +401,7 @@ function MembersList({
                       variant="subtle"
                       color="blue"
                       size="sm"
+                      aria-label={`${t('permissions.memberPermissions')}: ${member.name}`}
                       onClick={() => onEditPermissions(member)}
                       disabled={isBusy}>
                       <IconShield size={16} />
@@ -390,13 +409,14 @@ function MembersList({
                   </Tooltip>
                 )}
 
-                {/* Remove member button - for group chats, not for self */}
-                {isGroupChat && !isCurrentUser && (
+                {/* Себя не удаляют — для этого «Покинуть чат» */}
+                {canRemove && isUser && !isCurrentUser && (
                   <Tooltip label={t('removeMember')}>
                     <ActionIcon
                       variant="subtle"
                       color="red"
                       size="sm"
+                      aria-label={`${t('removeMember')}: ${member.name}`}
                       onClick={() => onRemove(member.id)}
                       disabled={isBusy}>
                       <IconUserMinus size={16} />
@@ -452,6 +472,7 @@ export function ChatSettingsModal({
       default_can_read: true,
       default_can_write: true,
       default_can_invite: false,
+      default_can_remove: false,
       default_can_pin: false,
       default_can_delete_others: false,
     });
@@ -471,6 +492,7 @@ export function ChatSettingsModal({
           default_can_read: chatData.data.default_can_read ?? true,
           default_can_write: chatData.data.default_can_write ?? true,
           default_can_invite: chatData.data.default_can_invite ?? false,
+          default_can_remove: chatData.data.default_can_remove ?? false,
           default_can_pin: chatData.data.default_can_pin ?? false,
           default_can_delete_others:
             chatData.data.default_can_delete_others ?? false,
@@ -498,12 +520,18 @@ export function ChatSettingsModal({
 
   const members = chatData?.data?.members || chat.members || [];
 
-  // Является ли текущий пользователь админом этого чата.
-  // На бэке delete_chat для group/channel требует ChatMember.is_admin,
-  // поэтому кнопку «Удалить чат» показываем только админам.
-  const isCurrentUserAdmin = members.some(
-    m => m.id === currentUserId && m.permissions?.is_admin,
+  // Права текущего пользователя в этом чате. Бэк пускает к удалению чата,
+  // правам участников и правам по умолчанию только админа чата
+  // (ChatMember.is_admin), к приглашению — ещё и can_invite, к удалению
+  // участников — can_remove: остальным эти кнопки не показываем.
+  const currentMember = members.find(
+    m => m.member_type !== 'partner' && m.id === currentUserId,
   );
+  const isCurrentUserAdmin = !!currentMember?.permissions?.is_admin;
+  const canInvite =
+    isCurrentUserAdmin || !!currentMember?.permissions?.can_invite;
+  const canRemove =
+    isCurrentUserAdmin || !!currentMember?.permissions?.can_remove;
   const isGroupChat = chat.chat_type !== 'direct';
 
   const handleSave = async () => {
@@ -537,6 +565,7 @@ export function ChatSettingsModal({
         default_can_read: defaultPermissions.default_can_read,
         default_can_write: defaultPermissions.default_can_write,
         default_can_invite: defaultPermissions.default_can_invite,
+        default_can_remove: defaultPermissions.default_can_remove,
         default_can_pin: defaultPermissions.default_can_pin,
         default_can_delete_others: defaultPermissions.default_can_delete_others,
       }).unwrap();
@@ -623,8 +652,7 @@ export function ChatSettingsModal({
           chatId: chat.id,
           memberId: member?.id,
           ...permissions,
-        });
-      // TODO: Implement updateMemberPermissions API
+        }).unwrap();
       notifications.show({
         title: t('save'),
         message: 'Member permissions saved',
@@ -736,7 +764,8 @@ export function ChatSettingsModal({
               <MembersList
                 members={members as any}
                 currentUserId={currentUserId}
-                isGroupChat={false}
+                canManage={false}
+                canRemove={false}
                 onRemove={handleRemoveMember}
                 onEditPermissions={setEditingMember}
                 isBusy={isBusy}
@@ -906,39 +935,45 @@ export function ChatSettingsModal({
                   <Badge variant="light">{members.length}</Badge>
                 </Group>
 
-                {/* Добавление участников */}
-                <Box>
-                  <Text size="sm" fw={500} mb="xs">
-                    {t('addMember')}
-                  </Text>
-                  <ChatParticipantSelect
-                    value={newMembers}
-                    onChange={setNewMembers}
-                    excludeUserIds={members.map(m => m.id)}
-                    disabled={isAdding}
-                    showHint={false}
-                  />
-                  <Group justify="flex-end" mt="xs">
-                    <Button
-                      size="xs"
-                      onClick={handleAddMembers}
-                      loading={isAdding}
-                      disabled={
-                        newMembers.userIds.length +
-                          newMembers.partnerIds.length ===
-                        0
-                      }>
-                      {t('addMember')}
-                    </Button>
-                  </Group>
-                </Box>
+                {canInvite && (
+                  <>
+                    <Box>
+                      <Text size="sm" fw={500} mb="xs">
+                        {t('addMember')}
+                      </Text>
+                      <ChatParticipantSelect
+                        value={newMembers}
+                        onChange={setNewMembers}
+                        excludeUserIds={members
+                          .filter(m => m.member_type !== 'partner')
+                          .map(m => m.id)}
+                        disabled={isAdding}
+                        showHint={false}
+                      />
+                      <Group justify="flex-end" mt="xs">
+                        <Button
+                          size="xs"
+                          onClick={handleAddMembers}
+                          loading={isAdding}
+                          disabled={
+                            newMembers.userIds.length +
+                              newMembers.partnerIds.length ===
+                            0
+                          }>
+                          {t('addMember')}
+                        </Button>
+                      </Group>
+                    </Box>
 
-                <Divider />
+                    <Divider />
+                  </>
+                )}
 
                 <MembersList
                   members={members as any}
                   currentUserId={currentUserId}
-                  isGroupChat={true}
+                  canManage={isCurrentUserAdmin}
+                  canRemove={canRemove}
                   onRemove={handleRemoveMember}
                   onEditPermissions={setEditingMember}
                   isBusy={isBusy}
@@ -966,7 +1001,7 @@ export function ChatSettingsModal({
                   <PermissionsBlock
                     permissions={defaultPermissions}
                     onChange={handleDefaultPermissionChange}
-                    disabled={isBusy}
+                    disabled={isBusy || !isCurrentUserAdmin}
                     showAdmin={false}
                     t={t}
                   />
@@ -976,7 +1011,7 @@ export function ChatSettingsModal({
                   <Button
                     onClick={handleSaveDefaultPermissions}
                     loading={isSavingPermissions}
-                    disabled={isBusy}>
+                    disabled={isBusy || !isCurrentUserAdmin}>
                     {t('save')}
                   </Button>
                 </Group>

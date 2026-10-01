@@ -1,25 +1,44 @@
 # Copyright 2025 FARA CRM
 # Chat module - chat member model (many2many link table)
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
-from starlette.status import HTTP_403_FORBIDDEN
 
 from backend.base.system.core.enviroment import env
+from backend.base.system.core.exceptions.environment import FaraException
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Integer,
     Many2one,
 )
-from backend.base.system.core.exceptions.environment import (
-    FaraException,
-)
-from backend.base.system.membership import MemberMixin
+from backend.base.system.membership import MemberMixin, MemberPermissions
 from backend.base.crm.users.audit_mixin import AuditMixin
 
 if TYPE_CHECKING:
     from backend.base.crm.chat.models.chat import Chat
-    from backend.base.crm.users.models.users import User
     from backend.project_setup import ChatConnector
+
+
+@dataclass(frozen=True)
+class ChatPermissions(MemberPermissions):
+    """Права участника чата: общие и свои can_*-поля ChatMember."""
+
+    can_pin: bool = False
+    can_delete_others: bool = False
+
+
+# Обычный участник группы, клиентского чата и заметок записи.
+MEMBER = ChatPermissions()
+# В личном чате оба могут закреплять сообщения.
+DIRECT = ChatPermissions(can_pin=True)
+# Создатель группы и первый пользователь клиентского чата.
+ADMIN = ChatPermissions(
+    can_invite=True,
+    can_remove=True,
+    can_pin=True,
+    can_delete_others=True,
+    is_admin=True,
+)
 
 
 class ChatMember(AuditMixin, MemberMixin):
@@ -64,6 +83,12 @@ class ChatMember(AuditMixin, MemberMixin):
     can_invite: bool = Boolean(
         default=False, description="Может приглашать участников"
     )
+    # default_db: на старой базе колонка появляется сразу с false у всех.
+    can_remove: bool = Boolean(
+        default=False,
+        default_db=True,
+        description="Может удалять участников",
+    )
     can_pin: bool = Boolean(
         default=False, description="Может закреплять сообщения"
     )
@@ -91,198 +116,55 @@ class ChatMember(AuditMixin, MemberMixin):
     )
 
     @classmethod
-    async def active_user_ids(cls, chat_id: int) -> list[int]:
-        """Пользователи-участники чата — адресаты его WS-событий.
+    async def list_for_chats(cls, chat_ids: list[int]) -> dict[int, list]:
+        """Участники чатов с именами, аватарами и правами: chat_id → список.
 
-        Сырой SQL через _get_db_session(): внутри транзакции это ЕЁ соединение,
-        поэтому участник, добавленный в этой же транзакции, событие получит.
-        И без правил доступа — список адресатов не должен зависеть от того,
-        что видит текущий пользователь. Партнёры сокетов не держат, их не берём.
+        Форма ответа GET /chats и GET /chats/{id}. Имя и аватар участника —
+        пользователя или партнёра — одним запросом; правила доступа к чатам
+        уже проверил вызывающий.
         """
         rows = await cls._get_db_session().execute(
-            "SELECT user_id FROM chat_member "
-            "WHERE chat_id = %s AND user_id IS NOT NULL AND is_active = true",
-            (chat_id,),
+            """
+            SELECT cm.chat_id,
+                   COALESCE(u.id, p.id) AS id,
+                   COALESCE(u.name, p.name) AS name,
+                   CASE WHEN cm.user_id IS NOT NULL
+                        THEN 'user' ELSE 'partner' END AS member_type,
+                   COALESCE(u.image, p.image) AS image_id,
+                   cm.can_read, cm.can_write, cm.can_invite, cm.can_remove,
+                   cm.can_pin, cm.can_delete_others, cm.is_admin
+            FROM chat_member cm
+            LEFT JOIN users u ON u.id = cm.user_id
+            LEFT JOIN partners p ON p.id = cm.partner_id
+            WHERE cm.chat_id = ANY(%s) AND cm.is_active = true
+            """,
+            (chat_ids,),
         )
-        return [row["user_id"] for row in rows]
-
-    # Поскольку роутеры используют эти имена в 15+ местах, сохраняем их
-    # как тонкие обёртки над check_permission().
-    # TODO: удалить и использовать стандартный метод из миксина
-    @classmethod
-    async def check_can_write(cls, chat_id: int, user_id: int) -> "ChatMember":
-        return await cls.check_permission(chat_id, user_id, "can_write")
-
-    @classmethod
-    async def check_can_invite(
-        cls, chat_id: int, user_id: int
-    ) -> "ChatMember":
-        return await cls.check_permission(chat_id, user_id, "can_invite")
-
-    @classmethod
-    async def check_can_pin(cls, chat_id: int, user_id: int) -> "ChatMember":
-        return await cls.check_permission(chat_id, user_id, "can_pin")
-
-    @classmethod
-    async def check_can_delete_others(
-        cls, chat_id: int, user_id: int
-    ) -> "ChatMember":
-        return await cls.check_permission(
-            chat_id, user_id, "can_delete_others"
-        )
-
-    # ============================================================
-    # Admin override: позволяет суперюзеру (User.is_admin=True)
-    # читать чужие чаты без членства.
-    # ============================================================
-
-    @classmethod
-    async def get_or_stub_admin(
-        cls,
-        chat_id: int,
-        user_id: int,
-        is_admin: bool,
-    ) -> tuple["ChatMember", bool]:
-        """
-        Для **read**-эндпоинтов: вернуть члена чата, но если это
-        суперюзер без членства — отдать в памяти стаб (БД не меняется).
-
-        Returns:
-            (member, was_stubbed)
-            - member: реальная запись из БД либо стаб
-            - was_stubbed: True если вернули стаб (юзер админ без членства)
-
-        Raises:
-            FaraException: если юзер не член и не админ
-        """
-        member = await cls.get_membership(chat_id, user_id)
-        if member:
-            return member, False
-        if not is_admin:
-            raise FaraException(
+        members: dict[int, list] = {}
+        for row in rows:
+            members.setdefault(row["chat_id"], []).append(
                 {
-                    "content": "ACCESS_DENIED",
-                    "status_code": HTTP_403_FORBIDDEN,
+                    "id": row["id"],
+                    "name": row["name"],
+                    "member_type": row["member_type"],
+                    "image_id": row["image_id"],
+                    "permissions": {
+                        "can_read": row["can_read"],
+                        "can_write": row["can_write"],
+                        "can_invite": row["can_invite"],
+                        "can_remove": row["can_remove"],
+                        "can_pin": row["can_pin"],
+                        "can_delete_others": row["can_delete_others"],
+                        "is_admin": row["is_admin"],
+                    },
                 }
             )
-        # Стаб для admin — НЕ сохраняется в БД, только для прохода
-        # по коду (доступ к last_read_message_id и т.п.)
-        stub = cls(
-            chat_id=Chat(id=chat_id),
-            user_id=User(id=user_id),
-            is_admin=True,
-            is_active=True,
-            last_read_message_id=0,
-            can_read=True,
-            can_write=True,
-            can_invite=True,
-            can_pin=True,
-            can_delete_others=True,
-        )
-        return stub, True
+        return members
 
-    @classmethod
-    async def get_or_stub_reader(
-        cls,
-        chat_id: int,
-        user_id: int,
-        is_admin: bool,
-    ) -> tuple["ChatMember", bool]:
-        """Для READ-эндпоинтов с team-доступом.
-
-        - член чата            → его реальная запись (полные права);
-        - админ                → полный стаб (как get_or_stub_admin);
-        - team-читатель        → read-only стаб (can_write=False): доступ к чату
-          на ЧТЕНИЕ выдан правилом (chat.team_id ∈ {{team_ids}}), но писать надо
-          вступив. Проверяем через ORM chat.search — правила chat (member/team)
-          сами решают: недоступный чат вернёт пусто → 403;
-        - иначе                → 403.
-
-        Запись (post/edit/delete) по-прежнему гейтится check_membership /
-        check_can_write — team-читатель туда не проходит.
-        """
-        member = await cls.get_membership(chat_id, user_id)
-        if member:
-            return member, False
-        if is_admin:
-            stub = cls(
-                chat_id=Chat(id=chat_id),
-                user_id=User(id=user_id),
-                is_admin=True,
-                is_active=True,
-                last_read_message_id=0,
-                can_read=True,
-                can_write=True,
-                can_invite=True,
-                can_pin=True,
-                can_delete_others=True,
+    async def check_not_last_admin(self, chat_id: int) -> None:
+        """Последний админ не уходит из чата и не теряет права: сначала
+        передаёт их другому участнику."""
+        if self.is_admin and await self.count_admins(chat_id) == 1:
+            raise FaraException(
+                {"content": "CANNOT_REMOVE_THE_LAST_CHAT_ADMIN"}
             )
-            return stub, True
-
-        # ORM применяет правила модели chat (member OR team) для текущей сессии:
-        # доступный чат вернётся, недоступный — пусто. Член/админ уже отсечены
-        # выше, значит непустой результат = team-доступ (read-only).
-        accessible = await env.models.chat.search_one(
-            filter=[("id", "=", chat_id)],
-            fields=["id"],
-        )
-        if accessible:
-            reader_stub = cls(
-                chat_id=Chat(id=chat_id),
-                user_id=User(id=user_id),
-                is_admin=False,
-                is_active=True,
-                last_read_message_id=0,
-                can_read=True,
-                can_write=False,
-                can_invite=False,
-                can_pin=False,
-                can_delete_others=False,
-            )
-            return reader_stub, True
-
-        raise FaraException(
-            {
-                "content": "ACCESS_DENIED",
-                "status_code": HTTP_403_FORBIDDEN,
-            }
-        )
-
-    # @classmethod
-    # async def ensure_admin_member(
-    #     cls,
-    #     chat_id: int,
-    #     user_id: int,
-    #     is_admin: bool,
-    # ) -> "ChatMember":
-    #     """
-    #     Для **write**-эндпоинтов: гарантировать что юзер — реальный
-    #     член чата. Если это admin без членства — создать запись в БД.
-
-    #     После этого admin становится полноценным членом (виден другим
-    #     участникам, получает realtime-обновления).
-
-    #     Returns:
-    #         ChatMember (всегда сохранённая запись)
-
-    #     Raises:
-    #         FaraException: если юзер не член и не админ
-    #     """
-    #     member, was_stub = await cls.get_or_stub_admin(
-    #         chat_id, user_id, is_admin
-    #     )
-    #     if not was_stub:
-    #         return member
-    #     # admin был стабом — создаём реальную запись
-    #     payload = cls(
-    #         chat_id=chat_id,
-    #         user_id=user_id,
-    #         is_admin=True,
-    #         is_active=True,
-    #         can_read=True,
-    #         can_write=True,
-    #         can_invite=True,
-    #         can_pin=True,
-    #         can_delete_others=True,
-    #     )
-    #     return await cls.create(payload=payload)

@@ -60,6 +60,7 @@ import {
 } from './EmailMessageContent';
 import { NotificationMessageContent } from './NotificationMessageContent';
 import { CallMessageContent } from './CallMessageContent';
+import { SendFailedMark } from './SendFailedMark';
 import { connectorIcon } from './connectorMeta';
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🎉', '🔥', '👏'];
@@ -737,6 +738,7 @@ export function ChatMessages({
                               c={isOwnMessage(message) ? undefined : 'dimmed'}>
                               {formatTime(message.create_datetime)}
                             </Text>
+                            {message.send_failed && <SendFailedMark />}
                             {isOwnMessage(message) && (
                               <Tooltip
                                 label={
@@ -825,6 +827,7 @@ export function ChatMessages({
                             <Text size="xs" c="dimmed">
                               {formatTime(message.create_datetime)}
                             </Text>
+                            {message.send_failed && <SendFailedMark />}
                             {isOwnMessage(message) && (
                               <Tooltip
                                 label={

@@ -145,12 +145,6 @@ class EmailStrategy(ChatStrategyBase):
     # любом случае, его ставит почтовик клиента.
     supports_thread = True
 
-    # Email адресуется своими полями (email_from/email_username), внешний
-    # outbox-аккаунт ему не нужен. Без этого флага send_outgoing_message
-    # молча пропускал отправку (у email connector.outbox_account_id = None,
-    # т.к. external_account_id не заполняется) и письмо не уходило.
-    requires_outbox_account = False
-
     async def get_or_generate_token(
         self, connector: "ChatConnector"
     ) -> str | None:

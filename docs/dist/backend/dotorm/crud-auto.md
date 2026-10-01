@@ -153,7 +153,8 @@ async def send_message(req: Request, chat_id: int, body: MessageCreate):
     env = req.app.state.env
 
     # Проверка прав
-    await ChatMember.check_can_write(chat_id, user_id)
+    member = await ChatMember.check_membership(chat_id, user_id)
+    member.require(member.can_write)
 
     # Создание через ORM
     msg_id = await env.models.chat_message.create(

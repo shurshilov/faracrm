@@ -61,12 +61,27 @@ class ChatApp(Service):
         "chat_member": ACL.FULL,
         "chat_message": ACL.FULL,
         "chat_message_reaction": ACL.FULL,
-        "chat_connector": ACL.FULL,
-        "chat_external_account": ACL.FULL,
-        "chat_external_chat": ACL.FULL,
-        "chat_external_message": ACL.FULL,
-        "chat_routing_rule_lead": ACL.FULL,
+        # Свои папки сотрудник создаёт, правит и удаляет сам (правила
+        # chat_folder ниже); глобальные только читает.
         "chat_folder": ACL.FULL,
+        # Коннекторы и их служебные таблицы сотрудник только читает:
+        # настраивает их администратор (ROLE_ACL), а пишет сервер под sudo —
+        # входящий вебхук и внешняя отправка.
+        "chat_connector": ACL.READ_ONLY,
+        "chat_external_account": ACL.READ_ONLY,
+        "chat_external_chat": ACL.READ_ONLY,
+        "chat_external_message": ACL.READ_ONLY,
+        "chat_routing_rule_lead": ACL.READ_ONLY,
+    }
+
+    ROLE_ACL = {
+        "system_admin": {
+            "chat_connector": ACL.FULL,
+            "chat_external_account": ACL.FULL,
+            "chat_external_chat": ACL.FULL,
+            "chat_external_message": ACL.FULL,
+            "chat_routing_rule_lead": ACL.FULL,
+        },
     }
 
     async def startup(self, app: "FastAPI"):
@@ -209,7 +224,6 @@ class ChatApp(Service):
         await super().post_init(app)
         env: "Environment" = app.state.env
 
-        # await self._init_chat_rules(env)
         await self._init_membership_rules(env)
         await self._init_system_settings(env)
 
@@ -402,59 +416,3 @@ class ChatApp(Service):
             }
             for key, text in descriptions.items()
         ]
-
-    # async def _init_chat_rules(self, env: "Environment"):
-    #     """Создаёт правила безопасности для чатов и сообщений."""
-    #     from backend.base.crm.security.models.rules import Rule
-
-    #     # Правило для chat: можно удалять только свои чаты (creator_id = user_id)
-    #     chat_model = await env.models.model.search(
-    #         filter=[("name", "=", "chat")],
-    #         limit=1,
-    #     )
-    #     if chat_model:
-    #         rule_name = "User can only delete own chats"
-    #         existing = await env.models.rule.search(
-    #             filter=[("name", "=", rule_name)],
-    #             limit=1,
-    #         )
-    #         if not existing:
-    #             await env.models.rule.create(
-    #                 payload=Rule(
-    #                     name=rule_name,
-    #                     active=True,
-    #                     model_id=chat_model[0],
-    #                     role_id=None,
-    #                     domain=[["creator_id", "=", "{{user_id}}"]],
-    #                     perm_create=False,
-    #                     perm_read=False,
-    #                     perm_update=False,
-    #                     perm_delete=True,
-    #                 ),
-    #             )
-
-    #     # Правило для chat_message: можно удалять только свои сообщения (author_id = user_id)
-    #     message_model = await env.models.model.search(
-    #         filter=[("name", "=", "chat_message")],
-    #         limit=1,
-    #     )
-    #     if message_model:
-    #         rule_name = "User can only delete and edit own messages"
-    #         existing = await env.models.rule.search(
-    #             filter=[("name", "=", rule_name)],
-    #             limit=1,
-    #         )
-    #         if not existing:
-    #             await env.models.rule.create(
-    #                 payload=Rule(
-    #                     name=rule_name,
-    #                     active=True,
-    #                     model_id=message_model[0],
-    #                     role_id=None,
-    #                     domain=[["author_user_id", "=", "{{user_id}}"]],
-    #                     perm_create=False,
-    #                     perm_read=False,
-    #                     perm_update=True,  # Редактировать тоже только свои
-    #                     perm_delete=True,
-    #                 ),
-    #             )

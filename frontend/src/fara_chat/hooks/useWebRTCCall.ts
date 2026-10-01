@@ -465,6 +465,10 @@ export function useWebRTCCall(): UseWebRTCCallResult {
       // сторона, которая про адресацию ещё не знает (старая вкладка).
       if (msg.to_client_id && msg.to_client_id !== CLIENT_ID) return;
 
+      // SDP и ICE принимаем только от собеседника по звонку: отправителя
+      // подписывает сервер (from_user_id), подделать его клиент не может.
+      if (msg.from_user_id && msg.from_user_id !== session?.peer.id) return;
+
       switch (msg.type) {
         // ── invite: мы callee ──
         case 'call.invite': {

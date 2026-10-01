@@ -31,7 +31,7 @@ class ChatMessageReaction(DotModel):
 
     # Составной индекс для toggle-логики реакций:
     # фильтр (message_id, user_id, emoji) при каждом клике на эмодзи.
-    # Также покрывает get_message_reactions по message_id (prefix scan).
+    # Также покрывает выборку реакций по message_id (prefix scan).
     __indexes__ = [("message_id", "user_id")]
 
     id: int = Integer(primary_key=True)
@@ -61,3 +61,30 @@ class ChatMessageReaction(DotModel):
     create_datetime: datetime = Datetime(
         default=lambda: datetime.now(timezone.utc), description="Дата создания"
     )
+
+    @classmethod
+    async def grouped(cls, message_ids: list[int]) -> dict[int, list[dict]]:
+        """Реакции сообщений, сгруппированные по эмодзи:
+        message_id → [{"emoji", "users", "count"}]. Одним запросом на все
+        сообщения."""
+        reactions = await cls.search(
+            filter=[("message_id", "in", message_ids)],
+            fields=["id", "emoji", "message_id", "user_id"],
+        )
+        users: dict[int, dict[str, list]] = {}
+        for reaction in reactions:
+            users.setdefault(reaction.message_id.id, {}).setdefault(
+                reaction.emoji, []
+            ).append(
+                {
+                    "user_id": reaction.user_id.id,
+                    "user_name": reaction.user_id.name,
+                }
+            )
+        return {
+            message_id: [
+                {"emoji": emoji, "users": people, "count": len(people)}
+                for emoji, people in by_emoji.items()
+            ]
+            for message_id, by_emoji in users.items()
+        }

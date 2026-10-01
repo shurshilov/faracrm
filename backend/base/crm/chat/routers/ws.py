@@ -4,6 +4,7 @@
 import logging
 from typing import TYPE_CHECKING
 from backend.base.crm.auth_token.app import AuthTokenApp
+from backend.base.system.auth.exception import AuthFailed
 
 from fastapi import Depends, APIRouter, WebSocket, WebSocketDisconnect
 
@@ -30,7 +31,9 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint для real-time чата.
 
-    Требует авторизации через query параметр token.
+    Вход — как у HTTP-ручек (Token Binding): токен из query-параметра token
+    плюс HttpOnly cookie сессии. Одного токена из адреса недостаточно, а
+    просроченная сессия не подключится.
 
     ВАЖНО: по ASGI-спеке если не вызвать accept() ДО возврата, uvicorn
     выдаёт ошибку "ASGI callable returned without sending handshake".
@@ -39,33 +42,28 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     token = websocket.query_params.get("token")
     env: "Environment" = websocket.app.state.env
+    cookie_token = websocket.cookies.get(env.settings.auth.cookie_name)
 
     # Все auth-failures требуют явного accept+close, не просто return.
     # Иначе: ASGI handshake never completed → лог ошибки на каждом отказе.
 
-    if not token:
+    if not token or not cookie_token:
         await websocket.accept()
         await websocket.close(code=_CLOSE_UNAUTHORIZED, reason="Missing token")
         return
 
     try:
-        # sudo: token — private-поле, фильтр по нему разрешён только
-        # системной сессии (условие пишет код, клиент даёт лишь значение).
-        session = await env.models.session.sudo().search_one(
-            filter=[("token", "=", token), ("active", "=", True)],
-            fields=["id", "user_id"],
-        )
+        session = await AuthTokenApp.check_session(env, token, cookie_token)
+    except AuthFailed:
+        await websocket.accept()
+        await websocket.close(code=_CLOSE_UNAUTHORIZED, reason="Invalid token")
+        return
     except Exception as e:
         logger.error("WebSocket auth error: %s", e)
         await websocket.accept()
         await websocket.close(
             code=_CLOSE_INTERNAL, reason="Auth lookup failed"
         )
-        return
-
-    if not session:
-        await websocket.accept()
-        await websocket.close(code=_CLOSE_UNAUTHORIZED, reason="Invalid token")
         return
 
     user_id = session.user_id.id

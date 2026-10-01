@@ -1,11 +1,11 @@
 # Copyright 2025 FARA CRM
 # Chat module - messages router
 
+import logging
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Request, Query
-from starlette.status import HTTP_403_FORBIDDEN
+from starlette.status import HTTP_403_FORBIDDEN, HTTP_404_NOT_FOUND
 
-from backend.base.crm.attachments.models.attachments import Attachment
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.crm.chat_web_push.notification_service import (
     notify_on_new_message,
@@ -20,6 +20,8 @@ from ..schemas.chat import (
 )
 from ..models.chat_member import ChatMember
 
+log = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from backend.base.system.core.enviroment import Environment
     from backend.base.crm.security.models.sessions import Session
@@ -30,23 +32,20 @@ router_private = APIRouter(
 )
 
 
-def format_message_author(msg) -> dict:
-    """
-    Форматирует автора сообщения (user или partner).
-    """
-    if msg.author_user_id:
-        return {
-            "id": msg.author_user_id.id,
-            "name": msg.author_user_id.name,
-            "type": "user",
-        }
-    elif msg.author_partner_id:
-        return {
-            "id": msg.author_partner_id.id,
-            "name": msg.author_partner_id.name,
-            "type": "partner",
-        }
-    return {"id": None, "name": "Unknown", "type": None}
+async def _chat_message(
+    env: "Environment", chat_id: int, message_id: int, fields: list[str]
+):
+    """Сообщение ЭТОГО чата. Права проверяются в чате из адреса, поэтому
+    сообщение другого чата по этому адресу не найти — 404."""
+    message = await env.models.chat_message.search_one(
+        filter=[("id", "=", message_id), ("chat_id", "=", chat_id)],
+        fields=fields,
+    )
+    if not message:
+        raise FaraException(
+            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
+        )
+    return message
 
 
 @router_private.get("/chats/{chat_id}/messages")
@@ -65,15 +64,17 @@ async def get_messages(
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Получаем member: член → его запись; админ → полный стаб; team-читатель
-    # (chat.team_id ∈ мои команды) → read-only стаб; иначе 403. Так «Все»
-    # реально открывается и читается не-членом команды (писать — вступив).
-    current_member, _ = await ChatMember.get_or_stub_reader(
-        chat_id, user_id, auth_session.user_id.is_admin
-    )
+    # Читают участники, а без членства — команда чата и суперпользователь
+    # (правила доступа chat). Так «Все» реально открывается и читается
+    # не-членом команды (писать — вступив).
+    current_member = await ChatMember.get_membership(chat_id, user_id)
+    if not current_member:
+        await env.models.chat.check_read_access(chat_id)
 
     # Soft-delete: показывать удалённые только админам
-    _is_admin = auth_session.user_id.is_admin or current_member.is_admin
+    _is_admin = auth_session.user_id.is_admin or bool(
+        current_member and current_member.is_admin
+    )
     _show_deleted = bool(include_deleted) and _is_admin
 
     messages = await env.models.chat_message.get_chat_messages(
@@ -83,7 +84,10 @@ async def get_messages(
         include_deleted=_show_deleted,
     )
 
-    last_read_watermark: int = current_member.last_read_message_id or 0
+    # Watermark есть только у участника; у остальных всё непрочитано.
+    last_read_watermark = 0
+    if current_member:
+        last_read_watermark = current_member.last_read_message_id or 0
 
     # Получаем ID всех сообщений для загрузки аттачментов и реакций
     message_ids = [msg.id for msg in messages]
@@ -115,35 +119,12 @@ async def get_messages(
                 attachments_by_message[msg_id] = []
             attachments_by_message[msg_id].append(att.serialize_for_chat())
 
-    # Загружаем реакции для всех сообщений одним запросом
-    reactions_by_message: dict[int, dict[str, list]] = {}
-    if message_ids:
-        reactions = await env.models.chat_message_reaction.search(
-            filter=[("message_id", "in", message_ids)],
-            fields=["id", "emoji", "message_id", "user_id"],
-        )
-        for reaction in reactions:
-            msg_id = reaction.message_id.id
-            if msg_id not in reactions_by_message:
-                reactions_by_message[msg_id] = {}
-            emoji = reaction.emoji
-            if emoji not in reactions_by_message[msg_id]:
-                reactions_by_message[msg_id][emoji] = []
-            reactions_by_message[msg_id][emoji].append(
-                {
-                    "user_id": reaction.user_id.id,
-                    "user_name": reaction.user_id.name,
-                }
-            )
-
-    # Преобразуем реакции в нужный формат
-    def format_reactions(msg_id: int) -> list:
-        if msg_id not in reactions_by_message:
-            return []
-        return [
-            {"emoji": emoji, "users": users, "count": len(users)}
-            for emoji, users in reactions_by_message[msg_id].items()
-        ]
+    # Реакции для всех сообщений одним запросом
+    reactions_by_message = (
+        await env.models.chat_message_reaction.grouped(message_ids)
+        if message_ids
+        else {}
+    )
 
     result = []
     for msg in messages:
@@ -156,7 +137,7 @@ async def get_messages(
             msg.serialize_for_chat(
                 is_read=computed_is_read,
                 attachments=attachments_by_message.get(msg.id, []),
-                reactions=format_reactions(msg.id),
+                reactions=reactions_by_message.get(msg.id, []),
             )
         )
 
@@ -190,31 +171,12 @@ async def search_messages(
     (новые первыми) в формате закреплённых, без вложений и реакций.
     """
     env: "Environment" = req.app.state.env
-    auth_session: "Session" = req.state.session
-    await ChatMember.get_or_stub_reader(
-        chat_id, auth_session.user_id.id, auth_session.user_id.is_admin
-    )
+    await env.models.chat.check_read_access(chat_id)
 
     messages = await env.models.chat_message.search_chat_messages(
         chat_id=chat_id, query=q.strip(), limit=limit
     )
-    return {
-        "data": [
-            {
-                "id": msg.id,
-                "body": msg.body,
-                "message_type": msg.message_type,
-                "connector_type": msg.connector_type,
-                "create_datetime": (
-                    msg.create_datetime.isoformat()
-                    if msg.create_datetime
-                    else None
-                ),
-                "author": format_message_author(msg),
-            }
-            for msg in messages
-        ]
-    }
+    return {"data": [msg.serialize_for_list() for msg in messages]}
 
 
 @router_private.get("/chats/messages/count")
@@ -271,28 +233,12 @@ async def get_messages_count(
         ]
     )
 
-    # unread считаем одним SQL-ом с JOIN к chat_member (LEFT JOIN,
-    # чтобы не подписанные просто получили 0, а не ошибку). Watermark
-    # в chat_member.last_read_message_id — id последнего прочитанного
-    # сообщения. Свои сообщения исключаем, как в /chats.
-    session = env.apps.db.get_session()
-    unread_rows = await session.execute(
-        """
-        SELECT COUNT(*) AS unread
-        FROM chat_message m
-        LEFT JOIN chat_member cm
-          ON cm.chat_id = m.chat_id
-         AND cm.user_id = %s
-         AND cm.is_active = true
-        WHERE m.chat_id = %s
-          AND m.is_deleted = false
-          AND (m.author_user_id IS NULL OR m.author_user_id != %s)
-          AND cm.id IS NOT NULL  -- только если пользователь — член чата
-          AND m.id > COALESCE(cm.last_read_message_id, 0)
-        """,
-        (user_id, chat_id, user_id),
+    # Непрочитанные — по watermark участника, как в списке чатов. У не
+    # подписанного на чат их нет: строка не вернётся.
+    unread_rows = await env.models.chat_message.unread_counts(
+        user_id, [chat_id]
     )
-    unread = unread_rows[0]["unread"] if unread_rows else 0
+    unread = unread_rows[0]["unread_count"] if unread_rows else 0
 
     return {"total": total, "unread": unread}
 
@@ -415,182 +361,31 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
         raise FaraException({"content": "EMPTY_MESSAGE"})
 
     # Проверяем право на отправку сообщений
-    await ChatMember.check_can_write(chat_id, user_id)
+    member = await ChatMember.check_membership(chat_id, user_id)
+    member.require(member.can_write)
 
-    async with env.apps.db.get_transaction() as session:
-        # Создаём сообщение внутреннее
-        message = await env.models.chat_message.post_message(
+    message, attachments = await env.models.chat_message.send(
+        chat_id=chat_id,
+        author=auth_session.user_id,
+        body=body.body,
+        files=body.attachments,
+        connector_id=body.connector_id,
+        parent_id=body.parent_id,
+        lead_id=body.lead_id,
+        task_id=body.task_id,
+    )
+
+    # Отправляем push-уведомления через notify-коннекторы
+    try:
+        await notify_on_new_message(
             chat_id=chat_id,
-            author_user_id=user_id,
+            message_id=message.id,
+            author_user_id=auth_session.user_id,
             body=body.body,
-            connector_id=body.connector_id,
-            parent_id=body.parent_id,
-            lead_id=body.lead_id,
-            task_id=body.task_id,
+            exclude_user_id=user_id,
         )
-
-        # Создаём аттачменты и привязываем к сообщению.
-        attachments_content_data: list[Attachment] = []
-        attachments_response: list[dict] = []
-        if body.attachments:
-            payloads: list[Attachment] = [
-                env.models.attachment(
-                    name=file_data.name,
-                    mimetype=file_data.mimetype,
-                    size=file_data.size,
-                    # size=len(file_data.content),
-                    content=file_data.content,  # уже bytes
-                    res_model="chat_message",
-                    res_id=message.id,
-                    is_voice=file_data.is_voice,
-                )
-                for file_data in body.attachments
-            ]
-            records = await env.models.attachment.create_bulk(
-                payloads, session=session
-            )
-            # records — список записей [{id: ...}, ...] в том же порядке,
-            # что и payloads. Для внешней отправки (Telegram/WhatsApp и т.д.)
-            # передаём payloads как есть — у них в content уже bytes.
-            for payload, record in zip(payloads, records or []):
-                payload.id = record["id"]
-                attachments_content_data.append(payload)
-
-        # Та же форма, что в GET /messages и во входящем WS-пуше.
-        attachments_response = [
-            a.serialize_for_chat() for a in attachments_content_data
-        ]
-
-        # Если указан connector_id - отправляем во внешний сервис.
-        # Право отправлять — право писать в чат (check_can_write выше),
-        # коннектор здесь только канал. Токены (role_read) для отправки
-        # сервер читает под sudo и наружу не отдаёт.
-        if body.connector_id:
-            connector = await env.models.chat_connector.sudo().search_one(
-                filter=[("id", "=", body.connector_id)],
-                fields_nested={
-                    "outbox_account_id": {"fields": ["id", "external_id"]}
-                },
-            )
-            if not connector:
-                return False
-            if not connector.active:
-                return False
-
-            # Собираем recipients_ids - контакты партнёров чата,
-            # которые подходят под тип коннектора
-            # Используем contact_type_id коннектора (integer FK)
-
-            recipients_ids = []
-            if connector.contact_type_id:
-                connector_contact_type_id = connector.contact_type_id.id
-                # Контакты получателя: тот же тип ИЛИ оба телефонного формата
-                # (ContactType.MATCH_SQL). is_exact метит точное совпадение —
-                # ниже предпочитаем его phone-format фолбэку.
-                # Получателем может быть партнёр (cm.partner_id) ИЛИ юзер
-                # (cm.user_id) — как во внутреннем чате с сотрудником. Но
-                # user-ветку включаем ТОЛЬКО когда в чате нет партнёров
-                # (NOT EXISTS ниже): иначе в клиентском чате оператор-юзер со
-                # своим телефоном/контактом того же типа ошибочно попал бы в
-                # получатели, и сообщение клиенту ушло бы ещё и оператору.
-                # Для telegram/whatsapp/max_business (там всегда есть партнёр)
-                # выборка остаётся строго по партнёру — как раньше.
-                # Себя (user_id-отправителя) тоже исключаем.
-                # Плейсхолдеры %s по порядку: user_id, contact_type_id, chat_id.
-                session = env.apps.db.get_session()
-                recipients_query = f"""
-                    SELECT c.id, c.name as contact_value,
-                           (cct.id = ict.id) as is_exact
-                    FROM chat_member cm
-                    JOIN contact c ON c.active = true AND (
-                            (cm.partner_id IS NOT NULL
-                                AND c.partner_id = cm.partner_id)
-                         OR (cm.user_id IS NOT NULL
-                                AND c.user_id = cm.user_id
-                                AND cm.user_id <> %s
-                                AND NOT EXISTS (
-                                    SELECT 1 FROM chat_member pm
-                                    WHERE pm.chat_id = cm.chat_id
-                                      AND pm.partner_id IS NOT NULL
-                                      AND pm.is_active = true
-                                ))
-                        )
-                    JOIN contact_type ict ON ict.id = c.contact_type_id
-                    JOIN contact_type cct ON cct.id = %s
-                        AND {env.models.contact_type.MATCH_SQL}
-                    WHERE cm.chat_id = %s
-                      AND (cm.partner_id IS NOT NULL OR cm.user_id IS NOT NULL)
-                      AND cm.is_active = true
-                """
-                recipients_raw = await session.execute(
-                    recipients_query,
-                    (user_id, connector_contact_type_id, chat_id),
-                )
-                recipients_raw = list(recipients_raw)
-                # Есть контакт точно нужного типа — шлём только по нему;
-                # phone-format фолбэк идёт в ход, лишь когда точного нет (иначе
-                # рискуем отправить на второй, посторонний номер партнёра).
-                if any(r["is_exact"] for r in recipients_raw):
-                    recipients_raw = [
-                        r for r in recipients_raw if r["is_exact"]
-                    ]
-                recipients_ids = [
-                    {"id": r["id"], "contact_value": r["contact_value"]}
-                    for r in recipients_raw
-                ]
-
-            await connector.strategy.send_outgoing_message(
-                env,
-                chat_id=chat_id,
-                connector_id=connector,
-                user_id=user_id,
-                body=body.body,
-                message_id=message.id,
-                attachments=attachments_content_data,
-                recipients_ids=recipients_ids,
-            )
-
-        # Отправляем через WebSocket. Внутри транзакции событие уйдёт на
-        # COMMIT (см. PgPubSubBackend.publish) — получатель не увидит его
-        # раньше, чем сообщение появится в БД.
-        await env.apps.chat.chat_manager.send_to_chat(
-            chat_id=chat_id,
-            message={
-                "type": "new_message",
-                "chat_id": chat_id,
-                "message": message.serialize_for_ws(
-                    author={
-                        "id": user_id,
-                        "name": auth_session.user_id.name,
-                        "type": "user",
-                    },
-                    attachments=attachments_response,
-                    # Теги «ленты»: фронт роутит событие в ленту лида/задачи.
-                    # partner_id тут НЕ шлём (потребовал бы лишний запрос);
-                    # во входящем пути он есть даром и идёт в пейлоаде.
-                    lead_id=body.lead_id,
-                    task_id=body.task_id,
-                ),
-            },
-            exclude_user=user_id,
-        )
-
-        # Отправляем через Web Push
-        # Отправляем push-уведомления через notify-коннекторы
-        try:
-            await notify_on_new_message(
-                chat_id=chat_id,
-                message_id=message.id,
-                author_user_id=auth_session.user_id,
-                body=body.body,
-                exclude_user_id=user_id,
-            )
-        except Exception as notify_err:
-            import logging
-
-            logging.getLogger(__name__).error(
-                "[notify] Failed: %s", notify_err, exc_info=True
-            )
+    except Exception as notify_err:
+        log.error("[notify] Failed: %s", notify_err, exc_info=True)
 
     return {
         "data": {
@@ -601,7 +396,8 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
                 if message.create_datetime
                 else None
             ),
-            "attachments": attachments_response,
+            "attachments": attachments,
+            "send_failed": message.send_failed is True,
         }
     }
 
@@ -618,10 +414,8 @@ async def delete_message(req: Request, chat_id: int, message_id: int):
 
     # Проверяем членство
     member = await ChatMember.check_membership(chat_id, user_id)
-    message = await env.models.chat_message.get(
-        message_id,
-        fields=["author_user_id"],
-        fields_nested={"author_user_id": {"fields": ["id"]}},
+    message = await _chat_message(
+        env, chat_id, message_id, fields=["id", "author_user_id"]
     )
 
     # Проверяем права: своё сообщение, can_delete_others или админ чата.
@@ -633,7 +427,7 @@ async def delete_message(req: Request, chat_id: int, message_id: int):
     if (
         not is_own_message
         and not is_chat_admin
-        and not member.has_permission("can_delete_others")
+        and not member.can_delete_others
     ):
         raise FaraException(
             {
@@ -673,10 +467,8 @@ async def edit_message(
     # Проверяем членство и сразу получаем member (нужен is_admin ниже)
     member = await ChatMember.check_membership(chat_id, user_id)
 
-    message = await env.models.chat_message.get(
-        message_id,
-        fields=["author_user_id"],
-        fields_nested={"author_user_id": {"fields": ["id"]}},
+    message = await _chat_message(
+        env, chat_id, message_id, fields=["id", "author_user_id"]
     )
 
     # Редактировать сообщение может автор или админ чата.
@@ -724,9 +516,10 @@ async def pin_message(
     user_id = auth_session.user_id.id
 
     # Проверяем право на закрепление
-    await ChatMember.check_can_pin(chat_id, user_id)
+    member = await ChatMember.check_membership(chat_id, user_id)
+    member.require(member.can_pin)
 
-    message = await env.models.chat_message.get(message_id)
+    message = await _chat_message(env, chat_id, message_id, fields=["id"])
 
     await message.update(env.models.chat_message(pinned=body.pinned))
 
@@ -822,8 +615,6 @@ async def get_pinned_messages(req: Request, chat_id: int):
     Получить закрепленные сообщения чата.
     """
     env: "Environment" = req.app.state.env
-    auth_session: "Session" = req.state.session
-    user_id = auth_session.user_id.id
 
     # Проверка членства реализована через rule "@is_member" на chat_message:
     # search вернёт пустой список для не-участников.
@@ -831,20 +622,7 @@ async def get_pinned_messages(req: Request, chat_id: int):
         chat_id=chat_id
     )
 
-    result = []
-    for msg in messages:
-        result.append(
-            {
-                "id": msg.id,
-                "body": msg.body,
-                "message_type": msg.message_type,
-                "connector_type": msg.connector_type,
-                "create_datetime": msg.create_datetime.isoformat(),
-                "author": format_message_author(msg),
-            }
-        )
-
-    return {"data": result}
+    return {"data": [msg.serialize_for_list() for msg in messages]}
 
 
 @router_private.post("/chats/{chat_id}/messages/{message_id}/reactions")
@@ -861,7 +639,7 @@ async def add_reaction(
     # Проверяем членство
     await ChatMember.check_membership(chat_id, user_id)
 
-    message = await env.models.chat_message.get(message_id)
+    message = await _chat_message(env, chat_id, message_id, fields=["id"])
 
     # Проверяем, есть ли уже такая реакция от этого пользователя
     existing = await env.models.chat_message_reaction.search(
@@ -910,8 +688,6 @@ async def get_reactions(req: Request, chat_id: int, message_id: int):
     Получить реакции к сообщению.
     """
     env: "Environment" = req.app.state.env
-    auth_session: "Session" = req.state.session
-    user_id = auth_session.user_id.id
 
     # Проверка реализована через rule "@has_parent_access" на chat_message_reaction:
     # search вернёт пустой список если у юзера нет доступа к сообщению.
@@ -923,28 +699,8 @@ async def get_message_reactions(
     env: "Environment", message_id: int
 ) -> list[dict]:
     """Вспомогательная функция для получения реакций сообщения."""
-    reactions_raw = await env.models.chat_message_reaction.search(
-        filter=[("message_id", "=", message_id)],
-        fields=["id", "emoji", "user_id"],
-    )
-
-    # Группируем по эмодзи
-    reactions_map: dict[str, list] = {}
-    for r in reactions_raw:
-        emoji = r.emoji
-        if emoji not in reactions_map:
-            reactions_map[emoji] = []
-        reactions_map[emoji].append(
-            {
-                "user_id": r.user_id.id,
-                "user_name": r.user_id.name,
-            }
-        )
-
-    return [
-        {"emoji": emoji, "users": users, "count": len(users)}
-        for emoji, users in reactions_map.items()
-    ]
+    grouped = await env.models.chat_message_reaction.grouped([message_id])
+    return grouped.get(message_id, [])
 
 
 @router_private.post("/chats/{chat_id}/messages/{message_id}/forward")
@@ -959,27 +715,26 @@ async def forward_message(
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Источник forward — READ: admin без членства тоже может читать
-    await ChatMember.get_or_stub_admin(
-        chat_id, user_id, auth_session.user_id.is_admin
-    )
+    # Источник forward — READ: кто читает чат, тот и пересылает из него
+    await env.models.chat.check_read_access(chat_id)
 
     # Проверяем право писать в целевой чат
-    await ChatMember.check_can_write(body.target_chat_id, user_id)
+    target_member = await ChatMember.check_membership(
+        body.target_chat_id, user_id
+    )
+    target_member.require(target_member.can_write)
 
-    original_message = await env.models.chat_message.get(message_id)
-
-    # Определяем автора оригинального сообщения
-    if original_message.author_user_id:
-        original_author_name = original_message.author_user_id.name
-    elif original_message.author_partner_id:
-        original_author_name = original_message.author_partner_id.name
-    else:
-        original_author_name = "Unknown"
+    original_message = await _chat_message(
+        env,
+        chat_id,
+        message_id,
+        fields=["id", "body", "author_user_id", "author_partner_id"],
+    )
 
     # Создаём новое сообщение в целевом чате
     forwarded_body = (
-        f"[Forwarded from {original_author_name}]\n{original_message.body}"
+        f"[Forwarded from {original_message.author['name']}]\n"
+        f"{original_message.body}"
     )
 
     new_message = await env.models.chat_message.post_message(

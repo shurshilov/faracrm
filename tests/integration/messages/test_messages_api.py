@@ -16,6 +16,7 @@ Run: pytest tests/integration/messages/test_messages_api.py -v -m integration
 """
 
 import pytest
+import pytest_asyncio
 
 pytestmark = [pytest.mark.integration, pytest.mark.api]
 from backend.base.crm.chat.models.chat import Chat
@@ -26,6 +27,16 @@ from backend.base.crm.chat.models.chat_message import (
 from backend.base.crm.chat.models.chat_member import ChatMember
 from backend.base.crm.users.models.users import User
 from backend.base.crm.languages.models.language import Language
+from backend.base.system.dotorm_databases_postgres.app import (
+    DotormDatabasesPostgresService,
+)
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def db_service(db_pool):
+    """Отправка сообщения (ChatMessage.send) открывает транзакцию глобального
+    env — привязываем его Postgres-сервис к тестовой базе (как wired_env)."""
+    DotormDatabasesPostgresService().set_pool(db_pool)
 
 
 class TestGetMessagesAPI:

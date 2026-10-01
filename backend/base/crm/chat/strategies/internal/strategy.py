@@ -58,6 +58,8 @@ class InternalStrategy(ChatStrategyBase):
         body: str,
         chat_id: str | None = None,
         recipients_ids: list | None = None,
+        thread_message_id: str | None = None,
+        attachments: list | None = None,
     ) -> Tuple[str, str]:
         """
         Отправить сообщение во внутреннем чате.

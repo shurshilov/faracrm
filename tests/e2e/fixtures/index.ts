@@ -105,15 +105,15 @@ export const test = base.extend<TestFixtures>({
     await page.close();
   },
 
-  adminWS: async ({ adminToken }, use) => {
-    const ws = new WSClient(WS_URL, adminToken);
+  adminWS: async ({ adminSession }, use) => {
+    const ws = new WSClient(WS_URL, adminSession);
     await ws.connect();
     await use(ws);
     await ws.close();
   },
 
-  user2WS: async ({ user2Token }, use) => {
-    const ws = new WSClient(WS_URL, user2Token);
+  user2WS: async ({ user2Session }, use) => {
+    const ws = new WSClient(WS_URL, user2Session);
     await ws.connect();
     await use(ws);
     await ws.close();
@@ -136,8 +136,8 @@ export const test = base.extend<TestFixtures>({
     await use(user3Session?.token || "");
   },
 
-  user3WS: async ({ user3Token }, use) => {
-    const ws = new WSClient(WS_URL, user3Token);
+  user3WS: async ({ user3Session }, use) => {
+    const ws = new WSClient(WS_URL, user3Session);
     await ws.connect();
     await use(ws);
     await ws.close();

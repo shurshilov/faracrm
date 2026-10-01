@@ -48,7 +48,6 @@ class ChatMessageAdapter:
         # external_account_id настроен на коннекторе — это надёжнее, чем
         # тащить значение из payload.
         return self.connector.external_account_id
-        # return str(self._payload.get("user_id", ""))
 
     @property
     def message_id(self) -> str:

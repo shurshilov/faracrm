@@ -51,9 +51,12 @@ graph TB
 {
     "body": "Hello, World!",
     "attachments": [],
-    "reply_to_id": null
+    "parent_id": null,
+    "connector_id": null
 }
 ```
+
+Сообщение сохраняет и рассылает `ChatMessage.send`. С `connector_id` оно уходит ещё и во внешний канал — после коммита, чтобы запрос к провайдеру не держал транзакцию. Не ушло (коннектор выключен, нет адресата, ошибка провайдера) — сообщение остаётся в ленте с `send_failed = true`, и рядом со временем показывается красная пометка «Не доставлено во внешний канал».
 
 ### Получение сообщений
 
@@ -97,11 +100,11 @@ Soft delete — `is_deleted = true`.
 
 ## WebSocket Events
 
-Клиент подключается к `/ws` и получает события:
+Клиент подключается к `/ws/chat` и получает события. Вход — как у HTTP-ручек: токен в адресе плюс HttpOnly cookie сессии (браузер шлёт её сам), сессия не должна быть просрочена. Отказ — закрытие с кодом `1008`.
 
 ```typescript
 // Подключение
-const ws = new WebSocket(`wss://api.fara.dev/ws?token=${token}`);
+const ws = new WebSocket(`wss://api.fara.dev/ws/chat?token=${token}`);
 
 ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -194,21 +197,71 @@ class ChatMember(DotModel):
     is_admin: bool = Boolean(default=False)
     can_read: bool = Boolean(default=True)
     can_write: bool = Boolean(default=True)
-    can_pin: bool = Boolean(default=False)
     can_invite: bool = Boolean(default=False)
+    can_remove: bool = Boolean(default=False)
+    can_pin: bool = Boolean(default=False)
     can_delete_others: bool = Boolean(default=False)
 ```
 
-### Проверка прав
+### Права участника
+
+| Право | Что даёт |
+|-------|----------|
+| `can_read` / `can_write` | читать и писать сообщения |
+| `can_invite` | добавлять участников |
+| `can_remove` | удалять участников |
+| `can_pin` | закреплять сообщения |
+| `can_delete_others` | удалять чужие сообщения |
+| `is_admin` | всё перечисленное плюс права участников, права по умолчанию, удаление чата |
+
+Набор прав — класс, а не словарь. Общие права участника любого контейнера (чат, проект) — `MemberPermissions` в `backend/base/system/membership`, права чата — `ChatPermissions` рядом с `ChatMember`:
 
 ```python
-# Shortcut-методы на ChatMember
-await ChatMember.check_can_write(chat_id, user_id)
-await ChatMember.check_can_pin(chat_id, user_id)
+@dataclass(frozen=True)
+class ChatPermissions(MemberPermissions):  # can_read, can_write, can_invite,
+    can_pin: bool = False                  # can_remove, is_admin
+    can_delete_others: bool = False
+
+MEMBER = ChatPermissions()              # участник группы, чата клиента, заметок
+DIRECT = ChatPermissions(can_pin=True)  # оба в личном чате
+ADMIN = ChatPermissions(can_invite=True, can_remove=True, can_pin=True,
+                        can_delete_others=True, is_admin=True)
+
+await ChatMember.add(chat_id, MEMBER, user_id=user_id)
+await ChatMember.add(chat_id, chat.get_default_permissions(), partner_id=partner_id)
+```
+
+Состав ведёт миксин `MemberMixin`: `add`, `remove`, `active_user_ids`, `count_admins`.
+
+### Проверка прав
+
+Право — булево поле участника, его проверяют через точку, без строк с именами:
+
+```python
+member = await ChatMember.check_membership(chat_id, user_id)  # или 403
+member.require(member.can_write)                              # или 403
 await ChatMember.check_admin(chat_id, user_id)
 
 # Под капотом:
-member = await ChatMember.check_membership(chat_id, user_id)  # или 403
-if not member.has_permission("can_pin"):
+if not (member.is_admin or member.can_write):                 # у админа есть все
     raise FaraException("PERMISSION_DENIED")
 ```
+
+### Доступ
+
+- **Читают** чат его участники, команда чата (`chat.team_id`) и суперпользователь — это правила доступа модели `chat`, ручки ленты, поиска и пересылки зовут `Chat.check_read_access`. Остальным — 403.
+- **Пишут** участники с `can_write`.
+- **Сообщение правят, удаляют и закрепляют только в его чате**: права проверяются в чате из адреса, поэтому сообщение другого чата по этому адресу — 404.
+- **Заметки записи** (record-чат) открывает тот, кто видит саму запись — проверяют правила доступа её модели.
+- **Коннекторы** и их служебные таблицы (`chat_external_*`, правила маршрутизации) сотрудник только читает. Настраивает их администратор настроек — суперпользователь или роль `system_admin` (`Session.is_system_admin`): и записи, и ручки `/connectors/{id}/...` (вебхук, проверка соединения, импорт истории; `Session.check_system_admin`). Сервер пишет в них под `sudo`: входящий вебхук и внешняя отправка.
+
+### Администратор чата
+
+`ChatMember.is_admin` даёт все права в чате: добавлять и удалять участников, менять их права и права чата по умолчанию, удалять чат. Добавлять и удалять участников могут и не админы — с правами `can_invite` и `can_remove`. Правил два, оба считают админов чата (`ChatMember.count_admins`):
+
+1. **В группе без админа добавляемый пользователь становится админом** (`Chat._add_user_member`). Группу из «Нового чата» создаёт пользователь — админ он. Чат клиента создаёт система (`Chat.get_or_create_partner_chat`), поэтому админ там — первый пользователь: руководитель коннектора, а без руководителей — взявший лид или нажавший «Создать чат» в карточке партнёра.
+2. **Последний админ не выходит из чата, не снимает с себя права и не может быть удалён** (`ChatMember.check_not_last_admin`) — ошибка `CANNOT_REMOVE_THE_LAST_CHAT_ADMIN`, «сначала передайте права администратора другому участнику». Единственному участнику остаётся удалить чат или добавить коллегу и передать права ему.
+
+В личных и record-чатах админа нет — участниками там не управляют; в личный чат участника не добавить, для разговора втроём создают группу.
+
+Добавленный участник получает права чата по умолчанию (`default_can_*`), их меняет админ во вкладке «Права» настроек чата.

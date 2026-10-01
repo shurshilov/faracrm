@@ -1,16 +1,12 @@
 # Copyright 2025 FARA CRM
 # Chat module - connector model for external integrations
 
-import asyncio
 import logging
 import secrets
 from datetime import datetime
 from typing import TYPE_CHECKING, Self
 
 from backend.base.crm.users.audit_mixin import AuditMixin
-from backend.base.system.dotorm.dotorm.components.filter_parser import (
-    FilterExpression,
-)
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod, onchange
 from backend.base.system.dotorm.dotorm.fields import (
     Integer,
@@ -243,18 +239,6 @@ class ChatConnector(AuditMixin, DotModel):
         ),
     )
 
-    # Операторы коннектора (Many2many с User)
-    # operator_ids: list["User"] = Many2many(
-    #     store=False,
-    #     relation_table=lambda: env.models.user,
-    #     many2many_table="chat_connector_operator_many2many",
-    #     column1="user_id",
-    #     column2="connector_id",
-    #     ondelete="cascade",
-    #     description="Операторы, работающие с этим коннектором",
-    #     default=[],
-    # )
-
     # Руководители коннектора (Many2many с User).
     # Pull-модель: автоматически подписываются на КАЖДЫЙ создаваемый чат и
     # видят всю переписку. Обычный оператор в чат не подписан — он берёт
@@ -292,7 +276,7 @@ class ChatConnector(AuditMixin, DotModel):
 
         @hybridmethod, а CRUD-роутер зовёт его ОТ КЛАССА
         """
-        # Создаём коннектор (Many2many operator_ids заполнится автоматически)
+        # Создаём коннектор (Many2many manager_ids заполнится автоматически)
         self.id = await super().create(payload, session, depends_jobs)
 
         # Создаём outbox-аккаунт (обязательно, если задан external_account_id)
@@ -465,55 +449,6 @@ class ChatConnector(AuditMixin, DotModel):
                 ChatConnector(last_response=str(e), webhook_state="failed"),
             )
             return False
-
-    async def get_active_connectors(
-        self,
-        connector_type: str | None = None,
-        category: str | None = None,
-    ):
-        """Получить активные коннекторы с опциональной фильтрацией."""
-        filter_conditions: FilterExpression = [("active", "=", True)]
-
-        if connector_type:
-            filter_conditions.append(("type", "=", connector_type))
-
-        if category:
-            filter_conditions.append(("category", "=", category))
-
-        return await self.search(
-            filter=filter_conditions,
-            fields=[
-                "id",
-                "name",
-                "type",
-                "category",
-                "connector_url",
-                "webhook_state",
-            ],
-        )
-
-    async def cron_refresh_tokens(self):
-        """
-        Cron задача для обновления токенов всех активных коннекторов.
-        """
-        connectors = await self.get_active_connectors()
-
-        # Создаем список задач
-        tasks = [
-            connector.strategy.get_or_generate_token(self)
-            for connector in connectors
-        ]
-
-        # Запускаем всё параллельно.
-        # return_exceptions=True позволит собрать результаты, даже если один упал.
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Логируем ошибки, если они были
-        for connector, result in zip(connectors, results):
-            if isinstance(result, Exception):
-                logger.error(
-                    f"Failed to refresh token for {connector.id}: {result}"
-                )
 
     @classmethod
     async def cron_fetch_emails(cls) -> dict:

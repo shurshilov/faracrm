@@ -6,6 +6,7 @@
  * проверять порядок и содержимое.
  */
 import WebSocket from 'ws';
+import type { Session } from './api.helper';
 
 export interface WSEvent {
   type: string;
@@ -25,14 +26,17 @@ export class WSClient {
 
   constructor(
     private wsUrl: string,
-    private token: string,
+    private session: Session,
   ) {}
 
   /** Подключиться и дождаться открытия + connected event */
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const url = `${this.wsUrl}/ws/chat?token=${this.token}`;
-      this.ws = new WebSocket(url);
+      // Вход как у браузера: токен в адресе + cookie сессии в рукопожатии.
+      const url = `${this.wsUrl}/ws/chat?token=${this.session.token}`;
+      this.ws = new WebSocket(url, {
+        headers: { Cookie: `session_cookie=${this.session.cookieToken}` },
+      });
 
       const timeout = setTimeout(() => reject(new Error('WS connect timeout')), 10_000);
 

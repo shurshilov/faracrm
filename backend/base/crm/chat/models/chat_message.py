@@ -127,15 +127,6 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         description="Автор - партнёр (для внешних клиентов)",
     )
 
-    # иногда сообщение может быть привязано к записи модели
-    # res_model: str | None = Char(
-    #     description="Модель записи к которой привязано сообщение (lead, task, partner...)",
-    # )
-
-    # res_id: int | None = Integer(
-    #     description="ID записи к которой привязано сообщение",
-    # )
-
     # Статус
     is_deleted: bool = Boolean(
         default=False, description="Удалено (мягкое удаление)"
@@ -216,8 +207,16 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         default=False, description="Сообщение было отредактировано"
     )
 
+    # Сообщение сохранено, но во внешний канал (connector_id) не ушло.
+    # default_db: на старой базе колонка появляется сразу с false у всех.
+    send_failed: bool = Boolean(
+        default=False,
+        default_db=True,
+        description="Не доставлено во внешний канал",
+    )
+
     @property
-    def author(self) -> dict | None:
+    def author(self) -> dict:
         """
         Универсальный автор сообщения.
         Возвращает данные автора независимо от типа (user или partner).
@@ -234,7 +233,7 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
                 "name": self.author_partner_id.name,
                 "type": "partner",
             }
-        return None
+        return {"id": None, "name": "Unknown", "type": None}
 
     def serialize_for_ws(
         self, *, author: dict, attachments: list[dict], **tags
@@ -278,8 +277,7 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         Поля, зависящие от запроса/пользователя, передаются явно: is_read (по
         watermark текущего пользователя), attachments/reactions (грузятся одним
         запросом на все сообщения — против N+1). Автор — из self.author
-        (полиморфный), с тем же фолбэком Unknown, что был в
-        format_message_author.
+        (полиморфный).
         """
         data = {
             "id": self.id,
@@ -293,14 +291,25 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
             "parent_id": self.parent_id,
             "connector_id": self.connector_id,
             "connector_type": self.connector_type,
-            "author": self.author
-            or {"id": None, "name": "Unknown", "type": None},
+            "author": self.author,
             "attachments": attachments,
             "reactions": reactions,
             "is_deleted": self.is_deleted is True,
+            "send_failed": self.send_failed is True,
         }
 
         return data
+
+    def serialize_for_list(self) -> dict:
+        """Короткая форма — результаты поиска и закреплённые сообщения."""
+        return {
+            "id": self.id,
+            "body": self.body,
+            "message_type": self.message_type,
+            "connector_type": self.connector_type,
+            "create_datetime": self.create_datetime.isoformat(),
+            "author": self.author,
+        }
 
     @hybridmethod
     async def post_message(
@@ -314,9 +323,6 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         parent_id: int | None = None,
         lead_id: int | None = None,
         task_id: int | None = None,
-        # attachment_ids: list[int] | None = None,
-        # res_model: str | None = None,
-        # res_id: int | None = None,
     ):
         """
         Создать и отправить сообщение в чат.
@@ -329,7 +335,6 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
             message_type: Тип сообщения
             connector_id: ID коннектора для внешней отправки
             parent_id: ID родительского сообщения (для ответов)
-            attachment_ids: Список ID вложений
 
         Returns:
             Созданное сообщение
@@ -384,8 +389,6 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
             task_id=task,
             create_datetime=now,
             update_datetime=now,
-            # res_model=res_model,
-            # res_id=res_id,
         )
 
         message.id = await self.create(payload=message)
@@ -393,17 +396,119 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         # Обновляем дату последнего сообщения в чате
         await chat.update_last_message_date()
 
-        # Связываем вложения с сообщением
-        # if attachment_ids:
-        #     for att_id in attachment_ids:
-        #         attachment = env.models.attachment(id=att_id)
-        #         await attachment.update(
-        #             env.models.attachment(
-        #                 res_id=message.id, res_model="chat_message"
-        #             )
-        #         )
-
         return message
+
+    @hybridmethod
+    async def send(
+        self,
+        chat_id: int,
+        author: "User",
+        body: str,
+        files: list,
+        connector_id: int | None = None,
+        parent_id: int | None = None,
+        lead_id: int | None = None,
+        task_id: int | None = None,
+    ) -> tuple["ChatMessage", list[dict]]:
+        """Сообщение пользователя в чат: сохранить с вложениями, отправить во
+        внешний канал, оповестить участников.
+
+        files — загруженные файлы (name, mimetype, size, content, is_voice).
+        Возвращает сообщение и его вложения в форме REST.
+
+        Внешняя отправка идёт после коммита: запрос к провайдеру не держит
+        транзакцию. Не ушло — сообщение остаётся и помечается send_failed.
+        """
+        async with env.apps.db.get_transaction() as session:
+            message = await self.post_message(
+                chat_id=chat_id,
+                author_user_id=author.id,
+                body=body,
+                connector_id=connector_id,
+                parent_id=parent_id,
+                lead_id=lead_id,
+                task_id=task_id,
+            )
+            attachments = [
+                env.models.attachment(
+                    name=file.name,
+                    mimetype=file.mimetype,
+                    size=file.size,
+                    content=file.content,  # уже bytes
+                    res_model="chat_message",
+                    res_id=message.id,
+                    is_voice=file.is_voice,
+                )
+                for file in files
+            ]
+            if attachments:
+                # records — [{id: ...}, ...] в том же порядке, что attachments
+                records = await env.models.attachment.create_bulk(
+                    attachments, session=session
+                )
+                for attachment, record in zip(attachments, records or []):
+                    attachment.id = record["id"]
+
+        if connector_id and not await message._send_external(
+            connector_id, author.id, attachments
+        ):
+            await message.update(ChatMessage(send_failed=True))
+
+        # Та же форма, что в GET /messages и во входящем WS-пуше.
+        attachments_data = [a.serialize_for_chat() for a in attachments]
+        await env.apps.chat.chat_manager.send_to_chat(
+            chat_id=chat_id,
+            message={
+                "type": "new_message",
+                "chat_id": chat_id,
+                "message": message.serialize_for_ws(
+                    author={
+                        "id": author.id,
+                        "name": author.name,
+                        "type": "user",
+                    },
+                    attachments=attachments_data,
+                    # Теги «ленты»: фронт роутит событие в ленту лида/задачи.
+                    # partner_id тут НЕ шлём (потребовал бы лишний запрос);
+                    # во входящем пути он есть даром и идёт в пейлоаде.
+                    lead_id=lead_id,
+                    task_id=task_id,
+                ),
+            },
+            exclude_user=author.id,
+        )
+        return message, attachments_data
+
+    async def _send_external(
+        self, connector_id: int, user_id: int, attachments: list
+    ) -> bool:
+        """Отправить сообщение через коннектор во внешний канал.
+        False — не ушло."""
+        # sudo: право отправлять — это право писать в чат (его проверил
+        # вызывающий), коннектор здесь только канал. Токены коннектора
+        # (role_read) сотруднику не видны.
+        connector = await env.models.chat_connector.sudo().search_one(
+            filter=[("id", "=", connector_id), ("active", "=", True)],
+            fields_nested={
+                "outbox_account_id": {"fields": ["id", "external_id"]}
+            },
+        )
+        if not connector:
+            return False
+
+        recipients = await self.chat_id.get_recipients(connector, user_id)
+        return bool(
+            await connector.strategy.sudo().send_outgoing_message(
+                env,
+                chat_id=self.chat_id.id,
+                connector_id=connector,
+                user_id=user_id,
+                body=self.body,
+                message_id=self.id,
+                attachments=attachments,
+                recipients_ids=recipients,
+            )
+        )
 
     @hybridmethod
     async def post_system_message(
@@ -506,6 +611,7 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
                 "pinned",
                 "is_edited",
                 "is_deleted",
+                "send_failed",
                 "parent_id",
                 "connector_id",
                 "connector_type",
@@ -580,7 +686,6 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
                 "author_user_id",
                 "author_partner_id",
                 "create_datetime",
-                # "pinned",
             ],
             sort="create_datetime",
             order="DESC",
@@ -589,13 +694,75 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
 
         return messages
 
-    # async def soft_delete(self) -> bool:
-    #     """Мягкое удаление сообщения."""
+    @classmethod
+    async def last_by_chat(cls, chat_ids: list[int]) -> dict[int, dict]:
+        """Последнее сообщение каждого чата — превью для списка чатов."""
+        rows = await cls._get_db_session().execute(
+            """
+            SELECT DISTINCT ON (m.chat_id)
+                m.id, m.chat_id, m.body, m.message_type, m.connector_type,
+                m.create_datetime,
+                COALESCE(m.author_user_id, m.author_partner_id) AS author_id,
+                COALESCE(u.name, p.name) AS author_name
+            FROM chat_message m
+            LEFT JOIN users u ON u.id = m.author_user_id
+            LEFT JOIN partners p ON p.id = m.author_partner_id
+            WHERE m.chat_id = ANY(%s) AND m.is_deleted = false
+            ORDER BY m.chat_id, m.id DESC
+            """,
+            (chat_ids,),
+        )
+        return {
+            row["chat_id"]: {
+                "id": row["id"],
+                "body": row["body"],
+                "message_type": row["message_type"],
+                "connector_type": row["connector_type"],
+                "author_id": row["author_id"],
+                "author_name": row["author_name"],
+                "create_datetime": (
+                    row["create_datetime"].isoformat()
+                    if row["create_datetime"]
+                    else None
+                ),
+            }
+            for row in rows
+        }
 
-    #     await self.update(
-    #         ChatMessage(
-    #             is_deleted=True,
-    #             update_datetime=datetime.now(timezone.utc),
-    #         )
-    #     )
-    #     return True
+    @classmethod
+    async def unread_counts(
+        cls, user_id: int, chat_ids: list[int] | None = None
+    ) -> list[dict]:
+        """Непрочитанные пользователя по чатам:
+        [{chat_id, chat_type, is_internal, unread_count}], только где они есть.
+
+        Непрочитанное — чужое неудалённое сообщение чата, где пользователь
+        активный участник, с id больше его watermark
+        (chat_member.last_read_message_id). chat_ids — считать в этих чатах;
+        без него — во всех активных, кроме заметок записей (как в списке
+        чатов).
+        """
+        scope = "c.active = true AND c.chat_type != 'record'"
+        params: list = [user_id, user_id]
+        if chat_ids is not None:
+            scope = "m.chat_id = ANY(%s)"
+            params.append(chat_ids)
+
+        return await cls._get_db_session().execute(
+            f"""
+            SELECT m.chat_id, c.chat_type, c.is_internal,
+                   COUNT(*) AS unread_count
+            FROM chat_message m
+            JOIN chat_member cm
+              ON cm.chat_id = m.chat_id
+             AND cm.user_id = %s
+             AND cm.is_active = true
+            JOIN chat c ON c.id = m.chat_id
+            WHERE m.is_deleted = false
+              AND (m.author_user_id IS NULL OR m.author_user_id != %s)
+              AND m.id > COALESCE(cm.last_read_message_id, 0)
+              AND {scope}
+            GROUP BY m.chat_id, c.chat_type, c.is_internal
+            """,
+            tuple(params),
+        )

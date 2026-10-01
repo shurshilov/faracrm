@@ -10,7 +10,6 @@ test.describe("WebSocket — reconnection", () => {
     api,
     adminToken,
     adminSession,
-    user2Token,
     user2Session,
   }) => {
     const chat = await api.createChat(adminSession, {
@@ -19,7 +18,7 @@ test.describe("WebSocket — reconnection", () => {
     });
 
     // Первое подключение
-    const ws1 = new WSClient(WS_URL, user2Token);
+    const ws1 = new WSClient(WS_URL, user2Session);
     await ws1.connect();
     await ws1.close();
 
@@ -27,7 +26,7 @@ test.describe("WebSocket — reconnection", () => {
     await new Promise((r) => setTimeout(r, 500));
 
     // Переподключение
-    const ws2 = new WSClient(WS_URL, user2Token);
+    const ws2 = new WSClient(WS_URL, user2Session);
     await ws2.connect();
     ws2.clearMessages();
 
@@ -44,7 +43,6 @@ test.describe("WebSocket — reconnection", () => {
     api,
     adminToken,
     adminSession,
-    user2Token,
     user2Session,
   }) => {
     const chat = await api.createChat(adminSession, {
@@ -53,10 +51,10 @@ test.describe("WebSocket — reconnection", () => {
     });
 
     // Два подключения одного user2
-    const ws1 = new WSClient(WS_URL, user2Token);
+    const ws1 = new WSClient(WS_URL, user2Session);
     await ws1.connect();
 
-    const ws2 = new WSClient(WS_URL, user2Token);
+    const ws2 = new WSClient(WS_URL, user2Session);
     await ws2.connect();
 
     ws1.clearMessages();
@@ -93,6 +91,26 @@ test.describe("WebSocket — reconnection", () => {
     expect(closeCode).toBeGreaterThan(0);
   });
 
+  test("токен без cookie сессии — WS закрывается", async ({ adminToken }) => {
+    // Вход в WS — пара «токен + cookie», как у HTTP: одного токена из адреса
+    // (он виден в логах прокси) недостаточно.
+    const ws = new WebSocket(`${WS_URL}/ws/chat?token=${adminToken}`);
+
+    const closeCode = await new Promise<number>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("WS did not close")),
+        10_000,
+      );
+      ws.on("close", (code: number) => {
+        clearTimeout(timeout);
+        resolve(code);
+      });
+      ws.on("error", () => {});
+    });
+
+    expect(closeCode).toBe(1008);
+  });
+
   test("WS без токена — закрывается", async () => {
     const ws = new WebSocket(`${WS_URL}/ws/chat`);
 
@@ -117,7 +135,6 @@ test.describe("WebSocket — множественные чаты", () => {
     api,
     adminToken,
     adminSession,
-    user2Token,
     user2Session,
   }) => {
     const chat1 = await api.createChat(adminSession, {
@@ -129,7 +146,7 @@ test.describe("WebSocket — множественные чаты", () => {
       user_ids: [user2Session.user_id.id],
     });
 
-    const ws = new WSClient(WS_URL, user2Token);
+    const ws = new WSClient(WS_URL, user2Session);
     await ws.connect();
     ws.clearMessages();
 
@@ -152,7 +169,6 @@ test.describe("WebSocket — burst", () => {
     api,
     adminToken,
     adminSession,
-    user2Token,
     user2Session,
   }) => {
     const chat = await api.createChat(adminSession, {
@@ -160,7 +176,7 @@ test.describe("WebSocket — burst", () => {
       user_ids: [user2Session.user_id.id],
     });
 
-    const ws = new WSClient(WS_URL, user2Token);
+    const ws = new WSClient(WS_URL, user2Session);
     await ws.connect();
     ws.clearMessages();
 
@@ -192,7 +208,6 @@ test.describe("WebSocket — reaction events", () => {
     api,
     adminToken,
     adminSession,
-    user2Token,
     user2Session,
   }) => {
     const chat = await api.createChat(adminSession, {
@@ -206,7 +221,7 @@ test.describe("WebSocket — reaction events", () => {
       "Добавь реакцию",
     );
 
-    const ws = new WSClient(WS_URL, user2Token);
+    const ws = new WSClient(WS_URL, user2Session);
     await ws.connect();
     ws.clearMessages();
 

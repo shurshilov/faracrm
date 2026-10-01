@@ -132,16 +132,9 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         if not cookie_token:
             raise SessionErrorFormat()
 
-        # Флаг session_cache_enabled прочитан один раз при старте (post_init)
-        # из system_settings. Менять → рестарт.
-        if AuthTokenApp.session_cache_enabled:
-            session = await env.models.session.session_check_cached(
-                credentials.credentials, cookie_token=cookie_token
-            )
-        else:
-            session = await env.models.session.session_check(
-                credentials.credentials, cookie_token=cookie_token
-            )
+        session = await AuthTokenApp.check_session(
+            env, credentials.credentials, cookie_token
+        )
 
         request.state.session = session
 
@@ -151,6 +144,19 @@ class AuthTokenApp(App, AuthStrategyAbstract):
         new_access_memo()
 
         return session
+
+    @staticmethod
+    async def check_session(env: Environment, token: str, cookie_token: str):
+        """Сессия по паре токен + cookie — одна проверка для HTTP-ручек и
+        WebSocket. Флаг session_cache_enabled прочитан один раз при старте
+        (post_init) из system_settings. Менять → рестарт."""
+        if AuthTokenApp.session_cache_enabled:
+            return await env.models.session.session_check_cached(
+                token, cookie_token=cookie_token
+            )
+        return await env.models.session.session_check(
+            token, cookie_token=cookie_token
+        )
 
     @staticmethod
     async def verify_access_by_cookie(request: Request):

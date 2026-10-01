@@ -9,6 +9,19 @@ export interface Session {
   user_id: { id: number; name: string };
 }
 
+/** Участник чата — как его отдаёт GET /chats/{id} */
+export interface ChatMemberInfo {
+  id: number;
+  name: string;
+  member_type: 'user' | 'partner';
+  permissions: {
+    is_admin: boolean;
+    can_write: boolean;
+    can_invite: boolean;
+    can_remove: boolean;
+  };
+}
+
 export class ApiHelper {
   constructor(private apiUrl: string) {}
 
@@ -224,6 +237,34 @@ export class ApiHelper {
       method: 'DELETE',
       headers: this.headers(session),
     });
+  }
+
+  /**
+   * Запрос от имени пользователя без проверки ответа — для сценариев, где
+   * важен сам статус (403 у не-админа).
+   */
+  async request(
+    session: Session,
+    method: string,
+    path: string,
+    body?: unknown,
+  ): Promise<Response> {
+    return fetch(`${this.apiUrl}${path}`, {
+      method,
+      headers: this.headers(session),
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  }
+
+  /** Активные участники чата с правами (что видит окно настроек чата). */
+  async getChatMembers(
+    session: Session,
+    chatId: number,
+  ): Promise<ChatMemberInfo[]> {
+    const res = await this.request(session, 'GET', `/chats/${chatId}`);
+    if (!res.ok) throw new Error(`Get chat failed: ${res.status}`);
+    const result = await res.json();
+    return result.data.members;
   }
 
   // ==================== Attachments ====================

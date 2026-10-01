@@ -2,7 +2,10 @@ from datetime import datetime, timezone
 import logging
 from typing import TYPE_CHECKING
 
+from starlette.status import HTTP_403_FORBIDDEN
+
 from backend.base.crm.auth_token.session_cache import CachedSession
+from backend.base.system.core.exceptions.environment import FaraException
 from backend.base.system.dotorm.dotorm import access as dotorm_access
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
 from backend.base.system.dotorm.dotorm.fields import (
@@ -140,6 +143,26 @@ class Session(DotModel):
     # Последняя активность пользователя (обновляется через WS ping).
     # Пользователь считается онлайн если last_activity > now() - 120 секунд.
     last_activity: datetime | None = Datetime(index=True)
+
+    @property
+    def is_system_admin(self) -> bool:
+        """Администратор настроек: суперпользователь или роль system_admin.
+        Роли в сессии уже развёрнуты (_set_role_codes) — наследование учтено.
+        """
+        user = self.user_id
+        return bool(user.is_admin) or any(
+            role.code == "system_admin" for role in (user.role_ids or [])
+        )
+
+    def check_system_admin(self) -> None:
+        """403 ADMIN_REQUIRED, если сессия — не администратор настроек."""
+        if not self.is_system_admin:
+            raise FaraException(
+                {
+                    "content": "ADMIN_REQUIRED",
+                    "status_code": HTTP_403_FORBIDDEN,
+                }
+            )
 
     @classmethod
     async def get_ttl(cls) -> int:

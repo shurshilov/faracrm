@@ -1,7 +1,9 @@
 # Copyright 2025 FARA CRM
 # Unit tests for MemberMixin — чистая логика, без БД.
 
+import pytest
 
+from backend.base.system.core.exceptions.environment import FaraException
 from backend.base.system.membership.mixin import MemberMixin
 
 
@@ -23,67 +25,21 @@ class _FakeMember(MemberMixin):
         self.can_pin = perms.get("can_pin", False)
 
 
-class TestHasPermission:
-    def test_returns_true_for_granted_permission(self):
+class TestRequire:
+    def test_passes_with_permission(self):
         m = _FakeMember(can_write=True)
-        assert m.has_permission("can_write") is True
+        m.require(m.can_write)
 
-    def test_returns_false_for_denied_permission(self):
+    def test_denied_without_permission(self):
         m = _FakeMember(can_write=False)
-        assert m.has_permission("can_write") is False
+        with pytest.raises(FaraException) as error:
+            m.require(m.can_write)
+        assert error.value.args[0]["content"] == "PERMISSION_DENIED"
 
-    def test_returns_false_for_unknown_permission(self):
-        # Поля can_unknown нет — не падаем, просто False.
-        m = _FakeMember(can_write=True)
-        assert m.has_permission("can_unknown") is False
-
-    def test_admin_overrides_all_permissions(self):
+    def test_admin_passes_without_permission(self):
         m = _FakeMember(is_admin=True, can_write=False, can_pin=False)
-        assert m.has_permission("can_write") is True
-        assert m.has_permission("can_pin") is True
-        # Даже несуществующее — админу разрешено.
-        assert m.has_permission("can_anything") is True
-
-    def test_is_admin_itself_as_permission(self):
-        m = _FakeMember(is_admin=False)
-        assert m.has_permission("is_admin") is False
-
-        admin = _FakeMember(is_admin=True)
-        assert admin.has_permission("is_admin") is True
-
-
-class TestGetPermissions:
-    def test_returns_all_can_fields(self):
-        m = _FakeMember(can_read=True, can_write=False, can_pin=True)
-        result = m.get_permissions()
-
-        assert result["can_read"] is True
-        assert result["can_write"] is False
-        assert result["can_pin"] is True
-        assert result["is_admin"] is False
-
-    def test_admin_sets_all_can_true(self):
-        m = _FakeMember(
-            is_admin=True,
-            can_read=False,
-            can_write=False,
-            can_pin=False,
-        )
-        result = m.get_permissions()
-
-        assert result["is_admin"] is True
-        assert result["can_read"] is True
-        assert result["can_write"] is True
-        assert result["can_pin"] is True
-
-    def test_ignores_non_bool_can_attributes(self):
-        """Атрибут can_xxx, не являющийся bool, игнорируется."""
-        m = _FakeMember(can_read=True)
-        m.can_whatever = "some string"  # type: ignore[attr-defined]
-
-        result = m.get_permissions()
-        assert "can_whatever" not in result
-        assert result["can_read"] is True
+        m.require(m.can_write)
+        m.require(m.can_pin)
 
 
 # class TestAssertConfigured:

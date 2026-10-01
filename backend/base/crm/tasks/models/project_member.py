@@ -51,6 +51,12 @@ class ProjectMember(MemberMixin):
     can_invite: bool = Boolean(
         default=False, description="Может приглашать участников"
     )
+    # default_db: на старой базе колонка появляется сразу с false у всех.
+    can_remove: bool = Boolean(
+        default=False,
+        default_db=True,
+        description="Может удалять участников",
+    )
     can_archive: bool = Boolean(
         default=False, description="Может архивировать проект"
     )

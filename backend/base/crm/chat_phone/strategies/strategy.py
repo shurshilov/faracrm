@@ -34,8 +34,7 @@ class PhoneStrategyBase(ChatStrategyBase):
     SipuniPhoneStrategy, MegafonPhoneStrategy.
     """
 
-    # Телефонии outbox-аккаунт не нужен; запись качаем сами (content).
-    requires_outbox_account = False
+    # Запись звонка качаем сами (content).
     attachments_source = "content"
 
     # Окно бэкофилла истории для cron: [now-WAIT-WINDOW, now-WAIT]. WAIT — фора

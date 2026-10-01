@@ -70,13 +70,6 @@ class ChatStrategyBase(ABC):
     # флаг нужен только чтобы НАШИ письма не рассыпались у клиента в ящике.
     supports_thread: bool = False
 
-    # Нужен ли коннектору outbox-аккаунт (chat_external_account) для отправки.
-    # Для большинства провайдеров (Telegram, Avito, WhatsApp) — да: исходящие
-    # идут «от» конкретного внешнего аккаунта, и send_outgoing_message без него
-    # молча ничего не шлёт. Email адресуется своими полями (email_from/
-    # email_username), внешний аккаунт ему не нужен — стратегия ставит False.
-    requires_outbox_account: bool = True
-
     # В каком виде канал отдаёт бинарные данные вложения:
     #   "url"     — ссылка или идентификатор, файл надо скачать (мессенджеры);
     #   "content" — байты уже лежат в самом сообщении (почта).
@@ -388,9 +381,6 @@ class ChatStrategyBase(ABC):
             user_id = adapter.user_id
             item_id = adapter.item_id
             chat_id = adapter.chat_id
-            # user_id может быть методом — это известно для Avito-адаптера
-            # if callable(user_id):
-            #     user_id = user_id()
             get_item_info = getattr(self, "get_item_info", None)
             if get_item_info is not None and chat_id:
                 info = (
@@ -671,170 +661,140 @@ class ChatStrategyBase(ABC):
                 )
                 return False
 
-            # Находим контакт оператора по contact_type_id коннектора
-            # operator_ct_id = connector_id.contact_type_id
-            # if operator_ct_id is None:
-            #     raise ValueError("Contact type must be set")
-
-            # operator_contact = await env.models.contact.search(
-            #     filter=[
-            #         ("contact_type_id", "=", operator_ct_id),
-            #         ("user_id", "=", user_id),
-            #         ("active", "=", True),
-            #     ],
-            #     fields_nested={"external_account_ids": {"fields": ["id"]}},
-            #     limit=1,
-            # )
-
-            # if not operator_contact:
-            #     logger.warning(
-            #         "No operator contact found for connector %s, user %s",
-            #         connector_id.id,
-            #         user_id,
-            #     )
-            #     return False
-
-            # Отправляем, если есть outbox-аккаунт ИЛИ стратегия его не требует
-            # (email адресуется своими полями). Раньше здесь стоял голый
-            # `if connector_id.outbox_account_id:` — у email он всегда None
-            # (external_account_id не заполняется), поэтому весь блок отправки
-            # пропускался, функция возвращала None, а сообщение оставалось
-            # внутренним. Именно поэтому письмо «не уходило».
+            # Outbox-аккаунт уходит стратегии как есть, в том числе None: нужен
+            # ли он — решает она сама, база отправку из-за него не пропускает.
             outbox = connector_id.outbox_account_id
-            if outbox or not self.requires_outbox_account:
-                external_msg_id = None
+            external_msg_id = None
 
-                # Вложения внутри сообщения (email) или отдельными (мессенджеры)
-                inline = bool(attachments) and self.attachments_inline
+            # Вложения внутри сообщения (email) или отдельными (мессенджеры)
+            inline = bool(attachments) and self.attachments_inline
 
-                # Пометка «это ответ на такое-то» для исходящего — только тем,
-                # кто умеет её нести. Берём ПОСЛЕДНЕЕ сообщение чата: этого
-                # хватает, чтобы почтовик получателя собрал переписку в ветку.
-                # На маршрутизацию не влияет, см. supports_thread.
-                thread_message_id = None
-                if self.supports_thread:
-                    thread_message_id = await env.models.chat_external_message.thread_outgoing_id(
+            # Пометка «это ответ на такое-то» для исходящего — только тем,
+            # кто умеет её нести. Берём ПОСЛЕДНЕЕ сообщение чата: этого
+            # хватает, чтобы почтовик получателя собрал переписку в ветку.
+            # На маршрутизацию не влияет, см. supports_thread.
+            thread_message_id = None
+            if self.supports_thread:
+                thread_message_id = (
+                    await env.models.chat_external_message.thread_outgoing_id(
                         chat_id=chat_id,
                         connector_id=connector_id.id,
                     )
+                )
 
-                # Отправляем вложения ОТДЕЛЬНЫМИ сообщениями — только если
-                # стратегия не умеет иначе. У email умеет: там они уедут внутри
-                # письма ниже, одним отправлением.
-                if attachments and not inline:
-                    for att in attachments:
-                        try:
-                            # Получаем содержимое вложения из БД
-                            # attachment = await env.models.attachment.get(att["id"])
-                            # if not attachment:
-                            #     continue
-                            file_msg_id = await self.chat_send_message_binary(
-                                connector_id,
-                                outbox,
-                                external_chat_id,
-                                att,
-                            )
-
-                            if file_msg_id and not external_msg_id:
-                                external_msg_id = file_msg_id
-
-                        except Exception as e:
-                            # att — объект Attachment (см. messages.py, там
-                            # собираются payload'ы модели), а не dict. Раньше
-                            # здесь стояло att.get("id") — обработчик ошибок сам
-                            # падал на первом же сбое отправки вложения.
-                            logger.error(
-                                "Failed to send attachment %s: %s",
-                                att.id,
-                                e,
-                            )
-
-                # Если нет вложений или есть текст без caption — отправляем текст.
-                # При inline зовём ДАЖЕ С ПУСТЫМ текстом: иначе письмо с одними
-                # файлами и без подписи не ушло бы вовсе — цикл выше пропущен, а
-                # отправляет именно этот вызов.
-                # Второй элемент — канонический ключ переписки, который вернула
-                # стратегия (для write-first это нормализованный адрес/номер;
-                # когда стратегия начнёт возвращать реальный chat_id из ответа —
-                # это будет он).
-                conversation_key = None
-                if body.strip() or inline:
-                    text_msg_id, conversation_key = (
-                        await self.chat_send_message(
-                            connector=connector_id,
-                            user_from=outbox,
-                            body=body,
-                            chat_id=external_chat_id,
-                            thread_message_id=thread_message_id,
-                            attachments=attachments if inline else None,
+            # Отправляем вложения ОТДЕЛЬНЫМИ сообщениями — только если
+            # стратегия не умеет иначе. У email умеет: там они уедут внутри
+            # письма ниже, одним отправлением.
+            if attachments and not inline:
+                for att in attachments:
+                    try:
+                        file_msg_id = await self.chat_send_message_binary(
+                            connector_id,
+                            outbox,
+                            external_chat_id,
+                            att,
                         )
-                    )
-                    if text_msg_id:
-                        external_msg_id = text_msg_id
 
-                # Сохраняем связь с внешним сообщением
-                if external_msg_id:
-                    await env.models.chat_external_message.create_link(
-                        external_id=str(external_msg_id),
-                        connector_id=connector_id.id,
-                        message_id=message_id,
-                        external_chat_id=external_chat_id,
-                    )
+                        if file_msg_id and not external_msg_id:
+                            external_msg_id = file_msg_id
 
-                # Персистим связь чата при отправке-первым: без неё входящий
-                # ответ не найдёт external_chat и создаст ВТОРОЙ внутренний чат.
-                # external_id — ключ треда (пока = нормализованный адрес; когда
-                # стратегия отдаст реальный chat_id — перезапишется на него).
-                # external_address — сам адрес (номер), по нему входящий ответ
-                # найдётся даже после перезаписи external_id (см.
-                # ChatExternalChat.find_by_id_or_address). Идемпотентно: если
-                # связь уже успел создать входящий — не дублируем.
-                if is_write_first:
-                    thread_key = str(conversation_key or write_first_address)
-                    address_key = str(conversation_key or write_first_address)
-                    # Идемпотентность — ПО АДРЕСУ, а не по chat_id.
-                    already = await env.models.chat_external_chat.find_by_id_or_address(
+                    except Exception as e:
+                        # att — объект Attachment (см. messages.py, там
+                        # собираются payload'ы модели), а не dict. Раньше
+                        # здесь стояло att.get("id") — обработчик ошибок сам
+                        # падал на первом же сбое отправки вложения.
+                        logger.error(
+                            "Failed to send attachment %s: %s",
+                            att.id,
+                            e,
+                        )
+
+            # Если нет вложений или есть текст без caption — отправляем текст.
+            # При inline зовём ДАЖЕ С ПУСТЫМ текстом: иначе письмо с одними
+            # файлами и без подписи не ушло бы вовсе — цикл выше пропущен, а
+            # отправляет именно этот вызов.
+            # Второй элемент — канонический ключ переписки, который вернула
+            # стратегия (для write-first это нормализованный адрес/номер;
+            # когда стратегия начнёт возвращать реальный chat_id из ответа —
+            # это будет он).
+            conversation_key = None
+            if body.strip() or inline:
+                text_msg_id, conversation_key = await self.chat_send_message(
+                    connector=connector_id,
+                    user_from=outbox,
+                    body=body,
+                    chat_id=external_chat_id,
+                    thread_message_id=thread_message_id,
+                    attachments=attachments if inline else None,
+                )
+                if text_msg_id:
+                    external_msg_id = text_msg_id
+
+            # Сохраняем связь с внешним сообщением
+            if external_msg_id:
+                await env.models.chat_external_message.create_link(
+                    external_id=str(external_msg_id),
+                    connector_id=connector_id.id,
+                    message_id=message_id,
+                    external_chat_id=external_chat_id,
+                )
+
+            # Персистим связь чата при отправке-первым: без неё входящий
+            # ответ не найдёт external_chat и создаст ВТОРОЙ внутренний чат.
+            # external_id — ключ треда (пока = нормализованный адрес; когда
+            # стратегия отдаст реальный chat_id — перезапишется на него).
+            # external_address — сам адрес (номер), по нему входящий ответ
+            # найдётся даже после перезаписи external_id (см.
+            # ChatExternalChat.find_by_id_or_address). Идемпотентно: если
+            # связь уже успел создать входящий — не дублируем.
+            if is_write_first:
+                thread_key = str(conversation_key or write_first_address)
+                address_key = str(conversation_key or write_first_address)
+                # Идемпотентность — ПО АДРЕСУ, а не по chat_id.
+                already = (
+                    await env.models.chat_external_chat.find_by_id_or_address(
                         key=address_key,
                         connector_id=connector_id.id,
                     )
-                    if not already:
-                        await env.models.chat_external_chat.create_link(
-                            external_id=thread_key,
-                            connector_id=connector_id.id,
-                            chat_id=chat_id,
-                            external_address=address_key,
-                        )
-                        logger.info(
-                            "write-first external_chat linked: chat=%s "
-                            "connector=%s address=%s",
-                            chat_id,
-                            connector_id.id,
-                            address_key,
-                        )
-                    else:
-                        # Связь на этот адрес уже есть и ведёт в другой чат —
-                        # НЕ дублируем: диалог принадлежит тому чату, и входящий
-                        # ответ уйдёт туда. Иначе получили бы два чата на адрес.
-                        linked_chat = already.chat_id
-                        if linked_chat != chat_id:
-                            logger.warning(
-                                "write-first: адрес %s уже привязан к чату %s "
-                                "(коннектор %s), отправка идёт из чата %s — "
-                                "ответ придёт в %s, связь не дублируем.",
-                                address_key,
-                                linked_chat,
-                                connector_id.id,
-                                chat_id,
-                                linked_chat,
-                            )
-
-                logger.info(
-                    "Sent message to %s: internal=%s, external=%s",
-                    connector_id.type,
-                    message_id,
-                    external_msg_id,
                 )
-                return True
+                if not already:
+                    await env.models.chat_external_chat.create_link(
+                        external_id=thread_key,
+                        connector_id=connector_id.id,
+                        chat_id=chat_id,
+                        external_address=address_key,
+                    )
+                    logger.info(
+                        "write-first external_chat linked: chat=%s "
+                        "connector=%s address=%s",
+                        chat_id,
+                        connector_id.id,
+                        address_key,
+                    )
+                else:
+                    # Связь на этот адрес уже есть и ведёт в другой чат —
+                    # НЕ дублируем: диалог принадлежит тому чату, и входящий
+                    # ответ уйдёт туда. Иначе получили бы два чата на адрес.
+                    linked_chat = already.chat_id
+                    if linked_chat != chat_id:
+                        logger.warning(
+                            "write-first: адрес %s уже привязан к чату %s "
+                            "(коннектор %s), отправка идёт из чата %s — "
+                            "ответ придёт в %s, связь не дублируем.",
+                            address_key,
+                            linked_chat,
+                            connector_id.id,
+                            chat_id,
+                            linked_chat,
+                        )
+
+            logger.info(
+                "Sent message to %s: internal=%s, external=%s",
+                connector_id.type,
+                message_id,
+                external_msg_id,
+            )
+            return True
 
         except Exception as e:
             logger.error(

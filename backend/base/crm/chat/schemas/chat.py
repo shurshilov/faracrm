@@ -1,7 +1,6 @@
 # Copyright 2025 FARA CRM
 # Chat module - Pydantic schemas for API validation
 
-from datetime import datetime
 from typing import Literal
 from pydantic import BaseModel, Field
 
@@ -44,6 +43,9 @@ class ChatUpdate(BaseModel):
     default_can_invite: bool | None = Field(
         None, description="Default invite permission for new members"
     )
+    default_can_remove: bool | None = Field(
+        None, description="Default remove-members permission for new members"
+    )
     default_can_pin: bool | None = Field(
         None, description="Default pin permission for new members"
     )
@@ -58,77 +60,16 @@ class AddMemberInput(BaseModel):
     user_id: int = Field(..., description="User ID to add")
 
 
-class MemberPermissions(BaseModel):
-    """Schema for member permissions."""
-
-    can_read: bool = True
-    can_write: bool = True
-    can_invite: bool = False
-    can_pin: bool = False
-    can_delete_others: bool = False
-    is_admin: bool = False
-
-
 class UpdateMemberPermissions(BaseModel):
     """Schema for partial update of member permissions (PATCH)."""
 
     can_read: bool | None = None
     can_write: bool | None = None
     can_invite: bool | None = None
+    can_remove: bool | None = None
     can_pin: bool | None = None
     can_delete_others: bool | None = None
     is_admin: bool | None = None
-
-
-class ChatMember(BaseModel):
-    """Schema for chat member."""
-
-    id: int
-    name: str
-    email: str | None = None
-    member_type: str | None = None
-    # Attachment id аватарки (users.image / partners.image). None — нет аватара.
-    image_id: int | None = None
-    permissions: MemberPermissions | None = None
-
-
-class ChatLastMessage(BaseModel):
-    """Schema for last message preview."""
-
-    id: int
-    body: str | None = None
-    message_type: str = "comment"
-    author_id: int
-    create_date: datetime | None = None
-
-
-class ChatResponse(BaseModel):
-    """Schema for chat response."""
-
-    id: int
-    name: str
-    chat_type: str
-    description: str | None = None
-    is_internal: bool = True
-    is_public: bool = False
-    create_date: datetime | None = None
-    last_message_date: datetime | None = None
-    members: list[ChatMember] = Field(default_factory=list)
-    last_message: ChatLastMessage | None = None
-    unread_count: int = 0
-    # Default permissions
-    default_can_read: bool = True
-    default_can_write: bool = True
-    default_can_invite: bool = False
-    default_can_pin: bool = False
-    default_can_delete_others: bool = False
-
-
-class ChatListResponse(BaseModel):
-    """Schema for list of chats."""
-
-    data: list[ChatResponse]
-    total: int
 
 
 # ====================== MESSAGE SCHEMAS ======================
@@ -193,104 +134,6 @@ class MessageForward(BaseModel):
     """Schema for forwarding a message."""
 
     target_chat_id: int = Field(..., description="Target chat ID")
-
-
-class MessageAuthor(BaseModel):
-    """Schema for message author."""
-
-    id: int
-    name: str | None = None
-
-
-class MessageResponse(BaseModel):
-    """Schema for message response."""
-
-    id: int
-    body: str | None = None
-    message_type: str = "comment"
-    create_date: datetime | None = None
-    author: MessageAuthor | None = None
-    starred: bool = False
-    connector_type: str | None = None
-
-
-class MessageListResponse(BaseModel):
-    """Schema for list of messages."""
-
-    data: list[MessageResponse]
-
-
-# ====================== CONNECTOR SCHEMAS ======================
-
-
-class ConnectorCreate(BaseModel):
-    """Schema for creating a connector."""
-
-    name: str = Field(..., max_length=255)
-    type: str = Field("internal", description="Connector type")
-    category: str = Field("messenger", description="Connector category")
-    connector_url: str | None = None
-    webhook_url: str | None = None
-    access_token: str | None = None
-    client_app_id: str | None = None
-
-
-class ConnectorResponse(BaseModel):
-    """Schema for connector response."""
-
-    id: int
-    name: str
-    type: str
-    category: str
-    active: bool = True
-    webhook_state: str = "none"
-    connector_url: str | None = None
-
-
-class ConnectorListResponse(BaseModel):
-    """Schema for list of connectors."""
-
-    data: list[ConnectorResponse]
-    total: int
-
-
-# ====================== WEBSOCKET SCHEMAS ======================
-
-
-class WebSocketMessage(BaseModel):
-    """Schema for WebSocket message."""
-
-    type: str
-    chat_id: int | None = None
-    message_id: int | None = None
-    user_id: int | None = None
-    data: dict | None = None
-
-
-class WebSocketNewMessage(BaseModel):
-    """Schema for new message WebSocket event."""
-
-    type: str = "new_message"
-    chat_id: int
-    message: MessageResponse
-    external: bool = False
-
-
-class WebSocketTyping(BaseModel):
-    """Schema for typing indicator WebSocket event."""
-
-    type: str = "typing"
-    chat_id: int
-    user_id: int
-
-
-class WebSocketPresence(BaseModel):
-    """Schema for presence WebSocket event."""
-
-    type: str = "presence"
-    user_id: int
-    status: str  # online/offline
-    timestamp: datetime
 
 
 # ====================== PIN SCHEMA ======================

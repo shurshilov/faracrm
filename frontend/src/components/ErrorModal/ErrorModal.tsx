@@ -51,6 +51,10 @@ const TRANSLATIONS: Record<
       title: 'Невозможно редактировать чат',
       description: 'Личные чаты нельзя редактировать.',
     },
+    CANNOT_REMOVE_THE_LAST_CHAT_ADMIN: {
+      title: 'Это последний администратор чата',
+      description: 'Сначала передайте права администратора другому участнику.',
+    },
     ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD: {
       title: 'Невозможно редактировать пользователя',
       description:
@@ -139,6 +143,10 @@ const TRANSLATIONS: Record<
     CANNOT_EDIT_DIRECT_CHAT: {
       title: 'Cannot Edit Chat',
       description: 'Direct chats cannot be edited.',
+    },
+    CANNOT_REMOVE_THE_LAST_CHAT_ADMIN: {
+      title: 'This Is the Last Chat Admin',
+      description: 'Make another member an admin first.',
     },
     ONLY_ADMIN_CAN_CHANGE_ADMIN_FIELD: {
       title: 'Cannot Edit User.',

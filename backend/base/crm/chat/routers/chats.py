@@ -1,7 +1,6 @@
 # Copyright 2025 FARA CRM
 # Chat module - chats router
 
-import asyncio
 import json
 import logging
 from typing import TYPE_CHECKING
@@ -29,39 +28,6 @@ router_private = APIRouter(
     tags=["Chat"],
     dependencies=[Depends(AuthTokenApp.verify_access)],
 )
-
-
-def _resolve_direct_chat_name(
-    chat_type: str,
-    members: list[dict],
-    current_user_id: int,
-    stored_name: str,
-) -> str:
-    """Имя чата для отдачи клиенту.
-
-    Для direct-чата:
-      - имя всегда актуально, если собеседник сменил имя;
-      - старые чаты «переименовываются» сами собой — имя не зависит от того,
-        когда и под каким названием чат был создан;
-      - имя корректно для каждого зрителя (A видит B, B видит A) — одного
-        хранимого поля для этого в принципе не хватило бы.
-    """
-    if chat_type != "direct":
-        return stored_name
-    # Собеседник = любой участник, кроме текущего юзера. Партнёр (member_type
-    # 'partner') никогда не является текущим юзером, поэтому исключаем только
-    # user-участника с совпадающим id (member_type None трактуем как 'user').
-    others = [
-        m
-        for m in members
-        if not (
-            m.get("member_type") in ("user", None)
-            and m.get("id") == current_user_id
-        )
-    ]
-    if not others:
-        return stored_name  # чат с самим собой / собеседник не найден
-    return others[0].get("name") or stored_name
 
 
 @router_private.get("/chats")
@@ -109,474 +75,39 @@ async def get_chats(
     Получить список чатов текущего пользователя.
 
     По умолчанию пользователь (в т.ч. админ) видит только свои активные чаты,
-    не являющиеся record-чатами:
-      - chat_member.user_id = me AND chat_member.is_active = true
-      - chat.active = true
-      - chat.chat_type != 'record'
-
-    Query-флаги снимают отдельные ограничения:
+    не являющиеся record-чатами. Query-флаги снимают отдельные ограничения:
       - include_deleted=1  → снимает фильтр по chat.active (доступно всем)
-      - include_record=1   → показывает record-чаты                 (доступно всем)
-      - include_foreign=1  → снимает требование членства             (только админ,
+      - include_record=1   → показывает record-чаты (доступно всем)
+      - include_foreign=1  → снимает требование членства (только админ,
                               для не-админа → 403 ADMIN_REQUIRED)
 
-    Комбо-фильтрация:
-    - is_internal=True + chat_type=direct → Внутренние личные
-    - is_internal=True + chat_type=group  → Внутренние группы
-    - is_internal=False + connector_type=telegram → Telegram чаты
+    Как собирается список — Chat.list_for_user.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
-    user_id = auth_session.user_id.id
-    is_sys_admin = bool(auth_session.user_id.is_admin)
-    # Команды пользователя — уже в сессии (гидрируются при сборке), без запроса.
-    my_team_ids = [t.id for t in (auth_session.user_id.team_ids or [])]
 
     # include_foreign разрешён только системному админу. Не-админам
     # бросаем 403, чтобы ошибка не маскировалась под «пустой результат».
-    if bool(include_foreign) and not is_sys_admin:
+    if include_foreign and not auth_session.user_id.is_admin:
         raise FaraException(
             {"content": "ADMIN_REQUIRED", "status_code": HTTP_403_FORBIDDEN}
         )
 
-    session = env.apps.db.get_session()
-
-    _show_foreign = bool(include_foreign) and is_sys_admin
-
-    # Папку грузим РАНО: её kind влияет на базовый JOIN. Внешние папки
-    # external_mine/external_all — глобальные, резолвятся по kind (не доменом,
-    # как папки коннекторов): членство/team не выразить доменом над chat.
-    # external_all = team-видимость (LEFT JOIN, членство необязательно).
-    folder_row = None
-    if folder_id is not None:
-        folder_row = await env.models.chat_folder.search_one(
-            filter=[("id", "=", folder_id)],
-            fields=["id", "domain", "connector_id", "kind"],
-        )
-        if not folder_row:
-            return {"data": [], "total": 0}
-    folder_kind = folder_row.kind if folder_row else None
-
-    # «Все» (внешние, team-scoped): из scope=all ИЛИ папки external_all.
-    want_all = (scope == "all") or (folder_kind == "external_all")
-
-    # Строим SQL динамически. Плейсхолдеры FROM/JOIN (join_params) держим
-    # ОТДЕЛЬНО от WHERE (where_params): в итоговом тексте все JOIN-%s идут
-    # раньше WHERE-%s, поэтому итоговый порядок = join_params + where_params.
-    # Это убирает хрупкий insert(0) и делает scope/connector_type безопасными.
-    join_params: list = []
-    conditions: list[str] = []
-    where_params: list = []
-
-    if _show_foreign:
-        base_query = """
-            SELECT DISTINCT c.id, c.last_message_date
-            FROM chat c
-        """
-    else:
-        # LEFT JOIN + cm.user_id в ON: членство больше не обязательно, чтобы
-        # scope=all мог показать team-scoped внешние чаты, где юзер НЕ участник.
-        base_query = """
-            SELECT DISTINCT c.id, c.last_message_date, cm.is_pinned
-            FROM chat c
-            LEFT JOIN chat_member cm
-                ON c.id = cm.chat_id
-               AND cm.is_active = true
-               AND cm.user_id = %s
-        """
-        join_params.append(user_id)
-        if want_all and my_team_ids:
-            # Мои чаты (участник) ИЛИ чаты моих команд (team-scoped видимость).
-            conditions.append(
-                "(cm.user_id IS NOT NULL OR c.team_id = ANY(%s))"
-            )
-            where_params.append(my_team_ids)
-        else:
-            # 'mine' (дефолт) — только где я активный участник.
-            conditions.append("cm.user_id IS NOT NULL")
-
-    # Soft-delete: фильтр по active снимается флагом (доступно всем)
-    if not bool(include_deleted):
-        conditions.append("c.active = true")
-
-    # Record-чаты: по умолчанию исключены. Флаг снимает исключение (доступно всем)
-    if not bool(include_record):
-        conditions.append("c.chat_type != 'record'")
-
-    # Поиск по имени чата ИЛИ участника: у direct-чатов отображаемое имя —
-    # собеседник, у внешних — партнёр, поэтому одного c.name мало. Фильтр
-    # на бэке: раньше фронт фильтровал по имени только среди первых 100
-    # загруженных чатов (issue #28).
-    if search and search.strip():
-        # Экранирование LIKE — у диалекта (одна точка для всех поисков).
-        pattern = (
-            "%" + env.models.chat._dialect.like_escape(search.strip()) + "%"
-        )
-        conditions.append("""(c.name ILIKE %s OR EXISTS (
-                SELECT 1 FROM chat_member sm
-                LEFT JOIN users su ON su.id = sm.user_id
-                LEFT JOIN partners sp ON sp.id = sm.partner_id
-                WHERE sm.chat_id = c.id AND sm.is_active = true
-                  AND (su.name ILIKE %s OR sp.name ILIKE %s)
-            ))""")
-        where_params.extend([pattern, pattern, pattern])
-
-    # Фильтр is_internal
-    if is_internal is True:
-        conditions.append("c.is_internal = true")
-    elif is_internal is False:
-        conditions.append("c.is_internal = false")
-
-    # Фильтр chat_type
-    if chat_type:
-        if chat_type == "group":
-            conditions.append("c.chat_type IN ('group', 'channel')")
-        else:
-            conditions.append("c.chat_type = %s")
-            where_params.append(chat_type)
-
-    # Фильтр connector_type — через контакты партнёров-участников чата.
-    # Логика: connector.contact_type_id → contact.contact_type_id → partner → chat_member.
-    # Ищем чаты где у партнёра есть контакт с тем же contact_type_id что у коннектора.
-    if connector_type:
-        # Получаем contact_type_id из коннектора (integer FK)
-        contact_type_id_for_filter = (
-            await env.models.contact_type.get_contact_type_id_for_connector(
-                connector_type
-            )
-        )
-
-        if contact_type_id_for_filter:
-            base_query += """
-            JOIN chat_member cm_filter ON c.id = cm_filter.chat_id
-                AND cm_filter.partner_id IS NOT NULL AND cm_filter.is_active = true
-            JOIN contact contact_filter ON contact_filter.partner_id = cm_filter.partner_id
-                AND contact_filter.active = true
-                AND contact_filter.contact_type_id = %s
-            """
-            # JOIN-плейсхолдер (текстово после cm-LEFT-JOIN) → в join_params.
-            join_params.append(contact_type_id_for_filter.id)
-
-    # Резолвинг папки (folder_row загружен рано). Три ветки:
-    #   - external_mine/external_all → по kind: только внешние чаты
-    #     (team-vs-membership уже задан базовым условием want_all выше);
-    #   - папка коннектора → по chat_external_chat (не domain);
-    #   - остальные → штатным ORM-поиском по domain (правила chat_folder уже
-    #     ограничили выборку своими+глобальными папками).
-    if folder_row is not None:
-        if folder_kind in ("external_mine", "external_all"):
-            conditions.append("c.is_internal = false")
-        elif folder_row.connector_id:
-            ext_rows = await session.execute(
-                "SELECT DISTINCT chat_id FROM chat_external_chat "
-                "WHERE connector_id = %s",
-                (folder_row.connector_id.id,),
-            )
-            ext_ids = [r["chat_id"] for r in ext_rows]
-            if not ext_ids:
-                return {"data": [], "total": 0}
-            conditions.append("c.id = ANY(%s)")
-            where_params.append(ext_ids)
-        else:
-            domain = folder_row.domain or []
-            if domain:
-                matched = await env.models.chat.search(
-                    filter=domain, fields=["id"], limit=10000
-                )
-                matched_ids = [m.id for m in matched]
-                if not matched_ids:
-                    return {"data": [], "total": 0}
-                conditions.append("c.id = ANY(%s)")
-                where_params.append(matched_ids)
-
-    where_clause = " AND ".join(conditions) if conditions else "TRUE"
-
-    # Закреплённые чаты сверху. В foreign-режиме нет cm-джойна → без закрепа.
-    # LEFT JOIN даёт cm.is_pinned=NULL у team-чатов, где юзер НЕ участник.
-    # NULLS LAST кладёт их вниз (по умолчанию DESC = NULLS FIRST). Сортируем
-    # именно по cm.is_pinned (а не COALESCE) — оно в списке SELECT DISTINCT,
-    # иначе Postgres: "ORDER BY expressions must appear in select list".
-    if _show_foreign:
-        order_by = "c.last_message_date DESC NULLS LAST"
-    else:
-        order_by = (
-            "cm.is_pinned DESC NULLS LAST, "
-            "c.last_message_date DESC NULLS LAST"
-        )
-
-    chat_ids_query = f"""
-        {base_query}
-        WHERE {where_clause}
-        ORDER BY {order_by}
-        LIMIT %s OFFSET %s
-    """
-    # Порядок: сначала все JOIN/FROM-плейсхолдеры, затем WHERE, затем LIMIT/OFFSET.
-    all_params = join_params + where_params + [limit, offset]
-
-    chat_id_rows = await session.execute(chat_ids_query, tuple(all_params))
-
-    # Карта закрепа: id чата → is_pinned (в foreign-режиме поля нет → False).
-    pinned_by_id = {
-        row["id"]: bool(row.get("is_pinned", False)) for row in chat_id_rows
-    }
-
-    if not chat_id_rows:
-        return {"data": [], "total": 0}
-
-    chat_ids = [row["id"] for row in chat_id_rows]
-
-    # Шаг 2: Параллельно загружаем все данные
-    chats_task = env.models.chat.search(
-        filter=[("id", "in", chat_ids)],
-        fields=[
-            "id",
-            "name",
-            "chat_type",
-            "last_message_date",
-            "create_datetime",
-            "active",
-        ],
+    chats = await env.models.chat.list_for_user(
+        auth_session.user_id,
         limit=limit,
+        offset=offset,
+        search=search,
+        is_internal=is_internal,
+        chat_type=chat_type,
+        connector_type=connector_type,
+        folder_id=folder_id,
+        include_deleted=bool(include_deleted),
+        include_record=bool(include_record),
+        include_foreign=bool(include_foreign),
+        scope=scope,
     )
-
-    # Получаем участников (пользователей и партнёров) через chat_member
-    members_query = """
-        SELECT cm.chat_id,
-               COALESCE(u.id, p.id) as id,
-               COALESCE(u.name, p.name) as name,
-               CASE WHEN cm.user_id IS NOT NULL THEN 'user' ELSE 'partner' END as member_type,
-               COALESCE(u.image, p.image) as image_id,
-               cm.can_read,
-               cm.can_write,
-               cm.can_invite,
-               cm.can_pin,
-               cm.can_delete_others,
-               cm.is_admin
-        FROM chat_member cm
-        LEFT JOIN users u ON u.id = cm.user_id
-        LEFT JOIN partners p ON p.id = cm.partner_id
-        WHERE cm.chat_id = ANY(%s) AND cm.is_active = true
-    """
-    members_task = session.execute(members_query, (chat_ids,))
-
-    last_messages_query = """
-        SELECT DISTINCT ON (chat_id)
-            id, chat_id, body, message_type, connector_type,
-            author_user_id, author_partner_id, create_datetime
-        FROM chat_message
-        WHERE chat_id = ANY(%s) AND is_deleted = false
-        ORDER BY chat_id, id DESC
-    """
-    last_messages_task = session.execute(last_messages_query, (chat_ids,))
-
-    # Непрочитанные = сообщения в чате с id > watermark пользователя в этом чате.
-    # Своих сообщений (author = текущий user) не считаем.
-    # Watermark лежит в chat_member.last_read_message_id (NULL → 0).
-    unread_query = """
-        SELECT m.chat_id, COUNT(*) as unread_count
-        FROM chat_message m
-        JOIN chat_member cm
-          ON cm.chat_id = m.chat_id
-         AND cm.user_id = %s
-         AND cm.is_active = true
-        WHERE m.chat_id = ANY(%s)
-          AND m.is_deleted = false
-          AND (m.author_user_id IS NULL OR m.author_user_id != %s)
-          AND m.id > COALESCE(cm.last_read_message_id, 0)
-        GROUP BY m.chat_id
-    """
-    unread_task = session.execute(unread_query, (user_id, chat_ids, user_id))
-
-    # ОТКЛЮЧЕНО: поле chat.connectors в ответе списка нигде на фронте не
-    # читается (0 обращений к `.connectors` в frontend/src), а этот запрос
-    # гонял JOIN по chat_member/contact/contact_type/chat_connector на КАЖДУЮ
-    # загрузку сайдбара впустую. Живой пикер коннекторов — отдельный эндпоинт
-    # GET /chats/{id}/connectors → Chat.get_available_connectors (там же и
-    # phone-format фолбэк, ContactType.MATCH_SQL). Возвращаем connectors=[].
-    # Если поле понадобится (мобилка/другой клиент) — раскомментировать блок,
-    # connectors_task в gather, разбор connectors_raw и поле в result.
-    # connectors_query = f"""
-    #     SELECT DISTINCT ON (cm.chat_id, cc.id)
-    #         cm.chat_id,
-    #         cc.id as connector_id,
-    #         cc.type as connector_type,
-    #         cc.name as connector_name,
-    #         c.id as contact_id,
-    #         c.name as contact_value
-    #     FROM chat_member cm
-    #     JOIN contact c ON c.partner_id = cm.partner_id AND c.active = true
-    #     JOIN contact_type ict ON ict.id = c.contact_type_id
-    #     JOIN chat_connector cc ON cc.active = true
-    #     JOIN contact_type cct ON cct.id = cc.contact_type_id
-    #         AND {env.models.contact_type.MATCH_SQL}
-    #     WHERE cm.chat_id = ANY(%s)
-    #       AND cm.partner_id IS NOT NULL
-    #       AND cm.is_active = true
-    #     ORDER BY cm.chat_id, cc.id, (cct.id = ict.id) DESC
-    # """
-    # connectors_task = session.execute(connectors_query, (chat_ids,))
-
-    # Выполняем параллельно (каждый запрос в своём соединении из пула)
-    chats_orm, members_raw, last_messages_raw, unread_raw = (
-        await asyncio.gather(
-            chats_task,
-            members_task,
-            last_messages_task,
-            unread_task,
-        )
-    )
-
-    # Индексируем чаты для сохранения порядка сортировки
-    chats_by_id = {c.id: c for c in chats_orm}
-    chats_sorted = [chats_by_id[cid] for cid in chat_ids if cid in chats_by_id]
-
-    # Группируем участников по chat_id
-    members_by_chat: dict[int, list] = {}
-    for m in members_raw:
-        cid = m["chat_id"]
-        if cid not in members_by_chat:
-            members_by_chat[cid] = []
-        members_by_chat[cid].append(
-            {
-                "id": m["id"],
-                "name": m["name"],
-                "member_type": m["member_type"],
-                "image_id": m["image_id"],
-                "permissions": {
-                    "can_read": m["can_read"],
-                    "can_write": m["can_write"],
-                    "can_invite": m["can_invite"],
-                    "can_pin": m["can_pin"],
-                    "can_delete_others": m["can_delete_others"],
-                    "is_admin": m["is_admin"],
-                },
-            }
-        )
-
-    # Группируем последние сообщения и собираем author_user_ids и partner_ids
-    last_message_by_chat: dict[int, dict] = {}
-    author_user_ids = set()
-    author_partner_ids = set()
-    for msg in last_messages_raw:
-        last_message_by_chat[msg["chat_id"]] = msg
-        if msg["author_user_id"]:
-            author_user_ids.add(msg["author_user_id"])
-        if msg.get("author_partner_id"):
-            author_partner_ids.add(msg["author_partner_id"])
-
-    # Шаг 3: Загружаем имена авторов (users и partners)
-    author_names: dict[int, str] = {}
-    partner_names: dict[int, str] = {}
-
-    if author_user_ids:
-        authors_query = "SELECT id, name FROM users WHERE id = ANY(%s)"
-        authors_raw = await session.execute(
-            authors_query, (list(author_user_ids),)
-        )
-        for author in authors_raw:
-            author_names[author["id"]] = author["name"]
-
-    if author_partner_ids:
-        partners_query = "SELECT id, name FROM partners WHERE id = ANY(%s)"
-        partners_raw = await session.execute(
-            partners_query, (list(author_partner_ids),)
-        )
-        for partner in partners_raw:
-            partner_names[partner["id"]] = partner["name"]
-
-    # Группируем непрочитанные
-    unread_by_chat: dict[int, int] = {
-        row["chat_id"]: row["unread_count"] for row in unread_raw
-    }
-
-    # ОТКЛЮЧЕНО вместе с connectors_query (см. выше) — поле не потребляется.
-    # connectors_by_chat: dict[int, list] = {}
-    # for conn in connectors_raw:
-    #     cid = conn["chat_id"]
-    #     if cid not in connectors_by_chat:
-    #         connectors_by_chat[cid] = []
-    #     connectors_by_chat[cid].append(
-    #         {
-    #             "id": conn["connector_id"],
-    #             "type": conn["connector_type"],
-    #             "name": conn["connector_name"],
-    #             "contact_id": conn.get("contact_id"),
-    #             "contact_value": conn.get("contact_value"),
-    #         }
-    #     )
-
-    # Формируем результат
-    result = []
-    for chat in chats_sorted:
-        chat_data = {
-            "id": chat.id,
-            "name": _resolve_direct_chat_name(
-                chat.chat_type,
-                members_by_chat.get(chat.id, []),
-                user_id,
-                chat.name,
-            ),
-            "chat_type": chat.chat_type,
-            "is_internal": chat.is_internal,
-            "active": chat.active,
-            # Всегда []: connectors_query отключён (поле не читается фронтом).
-            # Форму ответа сохраняем — тип Chat.connectors на фронте не опционален.
-            "connectors": [],
-            "last_message_date": (
-                chat.last_message_date.isoformat()
-                if chat.last_message_date
-                else None
-            ),
-            "create_datetime": (
-                chat.create_datetime.isoformat()
-                if chat.create_datetime
-                else None
-            ),
-            "unread_count": unread_by_chat.get(chat.id, 0),
-            "members": members_by_chat.get(chat.id, []),
-            "is_pinned": pinned_by_id.get(chat.id, False),
-        }
-
-        last_msg = last_message_by_chat.get(chat.id)
-        if last_msg:
-            # Определяем автора: user или partner
-            author_user_id = last_msg["author_user_id"]
-            author_partner_id = last_msg.get("author_partner_id")
-
-            author_name = None
-            if author_user_id:
-                author_name = author_names.get(author_user_id)
-            elif author_partner_id:
-                author_name = partner_names.get(author_partner_id)
-
-            chat_data["last_message"] = {
-                "id": last_msg["id"],
-                "body": last_msg["body"],
-                "message_type": last_msg.get("message_type", "comment"),
-                "connector_type": last_msg.get("connector_type"),
-                "author_id": author_user_id or author_partner_id,
-                "author_name": author_name,
-                "create_datetime": (
-                    last_msg["create_datetime"].isoformat()
-                    if last_msg["create_datetime"]
-                    else None
-                ),
-            }
-        else:
-            chat_data["last_message"] = None
-
-        result.append(chat_data)
-
-    # Закреплённые сверху, затем по дате последнего сообщения.
-    sorted_list = sorted(
-        result,
-        key=lambda x: (
-            1 if x.get("is_pinned") else 0,
-            x.get("last_message_date") or x.get("create_datetime") or "",
-        ),
-        reverse=True,
-    )
-    return {"data": sorted_list, "total": len(sorted_list)}
+    return {"data": chats, "total": len(chats)}
 
 
 @router_private.get("/chats/folders/unread")
@@ -613,29 +144,10 @@ async def get_folders_unread(req: Request):
 
     session = env.apps.db.get_session()
 
-    # (1) unread + chat_type по каждому непрочитанному чату юзера. Формула та же,
-    # что в get_chats: id > watermark, не свои, чат активен и не record, членство
-    # активно. chat_type берём тут же — по нему резолвятся встроенные папки.
-    unread_rows = await session.execute(
-        """
-        SELECT m.chat_id, c.chat_type, c.is_internal,
-               COUNT(*) AS unread_count
-        FROM chat_message m
-        JOIN chat_member cm
-          ON cm.chat_id = m.chat_id
-         AND cm.user_id = %s
-         AND cm.is_active = true
-        JOIN chat c
-          ON c.id = m.chat_id
-         AND c.active = true
-         AND c.chat_type != 'record'
-        WHERE m.is_deleted = false
-          AND (m.author_user_id IS NULL OR m.author_user_id != %s)
-          AND m.id > COALESCE(cm.last_read_message_id, 0)
-        GROUP BY m.chat_id, c.chat_type, c.is_internal
-        """,
-        (user_id, user_id),
-    )
+    # (1) unread + chat_type по каждому непрочитанному чату юзера. Формула та
+    # же, что в списке чатов (ChatMessage.unread_counts). chat_type берём тут
+    # же — по нему резолвятся встроенные папки.
+    unread_rows = await env.models.chat_message.unread_counts(user_id)
     if not unread_rows:
         return {"data": {}}
 
@@ -652,7 +164,6 @@ async def get_folders_unread(req: Request):
         r["chat_id"]: r["is_internal"] for r in unread_rows
     }
     unread_ids = list(unread_by_chat)
-    total_all = sum(unread_by_chat.values())
     total_internal = sum(
         cnt for ch, cnt in unread_by_chat.items() if internal_by_chat.get(ch)
     )
@@ -770,59 +281,15 @@ async def get_chat(req: Request, chat_id: int):
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    session = env.apps.db.get_session()
-
     # Проверка членства реализована через rule "@is_member" на модели chat:
     # chat.get(chat_id) бросит RecordNotFound для не-участников.
     chat = await env.models.chat.get(chat_id)
-
-    # Получаем участников отдельным запросом
-
-    members_query = """
-        SELECT
-            COALESCE(u.id, p.id) as id,
-            COALESCE(u.name, p.name) as name,
-            CASE WHEN cm.user_id IS NOT NULL THEN 'user' ELSE 'partner' END as member_type,
-            COALESCE(u.image, p.image) as image_id,
-            cm.can_read,
-            cm.can_write,
-            cm.can_invite,
-            cm.can_pin,
-            cm.can_delete_others,
-            cm.is_admin
-        FROM chat_member cm
-        LEFT JOIN users u ON u.id = cm.user_id
-        LEFT JOIN partners p ON p.id = cm.partner_id
-        WHERE cm.chat_id = %s AND cm.is_active = true
-    """
-    members_raw = await session.execute(members_query, (chat_id,))
-    members = [
-        {
-            "id": m["id"],
-            "name": m["name"],
-            "member_type": m["member_type"],
-            "image_id": m["image_id"],
-            "permissions": {
-                "can_read": m["can_read"],
-                "can_write": m["can_write"],
-                "can_invite": m["can_invite"],
-                "can_pin": m["can_pin"],
-                "can_delete_others": m["can_delete_others"],
-                "is_admin": m["is_admin"],
-            },
-        }
-        for m in members_raw
-    ]
+    members = (await ChatMember.list_for_chats([chat_id])).get(chat_id, [])
 
     return {
         "data": {
             "id": chat.id,
-            "name": _resolve_direct_chat_name(
-                chat.chat_type,
-                members,
-                user_id,
-                chat.name,
-            ),
+            "name": chat.display_name(members, user_id),
             "chat_type": chat.chat_type,
             "description": chat.description,
             "is_internal": chat.is_internal,
@@ -837,6 +304,7 @@ async def get_chat(req: Request, chat_id: int):
             "default_can_read": chat.default_can_read,
             "default_can_write": chat.default_can_write,
             "default_can_invite": chat.default_can_invite,
+            "default_can_remove": chat.default_can_remove,
             "default_can_pin": chat.default_can_pin,
             "default_can_delete_others": chat.default_can_delete_others,
         }
@@ -963,7 +431,8 @@ async def add_member(req: Request, chat_id: int, body: AddMemberInput):
     user_id = auth_session.user_id.id
 
     # Проверяем членство и право приглашать
-    await ChatMember.check_can_invite(chat_id, user_id)
+    member = await ChatMember.check_membership(chat_id, user_id)
+    member.require(member.can_invite)
 
     chat = await env.models.chat.get(chat_id)
 
@@ -996,29 +465,13 @@ async def add_member(req: Request, chat_id: int, body: AddMemberInput):
 async def update_chat(req: Request, chat_id: int, body: ChatUpdate):
     """
     Обновить настройки чата (включая права по умолчанию).
-    Изменение прав по умолчанию требует is_admin.
+    Требует is_admin участника.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство
-    member = await ChatMember.check_membership(chat_id, user_id)
-
-    # Если меняются права по умолчанию - требуется админ
-    changing_permissions = any(
-        [
-            body.default_can_read is not None,
-            body.default_can_write is not None,
-            body.default_can_invite is not None,
-            body.default_can_pin is not None,
-            body.default_can_delete_others is not None,
-        ]
-    )
-    if changing_permissions or not member.is_admin:
-        raise FaraException(
-            {"content": "ADMIN_REQUIRED", "status_code": HTTP_403_FORBIDDEN}
-        )
+    await ChatMember.check_admin(chat_id, user_id)
 
     chat = await env.models.chat.get(chat_id)
 
@@ -1026,29 +479,8 @@ async def update_chat(req: Request, chat_id: int, body: ChatUpdate):
     if chat.chat_type == "direct":
         raise FaraException({"content": "CANNOT_EDIT_DIRECT_CHAT"})
 
-    # Обновляем поля на объекте
-    updated_fields = {}
-
-    # Основные поля
-    if body.name is not None:
-        updated_fields["name"] = body.name
-    if body.description is not None:
-        updated_fields["description"] = body.description
-
-    # Права по умолчанию
-    if body.default_can_read is not None:
-        updated_fields["default_can_read"] = body.default_can_read
-    if body.default_can_write is not None:
-        updated_fields["default_can_write"] = body.default_can_write
-    if body.default_can_invite is not None:
-        updated_fields["default_can_invite"] = body.default_can_invite
-    if body.default_can_pin is not None:
-        updated_fields["default_can_pin"] = body.default_can_pin
-    if body.default_can_delete_others is not None:
-        updated_fields["default_can_delete_others"] = (
-            body.default_can_delete_others
-        )
-
+    # Обновляем только переданные поля
+    updated_fields = body.model_dump(exclude_none=True)
     if updated_fields:
         await chat.update(env.models.chat(**updated_fields))
 
@@ -1079,6 +511,9 @@ async def update_member_permissions(
             {"content": "MEMBER_NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
         )
 
+    if payload.is_admin is False:
+        await target_member.check_not_last_admin(chat_id)
+
     # Обновляем только переданные поля
     perm_fields = payload.model_dump(exclude_none=True)
     if perm_fields:
@@ -1096,14 +531,19 @@ async def remove_member(req: Request, chat_id: int, member_id: int):
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Для удаления других участников нужны права админа
-    await ChatMember.check_admin(chat_id, user_id)
+    # Удалять участников — право can_remove (у админа оно есть всегда)
+    member = await ChatMember.check_membership(chat_id, user_id)
+    member.require(member.can_remove)
 
     chat = await env.models.chat.get(chat_id)
 
     # Нельзя удалять из direct чата
     if chat.chat_type == "direct":
         raise FaraException({"content": "CANNOT_REMOVE_FROM_DIRECT_CHAT"})
+
+    target_member = await ChatMember.get_membership(chat_id, member_id)
+    if target_member:
+        await target_member.check_not_last_admin(chat_id)
 
     # Удаляем участника (мягко: is_active=False, запись user не трогается)
     await chat.remove_member(member_id)
@@ -1138,13 +578,15 @@ async def leave_chat(req: Request, chat_id: int):
     user_id = auth_session.user_id.id
 
     # Проверяем членство
-    await ChatMember.check_membership(chat_id, user_id)
+    member = await ChatMember.check_membership(chat_id, user_id)
 
     chat = await env.models.chat.get(chat_id)
 
     # Нельзя покинуть direct чат
     if chat.chat_type == "direct":
         raise FaraException({"content": "CANNOT_LEAVE_DIRECT_CHAT"})
+
+    await member.check_not_last_admin(chat_id)
 
     # Удаляем себя из участников (мягко: is_active=False)
     await chat.remove_member(user_id)

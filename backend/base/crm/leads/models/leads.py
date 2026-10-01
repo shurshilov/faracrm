@@ -128,8 +128,10 @@ class Lead(AuditMixin, StageProgressMixin, PolymorphicParentMixin):
         # Чаты клиента по этому коннектору: партнёр — активный участник, и
         # чат привязан к внешнему чату коннектора. Подписываем ответственного
         # (_ensure_membership добавит, только если ещё не участник).
+        # sudo: участников чата видит только его участник, а ответственный
+        # в чат ещё не вступил.
         try:
-            partner_members = await env.models.chat_member.search(
+            partner_members = await env.models.chat_member.sudo().search(
                 filter=[
                     ("partner_id", "=", self.partner_id.id),
                     ("is_active", "=", True),
@@ -138,7 +140,7 @@ class Lead(AuditMixin, StageProgressMixin, PolymorphicParentMixin):
             )
             chat_ids = [m.chat_id.id for m in partner_members if m.chat_id]
             if chat_ids:
-                ext_chats = await env.models.chat_external_chat.search(
+                ext_chats = await env.models.chat_external_chat.sudo().search(
                     filter=[
                         ("connector_id", "=", self.connector_id.id),
                         ("chat_id", "in", chat_ids),

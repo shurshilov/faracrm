@@ -74,17 +74,15 @@ class ChatExternalAccount(AuditMixin, DotModel):
         index=True,
     )
 
-    # Дополнительные данные
+    # Дополнительные данные. role_read: в сыром вебхуке — текст первого
+    # сообщения и профиль клиента.
     raw: str | None = Text(
-        description="Сырые данные из которых создан аккаунт"
+        role_read="system_admin",
+        description="Сырые данные из которых создан аккаунт",
     )
 
     # Порядок для распределения (для операторов)
     sequence: int = Integer(default=10, description="Порядок в очереди")
-
-    # Статистика (вычисляемые поля)
-    # rating: int = Integer(store=False, default=0, description="Количество чатов")
-    # rating_today: int = Integer(store=False, default=0, description="Количество чатов сегодня")
 
     # Лидогенерация
     # при отвеченном звонке
@@ -151,7 +149,6 @@ class ChatExternalAccount(AuditMixin, DotModel):
                 ("active", "=", True),
             ],
             fields=["id", "contact_id", "external_id", "name"],
-            # fields_nested={"contact_id": {"fields": ["user_id", "partner_id"]}},
         )
 
     @hybridmethod

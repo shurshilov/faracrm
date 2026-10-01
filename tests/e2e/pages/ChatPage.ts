@@ -176,6 +176,18 @@ export class ChatPage {
     await expect(this.page.getByText('Новый чат').first()).toBeHidden({ timeout: 5_000 }).catch(() => {});
   }
 
+  // ==================== Настройки чата ====================
+
+  /** Открыть настройки открытого чата на вкладке «Участники». */
+  async openMembersSettings() {
+    // «Опции» есть и у строк списка чатов — берём кнопку в шапке чата
+    await this.messagesContainer.getByTitle(/^(опции|options)$/i).click();
+    await this.page
+      .getByRole('menuitem', { name: /^(настройки|settings)$/i })
+      .click();
+    await this.page.getByRole('tab', { name: /^(участники|members)$/i }).click();
+  }
+
   // ==================== Сообщения ====================
 
   async sendMessage(text: string) {
