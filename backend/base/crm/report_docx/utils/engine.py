@@ -98,10 +98,19 @@ class DocxReportEngine:
     @staticmethod
     @functools.cache
     def jinja_env():
-        """Окружение Jinja с фильтрами форматирования (одно на процесс)."""
-        from jinja2 import Environment
+        """Окружение Jinja с фильтрами форматирования (одно на процесс).
 
-        environment = Environment()
+        Песочница: шаблон — данные из базы (и из редактора конструктора),
+        а не код проекта. Обычный Environment пускает из выражения в
+        внутренности Python ({{ ''.__class__... }}) вплоть до выполнения
+        команд на сервере; SandboxedEnvironment такие обращения отвергает.
+        finalize: пустое значение печатается пустой строкой, а не «None».
+        """
+        from jinja2.sandbox import SandboxedEnvironment
+
+        environment = SandboxedEnvironment(
+            finalize=lambda value: "" if value is None else value
+        )
         environment.filters.update(
             money=money_filter, date=date_filter, datetime=datetime_filter
         )

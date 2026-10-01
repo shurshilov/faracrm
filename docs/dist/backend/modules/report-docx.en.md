@@ -102,6 +102,14 @@ async def sale_invoice_rus(env, record_id: int) -> dict: ...
 
 Content control wrappers are stripped before rendering (`utils/sdt.py`), so the output document and the PDF carry only the values. Templates are edited by administrators: the `report_template` ACL is read-only for `base_user` and full for `system_admin`; on databases where the module was already installed, tighten the old ACL row by hand: `UPDATE access_list SET perm_create=false, perm_update=false, perm_delete=false WHERE name='base_user_report_template'`.
 
+## Access and security
+
+A report is printed on behalf of the person who pressed the button: `record_context` and the data function read records under the request session, i.e. with that user's model ACL and row rules. A record they cannot open never reaches the document: the route answers with a denial. Cron deliveries build the report under the system session.
+
+Fields are closed at the context level: it never contains private fields (`private=True` — password hashes, storage tokens), fields with role-based access (`role_read`, `role_create`, `role_update` — e.g. connector webhooks and tokens) or binaries. The same rule applies to relations: Many2one and lists carry only public scalars without role restrictions. A tag on such a field prints empty. A data function is written by a developer and reads the database through the ORM, where `role_read` strips closed fields both in direct searches and in nested relations (`fields_nested`); private fields are returned by the ORM to server code, so they must not be put into the function's dict.
+
+Templates run in a Jinja sandbox (`SandboxedEnvironment`): access to Python internals (`{{ ''.__class__… }}`) is rejected, an empty value prints as an empty string. The designer routes (`POST /reports/preview`, `GET /reports/templates/{id}/fields`) and the PDF engine indicator are for report administrators only (superuser or the `system_admin` role, same as the `report_template` ACL): the preview executes a DOCX sent by the client. Tests: `tests/unit/test_report_docx_engine.py`, `tests/integration/report_docx/`.
+
 ## PDF
 
 DOCX → PDF conversion has two modes, picked automatically:

@@ -167,7 +167,12 @@ class ReportTemplate(DotModel):
 
     @classmethod
     def _to_plain(cls, value: Any, depth: int) -> Any:
-        """Запись/список записей → dict/list (скаляры как есть)."""
+        """Запись/список записей → dict/list (скаляры как есть).
+
+        depth — сколько уровней записей раскрыть в dict публичных полей;
+        глубже запись сворачивается в {"id", "name"}. Поля, которых не было
+        в запросе, выходят как None.
+        """
         if isinstance(value, DotModel):
             if depth <= 0:
                 return {"id": value.id, "name": getattr(value, "name", None)}
@@ -197,7 +202,8 @@ class ReportTemplate(DotModel):
         )
         if not record:
             raise RecordNotFound(model_cls.__table__, record_id)
-        return cls._to_plain(record, 1)
+        # Сама запись + один уровень связей
+        return cls._to_plain(record, 2)
 
     @classmethod
     async def _build_context(

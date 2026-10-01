@@ -31,6 +31,22 @@ router_private = APIRouter(
 )
 
 
+def is_template_admin(user) -> bool:
+    """Кто настраивает отчёты: суперпользователь или роль system_admin —
+    то же правило, что ACL report_template (ReportDocxApp.ROLE_ACL)."""
+    return bool(user.is_admin) or any(
+        role.code == "system_admin" for role in (user.role_ids or [])
+    )
+
+
+def require_template_admin(req: Request) -> None:
+    """403 ADMIN_REQUIRED, если сессия запроса не администратор отчётов.
+    Конструктор рендерит присланный DOCX и отдаёт каталог полей — только
+    тем, кто и так правит шаблоны."""
+    if not is_template_admin(req.state.session.user_id):
+        raise HTTPException(HTTP_403_FORBIDDEN, "ADMIN_REQUIRED")
+
+
 def file_response(report) -> Response:
     """Готовый отчёт (несохранённый Attachment) как скачиваемый файл."""
     filename_enc = quote(report.name, safe="")
@@ -121,12 +137,7 @@ async def pdf_engine(
     Только администратору (как и правка шаблонов): путь к бинарнику и версия
     — детали сервера, рядовому пользователю они ничего не объясняют.
     """
-    user = req.state.session.user_id
-    if not (
-        user.is_admin
-        or any(role.code == "system_admin" for role in (user.role_ids or []))
-    ):
-        raise HTTPException(HTTP_403_FORBIDDEN, "ADMIN_REQUIRED")
+    require_template_admin(req)
     # Поиск запускает процесс `soffice --version` — не в event loop
     info = await asyncio.to_thread(DocxReportEngine.pdf_engine_info, recheck)
     return {"data": info}

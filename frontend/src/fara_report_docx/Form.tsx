@@ -12,15 +12,18 @@ import {
   IconLayoutBoard,
   IconSettings,
 } from '@tabler/icons-react';
+import { useCanDesignTemplates } from './useCanDesign';
 
-/** Кнопка «Конструктор» — у сохранённого шаблона, если установлен модуль
- *  конструктора (report_docx_design). */
+/** Кнопка «Конструктор» — у сохранённого шаблона, администратору отчётов
+ *  (роуты конструктора отдают 403 остальным) и только с установленным
+ *  модулем конструктора (report_docx_design). */
 function DesignerButton() {
   const { t } = useTranslation('reports');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { isInstalled } = useInstalledApps();
-  if (!id || !isInstalled('report_docx_design')) return null;
+  const canDesign = useCanDesignTemplates();
+  if (!id || !canDesign || !isInstalled('report_docx_design')) return null;
   return (
     <Button
       variant="light"

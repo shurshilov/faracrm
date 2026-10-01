@@ -14,6 +14,7 @@ from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.crm.report_docx.routers.reports import (
     error_response,
     file_response,
+    require_template_admin,
 )
 from backend.base.system.schemas.base_schema import Id
 from ..catalog import template_field_catalog
@@ -42,7 +43,13 @@ async def preview_report(req: Request, payload: PreviewRequest):
     Рендер переданного DOCX (несохранённая правка из редактора) с данными по
     настройкам шаблона — тот же путь, что у ReportTemplate.render_attachment,
     но байты берутся из запроса. Файл в base64, как у загрузки вложений.
+
+    Только администратору отчётов: здесь исполняется присланный клиентом
+    шаблон (Jinja в песочнице, но это всё равно чужой код с данными записи).
+    Данные записи и так читаются под сессией запроса — ACL, правила строк,
+    приватные и ролевые поля в контекст не попадают.
     """
+    require_template_admin(req)
     env: "Environment" = req.app.state.env
     try:
         template_bytes = base64.b64decode(payload.content, validate=True)
@@ -65,7 +72,9 @@ async def preview_report(req: Request, payload: PreviewRequest):
 
 @router_private.get("/reports/templates/{template_id}/fields")
 async def template_fields(req: Request, template_id: Id):
-    """Каталог полей шаблона для конструктора — см. catalog.py."""
+    """Каталог полей шаблона для конструктора — см. catalog.py. Только
+    администратору отчётов, как и сам конструктор."""
+    require_template_admin(req)
     try:
         data = await template_field_catalog(template_id)
     except Exception as e:

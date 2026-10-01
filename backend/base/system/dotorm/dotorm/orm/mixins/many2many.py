@@ -165,6 +165,31 @@ class OrmMany2manyMixin(_Base):
         return await session.execute(stmt, [*ids, *owners])
 
     @classmethod
+    async def _nested_fields_allowed(
+        cls, fields_relation, fields_nested: dict[str, dict] | None
+    ) -> dict[str, dict]:
+        """fields_nested, где у каждой связи поля связанной модели оставлены
+        после field-level проверки чтения (role_read) для текущей сессии.
+        Без вложенного списка проверяется дефолт билдера — все store-поля."""
+        result: dict[str, dict] = dict(fields_nested or {})
+        for name, field in fields_relation:
+            related = field.relation_table
+            if related is None:
+                continue
+            nested = result.get(name)
+            requested = (
+                field.nested_fields(nested) or related.get_store_fields()
+            )
+            allowed = await related._check_field_access(
+                Operation.READ, requested, field.nested_filter(nested)
+            )
+            # id нужен всегда: по нему связь раскладывается по записям
+            if "id" not in allowed:
+                allowed = ["id", *allowed]
+            result[name] = {**(nested or {}), "fields": allowed}
+        return result
+
+    @classmethod
     async def _records_list_get_relation(
         cls,
         session,
@@ -175,15 +200,13 @@ class OrmMany2manyMixin(_Base):
         """Load relations for a list of records (batch)."""
         cls._dialect
 
-        # Фильтр вложенной связи идёт на связанную модель: по её закрытым
-        # полям фильтровать нельзя, как и в её собственном поиске.
-        if fields_nested:
-            for name, field in fields_relation:
-                nested = fields_nested.get(name)
-                if nested and field.relation_table:
-                    await field.relation_table._check_field_access(
-                        Operation.READ, [], field.nested_filter(nested)
-                    )
+        # role_read связанной модели — как в её собственном поиске: закрытые
+        # сессии поля вырезаются и из вложенного списка, и из дефолта «все
+        # store-поля» (иначе связь поднимала бы их в обход проверки), фильтр
+        # по ним — ошибка. Билдеру уходит уже проверенный список.
+        fields_nested = await cls._nested_fields_allowed(
+            fields_relation, fields_nested
+        )
 
         request_list = cls._builder.build_search_relation(
             fields_relation, records, fields_nested
