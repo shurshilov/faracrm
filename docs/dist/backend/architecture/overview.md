@@ -129,7 +129,7 @@ sequenceDiagram
     R->>ORM: ChatMember.check_membership(...)
     ORM->>DB: SELECT ... FROM chat_members
     DB-->>ORM: row
-    R->>R: member.require(member.can_pin)
+    R->>R: ChatMember.check_permissions(member, ChatPermissions(can_pin=True))
     R->>ORM: message.update(pinned=True)
     ORM->>DB: UPDATE chat_messages SET pinned=true
     R->>R: chat_manager.send_to_chat(ws_event)

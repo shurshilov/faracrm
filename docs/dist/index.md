@@ -12,7 +12,7 @@ FARA CRM — модульная CRM-система на FastAPI + React с ка�
 |------|-----------|
 | **Backend** | Python 3.12+, FastAPI, asyncpg, PostgreSQL |
 | **ORM** | DotORM (собственный async ORM) |
-| **Frontend** | React 18, TypeScript, Mantine UI v8, Redux Toolkit |
+| **Frontend** | React 19, TypeScript, Mantine UI v8, Redux Toolkit |
 | **Real-time** | WebSocket + PostgreSQL LISTEN/NOTIFY (Redis опционально) |
 | **Интеграции** | Telegram, WhatsApp, Avito, Email (IMAP/SMTP) |
 

@@ -18,7 +18,7 @@ from ..schemas.chat import (
     MessageForward,
     MessageReaction,
 )
-from ..models.chat_member import ChatMember
+from ..models.chat_member import ChatMember, ChatPermissions
 
 log = logging.getLogger(__name__)
 
@@ -362,7 +362,7 @@ async def post_message(req: Request, chat_id: int, body: MessageCreate):
 
     # Проверяем право на отправку сообщений
     member = await ChatMember.check_membership(chat_id, user_id)
-    member.require(member.can_write)
+    ChatMember.check_permissions(member, ChatPermissions(can_write=True))
 
     message, attachments = await env.models.chat_message.send(
         chat_id=chat_id,
@@ -517,7 +517,7 @@ async def pin_message(
 
     # Проверяем право на закрепление
     member = await ChatMember.check_membership(chat_id, user_id)
-    member.require(member.can_pin)
+    ChatMember.check_permissions(member, ChatPermissions(can_pin=True))
 
     message = await _chat_message(env, chat_id, message_id, fields=["id"])
 
@@ -722,7 +722,9 @@ async def forward_message(
     target_member = await ChatMember.check_membership(
         body.target_chat_id, user_id
     )
-    target_member.require(target_member.can_write)
+    ChatMember.check_permissions(
+        target_member, ChatPermissions(can_write=True)
+    )
 
     original_message = await _chat_message(
         env,

@@ -22,6 +22,17 @@ export interface ChatMemberInfo {
   };
 }
 
+/** Чат — как его отдаёт GET /chats/{id}: что показывает окно настроек */
+export interface ChatInfo {
+  id: number;
+  name: string;
+  description: string | null;
+  default_can_write: boolean;
+  default_can_invite: boolean;
+  default_can_remove: boolean;
+  members: ChatMemberInfo[];
+}
+
 export class ApiHelper {
   constructor(private apiUrl: string) {}
 
@@ -256,15 +267,29 @@ export class ApiHelper {
     });
   }
 
-  /** Активные участники чата с правами (что видит окно настроек чата). */
+  /** Чат с правами по умолчанию и участниками (что видит окно настроек). */
+  async getChat(session: Session, chatId: number): Promise<ChatInfo> {
+    const res = await this.request(session, 'GET', `/chats/${chatId}`);
+    if (!res.ok) throw new Error(`Get chat failed: ${res.status}`);
+    const result = await res.json();
+    return result.data;
+  }
+
+  /** Активные участники чата с правами. */
   async getChatMembers(
     session: Session,
     chatId: number,
   ): Promise<ChatMemberInfo[]> {
-    const res = await this.request(session, 'GET', `/chats/${chatId}`);
-    if (!res.ok) throw new Error(`Get chat failed: ${res.status}`);
-    const result = await res.json();
-    return result.data.members;
+    return (await this.getChat(session, chatId)).members;
+  }
+
+  /** id админов чата среди пользователей, по возрастанию. */
+  async getChatAdminIds(session: Session, chatId: number): Promise<number[]> {
+    const members = await this.getChatMembers(session, chatId);
+    return members
+      .filter(m => m.member_type === 'user' && m.permissions.is_admin)
+      .map(m => m.id)
+      .sort((a, b) => a - b);
   }
 
   // ==================== Attachments ====================

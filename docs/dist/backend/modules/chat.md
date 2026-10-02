@@ -214,7 +214,7 @@ class ChatMember(DotModel):
 | `can_delete_others` | удалять чужие сообщения |
 | `is_admin` | всё перечисленное плюс права участников, права по умолчанию, удаление чата |
 
-Набор прав — класс, а не словарь. Общие права участника любого контейнера (чат, проект) — `MemberPermissions` в `backend/base/system/membership`, права чата — `ChatPermissions` рядом с `ChatMember`:
+Набор прав — класс, а не словарь. Общие права участника любого контейнера (чат, проект) — `MemberPermissions` в `backend/base/system/membership`, права чата — `ChatPermissions` рядом с `ChatMember`. По умолчанию набор пуст, включённые права перечисляют явно:
 
 ```python
 @dataclass(frozen=True)
@@ -222,9 +222,12 @@ class ChatPermissions(MemberPermissions):  # can_read, can_write, can_invite,
     can_pin: bool = False                  # can_remove, is_admin
     can_delete_others: bool = False
 
-MEMBER = ChatPermissions()              # участник группы, чата клиента, заметок
-DIRECT = ChatPermissions(can_pin=True)  # оба в личном чате
-ADMIN = ChatPermissions(can_invite=True, can_remove=True, can_pin=True,
+# участник группы, чата клиента, заметок
+MEMBER = ChatPermissions(can_read=True, can_write=True)
+# оба в личном чате
+DIRECT = ChatPermissions(can_read=True, can_write=True, can_pin=True)
+ADMIN = ChatPermissions(can_read=True, can_write=True, can_invite=True,
+                        can_remove=True, can_pin=True,
                         can_delete_others=True, is_admin=True)
 
 await ChatMember.add(chat_id, MEMBER, user_id=user_id)
@@ -235,16 +238,28 @@ await ChatMember.add(chat_id, chat.get_default_permissions(), partner_id=partner
 
 ### Проверка прав
 
-Право — булево поле участника, его проверяют через точку, без строк с именами:
+Права проверяет один метод — `MemberMixin.check_permissions`. Ему передают уже найденного участника (в базу он не ходит) и, если действие доступно не только админам, нужные права — тем же классом, без строк с именами:
 
 ```python
-member = await ChatMember.check_membership(chat_id, user_id)  # или 403
-member.require(member.can_write)                              # или 403
-await ChatMember.check_admin(chat_id, user_id)
+member = await ChatMember.get_membership(chat_id, user_id)    # None, если не участник
+ChatMember.check_permissions(member)                # только админы, иначе 403
+# админы или участник с правом приглашать
+ChatMember.check_permissions(member, ChatPermissions(can_invite=True))
+```
 
-# Под капотом:
-if not (member.is_admin or member.can_write):                 # у админа есть все
-    raise FaraException("PERMISSION_DENIED")
+Порядок проверки:
+
+1. системный админ (`Session.is_system_admin` — суперпользователь или роль `system_admin`, сессия берётся из `get_access_session()`) проходит всегда, даже не будучи участником;
+2. остальным нужно членство;
+3. админ чата (`is_admin`) проходит;
+4. участник проходит, если у него включено каждое право из переданного набора;
+5. иначе — `PERMISSION_DENIED` (403).
+
+Писать и закреплять сообщения может только участник чата, поэтому в этих ручках его берут через `check_membership` — не участнику 403 ещё до проверки права, даже системному админу:
+
+```python
+member = await ChatMember.check_membership(chat_id, user_id)  # не участник — 403
+ChatMember.check_permissions(member, ChatPermissions(can_write=True))
 ```
 
 ### Доступ
@@ -265,3 +280,5 @@ if not (member.is_admin or member.can_write):                 # у админа 
 В личных и record-чатах админа нет — участниками там не управляют; в личный чат участника не добавить, для разговора втроём создают группу.
 
 Добавленный участник получает права чата по умолчанию (`default_can_*`), их меняет админ во вкладке «Права» настроек чата.
+
+**Администратор системы** — суперпользователь или роль `system_admin` — управляет группой наравне с её админом: название, участники и их права, права по умолчанию, удаление чата. Суперпользователь — любой группой, в том числе той, где не состоит (такие чаты в списке открывает опция «Показывать чужие чаты»). На роль действуют правила доступа к строкам: чужую группу она не видит, а в группе, которую читает по команде, сначала добавляет себя участником. Так админ появляется в группе, оставшейся без него (созданной до правила 1): администратор системы назначает его в настройках чата или добавляет участника — тот становится админом по правилу 1. На сообщения правило не распространяется: писать, править и закреплять можно только по своим правам участника.

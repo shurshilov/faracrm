@@ -1,5 +1,4 @@
 import { test, expect } from '../../fixtures';
-import { ApiHelper, Session } from '../../helpers/api.helper';
 import { ChatPage } from '../../pages/ChatPage';
 
 /**
@@ -13,28 +12,13 @@ import { ChatPage } from '../../pages/ChatPage';
  * Пользователи из global-setup: admin, user2 = test1, user3 = test2.
  */
 
-async function adminIds(
-  api: ApiHelper,
-  session: Session,
-  chatId: number,
-): Promise<number[]> {
-  const members = await api.getChatMembers(session, chatId);
-  return members
-    .filter(m => m.member_type === 'user' && m.permissions.is_admin)
-    .map(m => m.id);
-}
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 test.describe('Чат — администратор группы (API)', () => {
-  // Чаты удаляет их админ: системный администратор без членства не может
-  let cleanup: { session: Session; chatId: number }[] = [];
+  // Удаляет суперпользователь (admin): ему можно в любой группе
+  let cleanup: number[] = [];
 
-  test.afterEach(async ({ api }) => {
-    for (const { session, chatId } of cleanup) {
-      await api.deleteChat(session, chatId).catch(() => {});
+  test.afterEach(async ({ api, adminSession }) => {
+    for (const chatId of cleanup) {
+      await api.deleteChat(adminSession, chatId).catch(() => {});
     }
     cleanup = [];
   });
@@ -50,9 +34,9 @@ test.describe('Чат — администратор группы (API)', () => 
       name: `E2E Admin ${Date.now()}`,
       user_ids: [user3Session.user_id.id],
     });
-    cleanup.push({ session: user2Session, chatId });
+    cleanup.push(chatId);
 
-    expect(await adminIds(api, user2Session, chatId)).toEqual([
+    expect(await api.getChatAdminIds(user2Session, chatId)).toEqual([
       user2Session.user_id.id,
     ]);
 
@@ -90,11 +74,7 @@ test.describe('Чат — администратор группы (API)', () => 
       name: `E2E Last admin ${Date.now()}`,
       user_ids: [user3Id],
     });
-    // Удалит тот, кто к концу теста админ
-    cleanup.push(
-      { session: user2Session, chatId },
-      { session: user3Session, chatId },
-    );
+    cleanup.push(chatId);
 
     const leavePath = `/chats/${chatId}/leave`;
     const refused = await api.request(user2Session, 'POST', leavePath);
@@ -113,7 +93,7 @@ test.describe('Чат — администратор группы (API)', () => 
     const left = await api.request(user2Session, 'POST', leavePath);
     expect(left.status).toBe(200);
 
-    expect(await adminIds(api, user3Session, chatId)).toEqual([user3Id]);
+    expect(await api.getChatAdminIds(user3Session, chatId)).toEqual([user3Id]);
   });
 
   test('чат партнёра из карточки — админ нажавший «Создать чат»', async ({
@@ -133,9 +113,9 @@ test.describe('Чат — администратор группы (API)', () => 
     );
     expect(res.status).toBe(200);
     const { chat_id: chatId } = await res.json();
-    cleanup.push({ session: user2Session, chatId });
+    cleanup.push(chatId);
 
-    expect(await adminIds(api, user2Session, chatId)).toEqual([
+    expect(await api.getChatAdminIds(user2Session, chatId)).toEqual([
       user2Session.user_id.id,
     ]);
   });
@@ -168,7 +148,7 @@ test.describe('Чат — участники в окне настроек (UI)',
     const chat = new ChatPage(page);
     await chat.goto();
     await chat.openChat(chatName);
-    await chat.openMembersSettings();
+    await chat.openSettings('members');
     const dialog = page.getByRole('dialog');
 
     const search = dialog.getByPlaceholder(/поиск пользователей|search users/i);
@@ -187,12 +167,7 @@ test.describe('Чат — участники в окне настроек (UI)',
       .click();
     expect((await added).ok()).toBeTruthy();
 
-    const removeButton = dialog.getByRole('button', {
-      name: new RegExp(
-        `(удалить участника|remove member): ${escapeRegExp(user3Name)}`,
-        'i',
-      ),
-    });
+    const removeButton = chat.memberRemoveButton(user3Name);
     await expect(removeButton).toBeVisible();
 
     const removed = page.waitForResponse(
@@ -214,7 +189,7 @@ test.describe('Чат — участники в окне настроек (UI)',
     const chat = new ChatPage(user2Page);
     await chat.goto();
     await chat.openChat(chatName);
-    await chat.openMembersSettings();
+    await chat.openSettings('members');
     const dialog = user2Page.getByRole('dialog');
 
     // Список загрузился: у создателя чата — бейдж админа
@@ -253,15 +228,10 @@ test.describe('Чат — участники в окне настроек (UI)',
     const chat = new ChatPage(user2Page);
     await chat.goto();
     await chat.openChat(chatName);
-    await chat.openMembersSettings();
+    await chat.openSettings('members');
     const dialog = user2Page.getByRole('dialog');
 
-    const removeButton = dialog.getByRole('button', {
-      name: new RegExp(
-        `(удалить участника|remove member): ${escapeRegExp(user3Name)}`,
-        'i',
-      ),
-    });
+    const removeButton = chat.memberRemoveButton(user3Name);
     await expect(removeButton).toBeVisible();
     await expect(
       dialog.getByRole('button', {

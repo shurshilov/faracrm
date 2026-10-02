@@ -16,7 +16,7 @@ from ..schemas.chat import (
     UpdateMemberPermissions,
     ChatPin,
 )
-from ..models.chat_member import ChatMember
+from ..models.chat_member import ChatMember, ChatPermissions
 
 log = logging.getLogger(__name__)
 
@@ -424,15 +424,16 @@ async def create_chat(req: Request, body: ChatCreate):
 async def add_member(req: Request, chat_id: int, body: AddMemberInput):
     """
     Добавить участника в чат.
-    Требует права can_invite или is_admin.
+    Требует права can_invite; без него — админ чата или администратор
+    системы.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем членство и право приглашать
-    member = await ChatMember.check_membership(chat_id, user_id)
-    member.require(member.can_invite)
+    # Системный админ, админ чата или участник с правом can_invite
+    member = await ChatMember.get_membership(chat_id, user_id)
+    ChatMember.check_permissions(member, ChatPermissions(can_invite=True))
 
     chat = await env.models.chat.get(chat_id)
 
@@ -465,13 +466,14 @@ async def add_member(req: Request, chat_id: int, body: AddMemberInput):
 async def update_chat(req: Request, chat_id: int, body: ChatUpdate):
     """
     Обновить настройки чата (включая права по умолчанию).
-    Требует is_admin участника.
+    Требует админа чата или администратора системы.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    await ChatMember.check_admin(chat_id, user_id)
+    member = await ChatMember.get_membership(chat_id, user_id)
+    ChatMember.check_permissions(member)
 
     chat = await env.models.chat.get(chat_id)
 
@@ -496,13 +498,14 @@ async def update_member_permissions(
 ):
     """
     Обновить права участника чата.
+    Требует админа чата или администратора системы.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверяем что текущий пользователь админ
-    await ChatMember.check_admin(chat_id, user_id)
+    member = await ChatMember.get_membership(chat_id, user_id)
+    ChatMember.check_permissions(member)
 
     # Находим участника для обновления
     target_member = await ChatMember.get_membership(chat_id, member_id)
@@ -531,9 +534,9 @@ async def remove_member(req: Request, chat_id: int, member_id: int):
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Удалять участников — право can_remove (у админа оно есть всегда)
-    member = await ChatMember.check_membership(chat_id, user_id)
-    member.require(member.can_remove)
+    # Системный админ, админ чата или участник с правом can_remove
+    member = await ChatMember.get_membership(chat_id, user_id)
+    ChatMember.check_permissions(member, ChatPermissions(can_remove=True))
 
     chat = await env.models.chat.get(chat_id)
 
@@ -613,7 +616,7 @@ async def delete_chat(req: Request, chat_id: int):
     """
     Удалить чат (soft delete).
     - direct чат: может удалить пользователь с is_admin (администратор системы)
-    - остальные: требует права админа чата (ChatMember.is_admin)
+    - остальные: админ чата (ChatMember.is_admin) или администратор системы
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
@@ -632,8 +635,9 @@ async def delete_chat(req: Request, chat_id: int):
                 }
             )
     else:
-        # Группы/каналы — админ чата
-        await ChatMember.check_admin(chat_id, user_id)
+        # Группы/каналы — админ чата или администратор системы
+        member = await ChatMember.get_membership(chat_id, user_id)
+        ChatMember.check_permissions(member)
 
     # Soft delete
     await chat.update(env.models.chat(active=False))
@@ -648,7 +652,7 @@ async def restore_chat(req: Request, chat_id: int):
 
     Права симметричны delete_chat:
     - direct: членство + системный is_admin (администратор системы);
-    - остальные: права админа чата (ChatMember.is_admin).
+    - остальные: админ чата (ChatMember.is_admin) или администратор системы.
 
     Правила модели chat пропускают участника к записи независимо от active,
     поэтому удалённый чат находится штатным get. Само восстановление и
@@ -673,7 +677,8 @@ async def restore_chat(req: Request, chat_id: int):
                 }
             )
     else:
-        await ChatMember.check_admin(chat_id, user_id)
+        member = await ChatMember.get_membership(chat_id, user_id)
+        ChatMember.check_permissions(member)
 
     await chat.reactivate()
 

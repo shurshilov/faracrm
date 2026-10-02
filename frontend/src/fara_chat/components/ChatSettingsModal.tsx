@@ -41,8 +41,8 @@ import {
   chatApi,
   useUpdateMemberPermissionsMutation,
 } from '@/services/api/chat';
-import { useDispatch } from 'react-redux';
-import type { AppDispatch } from '@/store/store';
+import { useDispatch, useSelector } from 'react-redux';
+import type { AppDispatch, RootState } from '@/store/store';
 import { notifications } from '@mantine/notifications';
 import {
   ChatParticipantSelect,
@@ -136,6 +136,7 @@ function PermissionsBlock({
           <Group key={key} justify="space-between">
             <Text size="sm">{item.label}</Text>
             <Switch
+              aria-label={item.label}
               checked={isAdminMode || value}
               onChange={e => onChange(key, e.currentTarget.checked)}
               disabled={disabled || isAdminMode}
@@ -156,6 +157,7 @@ function PermissionsBlock({
               </Text>
             </Group>
             <Switch
+              aria-label={t('permissions.isAdmin')}
               checked={permissions.is_admin}
               onChange={e => onChange('is_admin', e.currentTarget.checked)}
               disabled={disabled}
@@ -275,7 +277,7 @@ function MembersList({
 }: {
   members: (ChatMember & { permissions?: MemberPermissions })[];
   currentUserId: number;
-  /** Текущий пользователь — админ группы: меняет права участников */
+  /** Текущий пользователь управляет чатом: меняет права участников */
   canManage: boolean;
   /** Текущий пользователь удаляет участников: админ или право can_remove */
   canRemove: boolean;
@@ -441,6 +443,7 @@ export function ChatSettingsModal({
 }: ChatSettingsModalProps) {
   const { t } = useTranslation('chat');
   const dispatch = useDispatch<AppDispatch>();
+  const user = useSelector((s: RootState) => s.auth.session?.user_id);
 
   // API hooks
   const {
@@ -520,18 +523,28 @@ export function ChatSettingsModal({
 
   const members = chatData?.data?.members || chat.members || [];
 
-  // Права текущего пользователя в этом чате. Бэк пускает к удалению чата,
-  // правам участников и правам по умолчанию только админа чата
-  // (ChatMember.is_admin), к приглашению — ещё и can_invite, к удалению
-  // участников — can_remove: остальным эти кнопки не показываем.
+  // Права текущего пользователя в этом чате. Чатом управляют его админ
+  // (ChatMember.is_admin) и системный админ — суперпользователь или роль
+  // system_admin (MemberMixin.check_permissions на бэке): название, права
+  // участников, права по умолчанию, удаление чата. К приглашению бэк
+  // пускает ещё и по can_invite, к удалению участников — по can_remove.
+  // Суперпользователю для управления не нужно быть участником; роль в
+  // чате, где не состоит, может только добавить участника (например,
+  // себя): остальное держат правила доступа к строкам чата.
   const currentMember = members.find(
     m => m.member_type !== 'partner' && m.id === currentUserId,
   );
-  const isCurrentUserAdmin = !!currentMember?.permissions?.is_admin;
+  const isSuperuser = !!user?.is_admin;
+  const isSystemAdmin =
+    isSuperuser ||
+    (user?.role_ids ?? []).some(role => role.code === 'system_admin');
+  const canManage =
+    isSuperuser ||
+    (!!currentMember &&
+      (isSystemAdmin || !!currentMember.permissions?.is_admin));
   const canInvite =
-    isCurrentUserAdmin || !!currentMember?.permissions?.can_invite;
-  const canRemove =
-    isCurrentUserAdmin || !!currentMember?.permissions?.can_remove;
+    canManage || isSystemAdmin || !!currentMember?.permissions?.can_invite;
+  const canRemove = canManage || !!currentMember?.permissions?.can_remove;
   const isGroupChat = chat.chat_type !== 'direct';
 
   const handleSave = async () => {
@@ -867,7 +880,7 @@ export function ChatSettingsModal({
                   value={name}
                   onChange={e => setName(e.currentTarget.value)}
                   placeholder={t('enterChatName')}
-                  disabled={isBusy}
+                  disabled={isBusy || !canManage}
                 />
                 <Textarea
                   label={t('description')}
@@ -876,7 +889,7 @@ export function ChatSettingsModal({
                   placeholder={t('enterDescription')}
                   minRows={2}
                   maxRows={4}
-                  disabled={isBusy}
+                  disabled={isBusy || !canManage}
                 />
 
                 <Divider />
@@ -887,16 +900,19 @@ export function ChatSettingsModal({
                     {t('dangerZone')}
                   </Text>
                   <Group gap="sm">
-                    <Button
-                      variant="light"
-                      color="red"
-                      leftSection={<IconUserMinus size={16} />}
-                      onClick={handleLeaveChat}
-                      loading={isLeaving}
-                      disabled={isBusy}>
-                      {t('leaveChat')}
-                    </Button>
-                    {isCurrentUserAdmin && (
+                    {/* Суперпользователь в чужом чате не участник */}
+                    {currentMember && (
+                      <Button
+                        variant="light"
+                        color="red"
+                        leftSection={<IconUserMinus size={16} />}
+                        onClick={handleLeaveChat}
+                        loading={isLeaving}
+                        disabled={isBusy}>
+                        {t('leaveChat')}
+                      </Button>
+                    )}
+                    {canManage && (
                       <Button
                         variant="light"
                         color="red"
@@ -920,7 +936,7 @@ export function ChatSettingsModal({
                   <Button
                     onClick={handleSave}
                     loading={isUpdating}
-                    disabled={isBusy}>
+                    disabled={isBusy || !canManage}>
                     {t('save')}
                   </Button>
                 </Group>
@@ -972,7 +988,7 @@ export function ChatSettingsModal({
                 <MembersList
                   members={members as any}
                   currentUserId={currentUserId}
-                  canManage={isCurrentUserAdmin}
+                  canManage={canManage}
                   canRemove={canRemove}
                   onRemove={handleRemoveMember}
                   onEditPermissions={setEditingMember}
@@ -1001,7 +1017,7 @@ export function ChatSettingsModal({
                   <PermissionsBlock
                     permissions={defaultPermissions}
                     onChange={handleDefaultPermissionChange}
-                    disabled={isBusy || !isCurrentUserAdmin}
+                    disabled={isBusy || !canManage}
                     showAdmin={false}
                     t={t}
                   />
@@ -1011,7 +1027,7 @@ export function ChatSettingsModal({
                   <Button
                     onClick={handleSaveDefaultPermissions}
                     loading={isSavingPermissions}
-                    disabled={isBusy || !isCurrentUserAdmin}>
+                    disabled={isBusy || !canManage}>
                     {t('save')}
                   </Button>
                 </Group>

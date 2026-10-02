@@ -72,6 +72,7 @@ e2e/
     │   ├── chat-websocket.spec.ts # 15 тестов: WS события между юзерами
     │   ├── chat-multitab.spec.ts  # 6 тестов: 2 браузера real-time
     │   ├── chat-members.spec.ts   # 6 тестов: админ группы, участники (API + UI)
+    │   ├── chat-settings.spec.ts  # 17 тестов: настройки чата — суперпользователь, админ чата, участник
     │   └── chat-edge-cases.spec.ts# 8 тестов: reconnect, burst, isolation
     ├── crud/
     │   └── search.spec.ts         # 3 теста: поиск в List/Kanban

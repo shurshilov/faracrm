@@ -21,7 +21,6 @@ Run: pytest tests/integration/chat/test_incoming_pipeline.py -v -m integration
 """
 
 import json
-import tempfile
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -48,6 +47,7 @@ from backend.base.crm.attachments.models.attachments_storage import (
 from backend.base.crm.attachments.models.attachments_route import (
     AttachmentRoute,
 )
+from backend.base.crm.attachments.strategies import get_strategy
 
 from backend.base.crm.chat.strategies.pipeline_incoming import (
     IncomingMessagePipeline,
@@ -61,7 +61,7 @@ from backend.base.system.dotorm_databases_postgres.app import (
 
 
 @pytest_asyncio.fixture
-async def wired_env(app, db_pool):
+async def wired_env(app, db_pool, tmp_path, monkeypatch):
     """app.state.env with the DB-transaction pool pointed at the test database.
 
     Model internals reached from the pipeline — e.g.
@@ -74,21 +74,18 @@ async def wired_env(app, db_pool):
     DotormDatabasesPostgresService().set_pool(db_pool)
     env = app.state.env
 
+    # Attachment files must land in a throwaway dir. Seeding the
+    # `attachments.filestore_path` setting is not enough: the strategy caches
+    # its base path for the whole process (and the setting has cache_ttl=-1),
+    # so the first value resolved in the session wins. In a full run that is
+    # the real <repo>/filestore, and the next run collides with the files left
+    # there (ids restart every test, files are opened with "xb").
+    # So point the strategy itself at the test dir.
+    monkeypatch.setattr(get_strategy("file"), "_cached_path", str(tmp_path))
+
     # Persisting attachment *content* needs a storage route. The app fixture
     # doesn't run AttachmentsApp's default-storage seeding, so seed a filestore
-    # storage + catch-all route here (files land in a throwaway temp dir).
-    await env.models.system_settings.ensure_defaults(
-        [
-            {
-                "key": "attachments.filestore_path",
-                "value": {"value": tempfile.mkdtemp(prefix="fara_test_fs_")},
-                "description": "test filestore",
-                "module": "attachments",
-                "is_system": False,
-                "cache_ttl": -1,
-            }
-        ]
-    )
+    # storage + catch-all route here.
     storages = await AttachmentStorage.search(
         filter=[("type", "=", "file")], limit=1
     )

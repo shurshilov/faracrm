@@ -3,12 +3,13 @@
 
 from dataclasses import asdict
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, ClassVar, Self
+from typing import TYPE_CHECKING, ClassVar, NoReturn, Self
 
 from starlette.status import HTTP_403_FORBIDDEN
 
 from backend.base.system.core.enviroment import env
 from backend.base.system.core.exceptions.environment import FaraException
+from backend.base.system.dotorm.dotorm.access import get_access_session
 from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
     Datetime,
@@ -30,7 +31,8 @@ class MemberMixin(DotModel):
       • общие поля: user_id, partner_id, is_active, is_admin, joined_at, left_at
       • состав: add / remove / active_user_ids / count_admins
       • методы членства: get_membership / check_membership
-      • права: require (по can_*-полю участника) / check_admin
+      • права: check_permissions — единая проверка (системный админ, админ
+        контейнера, право участника)
 
     Модель-наследник ДОЛЖЕН объявить:
       __table__ — имя таблицы (например "chat_member")
@@ -42,8 +44,10 @@ class MemberMixin(DotModel):
       id — если нужен кастомный primary key (иначе возьми Integer(primary_key=True))
       FK на контейнер — отдельным Many2one (миксин НЕ создаёт его сам,
                         потому что у каждой модели своё имя колонки)
-      can_* поля — обычные Boolean-колонки; право проверяют по самому
-                   полю: member.require(member.can_pin)
+      can_* поля — обычные Boolean-колонки; нужные права передают набором:
+                   ChatMember.check_permissions(
+                       member, ChatPermissions(can_pin=True)
+                   )
       свои специфичные поля: last_read_message_id, muted, hourly_rate, ...
 
     Пример:
@@ -98,26 +102,6 @@ class MemberMixin(DotModel):
         description="Дата присоединения",
     )
     left_at: datetime | None = Datetime(description="Дата выхода")
-
-    def require(self, allowed: bool) -> None:
-        """
-        Потребовать у участника право — его can_*-поле:
-
-            member = await ChatMember.check_membership(chat_id, user_id)
-            member.require(member.can_pin)
-
-        Админу (is_admin) можно всё, остальным — по самому праву.
-
-        Raises:
-            FaraException PERMISSION_DENIED (403) если права нет.
-        """
-        if not (self.is_admin or allowed):
-            raise FaraException(
-                {
-                    "content": "PERMISSION_DENIED",
-                    "status_code": HTTP_403_FORBIDDEN,
-                }
-            )
 
     @classmethod
     async def add(
@@ -235,25 +219,58 @@ class MemberMixin(DotModel):
             )
         return member
 
+    def has_permissions(self, required: MemberPermissions) -> bool:
+        """У участника включено каждое право из набора required."""
+        for name, enabled in asdict(required).items():
+            if enabled and not getattr(self, name):
+                return False
+        return True
+
     @classmethod
-    async def check_admin(
+    def check_permissions(
         cls,
-        container_id: int,
-        user_id: int,
-    ):
+        member: Self | None,
+        required_permission: MemberPermissions | None = None,
+    ) -> None:
         """
-        Шорткат: проверить, что пользователь — админ контейнера.
+        Единая точка проверки прав в контейнере: пропускает системного
+        админа, админа контейнера и участника, у которого есть права из
+        набора required_permission:
+
+            member = await ChatMember.get_membership(chat_id, user_id)
+            ChatMember.check_permissions(
+                member, ChatPermissions(can_remove=True)
+            )
+
+        Без required_permission — только админы.
 
         Raises:
-            FaraException ACCESS_DENIED если не член.
-            FaraException ADMIN_REQUIRED если не админ.
+            FaraException PERMISSION_DENIED (403) если права нет.
         """
-        member = await cls.check_membership(container_id, user_id)
-        if not member.is_admin:
-            raise FaraException(
-                {
-                    "content": "ADMIN_REQUIRED",
-                    "status_code": HTTP_403_FORBIDDEN,
-                }
-            )
-        return member
+        # Системный админ — абсолютный приоритет, членство ему не нужно
+        if get_access_session().is_system_admin:
+            return
+
+        # Остальным членство обязательно
+        if not member:
+            cls._raise_forbidden()
+
+        # Админу контейнера можно всё
+        if member.is_admin:
+            return
+
+        # Обычному участнику — по конкретным правам, если они переданы
+        if required_permission and member.has_permissions(required_permission):
+            return
+
+        # Ни одно условие не подошло
+        cls._raise_forbidden()
+
+    @staticmethod
+    def _raise_forbidden() -> NoReturn:
+        raise FaraException(
+            {
+                "content": "PERMISSION_DENIED",
+                "status_code": HTTP_403_FORBIDDEN,
+            }
+        )

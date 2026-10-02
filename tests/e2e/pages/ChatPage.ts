@@ -1,5 +1,29 @@
 import { Page, Locator, expect } from '@playwright/test';
 
+/** Вкладки окна «Настройки чата» группы. */
+const SETTINGS_TABS = {
+  main: /^(основное|main)$/i,
+  members: /^(участники|members)$/i,
+  permissions: /^(права|permissions)$/i,
+};
+export type SettingsTab = keyof typeof SETTINGS_TABS;
+
+/** Права: подписи переключателей в настройках чата и в окне прав участника. */
+const CHAT_RIGHTS = {
+  read: /может читать сообщения|can read messages/i,
+  write: /может отправлять сообщения|can send messages/i,
+  invite: /может приглашать участников|can invite members/i,
+  remove: /может удалять участников|can remove members/i,
+  pin: /может закреплять сообщения|can pin messages/i,
+  deleteOthers: /может удалять чужие сообщения|can delete others' messages/i,
+  admin: /^(администратор|administrator)$/i,
+};
+export type ChatRight = keyof typeof CHAT_RIGHTS;
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
  * Page Object для страницы чата.
  *
@@ -178,14 +202,101 @@ export class ChatPage {
 
   // ==================== Настройки чата ====================
 
-  /** Открыть настройки открытого чата на вкладке «Участники». */
-  async openMembersSettings() {
+  /** Окно «Настройки чата». */
+  get settingsDialog(): Locator {
+    return this.page.getByRole('dialog', {
+      name: /настройки чата|chat settings/i,
+    });
+  }
+
+  /** Окно «Права участника» — открывается поверх настроек чата. */
+  get memberRightsDialog(): Locator {
+    return this.page.getByRole('dialog', {
+      name: /права участника|member permissions/i,
+    });
+  }
+
+  /** Открыть настройки открытого чата (группы) на нужной вкладке. */
+  async openSettings(tab: SettingsTab = 'main') {
     // «Опции» есть и у строк списка чатов — берём кнопку в шапке чата
     await this.messagesContainer.getByTitle(/^(опции|options)$/i).click();
     await this.page
       .getByRole('menuitem', { name: /^(настройки|settings)$/i })
       .click();
-    await this.page.getByRole('tab', { name: /^(участники|members)$/i }).click();
+    await this.openSettingsTab(tab);
+  }
+
+  /**
+   * Перейти на вкладку окна настроек. Вкладки появляются, когда чат
+   * загружен — с участниками и их правами.
+   */
+  async openSettingsTab(tab: SettingsTab) {
+    await this.settingsDialog
+      .getByRole('tab', { name: SETTINGS_TABS[tab] })
+      .click();
+  }
+
+  /** «Сохранить» открытой вкладки настроек или окна прав участника. */
+  saveButton(dialog: Locator): Locator {
+    return dialog.getByRole('button', { name: /^(сохранить|save)$/i });
+  }
+
+  /** Кнопка-щит «Права участника» в строке участника. */
+  memberRightsButton(memberName: string): Locator {
+    return this.settingsDialog.getByRole('button', {
+      name: new RegExp(
+        `(права участника|member permissions): ${escapeRegExp(memberName)}`,
+        'i',
+      ),
+    });
+  }
+
+  /** Кнопка удаления участника в его строке. */
+  memberRemoveButton(memberName: string): Locator {
+    return this.settingsDialog.getByRole('button', {
+      name: new RegExp(
+        `(удалить участника|remove member): ${escapeRegExp(memberName)}`,
+        'i',
+      ),
+    });
+  }
+
+  /**
+   * Включить или выключить право: в настройках чата — право по умолчанию,
+   * в окне прав участника — его право.
+   */
+  async setRight(dialog: Locator, right: ChatRight, checked: boolean) {
+    await this.setSwitch(
+      dialog.getByRole('switch', { name: CHAT_RIGHTS[right] }),
+      checked,
+    );
+  }
+
+  /**
+   * Показать в списке чаты, где пользователь не участник (опция
+   * суперпользователя). Между загрузками страницы не хранится.
+   */
+  async showForeignChats() {
+    await this.page
+      .getByTitle(/^(настройки списка|list settings)$/i)
+      .click();
+    await this.setSwitch(
+      this.page.getByRole('switch', {
+        name: /показывать чужие чаты|show others' chats/i,
+      }),
+      true,
+    );
+    await this.page.keyboard.press('Escape');
+  }
+
+  /**
+   * Переключатель Mantine. Его input прозрачный и лежит под дорожкой: клик
+   * мышью по нему Playwright считает перехваченным, поэтому жмём пробел.
+   */
+  private async setSwitch(sw: Locator, checked: boolean) {
+    await expect(sw).toBeEnabled();
+    if ((await sw.isChecked()) !== checked) await sw.press('Space');
+    await expect(sw).toBeChecked({ checked });
   }
 
   // ==================== Сообщения ====================

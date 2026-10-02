@@ -20,7 +20,7 @@
 |------|-----------|
 | **Backend** | Python 3.12+, FastAPI, asyncpg, PostgreSQL |
 | **ORM** | DotORM (in-house async ORM) |
-| **Frontend** | React 18, TypeScript, Mantine UI v8, Redux Toolkit |
+| **Frontend** | React 19, TypeScript, Mantine UI v8, Redux Toolkit |
 | **Real-time** | WebSocket + PostgreSQL LISTEN/NOTIFY (redis optional) |
 | **Integrations** | Telegram, WhatsApp, Avito, VK, Maks Email (IMAP/SMTP) |
 | **Telephony** | Asterisk, Sipuni, Megafon, Mts, Beeline |

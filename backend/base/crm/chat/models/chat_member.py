@@ -28,11 +28,13 @@ class ChatPermissions(MemberPermissions):
 
 
 # Обычный участник группы, клиентского чата и заметок записи.
-MEMBER = ChatPermissions()
+MEMBER = ChatPermissions(can_read=True, can_write=True)
 # В личном чате оба могут закреплять сообщения.
-DIRECT = ChatPermissions(can_pin=True)
+DIRECT = ChatPermissions(can_read=True, can_write=True, can_pin=True)
 # Создатель группы и первый пользователь клиентского чата.
 ADMIN = ChatPermissions(
+    can_read=True,
+    can_write=True,
     can_invite=True,
     can_remove=True,
     can_pin=True,
