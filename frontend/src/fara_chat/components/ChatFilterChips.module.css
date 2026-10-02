@@ -19,10 +19,13 @@
   align-items: center;
   gap: 4px;
   padding: 3px 10px;
+  border: 0;
+  background-color: transparent;
   font-size: 12px;
   line-height: 18px;
   white-space: nowrap;
   color: var(--mantine-color-dimmed);
+  cursor: pointer;
   transition:
     background-color 150ms ease,
     color 150ms ease;

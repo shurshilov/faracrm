@@ -34,6 +34,7 @@
   padding: 4px;
   border-radius: 12px;
   font-size: 11px;
+  cursor: pointer;
   transition:
     background-color 150ms ease,
     border-color 150ms ease;

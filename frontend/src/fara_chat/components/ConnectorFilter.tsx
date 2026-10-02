@@ -1,4 +1,4 @@
-import { Menu, UnstyledButton } from '@mantine/core';
+import { Menu } from '@mantine/core';
 import {
   IconBrandTelegram,
   IconBrandWhatsapp,
@@ -73,13 +73,14 @@ export function ConnectorFilter() {
   return (
     <Menu position="bottom-start" withinPortal shadow="md">
       <Menu.Target>
-        <UnstyledButton
+        <button
+          type="button"
           className={chipClasses.chip}
           data-active={!!current || undefined}>
           {current && connectorIcon(current.type)}
           {current?.name ?? t('source', 'Источник')}
           <IconChevronDown size={12} />
-        </UnstyledButton>
+        </button>
       </Menu.Target>
       <Menu.Dropdown>
         {current && (

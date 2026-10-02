@@ -1,10 +1,11 @@
-import { UnstyledButton } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { useChatFilter } from '../hooks/useChatFilter';
 import classes from './ChatFilterChips.module.css';
 
 // Чипы над списком чатов. Какие показать в разделе, решает список
 // (ChatList); каждый чип сам читает и меняет свой параметр URL.
+// Обычные кнопки, а не UnstyledButton: иначе стиль зависит от порядка CSS
+// чанков в production-сборке (см. ChatSections).
 
 interface SegmentsProps<T extends string> {
   value: T;
@@ -21,15 +22,16 @@ function Segments<T extends string>({
   return (
     <div className={classes.seg} role="radiogroup">
       {data.map(item => (
-        <UnstyledButton
+        <button
           key={item.value}
+          type="button"
           className={classes.segItem}
           role="radio"
           aria-checked={item.value === value}
           data-active={item.value === value || undefined}
           onClick={() => onChange(item.value)}>
           {item.label}
-        </UnstyledButton>
+        </button>
       ))}
     </div>
   );
@@ -77,12 +79,13 @@ export function UnreadChip() {
   const { t } = useTranslation('chat');
   const { filter, update } = useChatFilter();
   return (
-    <UnstyledButton
+    <button
+      type="button"
       className={classes.chip}
       aria-pressed={!!filter.unread}
       data-active={filter.unread}
       onClick={() => update({ unread: filter.unread ? undefined : true })}>
       {t('unreadChats', 'Непрочитанные')}
-    </UnstyledButton>
+    </button>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActionIcon, Box, Menu, UnstyledButton } from '@mantine/core';
+import { ActionIcon, Box, Menu } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import {
   IconDotsVertical,
@@ -47,16 +47,20 @@ function Tile({
   onClick,
   children,
 }: TileProps) {
+  // Обычная кнопка, а не UnstyledButton: в production-сборке CSS этого
+  // чанка идёт раньше стилей Mantine, и сброс UnstyledButton (font-size md,
+  // padding 0) перебивал наш класс с той же специфичностью.
   return (
     <Box className={classes.tileWrap}>
-      <UnstyledButton
+      <button
+        type="button"
         className={`${classes.tile} ${className ?? ''}`}
         data-active={active || undefined}
         title={label}
         onClick={onClick}>
         {icon}
         <span className={classes.label}>{label}</span>
-      </UnstyledButton>
+      </button>
       {unread > 0 && (
         <span className={classes.badge}>{unread > 99 ? '99+' : unread}</span>
       )}
