@@ -1,13 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import {
-  AppShell,
-  Badge,
-  Box,
-  Flex,
-  Group,
-  ScrollArea,
-  ActionIcon,
-} from '@mantine/core';
+import { AppShell, Badge, Box, Flex, Group, ActionIcon } from '@mantine/core';
 import { useLocation } from 'react-router-dom';
 import { useMediaQuery } from '@mantine/hooks';
 import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
@@ -26,7 +18,7 @@ import { NotificationListener } from '@/components/NotificationToast/Notificatio
 import { AppLauncher } from './AppLauncher';
 import { HorizontalMenu } from './HorizontalMenu';
 import { MobileSubmenuDrawer } from './MobileSubmenuDrawer';
-import { ChatSidebar } from './ChatSidebar';
+import { ChatSections } from '@/fara_chat/components/ChatSections';
 import classes from './ModernLayout.module.css';
 import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -112,11 +104,12 @@ export function ModernLayout() {
   const isInChat =
     location.pathname === '/chat' || location.pathname.startsWith('/chat/');
 
-  const chatNavbarWidth = chatSidebarCollapsed ? 0 : 280;
+  // Карточка квадратов (76px + место под полосу прокрутки) и отступ слева —
+  // как у основной области, чтобы она шла вровень со списком чатов.
+  const chatNavbarWidth = chatSidebarCollapsed ? 0 : 116;
 
-  // На мобильном AppShell.Navbar (ChatSidebar с фильтрами) всегда скрыт —
-  // навигация по фильтрам на мобильном происходит через боковую панель
-  // внутри самого ChatPage (styles.sidebar / styles.hidden)
+  // На мобильном AppShell.Navbar (квадраты разделов) всегда скрыт — там
+  // квадраты полосой над списком чатов (ChatList).
   const mobileNavbarCollapsed = !!isMobile || chatSidebarCollapsed;
 
   return (
@@ -225,9 +218,7 @@ export function ModernLayout() {
         {isInChat && (
           <>
             <AppShell.Navbar withBorder={false} className={classes.chatNavbar}>
-              <ScrollArea className={classes.scrollarea}>
-                <ChatSidebar />
-              </ScrollArea>
+              <ChatSections />
             </AppShell.Navbar>
 
             {/* Кнопка сворачивания сайдбара — только desktop */}
@@ -239,7 +230,8 @@ export function ModernLayout() {
                 radius="xl"
                 onClick={() => setChatSidebarCollapsed(!chatSidebarCollapsed)}
                 style={{
-                  left: chatSidebarCollapsed ? 4 : 268,
+                  // Посередине зазора между квадратами и списком.
+                  left: chatSidebarCollapsed ? 4 : chatNavbarWidth - 4,
                 }}>
                 {chatSidebarCollapsed ? (
                   <IconChevronRight size={14} />

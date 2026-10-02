@@ -5,7 +5,6 @@ import {
   Stack,
   Group,
   Avatar,
-  Badge,
   TextInput,
   ActionIcon,
   ScrollArea,
@@ -20,7 +19,6 @@ import { useSelector } from 'react-redux';
 import {
   IconSearch,
   IconPlus,
-  IconMessage,
   IconDotsVertical,
   IconAdjustments,
   IconPin,
@@ -35,8 +33,14 @@ import {
   usePinChatMutation,
   useRestoreChatMutation,
   Chat,
+  GetChatsArgs,
 } from '@/services/api/chat';
 import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
+import { useChatFilter } from '../hooks/useChatFilter';
+import { DIRECT_CHAT_COLOR, SECTION_META } from '../sections';
+import { ChatSections } from './ChatSections';
+import { ChatScopeChips, ChatTypeChips, UnreadChip } from './ChatFilterChips';
+import { ConnectorFilter } from './ConnectorFilter';
 import styles from './ChatList.module.css';
 
 /**
@@ -130,19 +134,10 @@ export function getMessagePreview(
   return lastMessage.body;
 }
 
-interface ChatFilter {
-  is_internal?: boolean;
-  chat_type?: 'direct' | 'group';
-  connector_type?: string;
-  folder_id?: number;
-  scope?: 'mine' | 'all';
-}
-
 interface ChatListProps {
   selectedChatId?: number;
   onSelectChat: (chat: Chat) => void;
   onNewChat: () => void;
-  filter?: ChatFilter;
   onRefetchReady?: (refetch: () => void) => void;
 }
 
@@ -150,27 +145,35 @@ export function ChatList({
   selectedChatId,
   onSelectChat,
   onNewChat,
-  filter = {},
   onRefetchReady,
 }: ChatListProps) {
   const { t } = useTranslation('chat');
   const [search, setSearch] = useState('');
   const isMobile = useMediaQuery('(max-width: 768px)');
+  // Раздел, папка и чипы — из URL (квадраты сайдбара, чипы ниже).
+  const { filter } = useChatFilter();
 
   // Доп. фильтры видимости. Не персистятся между сессиями — намеренно
   // (защита от «забыл выключить»).
   //   showDeletedChats — мягко удалённые чаты (доступно всем)
-  //   showRecordChats  — record-чаты (чаты-хвосты к записям CRM) (доступно всем)
-  //   showForeignChats — чаты, где юзер НЕ активный мембер (только для is_admin)
+  //   showForeignChats — чаты, где юзер НЕ активный мембер (только
+  //                      администратору системы)
   const [showDeletedChats, setShowDeletedChats] = useState(false);
-  const [showRecordChats, setShowRecordChats] = useState(false);
   const [showForeignChats, setShowForeignChats] = useState(false);
 
-  // Для фильтрации админских опций в мобильном меню — на десктопе
-  // ViewSettingsPopover делает это сам.
   const session = useSelector((s: any) => s.auth?.session);
-  const isAdmin = !!session?.user_id?.is_admin;
-  const currentUserId = session?.user_id?.id ?? 0;
+  const user = session?.user_id;
+  const currentUserId = user?.id ?? 0;
+  // Администратор системы — суперпользователь или роль system_admin, как
+  // проверка на бэке (Session.check_system_admin).
+  const isSystemAdmin =
+    !!user?.is_admin ||
+    (user?.role_ids ?? []).some(
+      (role: { code: string }) => role.code === 'system_admin',
+    );
+  // Команды — из сессии (/signin). В сессии, полученной до их добавления,
+  // поля нет — переключатель показываем: без команд бэк вернёт «Мои».
+  const hasTeams = user?.team_ids?.length !== 0;
 
   // Один источник правды для опций — используется и десктопным
   // ViewSettingsPopover, и мобильным Menu.
@@ -182,73 +185,36 @@ export function ChatList({
         checked: showDeletedChats,
         onChange: setShowDeletedChats,
       },
-      {
-        key: 'showRecordChats',
-        label: t('showRecordChats', 'Показывать record-чаты'),
-        checked: showRecordChats,
-        onChange: setShowRecordChats,
-      },
-      {
-        key: 'showForeignChats',
-        label: t('showForeignChats', 'Показывать чужие чаты'),
-        checked: showForeignChats,
-        onChange: setShowForeignChats,
-        adminOnly: true,
-      },
+      ...(isSystemAdmin
+        ? [
+            {
+              key: 'showForeignChats',
+              label: t('showForeignChats', 'Показывать чужие чаты'),
+              checked: showForeignChats,
+              onChange: setShowForeignChats,
+            },
+          ]
+        : []),
     ],
-    [t, showDeletedChats, showRecordChats, showForeignChats],
+    [t, isSystemAdmin, showDeletedChats, showForeignChats],
   );
-
-  // Опции, видимые текущему пользователю (с учётом adminOnly).
-  // Нужны для мобильного Menu — там фильтруем сами.
-  const mobileVisibleOptions = viewOptions.filter(o => !o.adminOnly || isAdmin);
-  const anyMobileOptionActive = mobileVisibleOptions.some(o => o.checked);
+  const anyOptionActive = viewOptions.some(o => o.checked);
 
   // Поиск — на бэке (GET /chats?search=): по имени чата и участников среди
   // ВСЕХ доступных чатов, а не первых 100 загруженных (issue #28).
   // Дебаунс, чтобы не дёргать запрос на каждую букву.
   const [debouncedSearch] = useDebouncedValue(search.trim(), 300);
 
-  // Формируем аргументы запроса, исключая undefined значения
-  const queryArgs = useMemo(() => {
-    const args: {
-      limit: number;
-      is_internal?: boolean;
-      chat_type?: string;
-      connector_type?: string;
-      folder_id?: number;
-      scope?: 'mine' | 'all';
-      include_deleted?: boolean;
-      include_record?: boolean;
-      include_foreign?: boolean;
-      search?: string;
-    } = { limit: 100 };
-    if (filter.is_internal !== undefined) args.is_internal = filter.is_internal;
-    if (filter.chat_type !== undefined) args.chat_type = filter.chat_type;
-    if (filter.connector_type !== undefined)
-      args.connector_type = filter.connector_type;
-    if (filter.folder_id !== undefined) args.folder_id = filter.folder_id;
-    if (filter.scope !== undefined) args.scope = filter.scope;
-    if (showDeletedChats) args.include_deleted = true;
-    if (showRecordChats) args.include_record = true;
-    if (showForeignChats) args.include_foreign = true;
-    if (debouncedSearch) args.search = debouncedSearch;
-    return args;
-  }, [
-    filter.is_internal,
-    filter.chat_type,
-    filter.connector_type,
-    filter.folder_id,
-    filter.scope,
-    showDeletedChats,
-    showRecordChats,
-    showForeignChats,
-    debouncedSearch,
-  ]);
+  // undefined-поля в ключ кэша RTK Query не попадают (сериализация JSON).
+  const queryArgs: GetChatsArgs = {
+    limit: 100,
+    ...filter,
+    ...(showDeletedChats && { include_deleted: true }),
+    ...(showForeignChats && { include_foreign: true }),
+    ...(debouncedSearch && { search: debouncedSearch }),
+  };
 
-  const { data, isLoading, error, refetch } = useGetChatsQuery(
-    queryArgs as any,
-  );
+  const { data, isLoading, error, refetch } = useGetChatsQuery(queryArgs);
   const [pinChat] = usePinChatMutation();
   const [restoreChat] = useRestoreChatMutation();
 
@@ -328,6 +294,7 @@ export function ChatList({
       .slice(0, 2);
   };
 
+  // Остальные чаты — иконка и цвет их раздела, как на квадрате слева.
   const getChatIcon = (chat: Chat) => {
     if (chat.chat_type === 'direct' && chat.members.length === 2) {
       const otherMember = getOtherMember(chat);
@@ -337,14 +304,15 @@ export function ChatList({
         ? attachmentPreviewUrl(otherMember.image_id, 80, 80)
         : undefined;
       return (
-        <Avatar color="blue" radius="xl" size="md" src={avatarSrc}>
+        <Avatar color={DIRECT_CHAT_COLOR} radius="xl" size={36} src={avatarSrc}>
           {getInitials(otherMember?.name || chat.name)}
         </Avatar>
       );
     }
+    const { Icon, color } = SECTION_META[chat.section ?? 'staff'];
     return (
-      <Avatar color="cyan" radius="xl" size="md">
-        <IconMessage size={20} />
+      <Avatar color={color} radius="xl" size={36}>
+        <Icon size={18} />
       </Avatar>
     );
   };
@@ -363,35 +331,15 @@ export function ChatList({
     <Box className={styles.container}>
       {/* Header */}
       <Box className={styles.header}>
-        {/* Заголовок + кнопки — только десктоп.
-            На мобильном заголовок-ряд выпиливаем: ModernLayout сверху и так
-            занимает место (AppLauncher / submenu / chat notif / avatar),
-            повторять "Чаты" + кнопки отдельным рядом — избыточно.
-            Меню переезжает на одну строку с поиском (см. ниже). */}
-        {!isMobile && (
-          <Group justify="space-between" mb="sm">
-            <Text fw={600} size="lg">
-              {t('chats')}
-            </Text>
-            <Group gap="xs" wrap="nowrap">
-              <ActionIcon
-                variant="light"
-                onClick={onNewChat}
-                title={t('newChat')}>
-                <IconPlus size={18} />
-              </ActionIcon>
-              <ViewSettingsPopover
-                size="md"
-                variant="light"
-                title={t('listSettings', 'Настройки списка')}
-                options={viewOptions}
-              />
-            </Group>
-          </Group>
+        {/* На мобильном сайдбара нет — квадраты полосой над поиском. */}
+        {isMobile && (
+          <Box mb="sm">
+            <ChatSections />
+          </Box>
         )}
 
-        {/* Строка поиска. На мобильном справа от инпута — единая кнопка-меню
-            (Новый чат + view-фильтры). */}
+        {/* Поиск и действия одной строкой. На мобильном справа от инпута —
+            единая кнопка-меню (Новый чат + view-фильтры). */}
         <Group gap="xs" wrap="nowrap">
           <TextInput
             placeholder={t('searchChats')}
@@ -402,14 +350,14 @@ export function ChatList({
             style={{ flex: 1 }}
           />
 
-          {isMobile && (
+          {isMobile ? (
             <Menu position="bottom-end" withArrow shadow="md">
               <Menu.Target>
                 <ActionIcon
                   variant="light"
                   size="lg"
                   title={t('listMenu', 'Меню')}
-                  color={anyMobileOptionActive ? 'orange' : undefined}>
+                  color={anyOptionActive ? 'orange' : undefined}>
                   <IconDotsVertical size={18} />
                 </ActionIcon>
               </Menu.Target>
@@ -420,32 +368,57 @@ export function ChatList({
                   {t('newChat')}
                 </Menu.Item>
 
-                {mobileVisibleOptions.length > 0 && (
-                  <>
-                    <Divider my={4} />
-                    <Menu.Label>
-                      <Group gap={6} wrap="nowrap">
-                        <IconAdjustments size={14} />
-                        <span>{t('listSettings', 'Настройки списка')}</span>
-                      </Group>
-                    </Menu.Label>
-                    <Stack gap={6} px="sm" py={4}>
-                      {mobileVisibleOptions.map(opt => (
-                        <Switch
-                          key={opt.key}
-                          checked={opt.checked}
-                          onChange={e => opt.onChange(e.currentTarget.checked)}
-                          label={opt.label}
-                          disabled={opt.disabled}
-                          size="sm"
-                        />
-                      ))}
-                    </Stack>
-                  </>
-                )}
+                <Divider my={4} />
+                <Menu.Label>
+                  <Group gap={6} wrap="nowrap">
+                    <IconAdjustments size={14} />
+                    <span>{t('listSettings', 'Настройки списка')}</span>
+                  </Group>
+                </Menu.Label>
+                <Stack gap={6} px="sm" py={4}>
+                  {viewOptions.map(opt => (
+                    <Switch
+                      key={opt.key}
+                      checked={opt.checked}
+                      onChange={e => opt.onChange(e.currentTarget.checked)}
+                      label={opt.label}
+                      disabled={opt.disabled}
+                      size="sm"
+                    />
+                  ))}
+                </Stack>
               </Menu.Dropdown>
             </Menu>
+          ) : (
+            <>
+              <ActionIcon
+                variant="light"
+                size="lg"
+                onClick={onNewChat}
+                title={t('newChat')}>
+                <IconPlus size={18} />
+              </ActionIcon>
+              <ViewSettingsPopover
+                size="lg"
+                variant="light"
+                title={t('listSettings', 'Настройки списка')}
+                options={viewOptions}
+              />
+            </>
           )}
+        </Group>
+
+        {/* Чипы раздела: переключатель (один вариант выбран всегда) +
+            накладывающиеся «Непрочитанные» и «Источник». */}
+        <Group gap={6} mt="sm" wrap="wrap">
+          {filter.section === 'staff' && <ChatTypeChips />}
+          {/* Без команд «Моя команда» = «Мои»; «чужие» снимают и членство, и
+              команды — в обоих случаях переключатель лишний. */}
+          {filter.section === 'clients' && hasTeams && !showForeignChats && (
+            <ChatScopeChips />
+          )}
+          <UnreadChip />
+          {filter.section === 'clients' && <ConnectorFilter />}
         </Group>
       </Box>
 
@@ -480,7 +453,7 @@ export function ChatList({
 
                   <Box style={{ flex: 1, overflow: 'hidden' }}>
                     <Group justify="space-between" wrap="nowrap" gap={4}>
-                      <Text fw={500} truncate style={{ flex: 1 }}>
+                      <Text fw={500} size="sm" truncate style={{ flex: 1 }}>
                         {getDisplayName(chat)}
                       </Text>
                       {chat.is_pinned && (
@@ -530,14 +503,14 @@ export function ChatList({
                     </Group>
 
                     <Group justify="space-between" wrap="nowrap">
-                      <Text size="sm" c="dimmed" truncate style={{ flex: 1 }}>
+                      <Text size="xs" c="dimmed" truncate style={{ flex: 1 }}>
                         {getMessagePreview(chat.last_message, t) ||
                           t('noMessages')}
                       </Text>
                       {chat.unread_count > 0 && (
-                        <Badge size="sm" variant="filled" color="blue" circle>
+                        <span className={styles.unread}>
                           {chat.unread_count > 99 ? '99+' : chat.unread_count}
-                        </Badge>
+                        </span>
                       )}
                     </Group>
                   </Box>

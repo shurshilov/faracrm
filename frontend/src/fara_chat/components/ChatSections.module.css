@@ -1,0 +1,158 @@
+/* Квадраты разделов и папок: в сайдбаре — колонка прямо на подложке,
+   верхний квадрат вровень со списком чатов; на мобильном — полоса над
+   списком. Колонка прокручивается сама: место под полосу прокрутки отведено
+   с обеих сторон — полоса не наезжает на квадраты, горизонтальной
+   прокрутки нет. */
+.rail {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+}
+
+/* Ширина квадрата — по месту в карточке, но не больше 76px. */
+.tileWrap {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 76px;
+}
+
+.tile {
+  width: 100%;
+  height: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  font-size: 11px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+
+  @mixin light {
+    background-color: var(--mantine-color-white);
+    border: 1px solid var(--mantine-color-gray-3);
+    color: var(--mantine-color-gray-7);
+  }
+
+  @mixin dark {
+    background-color: var(--mantine-color-dark-6);
+    border: 1px solid var(--mantine-color-dark-4);
+    color: var(--mantine-color-dark-1);
+  }
+
+  &:hover {
+    @mixin light {
+      border-color: var(--mantine-color-gray-4);
+    }
+
+    @mixin dark {
+      border-color: var(--mantine-color-dark-3);
+    }
+  }
+
+  &[data-active] {
+    background-color: var(--mantine-primary-color-light);
+    color: var(--mantine-primary-color-light-color);
+
+    @mixin light {
+      border-color: var(--mantine-primary-color-3);
+    }
+
+    @mixin dark {
+      border-color: var(--mantine-primary-color-8);
+    }
+  }
+}
+
+.tile.add {
+  border-style: dashed;
+}
+
+.label {
+  max-width: 100%;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Бейдж и меню лежат поверх кнопки, а не внутри неё. */
+.badge {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  background-color: var(--mantine-primary-color-filled);
+  color: var(--mantine-primary-color-contrast, var(--mantine-color-white));
+  pointer-events: none;
+}
+
+.menu {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+}
+
+.divider {
+  flex-shrink: 0;
+  width: 48px;
+  margin: 4px 0;
+
+  @mixin light {
+    border-top: 1px solid var(--mantine-color-gray-3);
+  }
+
+  @mixin dark {
+    border-top: 1px solid var(--mantine-color-dark-4);
+  }
+}
+
+@media (max-width: 768px) {
+  .rail {
+    height: auto;
+    flex-direction: row;
+    padding-bottom: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-gutter: auto;
+  }
+
+  .tileWrap {
+    width: 68px;
+  }
+
+  .tile {
+    height: 56px;
+  }
+
+  .divider {
+    width: 0;
+    height: 40px;
+    margin: 0 2px;
+
+    @mixin light {
+      border-top: 0;
+      border-left: 1px solid var(--mantine-color-gray-3);
+    }
+
+    @mixin dark {
+      border-top: 0;
+      border-left: 1px solid var(--mantine-color-dark-4);
+    }
+  }
+}

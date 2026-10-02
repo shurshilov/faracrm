@@ -83,6 +83,17 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         ("task_id", "is_deleted", "id"),
     ]
 
+    # Непрочитанное сообщение — чужое неудалённое, с id больше отметки
+    # «прочитано до» участника (chat_member.last_read_message_id). Одно
+    # условие на счётчики (unread_counts) и фильтр списка «Непрочитанные».
+    # В запросе нужны алиасы: m — сообщение, cm — участие пользователя;
+    # %s — id пользователя (своё сообщение непрочитанным не бывает).
+    UNREAD_SQL = (
+        "m.is_deleted = false"
+        " AND (m.author_user_id IS NULL OR m.author_user_id != %s)"
+        " AND m.id > COALESCE(cm.last_read_message_id, 0)"
+    )
+
     id: int = Integer(primary_key=True)
 
     # Содержимое сообщения
@@ -734,15 +745,13 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
         cls, user_id: int, chat_ids: list[int] | None = None
     ) -> list[dict]:
         """Непрочитанные пользователя по чатам:
-        [{chat_id, chat_type, is_internal, unread_count}], только где они есть.
+        [{chat_id, section, unread_count}], только где они есть.
 
-        Непрочитанное — чужое неудалённое сообщение чата, где пользователь
-        активный участник, с id больше его watermark
-        (chat_member.last_read_message_id). chat_ids — считать в этих чатах;
-        без него — во всех активных, кроме заметок записей (как в списке
-        чатов).
+        Непрочитанное (UNREAD_SQL) бывает только в чате, где пользователь
+        активный участник. section — раздел чата (Chat.SECTION_SQL).
+        chat_ids — считать в этих чатах; без него — во всех активных.
         """
-        scope = "c.active = true AND c.chat_type != 'record'"
+        scope = "c.active = true"
         params: list = [user_id, user_id]
         if chat_ids is not None:
             scope = "m.chat_id = ANY(%s)"
@@ -750,7 +759,7 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
 
         return await cls._get_db_session().execute(
             f"""
-            SELECT m.chat_id, c.chat_type, c.is_internal,
+            SELECT m.chat_id, ({env.models.chat.SECTION_SQL}) AS section,
                    COUNT(*) AS unread_count
             FROM chat_message m
             JOIN chat_member cm
@@ -758,9 +767,7 @@ class ChatMessage(AuditMixin, PolymorphicParentMixin):
              AND cm.user_id = %s
              AND cm.is_active = true
             JOIN chat c ON c.id = m.chat_id
-            WHERE m.is_deleted = false
-              AND (m.author_user_id IS NULL OR m.author_user_id != %s)
-              AND m.id > COALESCE(cm.last_read_message_id, 0)
+            WHERE {cls.UNREAD_SQL}
               AND {scope}
             GROUP BY m.chat_id, c.chat_type, c.is_internal
             """,

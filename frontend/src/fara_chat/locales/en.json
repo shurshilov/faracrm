@@ -1,5 +1,6 @@
 {
   "menu": {
+    "chats": "Chats",
     "chat_connector": "Connectors",
     "phone_number": "Numbers",
     "chat_folder": "Folders",
@@ -427,10 +428,21 @@
   "chatRestored": "Chat restored",
   "listSettings": "List settings",
   "showDeletedChats": "Show deleted chats",
-  "showRecordChats": "Show record chats",
   "showForeignChats": "Show others' chats",
   "external": "External",
   "unreadChats": "Unread",
+  "sections": {
+    "staff": "Staff",
+    "clients": "Clients",
+    "channels": "Channels",
+    "records": "Documents"
+  },
+  "filterDirect": "Direct",
+  "filterGroups": "Groups",
+  "scopeMine": "Mine",
+  "scopeTeam": "My team",
+  "source": "Source",
+  "allSources": "All sources",
   "newFolder": "New folder",
   "editFolder": "Edit folder",
   "folderName": "Folder name",

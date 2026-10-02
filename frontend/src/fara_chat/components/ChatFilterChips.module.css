@@ -1,0 +1,60 @@
+/* Чипы над списком чатов — пилюли с тонкой рамкой; выбранный — акцентный. */
+.seg {
+  display: inline-flex;
+  border-radius: 999px;
+  overflow: hidden;
+
+  @mixin light {
+    border: 1px solid var(--mantine-color-gray-4);
+  }
+
+  @mixin dark {
+    border: 1px solid var(--mantine-color-dark-3);
+  }
+}
+
+.segItem,
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--mantine-color-dimmed);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  &:hover {
+    color: var(--mantine-color-text);
+  }
+
+  &[data-active] {
+    background-color: var(--mantine-primary-color-light);
+    color: var(--mantine-primary-color-light-color);
+  }
+}
+
+.chip {
+  border-radius: 999px;
+
+  @mixin light {
+    border: 1px solid var(--mantine-color-gray-4);
+  }
+
+  @mixin dark {
+    border: 1px solid var(--mantine-color-dark-3);
+  }
+
+  &[data-active] {
+    @mixin light {
+      border-color: var(--mantine-primary-color-3);
+    }
+
+    @mixin dark {
+      border-color: var(--mantine-primary-color-8);
+    }
+  }
+}

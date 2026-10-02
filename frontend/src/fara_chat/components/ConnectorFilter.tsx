@@ -1,107 +1,104 @@
-import { SegmentedControl, Group, ThemeIcon, Tooltip } from '@mantine/core';
+import { Menu, UnstyledButton } from '@mantine/core';
 import {
-  IconMessage,
   IconBrandTelegram,
   IconBrandWhatsapp,
-  IconApps,
+  IconChevronDown,
+  IconMail,
+  IconMessageCircle,
+  IconX,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { useSearchQuery } from '@/services/api/crudApi';
 import avitoIconUrl from '@/fara_chat_avito/assets/avito.svg';
 import { MaxIcon } from '@/fara_chat_max_bot/components/MaxIcon';
 import { VkIcon } from '@/fara_chat_vk/components/VkIcon';
-
-interface ConnectorFilterProps {
-  value: string;
-  onChange: (value: string) => void;
-  availableTypes?: string[];
-}
+import { useChatFilter } from '../hooks/useChatFilter';
+import chipClasses from './ChatFilterChips.module.css';
 
 // SVG-логотип Avito (project resolves *.svg в URL), оборачиваем в <img>
 // чтобы вставить в тот же слот, где используются tabler-иконки.
 const AvitoIcon = () => (
   <img
     src={avitoIconUrl}
-    width={16}
-    height={16}
+    width={14}
+    height={14}
     alt="Avito"
     draggable={false}
     style={{ display: 'block' }}
   />
 );
 
-// Иконки для типов коннекторов
-const connectorIcons: Record<string, React.ReactNode> = {
-  all: <IconApps size={16} />,
-  internal: <IconMessage size={16} />,
-  telegram: <IconBrandTelegram size={16} />,
-  whatsapp: <IconBrandWhatsapp size={16} />,
+// Иконки по типу коннектора.
+const CONNECTOR_ICONS: Record<string, React.ReactNode> = {
+  telegram: <IconBrandTelegram size={14} />,
+  whatsapp: <IconBrandWhatsapp size={14} />,
+  whatsapp_chatapp: <IconBrandWhatsapp size={14} />,
+  email: <IconMail size={14} />,
   avito: <AvitoIcon />,
-  max_bot: <MaxIcon />,
-  // max_wamm: <MaxIcon />,
-  max_business: <MaxIcon />,
-  vk: <VkIcon />,
+  max_bot: <MaxIcon size={14} />,
+  max_business: <MaxIcon size={14} />,
+  vk: <VkIcon size={14} />,
 };
 
-// Названия типов коннекторов
-const connectorLabels: Record<string, string> = {
-  all: 'all',
-  internal: 'internal',
-  telegram: 'Telegram',
-  whatsapp: 'WhatsApp',
-  avito: 'Avito',
-  max_bot: 'MAX (бот)',
-  // max_wamm: 'MAX (WAMM)',
-  max_business: 'MAX Business',
-  vk: 'ВКонтакте',
-};
+const connectorIcon = (type: string) =>
+  CONNECTOR_ICONS[type] ?? <IconMessageCircle size={14} />;
 
-export function ConnectorFilter({
-  value,
-  onChange,
-  availableTypes = ['all', 'internal', 'telegram', 'email'],
-}: ConnectorFilterProps) {
-  useTranslation('chat');
+interface Connector {
+  id: number;
+  type: string;
+  name: string;
+  category?: string | null;
+}
 
-  const data = availableTypes.map(type => ({
-    value: type,
-    label: (
-      <Tooltip label={connectorLabels[type] || type} position="bottom">
-        <Group gap={4} wrap="nowrap">
-          <ThemeIcon
-            variant="transparent"
-            size="xs"
-            color={
-              type === 'telegram'
-                ? 'blue'
-                : type === 'whatsapp'
-                  ? 'green'
-                  : type === 'avito'
-                    ? 'lime'
-                    : type === 'max_bot'
-                      ? 'grape'
-                      : type === 'max_wamm'
-                        ? 'grape'
-                        : type === 'max_business'
-                          ? 'grape'
-                          : type === 'vk'
-                            ? 'indigo'
-                            : 'gray'
-            }>
-            {connectorIcons[type] || <IconApps size={16} />}
-          </ThemeIcon>
-        </Group>
-      </Tooltip>
-    ),
-  }));
+/**
+ * Чип «Источник ▾» у клиентов: коннекторы — пунктами меню, поэтому ширина
+ * не растёт с их числом. Коннектор один — выбирать не из чего, чипа нет.
+ */
+export function ConnectorFilter() {
+  const { t } = useTranslation('chat');
+  const { filter, update } = useChatFilter();
+  const { data } = useSearchQuery({
+    model: 'chat_connector',
+    fields: ['id', 'type', 'name', 'category'],
+    filter: [['active', '=', true]],
+    limit: 200,
+  });
+  // Уведомления (web_push) — не канал переписки.
+  const connectors = ((data?.data as unknown as Connector[]) || []).filter(
+    c => c.category !== 'notification',
+  );
+  if (connectors.length < 2) return null;
 
+  const current = connectors.find(c => c.id === filter.connector_id);
   return (
-    <SegmentedControl
-      value={value}
-      onChange={onChange}
-      data={data}
-      size="xs"
-      fullWidth
-    />
+    <Menu position="bottom-start" withinPortal shadow="md">
+      <Menu.Target>
+        <UnstyledButton
+          className={chipClasses.chip}
+          data-active={!!current || undefined}>
+          {current && connectorIcon(current.type)}
+          {current?.name ?? t('source', 'Источник')}
+          <IconChevronDown size={12} />
+        </UnstyledButton>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {current && (
+          <Menu.Item
+            leftSection={<IconX size={14} />}
+            onClick={() => update({ connector_id: undefined })}>
+            {t('allSources', 'Все источники')}
+          </Menu.Item>
+        )}
+        {connectors.map(c => (
+          <Menu.Item
+            key={c.id}
+            leftSection={connectorIcon(c.type)}
+            onClick={() => update({ connector_id: c.id })}>
+            {c.name}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 }
 

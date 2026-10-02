@@ -11,6 +11,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
 import {
   chatApi,
+  GetChatsArgs,
   GetChatsResponse,
   GetMessagesResponse,
   WSMessage,
@@ -48,20 +49,24 @@ const CONNECT_TIMEOUT_MS = 10_000;
 /**
  * Правка ВСЕХ закэшированных вариантов списка чатов.
  *
- * Ключ кэша RTK Query — эндпоинт плюс аргументы: {limit:100}, папка, scope,
- * include_* — это разные записи, а событие одно. Раньше правился только
+ * Ключ кэша RTK Query — эндпоинт плюс аргументы: {limit:100}, раздел, папка,
+ * чипы, include_* — это разные записи, а событие одно. Раньше правился только
  * вариант {limit:100}, поэтому в папках список не обновлялся живьём.
  */
 function patchChatLists(
   dispatch: AppDispatch,
-  recipe: (draft: GetChatsResponse) => void,
+  recipe: (draft: GetChatsResponse, args: GetChatsArgs) => void,
 ) {
   dispatch((d, getState) => {
     for (const args of chatApi.util.selectCachedArgsForQuery(
       getState(),
       'getChats',
     )) {
-      d(chatApi.util.updateQueryData('getChats', args, recipe));
+      d(
+        chatApi.util.updateQueryData('getChats', args, draft =>
+          recipe(draft, args),
+        ),
+      );
     }
   });
 }
@@ -184,12 +189,17 @@ export function ChatWebSocketProvider({
           wsMsg.message.author?.id === currentUserId;
 
         // Список чатов: unread + last_message. Чата нет ни в одном варианте
-        // кэша (за пределами первой сотни или список ещё не грузился) —
+        // кэша (за пределами первой сотни или список ещё не грузился) или
+        // нет в «Непрочитанных», куда он попадает с этим сообщением, —
         // перечитать, иначе он в списке так и не появится.
         let listed = false;
-        patchChatLists(dispatch, draft => {
+        let missingInUnread = false;
+        patchChatLists(dispatch, (draft, args) => {
           const chat = draft.data.find(c => c.id === wsMsg.chat_id);
-          if (!chat) return;
+          if (!chat) {
+            if (args.unread && !isOwnMessage) missingInUnread = true;
+            return;
+          }
           listed = true;
           if (!isOwnMessage) {
             chat.unread_count = (chat.unread_count || 0) + 1;
@@ -202,7 +212,7 @@ export function ChatWebSocketProvider({
           };
           chat.last_message_date = wsMsg.message.create_datetime;
         });
-        if (!listed) {
+        if (!listed || missingInUnread) {
           dispatch(
             chatApi.util.invalidateTags([{ type: 'Chat', id: 'LIST' }]),
           );

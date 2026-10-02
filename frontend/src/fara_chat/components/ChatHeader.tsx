@@ -8,13 +8,13 @@ import {
   IconSearch,
   IconSettings,
   IconBell,
-  IconMessage,
   IconPinFilled,
   IconArrowLeft,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Chat } from '@/services/api/chat';
 import { attachmentPreviewUrl } from '@/utils/attachmentUrls';
+import { DIRECT_CHAT_COLOR, SECTION_META } from '../sections';
 import styles from './ChatHeader.module.css';
 
 interface ChatHeaderProps {
@@ -108,14 +108,16 @@ export function ChatHeader({
         ? attachmentPreviewUrl(otherMember.image_id, 80, 80)
         : undefined;
       return (
-        <Avatar color="blue" radius="xl" size="md" src={avatarSrc}>
+        <Avatar color={DIRECT_CHAT_COLOR} radius="xl" size="md" src={avatarSrc}>
           {getInitials(otherMember?.name || chat.name)}
         </Avatar>
       );
     }
+    // Иконка и цвет раздела — как в списке и на квадрате слева.
+    const { Icon, color } = SECTION_META[chat.section ?? 'staff'];
     return (
-      <Avatar color="cyan" radius="xl" size="md">
-        <IconMessage size={20} />
+      <Avatar color={color} radius="xl" size="md">
+        <Icon size={20} />
       </Avatar>
     );
   };

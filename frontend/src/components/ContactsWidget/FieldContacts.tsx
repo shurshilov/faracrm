@@ -253,14 +253,8 @@ export function FieldContacts({
         partner_ids: [ownerId],
       }).unwrap();
 
-      const params = new URLSearchParams();
-      // Передаём is_internal, чтобы ChatPage загрузил список с этим чатом
-      // и ?open смог его найти (партнёрский чат — is_internal=false).
-      if (res.data.is_internal !== undefined) {
-        params.set('is_internal', String(res.data.is_internal));
-      }
-      params.set('open', String(res.data.id));
-      navigate(`/chat?${params.toString()}`);
+      // ?open: ChatPage найдёт чат среди всех разделов и откроет его квадрат.
+      navigate(`/chat?open=${res.data.id}`);
     } catch {
       notifications.show({
         color: 'red',

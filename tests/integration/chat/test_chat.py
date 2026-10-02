@@ -122,13 +122,14 @@ class TestChatDelete:
 
 class TestChatVisibilityFilters:
     """
-    Tests for GET /chats visibility flags:
+    Tests for GET /chats visibility flags and filters:
       include_deleted — show soft-deleted chats (any user)
-      include_record  — show record chats (any user)
-      include_foreign — bypass membership check (admin only, else 403)
+      include_foreign — bypass membership check (system admin only, else 403)
+      section         — staff / clients / channels / records (Chat.SECTION_SQL)
+      unread          — only chats with unread messages
 
     By default every user — including is_admin — sees only their own
-    active, non-record chats.
+    active chats of all sections.
     """
 
     @staticmethod
@@ -166,6 +167,7 @@ class TestChatVisibilityFilters:
         member_user_ids: list[int],
         chat_type: str = "group",
         active: bool = True,
+        is_internal: bool = True,
         res_model: str | None = None,
         res_id: int | None = None,
         inactive_member_user_ids: list[int] | None = None,
@@ -177,7 +179,12 @@ class TestChatVisibilityFilters:
         (user was a member but left — chat_member.is_active=false).
         """
 
-        payload = Chat(name=name, chat_type=chat_type, active=active)
+        payload = Chat(
+            name=name,
+            chat_type=chat_type,
+            active=active,
+            is_internal=is_internal,
+        )
         if res_model is not None:
             payload.res_model = res_model
         if res_id is not None:
@@ -196,7 +203,7 @@ class TestChatVisibilityFilters:
 
         return chat_id
 
-    async def test_regular_user_sees_only_own_active_non_record(
+    async def test_regular_user_sees_only_own_active(
         self, client, user_factory
     ):
         alice_id = await self._login(
@@ -228,7 +235,9 @@ class TestChatVisibilityFilters:
         ids = {c["id"] for c in resp.json()["data"]}
         assert own in ids
         assert deleted not in ids
-        assert record not in ids
+        # Без раздела — все разделы, в т.ч. «Документы»: общий счётчик
+        # непрочитанных считается по этому списку.
+        assert record in ids
         assert foreign not in ids
         assert left not in ids  # inactive membership == not a member
 
@@ -249,34 +258,45 @@ class TestChatVisibilityFilters:
         assert own in ids
         assert deleted in ids  # now visible
 
-    async def test_include_record_shows_record_chats(
-        self, client, user_factory
-    ):
+    async def test_sections_split_chats(self, client, user_factory):
+        """Каждый чат ровно в одном разделе; «Группы» — без каналов."""
         alice_id = await self._login(
             client, user_factory, is_admin=False, login="alice"
         )
-        own = await self._mk_chat("own", member_user_ids=[alice_id])
+        direct = await self._mk_chat(
+            "staff-direct", member_user_ids=[alice_id], chat_type="direct"
+        )
+        group = await self._mk_chat("staff-group", member_user_ids=[alice_id])
+        client_chat = await self._mk_chat(
+            "client", member_user_ids=[alice_id], is_internal=False
+        )
+        channel = await self._mk_chat(
+            "channel", member_user_ids=[alice_id], chat_type="channel"
+        )
         record = await self._mk_chat(
-            "own-record",
+            "record",
             member_user_ids=[alice_id],
             chat_type="record",
             res_model="lead",
             res_id=1,
         )
 
-        resp = await client.get("/chats", params={"include_record": 1})
-        assert resp.status_code == 200
-        ids = {c["id"] for c in resp.json()["data"]}
-        assert own in ids
-        assert record in ids
+        async def ids_for(**params) -> set[int]:
+            resp = await client.get("/chats", params=params)
+            assert resp.status_code == 200, resp.text
+            return {c["id"] for c in resp.json()["data"]}
 
-    async def test_include_record_still_hides_foreign_for_regular(
+        assert await ids_for(section="staff") == {direct, group}
+        assert await ids_for(section="clients") == {client_chat}
+        assert await ids_for(section="channels") == {channel}
+        assert await ids_for(section="records") == {record}
+        assert await ids_for(section="staff", chat_type="group") == {group}
+
+    async def test_records_section_hides_foreign_record(
         self, client, user_factory
     ):
-        """include_record does NOT grant access to someone else's record chat."""
-        alice_id = await self._login(
-            client, user_factory, is_admin=False, login="alice"
-        )
+        """Раздел «Документы» не открывает чужой record-чат."""
+        await self._login(client, user_factory, is_admin=False, login="alice")
         bob = await user_factory(name="Bob", login="bob", is_admin=False)
 
         foreign_record = await self._mk_chat(
@@ -287,10 +307,59 @@ class TestChatVisibilityFilters:
             res_id=1,
         )
 
-        resp = await client.get("/chats", params={"include_record": 1})
+        resp = await client.get("/chats", params={"section": "records"})
         assert resp.status_code == 200
         ids = {c["id"] for c in resp.json()["data"]}
         assert foreign_record not in ids
+
+    async def test_unread_filter(self, client, user_factory):
+        """unread=1 — только чаты с чужими непрочитанными сообщениями."""
+        alice_id = await self._login(
+            client, user_factory, is_admin=False, login="alice"
+        )
+        bob = await user_factory(name="Bob", login="bob", is_admin=False)
+
+        with_unread = await self._mk_chat(
+            "with-unread", member_user_ids=[alice_id, bob.id]
+        )
+        await ChatMessage.create(
+            ChatMessage(chat_id=with_unread, body="hi", author_user_id=bob.id)
+        )
+        own_only = await self._mk_chat("own-only", member_user_ids=[alice_id])
+        await ChatMessage.create(
+            ChatMessage(chat_id=own_only, body="me", author_user_id=alice_id)
+        )
+
+        resp = await client.get("/chats", params={"unread": 1})
+        assert resp.status_code == 200, resp.text
+        ids = {c["id"] for c in resp.json()["data"]}
+        assert with_unread in ids
+        assert own_only not in ids  # своё сообщение непрочитанным не бывает
+
+    async def test_folders_unread_by_section(self, client, user_factory):
+        """Бейджи квадратов: непрочитанные по разделам."""
+        alice_id = await self._login(
+            client, user_factory, is_admin=False, login="alice"
+        )
+        bob = await user_factory(name="Bob", login="bob", is_admin=False)
+
+        staff = await self._mk_chat(
+            "staff", member_user_ids=[alice_id, bob.id]
+        )
+        client_chat = await self._mk_chat(
+            "client", member_user_ids=[alice_id, bob.id], is_internal=False
+        )
+        for chat_id, count in ((staff, 2), (client_chat, 1)):
+            for i in range(count):
+                await ChatMessage.create(
+                    ChatMessage(
+                        chat_id=chat_id, body=f"m{i}", author_user_id=bob.id
+                    )
+                )
+
+        resp = await client.get("/chats/folders/unread")
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["data"]["sections"] == {"staff": 2, "clients": 1}
 
     async def test_admin_default_same_as_regular(self, client, user_factory):
         """
@@ -345,7 +414,7 @@ class TestChatVisibilityFilters:
 
     async def test_admin_combo_flags(self, client, user_factory):
         """
-        All three flags combine: admin sees foreign + deleted + record chats.
+        Both flags combine: admin sees a foreign deleted record chat.
         """
         admin_id = await self._login(
             client, user_factory, is_admin=True, login="admin_user"
@@ -366,14 +435,10 @@ class TestChatVisibilityFilters:
         ids = {c["id"] for c in resp.json()["data"]}
         assert foreign_deleted_record not in ids
 
-        # With all three — visible
+        # With both — visible
         resp = await client.get(
             "/chats",
-            params={
-                "include_foreign": 1,
-                "include_deleted": 1,
-                "include_record": 1,
-            },
+            params={"include_foreign": 1, "include_deleted": 1},
         )
         assert resp.status_code == 200
         ids = {c["id"] for c in resp.json()["data"]}

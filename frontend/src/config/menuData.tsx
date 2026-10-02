@@ -20,8 +20,6 @@ import {
   IconSettings,
   IconUsers,
   IconComponents,
-  IconMessage,
-  IconWorld,
 } from '@tabler/icons-react';
 
 import {
@@ -53,67 +51,12 @@ const menuTree: GroupConfig[] = [
   {
     group: 'communication',
     submenus: [
-      // Фильтры чатов живут в боковой панели чата и только там: в шапке они
-      // были теми же ссылками во второй раз.
+      // Разделы и фильтры чатов — квадраты сайдбара и чипы над списком.
       {
-        id: 'category_chat_internal',
-        Icon: IconMessage,
-        label: 'Внутренние',
-        labelKey: 'chat:menu.internal',
-        inSidebarOnly: true,
-        submenus: [
-          {
-            id: 'menu_chat_internal_all',
-            to: '/chat?is_internal=true',
-            label: 'Все',
-            labelKey: 'chat:menu.all',
-          },
-          {
-            id: 'menu_chat_internal_direct',
-            to: '/chat?is_internal=true&chat_type=direct',
-            label: 'Личные',
-            labelKey: 'chat:menu.direct',
-          },
-          {
-            id: 'menu_chat_internal_groups',
-            to: '/chat?is_internal=true&chat_type=group',
-            label: 'Группы',
-            labelKey: 'chat:menu.groups',
-          },
-        ],
-      },
-      {
-        id: 'category_chat_external',
-        Icon: IconWorld,
-        label: 'Внешние',
-        labelKey: 'chat:menu.external',
-        inSidebarOnly: true,
-        submenus: [
-          {
-            id: 'menu_chat_external_all',
-            to: '/chat?is_internal=false',
-            label: 'Все',
-            labelKey: 'chat:menu.all',
-          },
-          {
-            id: 'menu_chat_telegram',
-            to: '/chat?is_internal=false&connector_type=telegram',
-            label: 'Telegram',
-            labelKey: 'chat:menu.telegram',
-          },
-          {
-            id: 'menu_chat_whatsapp',
-            to: '/chat?is_internal=false&connector_type=whatsapp',
-            label: 'WhatsApp',
-            labelKey: 'chat:menu.whatsapp',
-          },
-          {
-            id: 'menu_chat_email',
-            to: '/chat?is_internal=false&connector_type=email',
-            label: 'Email',
-            labelKey: 'chat:menu.email',
-          },
-        ],
+        id: 'menu_chat',
+        to: '/chat',
+        label: 'Чаты',
+        labelKey: 'chat:menu.chats',
       },
       // Контакты — прямой доступ из раздела "Общение".
       {

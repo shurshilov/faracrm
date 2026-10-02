@@ -245,20 +245,10 @@ export const modelsConfig: Record<string, ModelConfig> = {
       })),
   },
   // Папки чатов — generic list/form (управление всеми папками админом:
-  // глобальные user_id=NULL + пользовательские). Набор чатов — поле domain.
+  // общие user_id=NULL + пользовательские). Набор чатов — поле domain.
   chat_folder: {
     menu: MenuGroups.communication,
-    fields: [
-      'id',
-      'name',
-      'user_id',
-      'kind',
-      'connector_id',
-      'sequence',
-      'domain',
-      'icon',
-      'color',
-    ],
+    fields: ['id', 'name', 'user_id', 'sequence', 'domain', 'icon', 'color'],
   },
   // Generic-конфиг — формы рендерятся через стандартный Generic компонент,
   // отдельная страница не обязательна, правила в основном редактируются

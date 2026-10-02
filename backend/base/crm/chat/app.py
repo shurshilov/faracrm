@@ -227,12 +227,6 @@ class ChatApp(Service):
         await self._init_membership_rules(env)
         await self._init_system_settings(env)
 
-        # Глобальные дефолтные папки (Все/Личные/Группы). Идемпотентно.
-        try:
-            await env.models.chat_folder.ensure_global_defaults()
-        except Exception as exc:
-            logger.warning("chat_folder global defaults skipped: %s", exc)
-
     async def _init_membership_rules(self, env: "Environment"):
         """
         Создаёт security rules через @-операторы:
@@ -345,9 +339,9 @@ class ChatApp(Service):
             perms={"read": True, "create": True, "delete": True},
         )
 
-        # ChatFolder — читать можно свои + глобальные (user_id IS NULL:
-        # Все/Личные/Группы/коннекторы). Create — на уровне ACL (user_id
-        # проставляется default'ом = текущий).
+        # ChatFolder — читать можно свои + общие (user_id IS NULL, их заводит
+        # администратор). Create — на уровне ACL (user_id проставляется
+        # default'ом = текущий).
         await create_rule_if_missing(
             name="ChatFolder: read own and global folders",
             model_name="chat_folder",

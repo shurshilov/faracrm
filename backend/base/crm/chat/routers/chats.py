@@ -41,15 +41,23 @@ async def get_chats(
         description="Поиск: имя чата или участника (пользователь/партнёр), "
         "без учёта регистра, среди всех доступных чатов",
     ),
-    is_internal: bool | None = Query(
-        None, description="Фильтр: True=внутренние, False=внешние, None=все"
+    section: str | None = Query(
+        None,
+        description="Раздел: staff (сотрудники), clients (клиенты), "
+        "channels (каналы), records (документы); без него — все",
     ),
     chat_type: str | None = Query(
         None, description="Фильтр по типу: direct, group"
     ),
-    connector_type: str | None = Query(
-        None, description="Фильтр по коннектору: telegram, whatsapp, etc"
+    scope: str | None = Query(
+        None,
+        description="'mine' — где я участник (дефолт), 'team' — ещё и "
+        "клиентские чаты моих команд",
     ),
+    connector_id: int | None = Query(
+        None, description="Чаты, пришедшие через коннектор (chat_connector.id)"
+    ),
+    unread: int = Query(0, description="Только с непрочитанными"),
     folder_id: int | None = Query(
         None,
         description="Фильтр по папке чатов пользователя (chat_folder.id)",
@@ -57,145 +65,86 @@ async def get_chats(
     include_deleted: int = Query(
         0, description="Показать удалённые чаты (active=false)"
     ),
-    include_record: int = Query(
-        0, description="Показать record-чаты (chat_type='record')"
-    ),
     include_foreign: int = Query(
         0,
-        description="Admin-only: показать чужие чаты "
+        description="Только администратор системы: показать чужие чаты "
         "(где текущий user не активный мембер)",
-    ),
-    scope: str | None = Query(
-        None,
-        description="Внешние чаты: 'mine'=где я участник (дефолт), "
-        "'all'=мои команды + членство (team-scoped видимость)",
     ),
 ):
     """
     Получить список чатов текущего пользователя.
 
-    По умолчанию пользователь (в т.ч. админ) видит только свои активные чаты,
-    не являющиеся record-чатами. Query-флаги снимают отдельные ограничения:
+    По умолчанию пользователь (в т.ч. админ) видит только свои активные чаты.
+    Query-флаги снимают отдельные ограничения:
       - include_deleted=1  → снимает фильтр по chat.active (доступно всем)
-      - include_record=1   → показывает record-чаты (доступно всем)
-      - include_foreign=1  → снимает требование членства (только админ,
-                              для не-админа → 403 ADMIN_REQUIRED)
+      - include_foreign=1  → снимает требование членства (только
+                              администратор системы, иначе 403 ADMIN_REQUIRED)
 
     Как собирается список — Chat.list_for_user.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
 
-    # include_foreign разрешён только системному админу. Не-админам
-    # бросаем 403, чтобы ошибка не маскировалась под «пустой результат».
-    if include_foreign and not auth_session.user_id.is_admin:
-        raise FaraException(
-            {"content": "ADMIN_REQUIRED", "status_code": HTTP_403_FORBIDDEN}
-        )
+    # Чужие чаты — только администратору системы: 403, чтобы отказ не
+    # маскировался под «пустой результат».
+    if include_foreign:
+        auth_session.check_system_admin()
 
     chats = await env.models.chat.list_for_user(
         auth_session.user_id,
         limit=limit,
         offset=offset,
         search=search,
-        is_internal=is_internal,
+        section=section,
         chat_type=chat_type,
-        connector_type=connector_type,
+        scope=scope,
+        connector_id=connector_id,
+        unread=bool(unread),
         folder_id=folder_id,
         include_deleted=bool(include_deleted),
-        include_record=bool(include_record),
         include_foreign=bool(include_foreign),
-        scope=scope,
     )
     return {"data": chats, "total": len(chats)}
 
 
 @router_private.get("/chats/folders/unread")
 async def get_folders_unread(req: Request):
-    """Кол-во непрочитанных сообщений по каждой папке для текущего юзера.
+    """Непрочитанные сообщения текущего юзера по разделам (квадраты
+    Сотрудники/Клиенты/Каналы/Документы) и по его папкам.
 
     Считаем НА ЛЕТУ (ничего не храним) — тем же способом, что и бейджик
-    вверху справа: сначала один запрос даёт unread по каждому чату юзера,
-    затем для каждой папки суммируем unread по её чатам. Членство чата в
-    папке резолвится ровно как в get_chats (папка коннектора → через
-    chat_external_chat; обычная → domain над chat), поэтому счётчик всегда
-    совпадает с тем, что реально видно при открытии папки.
+    вверху справа: один запрос даёт unread по каждому чату вместе с его
+    разделом (Chat.SECTION_SQL — то же выражение, что фильтрует список
+    раздела), поэтому бейдж квадрата совпадает с его списком. Каждый чат
+    ровно в одном разделе — сумма разделов равна общему счётчику.
 
-    Хранить нельзя: один чат входит сразу в несколько папок («Все» +
-    «Личные» + папка коннектора), unread — per-user (watermark в
-    chat_member), а папки глобальные; domain папки может меняться.
+    Своя папка — произвольный domain над chat: резолвим его запросом, но
+    узко — только среди непрочитанных чатов (id IN ...).
 
-    Ответ: {"data": {"<folder_id>": <count>, ...}} — только папки с count>0
-    (фронт рисует бейдж лишь при >0).
-
-    Без N+1: набор непрочитанных чатов у юзера мал, поэтому вместо «на каждую
-    папку — свой запрос за её чатами» делаем фиксированные 3 запроса и решаем
-    принадлежность в памяти:
-      (1) unread + chat_type по каждому непрочитанному чату;
-      (2) карта чат→коннектор(ы) для этих чатов (bulk, один IN-запрос);
-      (3) список папок (как их берёт сайдбар — limit/сортировка те же).
-    Встроенные папки резолвим по kind/chat_type, папки коннектора — по карте
-    из (2). Произвольный domain кастомной папки (редко) — единственный случай,
-    где нужен запрос, и тот сужен до непрочитанных (id IN ...).
+    Ответ: {"data": {"sections": {"<раздел>": n}, "folders": {"<id>": n}}}
+    — только с n > 0 (фронт рисует бейдж лишь при > 0).
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
-    user_id = auth_session.user_id.id
 
-    session = env.apps.db.get_session()
-
-    # (1) unread + chat_type по каждому непрочитанному чату юзера. Формула та
-    # же, что в списке чатов (ChatMessage.unread_counts). chat_type берём тут
-    # же — по нему резолвятся встроенные папки.
-    unread_rows = await env.models.chat_message.unread_counts(user_id)
+    unread_rows = await env.models.chat_message.unread_counts(
+        auth_session.user_id.id
+    )
     if not unread_rows:
-        return {"data": {}}
+        return {"data": {"sections": {}, "folders": {}}}
 
-    unread_by_chat: dict[int, int] = {
-        r["chat_id"]: r["unread_count"] for r in unread_rows
-    }
-    type_by_chat: dict[int, str] = {
-        r["chat_id"]: r["chat_type"] for r in unread_rows
-    }
-    # is_internal нужен, чтобы внутренние папки (all/direct/group) не считали
-    # внешние чаты. Этот цикл резолвит папки по kind, а НЕ по domain, поэтому
-    # фильтр из DEFAULT_GLOBAL_FOLDERS.domain сюда не долетает — дублируем его.
-    internal_by_chat: dict[int, bool] = {
-        r["chat_id"]: r["is_internal"] for r in unread_rows
-    }
-    unread_ids = list(unread_by_chat)
-    total_internal = sum(
-        cnt for ch, cnt in unread_by_chat.items() if internal_by_chat.get(ch)
-    )
-    # Внешние = не-внутренние. external_all и external_mine дают одну сумму:
-    # непрочитанное считается по watermark участника (запрос выше джойнит
-    # chat_member по user_id), а он есть только там, где юзер УЖЕ участник —
-    # то есть в «Мои». Team-видимые, но не свои чаты watermark'а не имеют и в
-    # unread не попадают, поэтому «Все» и «Мои» по непрочитанным совпадают.
-    total_external = sum(
-        cnt
-        for ch, cnt in unread_by_chat.items()
-        if not internal_by_chat.get(ch)
-    )
-
-    # (2) Карта непрочитанный чат → id коннектора(ов) — один bulk-запрос,
-    # вместо запроса на каждую папку коннектора.
-    conn_rows = await session.execute(
-        "SELECT chat_id, connector_id FROM chat_external_chat "
-        "WHERE chat_id = ANY(%s)",
-        (unread_ids,),
-    )
-    connectors_by_chat: dict[int, set[int]] = {}
-    for r in conn_rows:
-        connectors_by_chat.setdefault(r["chat_id"], set()).add(
-            r["connector_id"]
+    sections: dict[str, int] = {}
+    unread_by_chat: dict[int, int] = {}
+    for row in unread_rows:
+        sections[row["section"]] = (
+            sections.get(row["section"], 0) + row["unread_count"]
         )
-
-    # (3) Папки — как их запрашивает сайдбар (ChatSidebar): limit 100,
-    # сортировка по sequence. Правила chat_folder отдают свои + глобальные.
+        unread_by_chat[row["chat_id"]] = row["unread_count"]
+    # Папки — как их запрашивает сайдбар (ChatSidebar): limit 100,
+    # сортировка по sequence. Правила chat_folder отдают свои + общие.
     folders = await env.models.chat_folder.search(
         filter=[],
-        fields=["id", "domain", "connector_id", "kind"],
+        fields=["id", "domain"],
         limit=100,
         sort="sequence",
         order="ASC",
@@ -203,45 +152,14 @@ async def get_folders_unread(req: Request):
 
     result: dict[str, int] = {}
     for folder in folders:
-        conn = folder.connector_id
-        if conn:
-            # Папка коннектора → чаты с этим connector_id (из карты п.2).
-            cid = conn.id
-            total = sum(
-                cnt
-                for ch, cnt in unread_by_chat.items()
-                if cid in connectors_by_chat.get(ch, ())
-            )
-        elif folder.kind == "direct":
-            # Внутренняя папка → только внутренние чаты (см. internal_by_chat).
-            total = sum(
-                cnt
-                for ch, cnt in unread_by_chat.items()
-                if type_by_chat[ch] == "direct" and internal_by_chat.get(ch)
-            )
-        elif folder.kind == "group":
-            total = sum(
-                cnt
-                for ch, cnt in unread_by_chat.items()
-                if type_by_chat[ch] in ("group", "channel")
-                and internal_by_chat.get(ch)
-            )
-        elif folder.kind in ("external_all", "external_mine"):
-            # Внешние папки → только внешние чаты. Ветка ДО catch-all ниже: у
-            # них domain=None, иначе они провалились бы в total_internal и
-            # показывали 0.
-            total = total_external
-        elif folder.kind == "all" or not folder.domain:
-            # «Все» под «Внутренними» = все ВНУТРЕННИЕ непрочитанные (внешние
-            # живут в своей секции и своих папках external_*).
-            total = total_internal
+        if not folder.domain:
+            # Пустой domain — папка показывает все чаты.
+            total = sum(unread_by_chat.values())
         else:
-            # Кастомная папка с произвольным domain. Резолвим по domain, но
-            # узко — только по непрочитанным (id IN unread_ids), не по всем
-            # чатам. (domain) AND (id in U): domain оборачиваем в подсписок,
-            # иначе OR внутри него «утечёт» за пределы условия по id.
+            # (domain) AND (id in U): domain оборачиваем в подсписок, иначе
+            # OR внутри него «утечёт» за пределы условия по id.
             matched = await env.models.chat.search(
-                filter=[folder.domain, ["id", "in", unread_ids]],
+                filter=[folder.domain, ["id", "in", list(unread_by_chat)]],
                 fields=["id"],
             )
             total = sum(unread_by_chat[m.id] for m in matched)
@@ -249,7 +167,7 @@ async def get_folders_unread(req: Request):
         if total:
             result[str(folder.id)] = total
 
-    return {"data": result}
+    return {"data": {"sections": sections, "folders": result}}
 
 
 @router_private.post("/chats/{chat_id}/pin")

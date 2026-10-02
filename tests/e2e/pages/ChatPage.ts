@@ -28,11 +28,11 @@ function escapeRegExp(text: string): string {
  * Page Object для страницы чата.
  *
  * Структура UI:
- * - Sidebar (ChatSidebar): навигация ВНУТРЕННИЕ (Все/Личные/Группы) + ВНЕШНИЕ
+ * - Sidebar (ChatSections): квадраты разделов (Сотрудники/Клиенты/Каналы/
+ *   Документы) + свои папки; фильтры раздела — чипы над списком
  * - Main: ChatPage = ChatList (список чатов) + ChatMessages (сообщения)
  *
- * URL: /chat?is_internal=true — все внутренние чаты
- * Для загрузки ChatList нужно кликнуть категорию в sidebar.
+ * URL: /chat — раздел «Сотрудники» (внутренние чаты), /chat?section=clients…
  */
 export class ChatPage {
   readonly newChatButton: Locator;
@@ -53,27 +53,27 @@ export class ChatPage {
   }
 
   /**
-   * Перейти на страницу чатов и загрузить список внутренних чатов.
-   * Кликает "Все" в sidebar ВНУТРЕННИЕ для загрузки ChatList.
+   * Перейти на страницу чатов и загрузить список внутренних чатов
+   * (квадрат «Сотрудники» в sidebar).
    */
   async goto() {
     // Переходим на /chat
     await this.page.goto('/chat');
     await this.page.waitForLoadState('networkidle');
 
-    // Кликаем первую кнопку "Все" (ВНУТРЕННИЕ → Все)
-    await this._clickAllInternal();
+    await this._openStaff();
 
     // Ждём загрузки ChatList — input поиска или список чатов
     await this._waitForChatList();
   }
 
-  /** Кликнуть "Все" в секции ВНУТРЕННИЕ sidebar */
-  private async _clickAllInternal() {
-    // Первая кнопка "Все" — это "Все" в секции ВНУТРЕННИЕ
-    const allBtn = this.page.locator('button:has-text("Все")').first();
-    await allBtn.waitFor({ state: 'visible', timeout: 10_000 });
-    await allBtn.click();
+  /** Кликнуть квадрат «Сотрудники» в sidebar */
+  private async _openStaff() {
+    const staffTile = this.page
+      .getByRole('button', { name: /^(сотрудники|staff)$/i })
+      .first();
+    await staffTile.waitFor({ state: 'visible', timeout: 10_000 });
+    await staffTile.click();
     // Ждём реакцию UI — список чатов или поле поиска
     await this.page.locator(
       '[class*="chatList"], [class*="ChatList"], [placeholder*="поиск" i], [placeholder*="search" i]',
@@ -90,8 +90,8 @@ export class ChatPage {
     try {
       await chatListIndicator.waitFor({ state: 'visible', timeout: 5_000 });
     } catch {
-      // ChatList мог не загрузиться — попробуем ещё раз кликнуть "Все"
-      await this._clickAllInternal();
+      // ChatList мог не загрузиться — попробуем ещё раз открыть «Сотрудники»
+      await this._openStaff();
     }
   }
 
@@ -106,7 +106,7 @@ export class ChatPage {
     if (!visible) {
       // Reload — API вернёт свежие данные
       await this.page.reload({ waitUntil: 'networkidle' });
-      await this._clickAllInternal();
+      await this._openStaff();
       await this._waitForChatList();
       visible = await chatItem.isVisible().catch(() => false);
     }
@@ -130,7 +130,7 @@ export class ChatPage {
     if (!visible) {
       // Reload и навигация
       await this.page.reload({ waitUntil: 'networkidle' });
-      await this._clickAllInternal();
+      await this._openStaff();
     }
     await expect(locator).toBeVisible({ timeout: 15_000 });
   }

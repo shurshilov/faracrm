@@ -96,6 +96,17 @@ class Chat(AuditMixin, DotModel):
         [("chat_type", "=", "record"), ("active", "=", True)],
     )
 
+    # Раздел списка чатов (квадрат сайдбара): каждый чат ровно в одном.
+    # Одно выражение на фильтр списка (_search_ids_for_user) и счётчики
+    # непрочитанных (ChatMessage.unread_counts) — бейдж квадрата совпадает с
+    # его списком. В запросе нужен алиас chat — c.
+    SECTION_SQL = """CASE
+        WHEN c.chat_type = 'record' THEN 'records'
+        WHEN c.chat_type = 'channel' THEN 'channels'
+        WHEN c.is_internal THEN 'staff'
+        ELSE 'clients'
+    END"""
+
     id: int = Integer(primary_key=True)
     name: str = Char(max_length=255, description="Название чата/канала")
     description: str | None = Text(description="Описание канала")
@@ -669,14 +680,14 @@ class Chat(AuditMixin, DotModel):
         limit: int = 50,
         offset: int = 0,
         search: str | None = None,
-        is_internal: bool | None = None,
+        section: str | None = None,
         chat_type: str | None = None,
-        connector_type: str | None = None,
+        scope: str | None = None,
+        connector_id: int | None = None,
+        unread: bool = False,
         folder_id: int | None = None,
         include_deleted: bool = False,
-        include_record: bool = False,
         include_foreign: bool = False,
-        scope: str | None = None,
     ) -> list[dict]:
         """Чаты пользователя для списка (GET /chats): с участниками, последним
         сообщением, непрочитанными и закрепом. Что попадает в список — см.
@@ -686,21 +697,21 @@ class Chat(AuditMixin, DotModel):
             limit=limit,
             offset=offset,
             search=search,
-            is_internal=is_internal,
+            section=section,
             chat_type=chat_type,
-            connector_type=connector_type,
+            scope=scope,
+            connector_id=connector_id,
+            unread=unread,
             folder_id=folder_id,
             include_deleted=include_deleted,
-            include_record=include_record,
             include_foreign=include_foreign,
-            scope=scope,
         )
         if not rows:
             return []
 
         chat_ids = [row["id"] for row in rows]
-        # В foreign-режиме поля is_pinned нет — закрепа нет.
-        pinned = {row["id"]: bool(row.get("is_pinned")) for row in rows}
+        pinned = {row["id"]: bool(row["is_pinned"]) for row in rows}
+        sections = {row["id"]: row["section"] for row in rows}
 
         # Параллельно: вне транзакции каждый запрос идёт своим соединением.
         chats, members, last_messages, unread_rows = await asyncio.gather(
@@ -732,6 +743,9 @@ class Chat(AuditMixin, DotModel):
                     "name": chat.display_name(chat_members, user.id),
                     "chat_type": chat.chat_type,
                     "is_internal": chat.is_internal,
+                    # Раздел (Chat.SECTION_SQL): фронт открывает чат из
+                    # уведомления в его квадрате.
+                    "section": sections[chat.id],
                     "active": chat.active,
                     # Всегда []: поле фронтом не читается, но тип
                     # Chat.connectors там не опционален. Живой пикер —
@@ -771,87 +785,51 @@ class Chat(AuditMixin, DotModel):
         limit: int,
         offset: int,
         search: str | None,
-        is_internal: bool | None,
+        section: str | None,
         chat_type: str | None,
-        connector_type: str | None,
+        scope: str | None,
+        connector_id: int | None,
+        unread: bool,
         folder_id: int | None,
         include_deleted: bool,
-        include_record: bool,
         include_foreign: bool,
-        scope: str | None,
     ) -> list[dict]:
         """Страница списка чатов: строки {id, last_message_date, is_pinned}.
 
-        По умолчанию пользователь (в т.ч. админ) видит только свои активные
-        чаты, не являющиеся record-чатами:
+        По умолчанию пользователь (в т.ч. админ) видит свои активные чаты
+        всех разделов:
           - chat_member.user_id = me AND chat_member.is_active = true
           - chat.active = true
-          - chat.chat_type != 'record'
 
         Флаги снимают отдельные ограничения:
           - include_deleted  → снимает фильтр по chat.active
-          - include_record   → показывает record-чаты
-          - include_foreign  → снимает требование членства (только
-            суперпользователь — проверяет вызывающий)
+          - include_foreign  → снимает требование членства и scope
+            (только администратор системы — проверяет вызывающий)
 
-        Комбо-фильтрация:
-        - is_internal=True + chat_type=direct → Внутренние личные
-        - is_internal=True + chat_type=group  → Внутренние группы
-        - is_internal=False + connector_type=telegram → Telegram чаты
+        Фильтры (через AND):
+          - section      → раздел (SECTION_SQL): staff/clients/channels/records
+          - chat_type    → direct/group внутри «Сотрудников»
+          - scope='team' → ещё и чаты моих команд, где я не участник
+          - connector_id → чаты, пришедшие через этот коннектор
+          - unread       → только с непрочитанными
+          - folder_id    → своя папка (domain над chat)
         """
-        session = self._get_db_session()
-        # Команды пользователя — уже в сессии (гидрируются при сборке).
-        my_team_ids = [t.id for t in (user.team_ids or [])]
-
-        # Папку грузим РАНО: её kind влияет на базовый JOIN. Внешние папки
-        # external_mine/external_all — глобальные, резолвятся по kind (не
-        # доменом, как папки коннекторов): членство/team не выразить доменом
-        # над chat. external_all = team-видимость (LEFT JOIN, членство
-        # необязательно).
-        folder_row = None
-        if folder_id is not None:
-            folder_row = await env.models.chat_folder.search_one(
-                filter=[("id", "=", folder_id)],
-                fields=["id", "domain", "connector_id", "kind"],
-            )
-            if not folder_row:
-                return []
-        folder_kind = folder_row.kind if folder_row else None
-
-        # «Все» (внешние, team-scoped): из scope=all ИЛИ папки external_all.
-        want_all = (scope == "all") or (folder_kind == "external_all")
-
-        # Строим SQL динамически. Плейсхолдеры FROM/JOIN (join_params) держим
-        # ОТДЕЛЬНО от WHERE (where_params): в итоговом тексте все JOIN-%s идут
-        # раньше WHERE-%s, поэтому итоговый порядок = join_params + where_params.
-        join_params: list = []
+        # LEFT JOIN + cm.user_id в ON: членство не обязательно, чтобы
+        # scope=team и «чужие» могли показать чаты, где юзер НЕ участник.
+        # Плейсхолдеры идут по тексту: первый — cm.user_id, дальше условия
+        # WHERE в порядке добавления, в конце LIMIT/OFFSET.
         conditions: list[str] = []
-        where_params: list = []
+        params: list = [user.id]
 
-        if include_foreign:
-            base_query = """
-                SELECT DISTINCT c.id, c.last_message_date
-                FROM chat c
-            """
-        else:
-            # LEFT JOIN + cm.user_id в ON: членство не обязательно, чтобы
-            # scope=all мог показать team-scoped внешние чаты, где юзер НЕ
-            # участник.
-            base_query = """
-                SELECT DISTINCT c.id, c.last_message_date, cm.is_pinned
-                FROM chat c
-                LEFT JOIN chat_member cm
-                    ON c.id = cm.chat_id
-                   AND cm.is_active = true
-                   AND cm.user_id = %s
-            """
-            join_params.append(user.id)
-            if want_all and my_team_ids:
+        if not include_foreign:
+            # Команды пользователя — уже в сессии (гидрируются при сборке).
+            my_team_ids = [t.id for t in (user.team_ids or [])]
+            if scope == "team" and my_team_ids:
                 # Мои чаты (участник) ИЛИ чаты моих команд (team-scoped).
                 conditions.append(
                     "(cm.user_id IS NOT NULL OR c.team_id = ANY(%s))"
                 )
-                where_params.append(my_team_ids)
+                params.append(my_team_ids)
             else:
                 # 'mine' (дефолт) — только где я активный участник.
                 conditions.append("cm.user_id IS NOT NULL")
@@ -860,9 +838,30 @@ class Chat(AuditMixin, DotModel):
         if not include_deleted:
             conditions.append("c.active = true")
 
-        # Record-чаты: по умолчанию исключены
-        if not include_record:
-            conditions.append("c.chat_type != 'record'")
+        if section:
+            conditions.append(f"({self.SECTION_SQL}) = %s")
+            params.append(section)
+
+        if chat_type:
+            conditions.append("c.chat_type = %s")
+            params.append(chat_type)
+
+        if connector_id:
+            conditions.append(
+                "EXISTS (SELECT 1 FROM chat_external_chat ec"
+                " WHERE ec.chat_id = c.id AND ec.connector_id = %s)"
+            )
+            params.append(connector_id)
+
+        # Непрочитанное бывает только у участника: у team-чата, где я не
+        # состою, отметки «прочитано до» нет.
+        if unread:
+            conditions.append(
+                "cm.user_id IS NOT NULL AND EXISTS ("
+                "SELECT 1 FROM chat_message m WHERE m.chat_id = c.id"
+                f" AND {env.models.chat_message.UNREAD_SQL})"
+            )
+            params.append(user.id)
 
         # Поиск по имени чата ИЛИ участника: у direct-чатов отображаемое имя —
         # собеседник, у внешних — партнёр, поэтому одного c.name мало. Фильтр
@@ -878,98 +877,46 @@ class Chat(AuditMixin, DotModel):
                     WHERE sm.chat_id = c.id AND sm.is_active = true
                       AND (su.name ILIKE %s OR sp.name ILIKE %s)
                 ))""")
-            where_params.extend([pattern, pattern, pattern])
+            params.extend([pattern, pattern, pattern])
 
-        # Фильтр is_internal
-        if is_internal is True:
-            conditions.append("c.is_internal = true")
-        elif is_internal is False:
-            conditions.append("c.is_internal = false")
-
-        # Фильтр chat_type
-        if chat_type:
-            if chat_type == "group":
-                conditions.append("c.chat_type IN ('group', 'channel')")
-            else:
-                conditions.append("c.chat_type = %s")
-                where_params.append(chat_type)
-
-        # Фильтр connector_type — через контакты партнёров-участников чата.
-        # Логика: connector.contact_type_id → contact.contact_type_id → partner
-        # → chat_member. Ищем чаты где у партнёра есть контакт с тем же
-        # contact_type_id что у коннектора.
-        if connector_type:
-            contact_type = await env.models.contact_type.get_contact_type_id_for_connector(
-                connector_type
+        # Своя папка: набор чатов задаёт domain над chat — штатным ORM-поиском
+        # (правила chat_folder уже ограничили выборку своими и общими папками).
+        if folder_id is not None:
+            folder = await env.models.chat_folder.search_one(
+                filter=[("id", "=", folder_id)], fields=["id", "domain"]
             )
-            if contact_type:
-                base_query += """
-                JOIN chat_member cm_filter ON c.id = cm_filter.chat_id
-                    AND cm_filter.partner_id IS NOT NULL
-                    AND cm_filter.is_active = true
-                JOIN contact contact_filter
-                    ON contact_filter.partner_id = cm_filter.partner_id
-                    AND contact_filter.active = true
-                    AND contact_filter.contact_type_id = %s
-                """
-                # JOIN-плейсхолдер (текстово после cm-LEFT-JOIN).
-                join_params.append(contact_type.id)
-
-        # Резолвинг папки. Три ветки:
-        #   - external_mine/external_all → по kind: только внешние чаты
-        #     (team-vs-membership уже задан базовым условием want_all выше);
-        #   - папка коннектора → по chat_external_chat (не domain);
-        #   - остальные → штатным ORM-поиском по domain (правила chat_folder
-        #     уже ограничили выборку своими+глобальными папками).
-        if folder_row is not None:
-            if folder_kind in ("external_mine", "external_all"):
-                conditions.append("c.is_internal = false")
-            elif folder_row.connector_id:
-                ext_rows = await session.execute(
-                    "SELECT DISTINCT chat_id FROM chat_external_chat "
-                    "WHERE connector_id = %s",
-                    (folder_row.connector_id.id,),
+            if not folder:
+                return []
+            if folder.domain:
+                matched = await self.search(
+                    filter=folder.domain, fields=["id"], limit=10000
                 )
-                ext_ids = [r["chat_id"] for r in ext_rows]
-                if not ext_ids:
+                if not matched:
                     return []
                 conditions.append("c.id = ANY(%s)")
-                where_params.append(ext_ids)
-            else:
-                domain = folder_row.domain or []
-                if domain:
-                    matched = await self.search(
-                        filter=domain, fields=["id"], limit=10000
-                    )
-                    matched_ids = [m.id for m in matched]
-                    if not matched_ids:
-                        return []
-                    conditions.append("c.id = ANY(%s)")
-                    where_params.append(matched_ids)
+                params.append([m.id for m in matched])
 
         where_clause = " AND ".join(conditions) if conditions else "TRUE"
 
-        # Закреплённые чаты сверху. В foreign-режиме нет cm-джойна → без
-        # закрепа. LEFT JOIN даёт cm.is_pinned=NULL у team-чатов, где юзер НЕ
-        # участник. NULLS LAST кладёт их вниз (по умолчанию DESC = NULLS
-        # FIRST). Сортируем именно по cm.is_pinned (а не COALESCE) — оно в
-        # списке SELECT DISTINCT, иначе Postgres: "ORDER BY expressions must
-        # appear in select list".
-        if include_foreign:
-            order_by = "c.last_message_date DESC NULLS LAST"
-        else:
-            order_by = (
-                "cm.is_pinned DESC NULLS LAST, "
-                "c.last_message_date DESC NULLS LAST"
-            )
-
-        # Порядок параметров: JOIN/FROM, затем WHERE, затем LIMIT/OFFSET.
-        return await session.execute(
+        # Закреплённые чаты сверху, остальные — по дате последнего сообщения.
+        # У чатов, где юзер НЕ участник (команда, «чужие»), участия нет —
+        # они не закреплены (COALESCE) и встают по дате вперемешку со своими,
+        # а не уезжают за все свои чаты (и за LIMIT). Сортируем по псевдониму
+        # из списка SELECT DISTINCT, иначе Postgres: "ORDER BY expressions
+        # must appear in select list".
+        return await self._get_db_session().execute(
             f"""
-            {base_query}
+            SELECT DISTINCT c.id, c.last_message_date,
+                   COALESCE(cm.is_pinned, false) AS is_pinned,
+                   ({self.SECTION_SQL}) AS section
+            FROM chat c
+            LEFT JOIN chat_member cm
+                ON c.id = cm.chat_id
+               AND cm.is_active = true
+               AND cm.user_id = %s
             WHERE {where_clause}
-            ORDER BY {order_by}
+            ORDER BY is_pinned DESC, c.last_message_date DESC NULLS LAST
             LIMIT %s OFFSET %s
             """,
-            tuple(join_params + where_params + [limit, offset]),
+            tuple(params + [limit, offset]),
         )

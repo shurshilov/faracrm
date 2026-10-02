@@ -100,15 +100,6 @@ class Contact(AuditMixin, DotModel):
     )
     active: bool = Boolean(default=True)
 
-    # ==================== Delegated Methods ====================
-
-    @classmethod
-    async def get_contact_type_id_for_connector(cls, connector_type: str):
-        """Получить ID типа контакта для типа коннектора."""
-        return await env.models.contact_type.get_contact_type_id_for_connector(
-            connector_type
-        )
-
     @staticmethod
     def _canonicalize(value: str) -> str:
         """

@@ -109,22 +109,6 @@ class ContactType(DotModel):
         )
 
     @classmethod
-    async def get_contact_type_id_for_connector(cls, connector_type: str):
-        """
-        Получить ID типа контакта для данного типа коннектора.
-        """
-        connector = await env.models.chat_connector.search_one(
-            filter=[
-                ("type", "=", connector_type),
-                ("active", "=", True),
-            ],
-            fields=["id", "contact_type_id"],
-        )
-        if connector and connector.contact_type_id:
-            return connector.contact_type_id
-        return None
-
-    @classmethod
     async def detect_contact_type(cls, value: str) -> str | None:
         """
         Автоопределение типа контакта по значению.

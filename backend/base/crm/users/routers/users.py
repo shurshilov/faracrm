@@ -193,9 +193,13 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
                 "is_admin",
                 "active",
                 "role_ids",
+                "team_ids",
                 "workspace_id",
             ],
-            fields_nested={"role_ids": {"fields": ["id", "code"]}},
+            fields_nested={
+                "role_ids": {"fields": ["id", "code"]},
+                "team_ids": {"fields": ["id"]},
+            },
         )
         # Архивный (active=False) для входа не существует: тот же ответ,
         # что и для неизвестного логина — статус не раскрываем.
@@ -242,6 +246,8 @@ async def signin(req: Request, response: Response, payload: UserSigninInput):
         )
         # TODO: сделать гидратацию, потому что при инициализации вставляются как есть
         session.user_id.role_ids = user_id.role_ids
+        # Команды — фронту: без них чат прячет переключатель «Моя команда».
+        session.user_id.team_ids = user_id.team_ids
         id = await env.models.session.sudo().create(payload=session)
         session.id = id
 

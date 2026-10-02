@@ -36,22 +36,20 @@
   }
 }
 
+/* Подложка квадратов чата — того же цвета и с теми же отступами, что и
+   основная область (AppShell padding md): карточка квадратов идёт вровень со
+   списком чатов. Прокручивает колонку сама ChatSections. */
 .chatNavbar {
-  padding: var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-md) 0 var(--mantine-spacing-md)
+    var(--mantine-spacing-md);
 
   @mixin light {
-    background-color: var(--mantine-color-white);
-    border-right: 1px solid var(--mantine-color-gray-2);
+    background-color: var(--mantine-color-gray-0);
   }
 
   @mixin dark {
-    background-color: var(--mantine-color-dark-7);
-    border-right: 1px solid var(--mantine-color-dark-5);
+    background-color: var(--mantine-color-dark-8);
   }
-}
-
-.scrollarea {
-  height: 100%;
 }
 
 .collapseButton {

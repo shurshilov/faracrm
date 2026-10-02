@@ -6,8 +6,7 @@ invoked from the CLASS by the CRUD router (``Model.create(payload)``) — ran
 ``_ensure_outbox_account`` against an EMPTY ``self``. So on CREATE neither the
 ``chat_external_account`` outbox row nor ``connector.outbox_account_id`` was
 ever produced (only a later UPDATE, whose ``self`` is the loaded record, fixed
-it); the sidebar folder was likewise seeded with ``name=None``. The fix drives
-the post-create logic from ``payload``.
+it). The fix drives the post-create logic from ``payload``.
 
 The tests call ``ChatConnector.create(payload)`` directly — byte-for-byte the
 phase-1 call the CRUD router makes (``id = await Model.create(model_instance)``)
@@ -25,7 +24,6 @@ from backend.base.crm.chat.models.chat_connector import ChatConnector
 from backend.base.crm.chat.models.chat_external_account import (
     ChatExternalAccount,
 )
-from backend.base.crm.chat.models.chat_folder import ChatFolder
 from backend.base.system.dotorm_databases_postgres.app import (
     DotormDatabasesPostgresService,
 )
@@ -35,8 +33,8 @@ from backend.base.system.dotorm_databases_postgres.app import (
 async def wired_env(app, db_pool):
     """Point the module-global DB-transaction pool at the test database — the
     same wiring test_incoming_pipeline.py relies on. Connector.create reaches
-    ``env`` (the module-global one) for chat_external_account / chat_folder, so
-    bind the Postgres service pool at the class level to the test pool."""
+    ``env`` (the module-global one) for chat_external_account, so bind the
+    Postgres service pool at the class level to the test pool."""
     DotormDatabasesPostgresService().set_pool(db_pool)
     return app.state.env
 
@@ -96,17 +94,6 @@ class TestConnectorOutbox:
         )
         assert accounts == []
         assert await _linked_outbox_id(cid) is None
-
-    async def test_create_seeds_connector_folder_with_name(self, wired_env):
-        """Same empty-self bug also seeded the sidebar folder with name=None."""
-        cid = await _make_vk_connector(external_account_id="72818945")
-
-        folders = await ChatFolder.search(
-            filter=[("connector_id", "=", cid), ("user_id", "=", None)],
-            fields=["id", "name"],
-        )
-        assert len(folders) == 1
-        assert folders[0].name == "VK-test"
 
     async def test_update_sets_external_account_creates_outbox(
         self, wired_env

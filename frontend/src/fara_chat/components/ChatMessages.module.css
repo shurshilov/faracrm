@@ -59,13 +59,16 @@
   margin-left: auto;
 }
 
+/* Входящие — белые пузыри с тонкой рамкой на тонированной ленте. */
 .messageBubble.other {
-  background-color: var(--mantine-color-gray-1);
+  background-color: var(--mantine-color-white);
+  border: 1px solid var(--mantine-color-gray-2);
   border-bottom-left-radius: 0.25rem;
 }
 
 [data-mantine-color-scheme='dark'] .messageBubble.other {
   background-color: var(--mantine-color-dark-5);
+  border-color: var(--mantine-color-dark-5);
 }
 
 .messageBubble.own .mantine-Text-root {

@@ -10,15 +10,13 @@ const chatApi = api.injectEndpoints({
         params: {
           limit: args?.limit || 50,
           offset: args?.offset || 0,
-          ...(args?.is_internal !== undefined && {
-            is_internal: args.is_internal,
-          }),
+          ...(args?.section && { section: args.section }),
           ...(args?.chat_type && { chat_type: args.chat_type }),
-          ...(args?.connector_type && { connector_type: args.connector_type }),
-          ...(args?.folder_id !== undefined && { folder_id: args.folder_id }),
           ...(args?.scope && { scope: args.scope }),
+          ...(args?.connector_id && { connector_id: args.connector_id }),
+          ...(args?.unread && { unread: 1 }),
+          ...(args?.folder_id !== undefined && { folder_id: args.folder_id }),
           ...(args?.include_deleted && { include_deleted: 1 }),
-          ...(args?.include_record && { include_record: 1 }),
           ...(args?.include_foreign && { include_foreign: 1 }),
           ...(args?.search && { search: args.search }),
         },
@@ -328,12 +326,7 @@ const chatApi = api.injectEndpoints({
         );
 
         // Update last_message in chats list
-        const updateLastMessage = (args: {
-          limit: number;
-          is_internal?: boolean;
-          chat_type?: 'direct' | 'group';
-          connector_type?: string;
-        }) => {
+        const updateLastMessage = (args: GetChatsArgs) => {
           dispatch(
             chatApi.util.updateQueryData('getChats', args, draft => {
               const chat = draft.data.find(c => c.id === chatId);
@@ -803,6 +796,8 @@ export interface Chat {
   name: string;
   chat_type: 'direct' | 'group' | 'channel' | 'record';
   is_internal: boolean;
+  /** Раздел списка (квадрат сайдбара) — приходит в списке GET /chats. */
+  section?: ChatSection;
   active?: boolean;
   description?: string;
   create_datetime?: string;
@@ -880,19 +875,25 @@ export interface MessageReaction {
   users: { user_id: number; user_name: string }[];
 }
 
+/** Раздел списка чатов (квадрат сайдбара): каждый чат ровно в одном. */
+export type ChatSection = 'staff' | 'clients' | 'channels' | 'records';
+
 export interface GetChatsArgs {
   limit?: number;
   offset?: number;
-  is_internal?: boolean;
+  /** Раздел; без него — чаты всех разделов. */
+  section?: ChatSection;
   chat_type?: 'direct' | 'group';
-  connector_type?: string;
+  /** 'mine' = где я участник, 'team' = ещё и клиентские чаты моих команд. */
+  scope?: 'mine' | 'team';
+  /** Чаты, пришедшие через коннектор (chat_connector.id). */
+  connector_id?: number;
+  /** Только с непрочитанными. */
+  unread?: boolean;
   /** Фильтр по папке чатов пользователя (chat_folder.id). */
   folder_id?: number;
-  /** Внешние чаты: 'mine' = где я участник, 'all' = мои команды + членство. */
-  scope?: 'mine' | 'all';
   include_deleted?: boolean;
-  include_record?: boolean;
-  /** Admin-only: показать чужие чаты (где user не мембер). */
+  /** Только администратор системы: чужие чаты (где user не мембер). */
   include_foreign?: boolean;
   /** Поиск по имени чата или участника среди всех доступных чатов. */
   search?: string;
@@ -1152,14 +1153,16 @@ export interface ChatFolder {
   icon?: string | null;
   color?: string | null;
   sequence: number;
-  /** NULL = глобальная папка (Все/Личные/Группы/коннектор), видна всем. */
+  /** NULL = общая папка (её заводит администратор), видна всем. */
   user_id?: { id: number; name?: string } | number | null;
-  /** all | direct | group — у встроенных глобальных папок. */
-  kind?: string | null;
-  /** FK на коннектор — у глобальной папки коннектора. */
-  connector_id?: { id: number; name?: string } | number | null;
   /** FARA-домен над chat: [["chat_type","=","direct"], "or", ["id","in",[...]]]. */
   domain?: unknown[] | Record<string, unknown> | null;
+}
+
+/** Бейджи сайдбара: непрочитанные по разделам и по своим папкам (id → n). */
+export interface FolderUnread {
+  sections: Partial<Record<ChatSection, number>>;
+  folders: Record<string, number>;
 }
 
 const folderApi = api.injectEndpoints({
@@ -1177,11 +1180,11 @@ const folderApi = api.injectEndpoints({
       invalidatesTags: [{ type: 'Chat', id: 'LIST' }],
     }),
 
-    // Непрочитанные по папкам — считаются на бэке на лету (не хранятся),
-    // как и общий счётчик вверху справа. Ответ: { "<folder_id>": count }
-    // (только папки с count>0). Тег FOLDER_UNREAD инвалидируется из WS-контекста
-    // при new_message / messages_read / notification → бейджи обновляются живьём.
-    getFolderUnread: build.query<{ data: Record<string, number> }, void>({
+    // Непрочитанные по разделам и своим папкам — считаются на бэке на лету
+    // (не хранятся), как и общий счётчик вверху справа. Только с count>0.
+    // Тег FOLDER_UNREAD инвалидируется из WS-контекста при new_message /
+    // messages_read / notification → бейджи обновляются живьём.
+    getFolderUnread: build.query<{ data: FolderUnread }, void>({
       query: () => '/chats/folders/unread',
       providesTags: [{ type: 'Chat', id: 'FOLDER_UNREAD' }],
     }),

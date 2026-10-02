@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useMediaQuery } from '@mantine/hooks';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -14,6 +14,7 @@ import { IconMessageCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import {
   Chat,
+  GetChatsArgs,
   WSMessage,
   chatApi,
   useMarkChatAsReadMutation,
@@ -23,6 +24,7 @@ import {
   useSetChatDefaultConnectorMutation,
 } from '@/services/api/chat';
 import { useChatWebSocketContext } from '../context';
+import { useChatFilter } from '../hooks/useChatFilter';
 import { ChatList, getMessagePreview } from './ChatList';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessages } from './ChatMessages';
@@ -111,71 +113,28 @@ export function ChatPage({
     };
   }, [isMobile]);
 
-  // Читаем фильтр из URL query params
+  // Фильтр списка — в URL (квадраты сайдбара и чипы, см. useChatFilter).
+  // undefined-поля в ключ кэша RTK Query не попадают (сериализация JSON).
   const [searchParams, setSearchParams] = useSearchParams();
-  const isInternalParam = searchParams.get('is_internal');
-  const chatTypeParam = searchParams.get('chat_type');
-  const connectorTypeParam = searchParams.get('connector_type');
-  const folderIdParam = searchParams.get('folder_id');
-  const scopeParam = searchParams.get('scope');
-
-  // Формируем фильтр для API
-  const chatFilter = {
-    is_internal:
-      isInternalParam === 'true'
-        ? true
-        : isInternalParam === 'false'
-          ? false
-          : undefined,
-    chat_type: chatTypeParam as 'direct' | 'group' | undefined,
-    connector_type: connectorTypeParam || undefined,
-    folder_id: folderIdParam ? Number(folderIdParam) : undefined,
-    scope: (scopeParam as 'mine' | 'all' | null) || undefined,
-  };
-
-  // Аргументы для getChats - исключаем undefined значения для корректного сравнения в RTK Query
-  const getChatsArgs = useMemo(() => {
-    const args: {
-      limit: number;
-      is_internal?: boolean;
-      chat_type?: 'direct' | 'group';
-      connector_type?: string;
-      folder_id?: number;
-      scope?: 'mine' | 'all';
-    } = { limit: 100 };
-    if (chatFilter.is_internal !== undefined)
-      args.is_internal = chatFilter.is_internal;
-    if (chatFilter.chat_type !== undefined)
-      args.chat_type = chatFilter.chat_type as 'direct' | 'group';
-    if (chatFilter.connector_type !== undefined)
-      args.connector_type = chatFilter.connector_type;
-    if (chatFilter.folder_id !== undefined)
-      args.folder_id = chatFilter.folder_id;
-    if (chatFilter.scope !== undefined) args.scope = chatFilter.scope;
-    return args;
-  }, [
-    chatFilter.is_internal,
-    chatFilter.chat_type,
-    chatFilter.connector_type,
-    chatFilter.folder_id,
-    chatFilter.scope,
-  ]);
+  const { filter } = useChatFilter();
+  const getChatsArgs: GetChatsArgs = { limit: 100, ...filter };
 
   const [markChatAsRead] = useMarkChatAsReadMutation();
 
   // Получаем список чатов с фильтром из URL
   const { data: chatsData } = useGetChatsQuery(getChatsArgs);
 
-  // Авто-открытие чата по ?open=chatId (из notification toast)
+  // Авто-открытие чата по ?open=chatId (из notification toast). Пока open в
+  // URL, список — по всем разделам; открыв чат, переходим в его квадрат.
   useEffect(() => {
     const openChatId = searchParams.get('open');
     if (openChatId && chatsData?.data) {
       const chat = chatsData.data.find(c => c.id === Number(openChatId));
       if (chat) {
         setSelectedChat(chat);
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete('open');
-        setSearchParams(newParams, { replace: true });
+        setSearchParams(chat.section ? { section: chat.section } : {}, {
+          replace: true,
+        });
       }
     }
   }, [searchParams, chatsData?.data]);
@@ -381,7 +340,6 @@ export function ChatPage({
           selectedChatId={selectedChat?.id}
           onSelectChat={handleSelectChat}
           onNewChat={handleNewChat}
-          filter={chatFilter}
           onRefetchReady={refetch => {
             refetchChatsRef.current = refetch;
           }}

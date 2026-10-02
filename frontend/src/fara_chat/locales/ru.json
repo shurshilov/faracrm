@@ -1,5 +1,6 @@
 {
   "menu": {
+    "chats": "Чаты",
     "chat_connector": "Коннекторы",
     "phone_number": "Номера",
     "chat_folder": "Папки",
@@ -427,10 +428,21 @@
   "chatRestored": "Чат восстановлен",
   "listSettings": "Настройки списка",
   "showDeletedChats": "Показывать удалённые чаты",
-  "showRecordChats": "Показывать record-чаты",
   "showForeignChats": "Показывать чужие чаты",
   "external": "Внешние",
   "unreadChats": "Непрочитанные",
+  "sections": {
+    "staff": "Сотрудники",
+    "clients": "Клиенты",
+    "channels": "Каналы",
+    "records": "Документы"
+  },
+  "filterDirect": "Личные",
+  "filterGroups": "Группы",
+  "scopeMine": "Мои",
+  "scopeTeam": "Моя команда",
+  "source": "Источник",
+  "allSources": "Все источники",
   "newFolder": "Новая папка",
   "editFolder": "Изменить папку",
   "folderName": "Название папки",
