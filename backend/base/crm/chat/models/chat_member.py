@@ -109,12 +109,18 @@ class ChatMember(AuditMixin, MemberMixin):
     )
 
     # Коннектор по умолчанию для отправки в этом чате — per-user (как is_pinned
-    # и watermark). null = internal. Подставляется при открытии чата; меняется
-    # галочкой «по умолчанию» в свитчере коннекторов. У партнёров не исп-ся.
+    # и watermark). Задаётся галочкой «по умолчанию» в свитчере коннекторов:
+    # пишется вместе с default_connector_manual=True, null = internal. Пока
+    # галочку не ставили — дефолт канал, из которого пришёл чат (см.
+    # Chat.get_default_connector_id). У партнёров не используется.
     default_connector_id: "ChatConnector | None" = Many2one(
         relation_table=lambda: env.models.chat_connector,
         ondelete="set null",
         description="Коннектор по умолчанию (per-user, null=internal)",
+    )
+    default_connector_manual: bool = Boolean(
+        default=False,
+        description="Коннектор по умолчанию выбран пользователем вручную",
     )
 
     @classmethod

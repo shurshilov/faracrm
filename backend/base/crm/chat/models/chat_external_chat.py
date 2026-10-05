@@ -125,6 +125,18 @@ class ChatExternalChat(DotModel):
         )
 
     @hybridmethod
+    async def origin_connector_id(self, chat_id: int) -> int | None:
+        """Коннектор, через который чат пришёл: самая ранняя связь чата.
+        Связей нет (внутренний чат, клиент ещё не писал) то None."""
+        link = await self.search_one(
+            filter=[("chat_id", "=", chat_id)],
+            fields=["connector_id"],
+            sort="id",
+            order="ASC",
+        )
+        return link.connector_id.id if link else None
+
+    @hybridmethod
     async def create_link(
         self,
         external_id: str,

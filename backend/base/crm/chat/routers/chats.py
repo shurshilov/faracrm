@@ -610,21 +610,24 @@ async def get_chat_connectors(req: Request, chat_id: int):
     auth_session: "Session" = req.state.session
     user_id = auth_session.user_id.id
 
-    # Проверка членства реализована через rule "@is_member":
-    # chat.get(chat_id) бросит RecordNotFound для не-участников.
-    chat = await env.models.chat.get(chat_id, fields=["id", "is_internal"])
+    member = await ChatMember.get_membership(
+        chat_id,
+        user_id,
+        fields=["id", "default_connector_id", "default_connector_manual"],
+    )
+    # Участник читает чат; не-участника (команда, суперпользователь)
+    # пропускают правила модели chat, остальным 403
+    if not member:
+        await env.models.chat.check_read_access(chat_id)
 
+    chat = env.models.chat(id=chat_id)
     connectors = await chat.get_available_connectors(current_user_id=user_id)
 
-    # Коннектор по умолчанию текущего юзера в этом чате (галочка в свитчере).
-    # null = internal — подставляется при открытии чата на фронте.
-    member = await ChatMember.get_membership(
-        chat_id, user_id, fields=["id", "default_connector_id"]
-    )
-    default_connector_id = (
-        member.default_connector_id.id
-        if member and member.default_connector_id
-        else None
+    # Коннектор по умолчанию текущего юзера в этом чате: его галочка в
+    # свитчере, иначе канал, из которого пришёл чат. null = internal —
+    # подставляется при открытии чата на фронте.
+    default_connector_id = await chat.get_default_connector_id(
+        member, connectors
     )
     return {"data": connectors, "default_connector_id": default_connector_id}
 
@@ -635,7 +638,9 @@ async def set_chat_default_connector(req: Request, chat_id: int):
     Сохранить коннектор по умолчанию для ТЕКУЩЕГО юзера в этом чате.
 
     Тело: {"connector_id": <id> | null}. null = internal. Пишется в
-    chat_member.default_connector_id (per-user, как закрепление чата).
+    chat_member.default_connector_id (per-user, как закрепление чата) с
+    пометкой «выбран вручную» — после неё канал, из которого пришёл чат,
+    больше не подставляется.
     """
     env: "Environment" = req.app.state.env
     auth_session: "Session" = req.state.session
@@ -654,9 +659,10 @@ async def set_chat_default_connector(req: Request, chat_id: int):
                 env.models.chat_connector(id=connector_id)
                 if connector_id
                 else None
-            )
+            ),
+            default_connector_manual=True,
         ),
-        fields=["default_connector_id"],
+        fields=["default_connector_id", "default_connector_manual"],
     )
     return {"data": {"ok": True, "connector_id": connector_id}}
 

@@ -632,6 +632,33 @@ class Chat(AuditMixin, DotModel):
 
         return connectors
 
+    async def get_default_connector_id(
+        self, member: "ChatMember | None", connectors: list[dict]
+    ) -> int | None:
+        """Коннектор, который подставляется участнику при открытии чата.
+        None = internal.
+
+        connectors — результат get_available_connectors этого чата.
+        """
+        # Пользователь выбрал галочкой, в том числе internal (null)
+        if member and member.default_connector_manual:
+            connector_id = (
+                member.default_connector_id.id
+                if member.default_connector_id
+                else None
+            )
+        # Иначе — канал, из которого пришёл чат
+        else:
+            connector_id = (
+                await env.models.chat_external_chat.origin_connector_id(
+                    self.id
+                )
+            )
+        # Только доступный в чате: выключенный коннектор или канал, контакта
+        # которого у клиента нет, фронт подставил бы для отправки
+        available_ids = {c["connector_id"] for c in connectors}
+        return connector_id if connector_id in available_ids else None
+
     async def get_recipients(
         self, connector: "ChatConnector", current_user_id: int
     ) -> list[dict]:
