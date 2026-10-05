@@ -6,7 +6,6 @@
     "title": "Report Templates",
     "name": "Name",
     "model_name": "Model",
-    "python_function": "Data Function",
     "report_type": "Report Type",
     "template_file": "DOCX Template",
     "output_format": "Output Format",

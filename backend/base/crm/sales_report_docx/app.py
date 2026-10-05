@@ -21,7 +21,6 @@ def _contract_sample(name: str, file: str) -> dict:
         "name": name,
         "description": "Образец документа по договору, теги — ключи contract_data",
         "model_name": "contract",
-        "python_function": "contract_data",
         "report_type": "record",
         "output_format": "pdf",
         "file": TEMPLATES_DIR / file,
@@ -35,7 +34,6 @@ SAMPLE_TEMPLATES = [
         "name": "Счёт на оплату",
         "description": "Образец: счёт по заказу, теги — ключи sale_invoice_rus",
         "model_name": "sales",
-        "python_function": "sale_invoice_rus",
         "report_type": "record",
         "output_format": "pdf",
         "file": TEMPLATES_DIR / "Счет на оплату 2018.docx",
@@ -45,7 +43,6 @@ SAMPLE_TEMPLATES = [
         "description": "Образец сводного отчёта: продажи за N дней "
         "(sales_period_data, параметр days)",
         "model_name": "sales",
-        "python_function": "sales_period_data",
         "report_type": "summary",
         "output_format": "pdf",
         "file": TEMPLATES_DIR / "Отчёт по продажам за период.docx",

@@ -4,8 +4,9 @@
 Функция данных возвращает дикт; какие в нём ключи, снаружи не видно, пока
 её не запустишь. Декоратор @report_fields описывает их заранее — конструктор
 (модуль report_docx_design) показывает эти ключи в каталоге полей рядом с
-полями записи модели. Здесь только метаданные, чтобы модули с функциями
-данных (sales_report_docx и др.) не зависели от конструктора.
+полями записи модели, а движок вызывает функцию, если её ключ стоит в
+шаблоне. Здесь только метаданные, чтобы модули с функциями данных
+(sales_report_docx и др.) не зависели от конструктора.
 """
 
 from typing import Callable
@@ -28,7 +29,8 @@ class ReportList:
 
 
 def report_fields(**fields: "str | ReportField | ReportList") -> Callable:
-    """Объявить ключи дикта функции данных для конструктора.
+    """Объявить ключи дикта функции данных: по ним конструктор строит
+    каталог, а движок решает, вызывать ли функцию.
 
     @staticmethod
     @report_fields(bik="БИК", summ=ReportField("Сумма", "money"),
@@ -36,7 +38,7 @@ def report_fields(**fields: "str | ReportField | ReportList") -> Callable:
     async def sale_invoice_rus(env, record_id): ...
 
     Ставится ПОД @staticmethod: атрибут вешается на саму функцию, её и
-    возвращает getattr(model, python_function).
+    возвращает getattr(model, name).
     """
 
     def decorator(func):

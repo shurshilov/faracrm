@@ -152,6 +152,20 @@ class DocxReportEngine:
         return output.getvalue()
 
     @staticmethod
+    def template_tags(template_bytes: bytes) -> set[str]:
+        """Имена верхнего уровня, которые читает шаблон: {{ bik }} → bik,
+        {%tr for line in order_line %} → order_line. По ним решается,
+        какие функции данных вызвать."""
+        from docxtpl import DocxTemplate
+
+        templ = DocxTemplate(
+            io.BytesIO(unwrap_content_controls(template_bytes))
+        )
+        return templ.get_undeclared_template_variables(
+            DocxReportEngine.jinja_env()
+        )
+
+    @staticmethod
     def convert_to_pdf(docx_bytes: bytes, title: str | None = None) -> bytes:
         """Конвертирует DOCX → PDF.
 

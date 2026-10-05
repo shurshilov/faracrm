@@ -7,15 +7,9 @@ The `report_docx` module is the engine: it builds documents (invoices, contracts
 A template is a `report_template` record (menu "Report templates"):
 
 <div class="field" markdown>
-`python_function` <span class="field-type">Char</span>
-
-Name of the data function: a `@staticmethod` `async def name(env, **params) -> dict`. It builds the **data dict** whose keys are the template tags. Where the data comes from is up to the function: one record (`params = {"record_id": id}`), a selection for a period, several models. An `images` list (bytes or base64) replaces pictures `1.jpg`, `2.jpg`… in the template — that is how stamps and signatures get in.
-</div>
-
-<div class="field" markdown>
 `model_name` <span class="field-type">Char</span>
 
-The model that holds the data function, by table name as in `/auto/{model}`: `sales`, `partners`. The "Print" button is part of the core (`components/Form/PrintButton.tsx`, the toolbar of every form): the module registers its source of menu items there (`fara_report_docx/extensions.ts` → `registerPrintProvider`), and the button appears as soon as the model has at least one active per-record template. Nothing has to be added to the forms.
+The model that holds the data functions, by table name as in `/auto/{model}`: `sales`, `partners`. The "Print" button is part of the core (`components/Form/PrintButton.tsx`, the toolbar of every form): the module registers its source of menu items there (`fara_report_docx/extensions.ts` → `registerPrintProvider`), and the button appears as soon as the model has at least one active per-record template. Nothing has to be added to the forms.
 </div>
 
 <div class="field" markdown>
@@ -35,6 +29,8 @@ The DOCX file with `{{ tag }}`, `{% for %}`, `{% if %}` and, inside tables, `{%t
 
 Default format; the route accepts `?output_format=` to override it.
 </div>
+
+**Data functions** are `@staticmethod` `async def name(env, **params) -> dict` methods on the model class, marked with the `@report_fields` decorator. A function builds the **data dict** whose keys are the template tags. Where the data comes from is up to the function: one record (`record_id`), a selection for a period, several models. The template does not name a function: the engine reads the template's tags and calls the model's functions whose keys appear among them. Each key is declared by one function of the model. A function with a `record_id` argument is called only for a per-record document; the others receive their own arguments from `params`. An `images` list (bytes or base64) replaces pictures `1.jpg`, `2.jpg`… in the template — that is how stamps and signatures get in.
 
 Sales data functions are collected in `sales_report_docx/models/sale_ext.py` (`@extend(Sale)`), two kinds:
 
@@ -59,7 +55,7 @@ async def sales_period_data(env: "Environment", days: int = 30) -> dict:
 
 `sales_period_data` is a working example, "sales for the last N days" with totals per salesperson; its template is `sales_report_docx/templates/Отчёт по продажам за период.docx`. Your own report is a function like it in your module (or in `backend/business`): any queries, any keys, and a DOCX with tags matching those keys.
 
-Generation goes through `ReportTemplate.render_attachment(template_id, params=None, output_format=None)`: it calls `python_function(env, **params)` and returns an unsaved `Attachment` (name, mimetype, content). The route and the scheduled sending both use it:
+Generation goes through `ReportTemplate.render_attachment(template_id, params=None, output_format=None)`: it calls the data functions whose keys appear in the template's tags and returns an unsaved `Attachment` (name, mimetype, content). The route and the scheduled sending both use it:
 
 | Route | What it does |
 |-------|--------------|
@@ -70,7 +66,7 @@ For a per-record document the context holds, besides the function dict, **all re
 
 ## Default templates
 
-Template records are created by the seeder `report_docx/seed.py` — `seed_report_templates(env, specs)`: a module declares a list of specs (name, model, data function, type, format, path to the DOCX) and gets records with attached files in its `post_init`, nothing has to be created by hand. Idempotent by name: a deleted sample comes back after a restart, a renamed one stays; if the file could not be attached (no storage) the template is still created and the file is uploaded in the form. Your own samples are seeded with the same call from your module. `sales_report_docx` seeds:
+Template records are created by the seeder `report_docx/seed.py` — `seed_report_templates(env, specs)`: a module declares a list of specs (name, model, type, format, path to the DOCX) and gets records with attached files in its `post_init`, nothing has to be created by hand. Idempotent by name: a deleted sample comes back after a restart, a renamed one stays; if the file could not be attached (no storage) the template is still created and the file is uploaded in the form. Your own samples are seeded with the same call from your module. `sales_report_docx` seeds:
 
 | Template | Model | Data function | Type |
 |----------|-------|---------------|------|
@@ -87,7 +83,7 @@ The `report_docx_design` module (depends on `report_docx`, installed from the "A
 The page `/report_template/{id}/design` ("Designer" button on the template form; for an administrator also in the record's "Print" menu, which puts that record into the preview). Three columns:
 
 - **Editor** — the DOCX template in the built-in editor (the same one that edits docx attachments). Saving writes the file into the template's attachment; a template without a file gets a new document.
-- **Fields** — the catalog from `GET /reports/templates/{id}/fields`: a click inserts the field at the caret as a Word content control with a label (`w:alias`) and a key (`w:tag`), holding a ready tag with a filter matching the type. Lists offer loop start/end buttons for a table row. The catalog merges two sources: the record model's fields and the data function keys declared by the `@report_fields` decorator from `report_docx/utils/fields.py` (it only marks the function, so modules with data functions do not depend on the designer):
+- **Fields** — the catalog from `GET /reports/templates/{id}/fields`: a click inserts the field at the caret as a Word content control with a label (`w:alias`) and a key (`w:tag`), holding a ready tag with a filter matching the type. Lists offer loop start/end buttons for a table row. The catalog merges two sources: the record model's fields and the keys of the model's data functions declared by the `@report_fields` decorator from `report_docx/utils/fields.py` (it only marks the function, so modules with data functions do not depend on the designer):
 
 ```python title="sales_report_docx/models/sale_ext.py"
 @staticmethod

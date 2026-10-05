@@ -27,8 +27,8 @@ async def seed_report_templates(
 ) -> dict[str, int]:
     """Создать недостающие шаблоны из specs. Возвращает {имя: id} для всех.
 
-    spec: name, description, model_name, python_function (опц.), report_type
-    (record|summary), output_format (docx|pdf), file (Path к DOCX).
+    spec: name, description, model_name, report_type (record|summary),
+    output_format (docx|pdf), file (Path к DOCX).
     Файл привязывается тем же путём, что и в форме: update полиморфного
     поля template_file словарём с content — ORM создаёт вложение сам.
     """

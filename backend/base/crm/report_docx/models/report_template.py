@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import logging
 from datetime import datetime, timezone
@@ -31,20 +32,22 @@ class ReportTemplate(DotModel):
     Шаблон отчёта DOCX.
 
     Хранит ссылку на Attachment с DOCX-файлом (Jinja2-теги).
-    model_name — модель (имя таблицы), на которой лежит функция данных. Для
+    model_name — модель (имя таблицы), на которой лежат функции данных. Для
     документа по записи это и модель самой записи: на её форме появляется
     кнопка «Печать».
-    python_function — @staticmethod (env, **params) -> dict; ключи дикта =
-    теги шаблона. Функции данных живут в модулях предметных областей,
-    например sales_report_docx (Sale.sale_invoice_rus, Sale.sales_period_data).
+    Функции данных — @staticmethod (env, **params) -> dict на классе модели,
+    помеченные @report_fields; ключи дикта = теги шаблона. Движок сам
+    вызывает те, чьи ключи стоят в шаблоне (см. _build_context). Живут в
+    модулях предметных областей, например sales_report_docx
+    (Sale.sale_invoice_rus, Sale.sales_period_data).
     report_type — документ по записи (params = {"record_id": id}: в контекст
-    попадают все поля записи, см. record_context, плюс дикт функции) или
-    сводный отчёт (только дикт функции, params — что угодно, например период);
-    сводные не показываются в меню «Печать» записи.
+    попадают все поля записи, см. record_context, плюс дикты функций) или
+    сводный отчёт (только дикты функций, params — что угодно, например
+    период); сводные не показываются в меню «Печать» записи.
 
     Конструктор шаблонов (каталог полей, превью) — модуль report_docx_design,
     он пользуется публичными помощниками get_template / resolve_model /
-    data_function / render_bytes.
+    data_functions / render_bytes.
     """
 
     __table__ = "report_template"
@@ -57,10 +60,10 @@ class ReportTemplate(DotModel):
         string="Model",
         help="DotORM table name, e.g. 'sales', 'partners'",
     )
-    python_function: str = Char(
-        string="Data Function",
-        help="Method name on model class, e.g. 'sale_invoice_rus'",
-    )
+    # python_function: str = Char(
+    #     string="Data Function",
+    #     help="Method name on model class, e.g. 'sale_invoice_rus'",
+    # )
     report_type: str = Selection(
         options=[
             ("record", "Документ по записи"),
@@ -98,7 +101,6 @@ class ReportTemplate(DotModel):
                 "id",
                 "name",
                 "model_name",
-                "python_function",
                 "report_type",
                 "template_file",
                 "output_format",
@@ -122,17 +124,28 @@ class ReportTemplate(DotModel):
         return model_cls
 
     @staticmethod
-    def data_function(model_cls, python_function: str | None):
-        """Функция данных шаблона; None, если у шаблона её нет."""
-        if not python_function:
-            return None
-        func = getattr(model_cls, python_function, None)
-        if func is None:
-            raise ValueError(
-                f"Function '{python_function}' not found "
-                f"on model '{model_cls.__table__}'"
-            )
-        return func
+    def data_functions(model_cls, with_record: bool = True) -> list:
+        """Функции данных модели — помеченные @report_fields. Без записи
+        (with_record=False, сводный отчёт) — только те, что не ждут
+        record_id. Ключ объявляет одна функция модели: иначе по тегу не
+        понять, какую вызывать."""
+        funcs, owners = [], {}
+        for name in dir(model_cls):
+            func = getattr(model_cls, name, None)
+            keys = getattr(func, "_report_fields", None)
+            if not callable(func) or keys is None:
+                continue
+            for key in keys:
+                if key in owners:
+                    raise ValueError(
+                        f"Report key '{key}' is declared by both "
+                        f"'{owners[key]}' and '{name}'"
+                    )
+                owners[key] = name
+            takes_record = "record_id" in inspect.signature(func).parameters
+            if with_record or not takes_record:
+                funcs.append(func)
+        return funcs
 
     # ------------------------------------------------------------------
     # Данные: запись → дикт + дикт функции
@@ -207,18 +220,30 @@ class ReportTemplate(DotModel):
 
     @classmethod
     async def _build_context(
-        cls, tmpl: "ReportTemplate", params: dict
+        cls, tmpl: "ReportTemplate", template_bytes: bytes, params: dict
     ) -> dict:
         """Данные шаблона: контекст записи (для report_type=record) плюс
-        дикт функции данных, функция побеждает при совпадении ключей."""
+        дикты функций данных, чьи ключи стоят в тегах шаблона; функции
+        побеждают при совпадении ключей. Из params функция получает только
+        свои аргументы (все — если принимает **kwargs)."""
         model_cls = cls.resolve_model(tmpl.model_name)
-        func = cls.data_function(model_cls, tmpl.python_function)
-        context: dict = {}
         record_id = params.get("record_id")
-        if tmpl.report_type != "summary" and record_id:
+        with_record = tmpl.report_type != "summary" and bool(record_id)
+        context: dict = {}
+        if with_record:
             context.update(await cls.record_context(model_cls, record_id))
-        if func is not None:
-            context.update(await func(env, **params))
+        tags = await asyncio.to_thread(
+            DocxReportEngine.template_tags, template_bytes
+        )
+        for func in cls.data_functions(model_cls, with_record):
+            if tags.isdisjoint(func._report_fields):
+                continue
+            accepted = inspect.signature(func).parameters
+            if any(p.kind is p.VAR_KEYWORD for p in accepted.values()):
+                kwargs = params
+            else:
+                kwargs = {k: v for k, v in params.items() if k in accepted}
+            context.update(await func(env, **kwargs))
         return context
 
     # ------------------------------------------------------------------
@@ -238,7 +263,7 @@ class ReportTemplate(DotModel):
         файла (render_attachment) и превью конструктора (report_docx_design).
         """
         params = params or {}
-        context = await cls._build_context(tmpl, params)
+        context = await cls._build_context(tmpl, template_bytes, params)
         fmt = output_format or tmpl.output_format or "docx"
         ext = "pdf" if fmt == "pdf" else "docx"
         # Документ по записи — с её id, сводный отчёт — с датой сборки
@@ -267,7 +292,7 @@ class ReportTemplate(DotModel):
         """Собрать отчёт по сохранённому шаблону.
 
         Единый путь для скачивания (роут /reports/generate) и рассылок (cron):
-        шаблон → контекст (record_context + python_function(env, **params))
+        шаблон → контекст (record_context + функции данных по тегам шаблона)
         → docxtpl → при pdf конверсия (см. DocxReportEngine).
 
         RecordNotFound — нет шаблона/записи; ValueError — ошибка настройки

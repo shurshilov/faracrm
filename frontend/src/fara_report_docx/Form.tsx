@@ -53,7 +53,6 @@ export function ViewFormReportTemplate(props: ViewFormProps) {
         </FormRow>
         <FormRow cols={2}>
           <Field name="model_name" label="Модель" />
-          <Field name="python_function" label="Функция данных" />
         </FormRow>
       </FormSection>
 

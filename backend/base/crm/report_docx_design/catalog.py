@@ -8,9 +8,10 @@
    Many2one — на один уровень вглубь (partner_id.name), списки One2many /
    Many2many — как цикл по строкам таблицы. Их значения даёт общий контекст
    ReportTemplate.record_context.
-2. Поля функции данных — то, что функция кладёт в дикт сверх полей записи
-   (bik, reciver, order_line…). Их объявляет декоратор @report_fields
-   (report_docx.utils.fields) на самой функции.
+2. Поля функций данных модели — то, что функции кладут в дикт сверх полей
+   записи (bik, reciver, order_line…). Их объявляет декоратор @report_fields
+   (report_docx.utils.fields) на самой функции; по этим ключам движок и
+   вызывает функцию, если её тег стоит в шаблоне.
 
 Каждый узел каталога несёт готовый тег (`tag`), а список — ещё начало и конец
 цикла (`loop_start`/`loop_end`) для строки таблицы docxtpl. `kind` — источник
@@ -198,13 +199,18 @@ def function_catalog(func: Callable | None) -> list[dict]:
 
 
 async def template_field_catalog(template_id: int) -> list[dict]:
-    """Поля функции данных (@report_fields) + поля записи модели (для
-    документа по записи) шаблона."""
+    """Поля функций данных модели (@report_fields) + поля записи модели
+    (для документа по записи) шаблона. Сводному шаблону записи нет —
+    функции документа по записи ему не предлагаются."""
     templates = env.models.report_template
     tmpl = await templates.get_template(template_id)
     model_cls = templates.resolve_model(tmpl.model_name)
-    func = templates.data_function(model_cls, tmpl.python_function)
-    nodes = function_catalog(func)
-    if tmpl.report_type != "summary":
+    with_record = tmpl.report_type != "summary"
+    nodes = [
+        node
+        for func in templates.data_functions(model_cls, with_record)
+        for node in function_catalog(func)
+    ]
+    if with_record:
         nodes += model_catalog(model_cls)
     return nodes

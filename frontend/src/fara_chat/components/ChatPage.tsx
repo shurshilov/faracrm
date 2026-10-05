@@ -154,10 +154,9 @@ export function ChatPage({
 
   const availableConnectors = connectorsData?.data || [];
 
-  // При открытии чата подставляем СОХРАНЁННЫЙ коннектор по умолчанию (per-user
-  // из chat_member.default_connector_id); нет сохранённого → internal (null).
-  // Раньше авто-выбирался первый внешний — теперь дефолт задаёт пользователь
-  // галочкой в свитчере.
+  // При открытии чата подставляем коннектор по умолчанию из ответа бэкенда:
+  // галочка пользователя в свитчере, иначе канал, из которого пришёл чат;
+  // null = internal.
   useEffect(() => {
     const saved = connectorsData?.default_connector_id ?? null;
     setDefaultConnectorId(saved);

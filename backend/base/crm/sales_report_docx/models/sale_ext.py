@@ -5,8 +5,9 @@
 Функции данных печатных форм и отчётов по продажам (report_docx).
 
 Функция данных — @staticmethod `(env, **params) -> dict`, ключи дикта =
-теги DOCX-шаблона. В записи шаблона (report_template): model_name = sales
-(имя таблицы, как в /auto/{model}), python_function = имя функции. Два вида:
+теги DOCX-шаблона, объявленные в @report_fields: по ним движок сам вызывает
+функцию. В записи шаблона (report_template) — model_name = sales (имя
+таблицы, как в /auto/{model}). Два вида:
 
 - документ по записи (report_type = record): params = {"record_id": id},
   приходит с кнопки «Печать» на форме заказа — `sale_invoice_rus`;

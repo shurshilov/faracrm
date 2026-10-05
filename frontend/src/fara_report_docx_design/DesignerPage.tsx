@@ -63,7 +63,6 @@ interface TemplateRecord {
   id: number;
   name: string;
   model_name: string;
-  python_function?: string | null;
   report_type?: 'record' | 'summary';
   output_format?: 'docx' | 'pdf';
   template_file?: { id: number; name?: string } | null;
@@ -89,7 +88,6 @@ export default function DesignerPage() {
       'id',
       'name',
       'model_name',
-      'python_function',
       'report_type',
       'output_format',
       'template_file',
@@ -359,7 +357,6 @@ export default function DesignerPage() {
           </Title>
           <Badge size="sm" variant="light">
             {template.model_name}
-            {template.python_function ? ` · ${template.python_function}` : ''}
           </Badge>
           {!fileId && (
             <Badge size="sm" color="yellow" variant="light">
