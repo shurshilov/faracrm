@@ -20,8 +20,6 @@
     "record": "Record for preview",
     "recordId": "Record ID for preview",
     "noRecords": "No records found",
-    "params": "Function parameters (JSON)",
-    "badParams": "Parameters are not a JSON object",
     "selectRecord": "Select a record for preview",
     "auto": "Auto",
     "refresh": "Refresh",

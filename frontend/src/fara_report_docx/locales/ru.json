@@ -16,6 +16,14 @@
     "open": "Конструктор",
     "configure": "Настроить шаблон"
   },
+  "generate": {
+    "open": "Сформировать",
+    "title": "Сформировать отчёт",
+    "download": "Скачать"
+  },
+  "params": {
+    "none": "У отчёта нет параметров"
+  },
   "pdfEngine": {
     "libreoffice": "PDF: LibreOffice {{version}}",
     "builtin": "PDF: встроенный конвертер",

@@ -15,7 +15,7 @@ The model that holds the data functions, by table name as in `/auto/{model}`: `s
 <div class="field" markdown>
 `report_type` <span class="field-type">record | summary</span>
 
-`record` — per-record document: the function receives `record_id`, the template is listed in the "Print" menu. `summary` — summary report: there is no record, the function parameters come from a cron job or the route, and the template is hidden from the "Print" menu.
+`record` — per-record document: the function receives `record_id`, the template is listed in the "Print" menu. `summary` — summary report: there is no record, the function parameters come from a cron job, the "Generate" dialog on the template form or the route, and the template is hidden from the "Print" menu.
 </div>
 
 <div class="field" markdown>
@@ -30,7 +30,7 @@ The DOCX file with `{{ tag }}`, `{% for %}`, `{% if %}` and, inside tables, `{%t
 Default format; the route accepts `?output_format=` to override it.
 </div>
 
-**Data functions** are `@staticmethod` `async def name(env, **params) -> dict` methods on the model class, marked with the `@report_fields` decorator. A function builds the **data dict** whose keys are the template tags. Where the data comes from is up to the function: one record (`record_id`), a selection for a period, several models. The template does not name a function: the engine reads the template's tags and calls the model's functions whose keys appear among them. Each key is declared by one function of the model. A function with a `record_id` argument is called only for a per-record document; the others receive their own arguments from `params`. An `images` list (bytes or base64) replaces pictures `1.jpg`, `2.jpg`… in the template — that is how stamps and signatures get in.
+**Data functions** are `@staticmethod` `async def name(env, **params) -> dict` methods on the model class, marked with the `@report_fields` decorator. A function builds the **data dict** whose keys are the template tags. Where the data comes from is up to the function: one record (`record_id`), a selection for a period, several models. The template does not name a function: the engine reads the template's tags and calls the model's functions whose keys appear among them. Each key is declared by one function of the model. A function with a `record_id` argument is called only for a per-record document; the others receive their own arguments from `params`. The function's arguments other than `env` and `record_id` are the **report parameters**: the form is built from the signature (number, switch or text by the `int`/`float`/`bool` annotation, the default value shown as the field placeholder), and the `@report_params` decorator gives the field labels. A parameter that no function of the model takes is a 400 error (a failed run in cron) rather than a silent default report; a summary template whose tags match no function's keys is an error too — otherwise the file would come out empty. An `images` list (bytes or base64) replaces pictures `1.jpg`, `2.jpg`… in the template — that is how stamps and signatures get in.
 
 Sales data functions are collected in `sales_report_docx/models/sale_ext.py` (`@extend(Sale)`), two kinds:
 
@@ -43,6 +43,8 @@ async def sale_invoice_rus(env: "Environment", record_id: int) -> dict:
 
 ```python title="summary report — report_type = summary"
 @staticmethod
+@report_fields(date_from="Начало периода", count="Сделок", ...)
+@report_params(days="За сколько дней")
 async def sales_period_data(env: "Environment", days: int = 30) -> dict:
     date_from = datetime.now(timezone.utc) - timedelta(days=days)
     sales = await env.models.sale.search(filter=[("date_order", ">=", date_from)], ...)
@@ -60,7 +62,8 @@ Generation goes through `ReportTemplate.render_attachment(template_id, params=No
 | Route | What it does |
 |-------|--------------|
 | `GET /reports/generate/{template_id}/{record_id}` | Per-record document: `params = {"record_id": record_id}` (the "Print" button) |
-| `GET /reports/generate/{template_id}?params={"days":30}` | Summary report: data function parameters as a JSON object |
+| `GET /reports/generate/{template_id}?params={"days":30}` | Summary report: data function parameters as a JSON object (the "Generate" button on a summary template's form) |
+| `GET /reports/params/{template_id}` | Summary report parameters for the form: `[{name, type, default, label}]` from the arguments of the model's data functions without `record_id` (`ReportTemplate.data_params`) |
 
 For a per-record document the context holds, besides the function dict, **all record fields** (`ReportTemplate.record_context`): scalars as they are, Many2one one level deep (`{{ partner_id.name }}`), One2many/Many2many lists as rows (`{%tr for item in order_line_ids %}`). A data function is only needed for computed values: amount in words, VAT, requisites. Dates and money are formatted by template filters: `{{ amount_total|money }}` → "1 234 567,80", `{{ date_order|date }}` → "30.09.2026", `{{ date_order|datetime }}`.
 
@@ -94,7 +97,7 @@ The page `/report_template/{id}/design` ("Designer" button on the template form;
 async def sale_invoice_rus(env, record_id: int) -> dict: ...
 ```
 
-- **Preview** — after every edit (debounced) the editor hands over the document, the backend renders it with the selected record or parameters (`POST /reports/preview`, DOCX in base64) and the result is shown alongside: DOCX in view mode or PDF.
+- **Preview** — after every edit (debounced) the editor hands over the document, the backend renders it with the selected record or the summary report parameters — the same fields as in the "Generate" dialog (`POST /reports/preview`, DOCX in base64) and the result is shown alongside: DOCX in view mode or PDF.
 
 Content control wrappers are stripped before rendering (`utils/sdt.py`), so the output document and the PDF carry only the values. Templates are edited by administrators: the `report_template` ACL is read-only for `base_user` and full for `system_admin`; on databases where the module was already installed, tighten the old ACL row by hand: `UPDATE access_list SET perm_create=false, perm_update=false, perm_delete=false WHERE name='base_user_report_template'`.
 

@@ -36,7 +36,8 @@ export function ReportPrintProvider({
   const canDesign =
     useCanDesignTemplates() && isInstalled('report_docx_design');
   // Только документы по записи: сводные отчёты (report_type=summary) к
-  // конкретной записи не относятся, их собирают cron-рассылки.
+  // конкретной записи не относятся, их собирают кнопкой «Сформировать» на
+  // форме шаблона и cron-рассылки.
   // Один запрос на модель: RTK кэширует одинаковые аргументы.
   const { data } = useRecordTemplatesQuery(model, { skip: !enabled });
   const templates = data?.data;

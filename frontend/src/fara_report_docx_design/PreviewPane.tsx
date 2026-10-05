@@ -1,5 +1,6 @@
 /**
- * Панель превью конструктора: запись (или параметры) для примера, формат,
+ * Панель превью конструктора: запись (или параметры сводного отчёта — та же
+ * форма, что у кнопки «Сформировать») для примера, формат,
  * автообновление и сам результат — docx во втором экземпляре редактора
  * (режим просмотра) либо PDF в iframe. Рендер делает бэк (/reports/preview),
  * запрос шлёт DesignerPage.
@@ -19,13 +20,14 @@ import {
   Stack,
   Switch,
   Text,
-  Textarea,
   Tooltip,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
 import { IconDownload, IconRefresh } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useSearchQuery } from '@/services/api/crudApi';
+import type { ReportParamValues } from '@/fara_report_docx/api';
+import { ReportParamsForm } from '@/fara_report_docx/ReportParamsForm';
 
 const DocxEditorFrame = lazy(() =>
   import('@/components/Attachment/DocxEditorFrame').then(m => ({
@@ -40,14 +42,15 @@ export type PreviewResult =
 export type PreviewFormat = 'docx' | 'pdf';
 
 interface PreviewPaneProps {
+  templateId: number;
   model: string;
   reportType: 'record' | 'summary';
   /** У модели есть поле name — можно искать запись по имени */
   hasNameField: boolean;
   recordId: number | null;
   onRecordIdChange: (id: number | null) => void;
-  paramsText: string;
-  onParamsTextChange: (value: string) => void;
+  paramValues: ReportParamValues;
+  onParamValuesChange: (values: ReportParamValues) => void;
   format: PreviewFormat;
   onFormatChange: (format: PreviewFormat) => void;
   auto: boolean;
@@ -105,13 +108,14 @@ function RecordSelect({
 }
 
 export function PreviewPane({
+  templateId,
   model,
   reportType,
   hasNameField,
   recordId,
   onRecordIdChange,
-  paramsText,
-  onParamsTextChange,
+  paramValues,
+  onParamValuesChange,
   format,
   onFormatChange,
   auto,
@@ -128,14 +132,11 @@ export function PreviewPane({
     <Stack gap="xs" h="100%" style={{ minHeight: 0 }}>
       <Stack gap="xs" px="xs" pt="xs">
         {reportType === 'summary' ? (
-          <Textarea
+          <ReportParamsForm
+            templateId={templateId}
+            values={paramValues}
+            onChange={onParamValuesChange}
             size="xs"
-            autosize
-            minRows={1}
-            label={t('designer.params')}
-            value={paramsText}
-            onChange={e => onParamsTextChange(e.currentTarget.value)}
-            placeholder='{"days": 7}'
           />
         ) : hasNameField ? (
           <RecordSelect

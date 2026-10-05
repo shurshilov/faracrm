@@ -122,6 +122,24 @@ async def generate_report(
     return file_response(report)
 
 
+@router_private.get("/reports/params/{template_id}")
+async def template_params(req: Request, template_id: Id):
+    """
+    Параметры сводного отчёта для формы (превью конструктора, кнопка
+    «Сформировать»): [{name, type, default, label}] по сигнатурам функций
+    данных модели шаблона без record_id — см. ReportTemplate.data_params.
+    """
+    env: "Environment" = req.app.state.env
+    templates = env.models.report_template
+    try:
+        tmpl = await templates.get_template(template_id)
+        model_cls = templates.resolve_model(tmpl.model_name)
+        funcs = templates.data_functions(model_cls, with_record=False)
+    except Exception as e:
+        return error_response(e)
+    return {"data": list(templates.data_params(funcs).values())}
+
+
 @router_private.get("/reports/pdf-engine")
 async def pdf_engine(
     req: Request,

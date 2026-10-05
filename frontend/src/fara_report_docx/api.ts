@@ -1,7 +1,8 @@
 /**
  * API модуля отчётов: шаблоны «по записи» и скачивание отчёта для кнопки
- * «Печать» (PrintProvider) и движок PDF (индикатор администратора на списке
- * шаблонов, GET /reports/pdf-engine).
+ * «Печать» (PrintProvider), параметры и скачивание сводного отчёта (кнопка
+ * «Сформировать», превью конструктора) и движок PDF (индикатор
+ * администратора на списке шаблонов, GET /reports/pdf-engine).
  */
 import { crudApi } from '@/services/api/crudApi';
 import { API_BASE_URL } from '@/services/baseQueryWithReauth';
@@ -15,6 +16,18 @@ export interface RecordTemplate {
   name: string;
   output_format: 'docx' | 'pdf';
 }
+
+/** Аргумент функции данных сводного отчёта (ReportTemplate.data_params). */
+export interface ReportParam {
+  name: string;
+  type: 'int' | 'float' | 'bool' | 'str';
+  default: unknown;
+  label: string;
+}
+
+/** Значения формы параметров; незаполненные не отправляются — функция
+ *  берёт своё значение по умолчанию. */
+export type ReportParamValues = Record<string, unknown>;
 
 export interface PdfEngineInfo {
   /** libreoffice — точная вёрстка Word, builtin — встроенный конвертер */
@@ -48,6 +61,9 @@ const reportsApi = crudApi.injectEndpoints({
       // Тот же тег, что у generic search: правка шаблона сбрасывает кэш
       providesTags: [{ type: 'report_template', id: 'LIST' }],
     }),
+    reportParams: build.query<{ data: ReportParam[] }, number>({
+      query: templateId => ({ url: `/reports/params/${templateId}` }),
+    }),
     pdfEngine: build.query<{ data: PdfEngineInfo }, { recheck?: boolean }>({
       query: ({ recheck }) => ({
         url: '/reports/pdf-engine',
@@ -58,37 +74,73 @@ const reportsApi = crudApi.injectEndpoints({
   }),
 });
 
-export const { useRecordTemplatesQuery, useLazyPdfEngineQuery } = reportsApi;
+export const {
+  useRecordTemplatesQuery,
+  useReportParamsQuery,
+  useLazyPdfEngineQuery,
+} = reportsApi;
 
 /**
- * Скачать отчёт по шаблону для записи. Бинарный ответ, поэтому fetch, а не
+ * Скачать ответ /reports/generate. Бинарный ответ, поэтому fetch, а не
  * RTK Query; Bearer и HttpOnly-кука обязательны оба (Token Binding). Имя
- * файла — из Content-Disposition (бэк шлёт filename*=utf-8''…).
+ * файла — из Content-Disposition (бэк шлёт filename*=utf-8''…). Ошибка
+ * сборки — исключение с текстом бэка ({"error": …}).
  */
+async function fetchReport(
+  token: string,
+  url: string,
+  fallbackName: string,
+): Promise<void> {
+  const response = await fetch(url, {
+    credentials: 'include',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    let message = `HTTP ${response.status}`;
+    try {
+      const data = await response.json();
+      if (data?.error) message = String(data.error);
+    } catch {
+      // ответ не JSON — оставляем код статуса
+    }
+    throw new Error(message);
+  }
+  const filename =
+    filenameFromDisposition(response.headers.get('Content-Disposition')) ||
+    fallbackName;
+  const blobUrl = URL.createObjectURL(await response.blob());
+  triggerDownload(blobUrl, filename);
+  URL.revokeObjectURL(blobUrl);
+}
+
+/** Скачать документ по записи (кнопка «Печать»). */
 export async function downloadReport(
   token: string,
   templateId: number,
   recordId: number | string,
   format: 'docx' | 'pdf',
 ): Promise<void> {
-  const url = `${API_BASE_URL}/reports/generate/${templateId}/${recordId}?output_format=${format}`;
   try {
-    const response = await fetch(url, {
-      credentials: 'include',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) {
-      console.error('Report generation failed:', response.status);
-      return;
-    }
-    const filename =
-      filenameFromDisposition(response.headers.get('Content-Disposition')) ||
-      `report_${templateId}_${recordId}.${format}`;
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    triggerDownload(blobUrl, filename);
-    URL.revokeObjectURL(blobUrl);
+    await fetchReport(
+      token,
+      `${API_BASE_URL}/reports/generate/${templateId}/${recordId}?output_format=${format}`,
+      `report_${templateId}_${recordId}.${format}`,
+    );
   } catch (error) {
     console.error('Report download error:', error);
   }
+}
+
+/** Скачать сводный отчёт в формате шаблона; ошибку показывает вызывающий. */
+export function downloadSummaryReport(
+  token: string,
+  templateId: number,
+  params: ReportParamValues,
+): Promise<void> {
+  const query = new URLSearchParams({ params: JSON.stringify(params) });
+  return fetchReport(
+    token,
+    `${API_BASE_URL}/reports/generate/${templateId}?${query}`,
+    `report_${templateId}`,
+  );
 }

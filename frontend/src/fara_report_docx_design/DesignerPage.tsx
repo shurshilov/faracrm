@@ -40,6 +40,7 @@ import { selectCurrentSession } from '@/slices/authSlice';
 import { attachmentContentUrl, triggerDownload } from '@/utils/attachmentUrls';
 import { arrayBufferToBase64 } from '@/utils/base64';
 import type { DocxEditorFrameHandle } from '@/components/Attachment/DocxEditorFrame';
+import type { ReportParamValues } from '@/fara_report_docx/api';
 import { fetchReportPreview, useTemplateFieldsQuery } from './api';
 import type { ReportFieldNode } from './api';
 import { FieldCatalog } from './FieldCatalog';
@@ -134,7 +135,7 @@ export default function DesignerPage() {
   const [recordId, setRecordId] = useState<number | null>(
     Number(searchParams.get('record_id')) || null,
   );
-  const [paramsText, setParamsText] = useState('{}');
+  const [paramValues, setParamValues] = useState<ReportParamValues>({});
   const [format, setFormat] = useState<PreviewFormat>('docx');
   const [auto, setAuto] = useState(true);
   const [preview, setPreview] = useState<PreviewResult>(null);
@@ -156,19 +157,12 @@ export default function DesignerPage() {
     setPreviewing(true);
     setPreviewError(null);
     try {
-      let params: Record<string, unknown> = {};
-      if (paramsText.trim()) {
-        try {
-          params = JSON.parse(paramsText);
-        } catch {
-          throw new Error(t('reportsDesign:designer.badParams'));
-        }
-      }
+      let params = paramValues;
       if (template.report_type !== 'summary') {
         if (!recordId) {
           throw new Error(t('reportsDesign:designer.selectRecord'));
         }
-        params = { ...params, record_id: recordId };
+        params = { record_id: recordId };
       }
       const { blob, filename } = await fetchReportPreview(token, {
         templateId,
@@ -193,7 +187,7 @@ export default function DesignerPage() {
   }, [
     template,
     token,
-    paramsText,
+    paramValues,
     recordId,
     templateId,
     format,
@@ -216,7 +210,7 @@ export default function DesignerPage() {
   // Автопревью при смене записи/параметров/формата и при первой загрузке
   useEffect(() => {
     if (auto && document) schedulePreview();
-  }, [auto, document, recordId, paramsText, format, schedulePreview]);
+  }, [auto, document, recordId, paramValues, format, schedulePreview]);
 
   useEffect(
     () => () => {
@@ -430,6 +424,7 @@ export default function DesignerPage() {
             flexDirection: 'column',
           }}>
           <PreviewPane
+            templateId={templateId}
             model={template.model_name}
             reportType={
               template.report_type === 'summary' ? 'summary' : 'record'
@@ -437,8 +432,8 @@ export default function DesignerPage() {
             hasNameField={hasNameField}
             recordId={recordId}
             onRecordIdChange={setRecordId}
-            paramsText={paramsText}
-            onParamsTextChange={setParamsText}
+            paramValues={paramValues}
+            onParamValuesChange={setParamValues}
             format={format}
             onFormatChange={setFormat}
             auto={auto}

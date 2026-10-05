@@ -42,8 +42,9 @@ class ReportTemplate(DotModel):
     (Sale.sale_invoice_rus, Sale.sales_period_data).
     report_type — документ по записи (params = {"record_id": id}: в контекст
     попадают все поля записи, см. record_context, плюс дикты функций) или
-    сводный отчёт (только дикты функций, params — что угодно, например
-    период); сводные не показываются в меню «Печать» записи.
+    сводный отчёт (только дикты функций, params — их аргументы, например
+    период; форма — data_params); сводные не показываются в меню «Печать»
+    записи, их собирают кнопкой «Сформировать» на форме шаблона и cron.
 
     Конструктор шаблонов (каталог полей, превью) — модуль report_docx_design,
     он пользуется публичными помощниками get_template / resolve_model /
@@ -147,6 +148,51 @@ class ReportTemplate(DotModel):
                 funcs.append(func)
         return funcs
 
+    @staticmethod
+    def data_params(funcs: list) -> dict[str, dict]:
+        """Аргументы функций данных для формы отчёта: имя → {name, type,
+        default, label}. Тип — int/float/bool по аннотации, остальное str;
+        подпись — из @report_params. env, record_id и **kwargs в форму не
+        идут. Общий аргумент нескольких функций — одно поле: подпись и
+        значение по умолчанию у первой функции."""
+        result: dict[str, dict] = {}
+        for func in funcs:
+            labels = getattr(func, "_report_params", {})
+            for name, param in inspect.signature(func).parameters.items():
+                if name in ("env", "record_id") or param.kind in (
+                    param.VAR_POSITIONAL,
+                    param.VAR_KEYWORD,
+                ):
+                    continue
+                # Аннотация — класс (int) или строка ("int")
+                type_name = getattr(
+                    param.annotation, "__name__", param.annotation
+                )
+                result.setdefault(
+                    name,
+                    {
+                        "name": name,
+                        "type": (
+                            type_name
+                            if type_name in ("int", "float", "bool")
+                            else "str"
+                        ),
+                        "default": (
+                            None
+                            if param.default is param.empty
+                            else param.default
+                        ),
+                        "label": labels.get(name, name),
+                    },
+                )
+        return result
+
+    @staticmethod
+    def takes_kwargs(func) -> bool:
+        """Функция принимает **kwargs — ей уходят все params."""
+        params = inspect.signature(func).parameters.values()
+        return any(p.kind is p.VAR_KEYWORD for p in params)
+
     # ------------------------------------------------------------------
     # Данные: запись → дикт + дикт функции
     # ------------------------------------------------------------------
@@ -229,19 +275,28 @@ class ReportTemplate(DotModel):
         model_cls = cls.resolve_model(tmpl.model_name)
         record_id = params.get("record_id")
         with_record = tmpl.report_type != "summary" and bool(record_id)
-        context: dict = {}
-        if with_record:
-            context.update(await cls.record_context(model_cls, record_id))
+        funcs = cls.data_functions(model_cls, with_record)
+        # Опечатка в имени параметра — ошибка, а не молча отчёт по умолчанию
+        unknown = set(params) - set(cls.data_params(funcs)) - {"record_id"}
+        if unknown and not any(map(cls.takes_kwargs, funcs)):
+            raise ValueError(
+                f"Unknown report params: {', '.join(sorted(unknown))}"
+            )
         tags = await asyncio.to_thread(
             DocxReportEngine.template_tags, template_bytes
         )
-        for func in cls.data_functions(model_cls, with_record):
-            if tags.isdisjoint(func._report_fields):
-                continue
-            accepted = inspect.signature(func).parameters
-            if any(p.kind is p.VAR_KEYWORD for p in accepted.values()):
+        funcs = [f for f in funcs if not tags.isdisjoint(f._report_fields)]
+        # Сводный отчёт собирается только из функций: без них — пустой файл
+        if tmpl.report_type == "summary" and not funcs:
+            raise ValueError("No data function matches the template tags")
+        context: dict = {}
+        if with_record:
+            context.update(await cls.record_context(model_cls, record_id))
+        for func in funcs:
+            if cls.takes_kwargs(func):
                 kwargs = params
             else:
+                accepted = inspect.signature(func).parameters
                 kwargs = {k: v for k, v in params.items() if k in accepted}
             context.update(await func(env, **kwargs))
         return context

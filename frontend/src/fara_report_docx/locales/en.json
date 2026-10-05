@@ -16,6 +16,14 @@
     "open": "Designer",
     "configure": "Configure template"
   },
+  "generate": {
+    "open": "Generate",
+    "title": "Generate report",
+    "download": "Download"
+  },
+  "params": {
+    "none": "The report has no parameters"
+  },
   "pdfEngine": {
     "libreoffice": "PDF: LibreOffice {{version}}",
     "builtin": "PDF: built-in converter",

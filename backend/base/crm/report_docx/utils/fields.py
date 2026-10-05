@@ -46,3 +46,21 @@ def report_fields(**fields: "str | ReportField | ReportList") -> Callable:
         return func
 
     return decorator
+
+
+def report_params(**labels: str) -> Callable:
+    """Подписи аргументов функции данных для формы сводного отчёта
+    (превью конструктора, кнопка «Сформировать»). Тип и значение по
+    умолчанию форма берёт из сигнатуры; без подписи показывает имя.
+
+    @staticmethod
+    @report_fields(...)
+    @report_params(days="За сколько дней")
+    async def sales_period_data(env, days: int = 30): ...
+    """
+
+    def decorator(func):
+        func._report_params = labels
+        return func
+
+    return decorator

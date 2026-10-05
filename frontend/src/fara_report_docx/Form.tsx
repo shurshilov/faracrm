@@ -12,6 +12,7 @@ import {
   IconLayoutBoard,
   IconSettings,
 } from '@tabler/icons-react';
+import { GenerateReportButton } from './GenerateReportButton';
 import { useCanDesignTemplates } from './useCanDesign';
 
 /** Кнопка «Конструктор» — у сохранённого шаблона, администратору отчётов
@@ -42,7 +43,12 @@ export function ViewFormReportTemplate(props: ViewFormProps) {
   return (
     <Form<ReportTemplate>
       model="report_template"
-      actions={<DesignerButton />}
+      actions={
+        <>
+          <GenerateReportButton />
+          <DesignerButton />
+        </>
+      }
       {...props}>
       <FormSection
         title="Основные данные"

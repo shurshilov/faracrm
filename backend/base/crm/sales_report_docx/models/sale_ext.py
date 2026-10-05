@@ -11,8 +11,9 @@
 
 - документ по записи (report_type = record): params = {"record_id": id},
   приходит с кнопки «Печать» на форме заказа — `sale_invoice_rus`;
-- сводный отчёт (report_type = summary): params — что угодно (период,
-  сотрудник…), приходят из kwargs cron-задачи или ?params= роута —
+- сводный отчёт (report_type = summary): params — аргументы функции
+  (период, сотрудник…; подписи для формы — @report_params), приходят из
+  kwargs cron-задачи, формы «Сформировать» или ?params= роута —
   `sales_period_data`.
 
 Свою функцию добавляют так же: @extend(Sale) в своём модуле (или в
@@ -43,6 +44,7 @@ from backend.base.crm.report_docx.utils.fields import (
     ReportField,
     ReportList,
     report_fields,
+    report_params,
 )
 from backend.base.crm.sales.models.sale import Sale
 
@@ -410,6 +412,7 @@ class SaleReportMixin(_Base):
             amount="Сумма",
         ),
     )
+    @report_params(days="За сколько дней")
     async def sales_period_data(env: "Environment", days: int = 30) -> dict:
         """Продажи за последние N дней: список сделок и итоги по менеджерам.
         Шаблон — «Отчёт по продажам за период.docx»."""
