@@ -1,5 +1,5 @@
 # Copyright 2025 FARA CRM
-# Chat module - PostgreSQL LISTEN/NOTIFY pub/sub backend
+# Bus - PostgreSQL LISTEN/NOTIFY pub/sub backend
 """
 PostgreSQL NOTIFY/LISTEN реализация PubSubBackend.
 

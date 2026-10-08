@@ -20,6 +20,10 @@ import type { FaraRecord } from '@/services/api/crudTypes';
  * автоматически из frontend/src/business/<имя>/index.ts — см.
  * useModelExtensions и docs/dist/frontend/extensions.md.
  *
+ * Модель '*' — расширение для всех моделей сразу (студия добавляет каждой
+ * форме зону «Дополнительно»: 'provide:FormFields' + 'wrap:Form'); читается
+ * вместе с расширениями конкретной модели.
+ *
  * Расширение карточки получает { record, model } (KanbanCardExtensionProps);
  * поля, которые ему нужны, объявляются 4-м аргументом registerExtension —
  * Kanban подмешивает их в запрос записей (getExtensionFields).
@@ -197,6 +201,11 @@ export function parsePosition(position: string): ParsedPosition {
   };
 }
 
+/** Расширения модели плюс общие для всех моделей ('*'). */
+function entriesFor(model: string): ExtensionEntry[] {
+  return [...(registry.get(model) || []), ...(registry.get('*') || [])];
+}
+
 /**
  * Получить расширения для конкретной позиции (точное совпадение).
  */
@@ -204,8 +213,9 @@ export function getExtensionsForPosition(
   model: string,
   position: string,
 ): ComponentType<any>[] {
-  const all = registry.get(model) || [];
-  return all.filter(e => e.position === position).map(e => e.component);
+  return entriesFor(model)
+    .filter(e => e.position === position)
+    .map(e => e.component);
 }
 
 /**
@@ -216,7 +226,7 @@ export function getExtensionsGrouped(
   target: string,
   param?: string,
 ): ExtensionsForTarget {
-  const all = registry.get(model) || [];
+  const all = entriesFor(model);
 
   const result: ExtensionsForTarget = {
     before: [],

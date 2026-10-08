@@ -8,6 +8,11 @@ import FaraRouters from '@/route/Routers';
 import Logo from '@/components/Logo';
 import UserMenu from '@/components/UserMenu';
 import { ChatNotification } from '@/components/ChatNotification';
+import { useHeaderActions } from '@/shared/extensions/headerActions';
+import {
+  setLayoutAsideNode,
+  useLayoutAsideWidth,
+} from '@/shared/extensions/layoutAside';
 import { ActivityNotification } from '@/fara_activity/ActivityNotification';
 import { ChatWebSocketProvider } from '@/fara_chat/context';
 import { CallProvider } from '@/fara_chat/context/CallContext';
@@ -24,7 +29,7 @@ import { useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import type { MenuGroup } from '@config/menuData';
 import { getVisibleMenuItems } from '@config/menuData';
-import { useInstalledApps } from '@/fara_apps/useInstalledApps';
+import { useInstalledApps } from '@/hooks/useInstalledApps';
 import { useHasWorkspaceApp } from '@/hooks/useWorkspaceApps';
 
 export function ModernLayout() {
@@ -61,6 +66,10 @@ export function ModernLayout() {
   // формы (FormPanels).
   const hasApp = useHasWorkspaceApp();
   const hasCommunication = hasApp('communication');
+  const headerActions = useHeaderActions();
+  // Панель справа от модулей (LayoutAside, напр. студия): основная
+  // область сужается, шапка остаётся открытой.
+  const asideWidth = useLayoutAsideWidth();
 
   // Определяем активную группу по текущему URL
   useEffect(() => {
@@ -130,6 +139,11 @@ export function ModernLayout() {
               }
             : undefined
         }
+        aside={{
+          width: asideWidth ?? 0,
+          breakpoint: 'sm',
+          collapsed: { mobile: !asideWidth, desktop: !asideWidth },
+        }}
         padding={{ base: 'xs', sm: 'md' }}
         transitionDuration={200}
         transitionTimingFunction="ease">
@@ -187,6 +201,10 @@ export function ModernLayout() {
               <Box hiddenFrom="md">
                 <MobileSubmenuDrawer activeGroup={activeGroup} />
               </Box>
+              {/* Иконки модулей (registerHeaderAction): студия и т.п. */}
+              {headerActions.map(([key, Action]) => (
+                <Action key={key} />
+              ))}
               {/* В шапке — только то, что сообщает о СОБЫТИЯХ: активности,
                   чаты, звонки. Тема и документация переехали в меню
                   пользователя: они нужны редко и не требуют внимания. */}
@@ -246,6 +264,11 @@ export function ModernLayout() {
         <AppShell.Main className={classes.main}>
           <FaraRouters />
         </AppShell.Main>
+
+        {/* Сюда порталом рендерит LayoutAside; закрытая — нулевой
+            ширины, без рамки */}
+        <AppShell.Aside ref={setLayoutAsideNode} withBorder={!!asideWidth} />
+
       </AppShell>
       <CallWidget />
       {/* Карточка разговора телефонии — прилетает по WS на любом экране. */}

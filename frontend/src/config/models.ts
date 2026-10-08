@@ -562,6 +562,19 @@ export const modelsConfig: Record<string, ModelConfig> = {
         default: m.ViewFormColumnSettings,
       })),
   },
+  // Общие настройки форм (обязательные поля и зона «Дополнительно») —
+  // модель студии, ремонтный экран: правятся в режиме студии.
+  form_settings: {
+    menu: MenuGroups.settings,
+    list: () =>
+      import('@/fara_studio/FormSettingsViews').then(m => ({
+        default: m.ViewListFormSettings,
+      })),
+    form: () =>
+      import('@/fara_studio/FormSettingsViews').then(m => ({
+        default: m.ViewFormFormSettings,
+      })),
+  },
   // === Projects & Tasks ===
   tasks: {
     menu: MenuGroups.projects,

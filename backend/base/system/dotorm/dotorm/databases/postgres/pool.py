@@ -145,3 +145,17 @@ class ContainerPostgres:
             for fk_name, fk_sql in unique_fks.items():
                 if fk_name not in existing_fk_names:
                     await session.execute(fk_sql)
+
+    # Удаление колонки (поля студии) отключено намеренно: данные остаются в
+    # базе. Вернуть — раскомментировать здесь и в сервисе базы.
+    # async def drop_column(self, table: str, column: str) -> None:
+    #     """Удалить колонку вместе с данными и её FK. Под тем же
+    #     DDL-локом, что и создание таблиц."""
+    #     async with ContainerTransaction(self.pool) as session:
+    #         await session.execute(
+    #             f"SELECT pg_advisory_xact_lock({DDL_LOCK_ID})", cursor="void"
+    #         )
+    #         await session.execute(
+    #             f'ALTER TABLE "{table}" DROP COLUMN IF EXISTS "{column}"',
+    #             cursor="void",
+    #         )

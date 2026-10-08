@@ -11,7 +11,7 @@ from fastapi import WebSocket
 from starlette.websockets import WebSocketState
 
 if TYPE_CHECKING:
-    from .pubsub.base import PubSubBackend
+    from backend.base.system.bus.app import BusService
 
 logger = logging.getLogger(__name__)
 
@@ -94,22 +94,18 @@ class ConnectionManager:
         # Lock for thread-safe operations
         self._lock = asyncio.Lock()
 
-        # PubSub backend — устанавливается при startup через set_pubsub()
-        self._pubsub: "PubSubBackend | None" = None
+        # Шина событий между воркерами (модуль bus) — ставит ChatApp.startup
+        # через set_pubsub(), если шина поднялась.
+        self._pubsub: "BusService | None" = None
         # Про отсутствие шины говорим один раз, а не на каждое событие.
         self._warned_no_pubsub = False
 
         # call_id -> Event: HTTP /calls/start ждёт invite_ack (см. ниже).
         self._pending_invites: dict[int, asyncio.Event] = {}
 
-    def set_pubsub(self, backend: "PubSubBackend | None") -> None:
-        """Установить pub/sub backend. Вызывается из ChatApp.startup()."""
-        self._pubsub = backend
-
-    @property
-    def pubsub(self) -> "PubSubBackend | None":
-        """Текущий pub/sub backend (read-only)."""
-        return self._pubsub
+    def set_pubsub(self, bus: "BusService | None") -> None:
+        """Установить шину событий. Вызывается из ChatApp.startup()."""
+        self._pubsub = bus
 
     async def connect(self, websocket: WebSocket, user_id: int) -> bool:
         """

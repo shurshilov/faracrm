@@ -16,6 +16,7 @@ import {
 } from '@mantine/core';
 import { useDebouncedValue, useMediaQuery } from '@mantine/hooks';
 import { useSelector } from 'react-redux';
+import { useIsSystemAdmin } from '@/hooks/useIsSystemAdmin';
 import {
   IconSearch,
   IconPlus,
@@ -164,13 +165,8 @@ export function ChatList({
   const session = useSelector((s: any) => s.auth?.session);
   const user = session?.user_id;
   const currentUserId = user?.id ?? 0;
-  // Администратор системы — суперпользователь или роль system_admin, как
-  // проверка на бэке (Session.check_system_admin).
-  const isSystemAdmin =
-    !!user?.is_admin ||
-    (user?.role_ids ?? []).some(
-      (role: { code: string }) => role.code === 'system_admin',
-    );
+  // Администратор системы — как проверка на бэке (Session.check_system_admin).
+  const isSystemAdmin = useIsSystemAdmin();
   // Команды — из сессии (/signin). В сессии, полученной до их добавления,
   // поля нет — переключатель показываем: без команд бэк вернёт «Мои».
   const hasTeams = user?.team_ids?.length !== 0;

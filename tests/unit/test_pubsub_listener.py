@@ -21,8 +21,8 @@ import json
 
 import pytest
 
-from backend.base.crm.chat.websocket.pubsub import pg_backend
-from backend.base.crm.chat.websocket.pubsub.pg_backend import PgPubSubBackend
+from backend.base.system.bus.pubsub import pg_backend
+from backend.base.system.bus.pubsub.pg_backend import PgPubSubBackend
 
 
 class FakeConn:

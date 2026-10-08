@@ -58,12 +58,12 @@ class ConnectionManager:
 
 FastAPI обычно запускается в нескольких воркерах (uvicorn `--workers 4`). Если юзер А подключился к воркеру #1, а юзер Б — к воркеру #3, обычные in-memory структуры не помогут им найти друг друга.
 
-Решение — pub/sub-канал с двумя реализациями:
+Решение — шина событий (системный модуль `bus`, `env.apps.bus`) с двумя реализациями; чат подписан на свои типы событий:
 
 === "PostgreSQL (default)"
 
     ```bash title=".env"
-    PUBSUB__BACKEND=pg
+    bus__backend=pg
     ```
 
     Использует `LISTEN/NOTIFY`. Один поток на каждом воркере держит отдельный коннект к Postgres и подписывается на канал `ws_events`. Каждое сообщение `send_to_user/send_to_chat` уходит сначала в `pg_notify('ws_events', json)`, и все воркеры (включая отправителя) получают это в LISTEN-callback.
@@ -76,8 +76,8 @@ FastAPI обычно запускается в нескольких воркер
 === "Redis"
 
     ```bash title=".env"
-    PUBSUB__BACKEND=redis
-    PUBSUB__REDIS_URL=redis://localhost:6379/0
+    bus__backend=redis
+    bus__redis_url=redis://localhost:6379/0
     ```
 
     Стандартный Redis Pub/Sub. Подписка через `PSUBSCRIBE chat:*`.
@@ -262,7 +262,7 @@ async def notify_on_new_message(chat_id, message_id, author_user_id, body):
 | Endpoints чата | `chat/routers/messages.py`, `chat/routers/chats.py` |
 | WebSocket handler | `chat/routers/ws.py` |
 | Логика подключений | `chat/websocket/manager.py` |
-| Pub/Sub | `chat/websocket/pubsub/` |
+| Шина событий | `system/bus/` (`app.py`, `pubsub/`) |
 | Стратегии | `chat/strategies/`, `chat_telegram/strategies/`, ... |
 | Звонки | `chat/routers/calls.py` (см. [отдельную страницу](calls.md)) |
 

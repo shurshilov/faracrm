@@ -1,0 +1,75 @@
+{
+  "toggle": "Studio",
+  "title": "Studio",
+  "close": "Leave studio mode",
+  "saving": "saving…",
+  "saved": "saved",
+  "zoneTitle": "More — studio mode",
+  "zone": {
+    "title": "More",
+    "collapse": "Collapse",
+    "expand": "Expand"
+  },
+  "dropHere": "Drop a field into a cell from the panel on the right",
+  "placement": {
+    "bottom": "Below",
+    "side": "Side",
+    "tab": "Tab"
+  },
+  "noTabs": "This form has no tabs — the zone stays below it",
+  "grid": "Grid",
+  "columns": "Columns",
+  "rows": "Rows (empty — as many as needed)",
+  "width": "Width, cells",
+  "height": "Height, cells",
+  "tabs": {
+    "add": "Add",
+    "props": "Properties",
+    "form": "Form fields"
+  },
+  "newFields": "New fields",
+  "existingFields": "Existing fields",
+  "searchField": "Search field...",
+  "noFields": "No fields",
+  "nothingSelected": "Select a field in the “More” zone or on the “Form fields” tab",
+  "newLabel": "New field",
+  "option": "Option",
+  "label": "Label",
+  "name": "Technical name",
+  "type": "Type",
+  "options": "Options",
+  "optionsHint": "One per line: value=label",
+  "required": "Required",
+  "removeFromForm": "Remove from form",
+  "deleteField": "Delete field",
+  "deleteConfirm": "The field leaves the form and the API; the data stays in the database.",
+  "yes": "Yes",
+  "no": "No",
+  "relationPick": "Link to record",
+  "relationModel": "Model",
+  "add": "Add",
+  "cancel": "Cancel",
+  "types": {
+    "char": "Text line",
+    "text": "Text",
+    "integer": "Integer",
+    "float": "Number",
+    "boolean": "Checkbox",
+    "date": "Date",
+    "datetime": "Date and time",
+    "selection": "Selection",
+    "many2one": "Link to record"
+  },
+  "menu": {
+    "form_settings": "Form Settings"
+  },
+  "formSettings": {
+    "id": "ID",
+    "model_name": "Model",
+    "required": "Required fields (JSON)",
+    "extra_fields": "“More” zone fields (JSON)",
+    "extra_placement": "Zone placement",
+    "extra_columns": "Grid columns",
+    "extra_rows": "Grid rows"
+  }
+}

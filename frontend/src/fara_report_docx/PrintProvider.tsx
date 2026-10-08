@@ -16,7 +16,7 @@ import {
 } from '@tabler/icons-react';
 import type { PrintItem, PrintProviderProps } from '@/shared/extensions/print';
 import { selectCurrentSession } from '@/slices/authSlice';
-import { useInstalledApps } from '@/fara_apps/useInstalledApps';
+import { useInstalledApps } from '@/hooks/useInstalledApps';
 import { downloadReport, useRecordTemplatesQuery } from './api';
 import { useCanDesignTemplates } from './useCanDesign';
 

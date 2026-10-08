@@ -162,6 +162,7 @@ const modelToNamespace: Record<string, string> = {
   language: 'languages',
   cron_job: 'cron',
   saved_filters: 'saved_filters',
+  form_settings: 'studio',
   system_settings: 'system_settings',
   report_template: 'reports',
   tasks: 'tasks',

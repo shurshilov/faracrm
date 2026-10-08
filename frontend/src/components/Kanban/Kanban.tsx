@@ -1,8 +1,24 @@
-import { useState, useCallback } from 'react';
-import { Card, Text, Badge, Group, Stack, ScrollArea, ActionIcon, Box } from '@mantine/core';
-import { IconGripVertical } from '@tabler/icons-react';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Card,
+  Text,
+  Badge,
+  Group,
+  Menu,
+  Stack,
+  ScrollArea,
+  ActionIcon,
+  Box,
+} from '@mantine/core';
+import { IconAdjustments, IconGripVertical } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { useSearchQuery, useUpdateMutation } from '@/services/api/crudApi';
+import { useTranslation } from 'react-i18next';
+import {
+  useGetFieldsQuery,
+  useSearchQuery,
+  useUpdateMutation,
+} from '@/services/api/crudApi';
 import {
   FaraRecord,
   GetListParams,
@@ -10,6 +26,11 @@ import {
   FilterExpression,
 } from '@/services/api/crudTypes';
 import { useFilteredSearchQuery } from '@/components/SearchFilter/useFilteredSearchQuery';
+import { BooleanCell, DateTimeCell } from '@/components/ListCells';
+import { ColumnsMenu } from '@/components/List/ColumnsMenu';
+import { useColumnConfig } from '@/components/List/useColumnConfig';
+import { ViewMenu } from '@/components/ViewWrapper/ViewMenu';
+import { useHeaderSlot } from '@/components/ViewWrapper/HeaderSlotContext';
 import {
   getExtensionFields,
   getExtensionsForKanbanCard,
@@ -40,16 +61,34 @@ import {
 } from '@reduxjs/toolkit/query/react';
 import classes from './Kanban.module.css';
 
+/** Типы полей по имени — из ответа поиска (data.fields). */
+type FieldTypes = Map<string, string>;
+
 interface KanbanCardProps {
   record: FaraRecord;
   model: string;
   fields: string[];
+  types: FieldTypes;
   onClick: () => void;
 }
 
-/** Значение поля одной строкой: Many2one — имя записи, остальное — как есть. */
-function fieldText(value: unknown): string {
-  if (typeof value === 'object' && value !== null) {
+/**
+ * Значение поля в карточке — как в ячейке списка: флажок, дата, у связи —
+ * имя записи, у связи-списка — число записей. Пусто — строки нет.
+ */
+function fieldValue(type: string | undefined, value: unknown): ReactNode {
+  if (value === null || value === undefined || value === '') return null;
+  if (type === 'Boolean') return <BooleanCell value={value === true} />;
+  if (type === 'Datetime' || type === 'Date') {
+    return (
+      <DateTimeCell
+        value={String(value)}
+        format={type === 'Date' ? 'date' : 'compact'}
+      />
+    );
+  }
+  if (Array.isArray(value)) return String(value.length);
+  if (typeof value === 'object') {
     const rel = value as { id?: unknown; name?: unknown };
     return rel.name ? String(rel.name) : `#${String(rel.id)}`;
   }
@@ -57,7 +96,7 @@ function fieldText(value: unknown): string {
 }
 
 /**
- * Содержимое карточки: заголовок + первые два поля из `fields`, обёрнутые
+ * Содержимое карточки: заголовок + поля карточки (`fields`), обёрнутые
  * расширениями модели (registerExtension, target KanbanCard):
  *   'before:KanbanCard'  — над стандартным содержимым;
  *   'after:KanbanCard'   — под ним (прогресс-бар, доп. строки — см.
@@ -70,6 +109,7 @@ function KanbanCardBody({
   record,
   model,
   fields,
+  types,
 }: Omit<KanbanCardProps, 'onClick'>) {
   const { before, after, replace } = getExtensionsForKanbanCard(model);
 
@@ -86,17 +126,17 @@ function KanbanCardBody({
       <Text fw={500} truncate>
         {record.name || `#${record.id}`}
       </Text>
-      {fields.slice(0, 2).map(field => {
+      {fields.map(field => {
         if (field === 'id' || field === 'name') {
           return null;
         }
-        const value = record[field];
-        if (!value) {
+        const value = fieldValue(types.get(field), record[field]);
+        if (value === null) {
           return null;
         }
         return (
           <Text key={field} size="sm" c="dimmed" truncate>
-            {fieldText(value)}
+            {value}
           </Text>
         );
       })}
@@ -108,7 +148,13 @@ function KanbanCardBody({
 }
 
 // Карточка канбана (перетаскиваемая)
-function SortableKanbanCard({ record, model, fields, onClick }: KanbanCardProps) {
+function SortableKanbanCard({
+  record,
+  model,
+  fields,
+  types,
+  onClick,
+}: KanbanCardProps) {
   const {
     attributes,
     listeners,
@@ -133,11 +179,15 @@ function SortableKanbanCard({ record, model, fields, onClick }: KanbanCardProps)
       padding="sm"
       radius="md"
       withBorder
-      onClick={onClick}
-    >
+      onClick={onClick}>
       <Group justify="space-between" wrap="nowrap">
         <Box style={{ flex: 1, overflow: 'hidden' }}>
-          <KanbanCardBody record={record} model={model} fields={fields} />
+          <KanbanCardBody
+            record={record}
+            model={model}
+            fields={fields}
+            types={types}
+          />
         </Box>
         <ActionIcon
           variant="subtle"
@@ -145,8 +195,7 @@ function SortableKanbanCard({ record, model, fields, onClick }: KanbanCardProps)
           size="sm"
           {...attributes}
           {...listeners}
-          onClick={e => e.stopPropagation()}
-        >
+          onClick={e => e.stopPropagation()}>
           <IconGripVertical size={14} />
         </ActionIcon>
       </Group>
@@ -155,7 +204,13 @@ function SortableKanbanCard({ record, model, fields, onClick }: KanbanCardProps)
 }
 
 // Простая карточка без drag
-function SimpleKanbanCard({ record, model, fields, onClick }: KanbanCardProps) {
+function SimpleKanbanCard({
+  record,
+  model,
+  fields,
+  types,
+  onClick,
+}: KanbanCardProps) {
   return (
     <Card
       className={classes.card}
@@ -163,9 +218,13 @@ function SimpleKanbanCard({ record, model, fields, onClick }: KanbanCardProps) {
       padding="sm"
       radius="md"
       withBorder
-      onClick={onClick}
-    >
-      <KanbanCardBody record={record} model={model} fields={fields} />
+      onClick={onClick}>
+      <KanbanCardBody
+        record={record}
+        model={model}
+        fields={fields}
+        types={types}
+      />
     </Card>
   );
 }
@@ -175,11 +234,19 @@ interface KanbanColumnProps {
   records: FaraRecord[];
   model: string;
   fields: string[];
+  types: FieldTypes;
   onCardClick: (id: number) => void;
 }
 
 // Колонка канбана (для группированного вида)
-function KanbanColumn({ stage, records, model, fields, onCardClick }: KanbanColumnProps) {
+function KanbanColumn({
+  stage,
+  records,
+  model,
+  fields,
+  types,
+  onCardClick,
+}: KanbanColumnProps) {
   // Вся колонка — droppable-зона. Без этого нельзя было бросить карточку в
   // пустую колонку или в пустое место под карточками: droppable'ами были
   // только сами карточки (useSortable), а контейнер колонки — нет, поэтому
@@ -194,8 +261,7 @@ function KanbanColumn({ stage, records, model, fields, onCardClick }: KanbanColu
     <div className={classes.column}>
       <div
         className={classes.columnHeader}
-        style={{ borderTopColor: stage.color || '#3498db' }}
-      >
+        style={{ borderTopColor: stage.color || '#3498db' }}>
         <Group justify="space-between">
           <Group gap="xs">
             <Text fw={600}>{stage.name}</Text>
@@ -215,12 +281,10 @@ function KanbanColumn({ stage, records, model, fields, onCardClick }: KanbanColu
               ? 'var(--mantine-color-blue-light)'
               : undefined,
             transition: 'background-color 0.15s ease',
-          }}
-        >
+          }}>
           <SortableContext
             items={records.map(r => r.id)}
-            strategy={verticalListSortingStrategy}
-          >
+            strategy={verticalListSortingStrategy}>
             <Stack gap="xs" p="xs" mih={60}>
               {records.map(record => (
                 <SortableKanbanCard
@@ -228,6 +292,7 @@ function KanbanColumn({ stage, records, model, fields, onCardClick }: KanbanColu
                   record={record}
                   model={model}
                   fields={fields}
+                  types={types}
                   onClick={() => onCardClick(Number(record.id))}
                 />
               ))}
@@ -241,6 +306,7 @@ function KanbanColumn({ stage, records, model, fields, onCardClick }: KanbanColu
 
 export interface KanbanProps<T extends FaraRecord> {
   model: string;
+  /** Поля карточки по умолчанию; пользователь меняет их через меню «⋮». */
   fields?: (keyof T & string)[];
   groupByField?: keyof T & string;
   groupByModel?: string;
@@ -265,6 +331,7 @@ export function Kanban<T extends FaraRecord>({
   groupByFilter,
 }: KanbanProps<T>) {
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
   const [activeId, setActiveId] = useState<number | null>(null);
   const [updateRecord] = useUpdateMutation();
 
@@ -273,7 +340,7 @@ export function Kanban<T extends FaraRecord>({
       activationConstraint: {
         distance: 8,
       },
-    })
+    }),
   );
 
   // pointerWithin — самый предсказуемый алгоритм для канбана: целевая колонка
@@ -293,9 +360,36 @@ export function Kanban<T extends FaraRecord>({
   // загрузки, чтобы поля расширений карточки попали в первый же запрос.
   const extensionsLoaded = useModelExtensions(model);
 
-  // Поля запроса: поля вью + поле группировки + поля расширений карточки.
+  // Поля карточки — личная настройка, как колонки списка (column_settings,
+  // вид kanban); по умолчанию — поля вью. Меню «⋮» — в слоте шапки
+  // ViewWrapper, вне его — над доской.
+  const columnConfig = useColumnConfig(model, fields, 'kanban');
+  const { data: allFields } = useGetFieldsQuery(model);
+  const headerSlot = useHeaderSlot();
+  const [fieldsOpen, setFieldsOpen] = useState(false);
+
+  // Записать выбор при размонтировании, если меню закрыть не успели.
+  const persistRef = useRef(columnConfig.persistIfDirty);
+  persistRef.current = columnConfig.persistIfDirty;
+  useEffect(() => () => persistRef.current(), []);
+
+  // Известные поля модели: устаревшее имя из сохранённой настройки не
+  // запрашиваем — иначе 422 и пустая доска (как в списке).
+  const knownFieldNames = allFields
+    ? new Set(allFields.map(f => f.name))
+    : null;
+  const cardFields = knownFieldNames
+    ? columnConfig.selected.filter(n => knownFieldNames.has(n))
+    : columnConfig.selected;
+
+  // Поля запроса: поля вью + поля карточки (когда набор полей известен) +
+  // поле группировки + поля расширений карточки.
   const queryFields: string[] = [...fields];
-  for (const extra of [groupByField, ...getExtensionFields(model)]) {
+  for (const extra of [
+    ...(knownFieldNames ? cardFields : []),
+    groupByField,
+    ...getExtensionFields(model),
+  ]) {
     if (extra && !queryFields.includes(extra)) {
       queryFields.push(extra);
     }
@@ -325,14 +419,18 @@ export function Kanban<T extends FaraRecord>({
       sort: 'sequence',
       filter: groupByFilter,
     },
-    { skip: !groupByModel }
-  ) as TypedUseQueryHookResult<GetListResult<FaraRecord>, GetListParams, BaseQueryFn>;
+    { skip: !groupByModel },
+  ) as TypedUseQueryHookResult<
+    GetListResult<FaraRecord>,
+    GetListParams,
+    BaseQueryFn
+  >;
 
   const handleCardClick = useCallback(
     (id: number) => {
       navigate(`${id}`);
     },
-    [navigate]
+    [navigate],
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -369,9 +467,10 @@ export function Kanban<T extends FaraRecord>({
     if (newStageId === undefined) return;
 
     const currentStageValue = activeRecord[groupByField];
-    const currentStageId = typeof currentStageValue === 'object'
-      ? currentStageValue?.id
-      : currentStageValue;
+    const currentStageId =
+      typeof currentStageValue === 'object'
+        ? currentStageValue?.id
+        : currentStageValue;
 
     if (newStageId !== currentStageId) {
       await updateRecord({
@@ -384,6 +483,39 @@ export function Kanban<T extends FaraRecord>({
 
   const records = recordsData?.data || [];
   const stages = stagesData?.data || [];
+  const types: FieldTypes = new Map(
+    (recordsData?.fields ?? []).map(f => [f.name, f.type]),
+  );
+
+  // Меню «⋮» канбана: поля карточки. Поповер якорится на кнопку меню,
+  // поэтому ColumnsMenu оборачивает ViewMenu — как в списке.
+  const headerControls = (
+    <ColumnsMenu
+      opened={fieldsOpen}
+      onOpenChange={setFieldsOpen}
+      model={model}
+      title={t('cardFields')}
+      selected={cardFields}
+      isCustom={columnConfig.isCustom}
+      onChange={columnConfig.setDraft}
+      onReset={columnConfig.reset}
+      onClose={columnConfig.persistIfDirty}>
+      <ViewMenu>
+        <Menu.Item
+          leftSection={<IconAdjustments size={14} />}
+          onClick={() => setFieldsOpen(true)}>
+          {t('cardFields')}
+        </Menu.Item>
+      </ViewMenu>
+    </ColumnsMenu>
+  );
+  const controls = headerSlot ? (
+    createPortal(headerControls, headerSlot)
+  ) : (
+    <Group justify="flex-end" px="xs">
+      {headerControls}
+    </Group>
+  );
 
   // Группированный канбан
   if (groupByField && groupByModel && stages.length > 0) {
@@ -400,60 +532,76 @@ export function Kanban<T extends FaraRecord>({
     // Распределение записей по колонкам
     records.forEach(record => {
       const stageValue = record[groupByField];
-      const stageId = typeof stageValue === 'object' ? stageValue?.id : stageValue;
+      const stageId =
+        typeof stageValue === 'object' ? stageValue?.id : stageValue;
       const list = recordsByStage.get(stageId || 0) || [];
       list.push(record);
       recordsByStage.set(stageId || 0, list);
     });
 
-    const activeRecord = activeId
-      ? records.find(r => r.id === activeId)
-      : null;
+    const activeRecord = activeId ? records.find(r => r.id === activeId) : null;
 
     return (
-      <DndContext
-        sensors={sensors}
-        collisionDetection={collisionDetection}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <ScrollArea className={classes.kanbanContainer} offsetScrollbars type="always">
-          <div className={classes.columnsWrapper}>
-            {stages.map(stage => (
-              <KanbanColumn
-                key={stage.id}
-                stage={stage}
-                records={recordsByStage.get(Number(stage.id)) || []}
-                model={model}
-                fields={fields}
-                onCardClick={handleCardClick}
-              />
-            ))}
-          </div>
-        </ScrollArea>
-        <DragOverlay>
-          {activeRecord ? (
-            <Card shadow="lg" padding="sm" radius="md" withBorder className={classes.dragOverlay}>
-              <Text fw={500}>{activeRecord.name || `#${activeRecord.id}`}</Text>
-            </Card>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      <>
+        {controls}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={collisionDetection}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}>
+          <ScrollArea
+            className={classes.kanbanContainer}
+            offsetScrollbars
+            type="always">
+            <div className={classes.columnsWrapper}>
+              {stages.map(stage => (
+                <KanbanColumn
+                  key={stage.id}
+                  stage={stage}
+                  records={recordsByStage.get(Number(stage.id)) || []}
+                  model={model}
+                  fields={cardFields}
+                  types={types}
+                  onCardClick={handleCardClick}
+                />
+              ))}
+            </div>
+          </ScrollArea>
+          <DragOverlay>
+            {activeRecord ? (
+              <Card
+                shadow="lg"
+                padding="sm"
+                radius="md"
+                withBorder
+                className={classes.dragOverlay}>
+                <Text fw={500}>
+                  {activeRecord.name || `#${activeRecord.id}`}
+                </Text>
+              </Card>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </>
     );
   }
 
   // Простой канбан (сетка карточек)
   return (
-    <div className={classes.simpleKanban}>
-      {records.map(record => (
-        <SimpleKanbanCard
-          key={record.id}
-          record={record}
-          model={model}
-          fields={fields}
-          onClick={() => handleCardClick(Number(record.id))}
-        />
-      ))}
-    </div>
+    <>
+      {controls}
+      <div className={classes.simpleKanban}>
+        {records.map(record => (
+          <SimpleKanbanCard
+            key={record.id}
+            record={record}
+            model={model}
+            fields={cardFields}
+            types={types}
+            onClick={() => handleCardClick(Number(record.id))}
+          />
+        ))}
+      </div>
+    </>
   );
 }

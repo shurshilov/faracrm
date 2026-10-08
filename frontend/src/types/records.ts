@@ -530,6 +530,8 @@ export interface SavedFilterRecord extends BaseRecord {
 
 export interface ColumnSettingRecord extends BaseRecord {
   model_name: string;
+  /** list — колонки списка, kanban — поля карточки канбана. */
+  view_type: 'list' | 'kanban';
   user_id: RelationRecord | null;
   /** JSON-массив имён колонок в порядке отображения. */
   columns: string;
@@ -538,6 +540,19 @@ export interface ColumnSettingRecord extends BaseRecord {
   /** JSON {поле: фильтр} для колонок-связей. */
   filters: string | null;
   created_at: string | null;
+}
+
+/** Общие настройки формы модели — одна запись на модель. */
+export interface FormSettingRecord extends BaseRecord {
+  model_name: string;
+  /** JSON-массив имён обязательных полей. */
+  required: string | null;
+  /** JSON-массив клеток зоны «Дополнительно»: {name, x, y, w, h}. */
+  extra_fields: string | null;
+  extra_placement: 'bottom' | 'side' | 'tab' | null;
+  extra_columns: number | null;
+  /** null — строк сколько понадобится. */
+  extra_rows: number | null;
 }
 
 export interface SystemSettingRecord extends BaseRecord {
@@ -613,6 +628,7 @@ export interface ModelRecordMap {
   cron_job: CronJobRecord;
   saved_filters: SavedFilterRecord;
   column_settings: ColumnSettingRecord;
+  form_settings: FormSettingRecord;
   system_settings: SystemSettingRecord;
   report_template: ReportTemplateRecord;
 }

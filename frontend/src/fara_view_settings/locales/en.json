@@ -6,6 +6,7 @@
   "fields": {
     "id": "ID",
     "model_name": "Model",
+    "view_type": "View",
     "columns": "Columns (JSON)",
     "widgets": "Relation column widgets (JSON)",
     "filters": "Relation column filters (JSON)",

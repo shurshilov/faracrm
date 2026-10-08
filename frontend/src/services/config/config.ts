@@ -54,9 +54,12 @@ export interface PublicConfig {
   version: string;
   demo_mode: boolean;
   branding: BrandingConfig;
-  /** Коды установленных приложений — нужны до входа (ссылка на регистрацию).
+  /** Коды активных приложений — нужны до входа (ссылка на регистрацию) и
+   *  интерфейсу (какие разделы и виджеты показывать, useInstalledApps).
    *  Полный каталог с описаниями — приватный GET /apps/catalog (fara_apps). */
   apps: string[];
+  /** Ключи групп меню (ui_menu_name) активных UI-приложений. */
+  app_keys: string[];
   /** Куда отправить гостя с корня сайта (маркетплейс → /market).
    *  null — форма входа, как раньше. */
   public_home?: string | null;
@@ -92,6 +95,7 @@ export function manifestUrl(version?: string | null): string {
 export const configApi = createApi({
   reducerPath: 'configApi',
   baseQuery,
+  tagTypes: ['PublicConfig'],
   endpoints: builder => ({
     getPublicConfig: builder.query<PublicConfig, void>({
       query: () => ({
@@ -99,6 +103,7 @@ export const configApi = createApi({
         url: '/public/config/',
         method: 'GET',
       }),
+      providesTags: ['PublicConfig'],
     }),
   }),
 });

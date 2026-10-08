@@ -680,28 +680,22 @@ class Session(DotModel):
     @classmethod
     async def publish_revoked(cls, session_ids: list[int]) -> None:
         """
-        Опубликовать событие revoke в pg_notify. Все воркеры инвалидируют
-        свой SessionCache. Переиспользуем pubsub из chat_manager.
-        Без-op если кэш выключен (no-op полезен чтобы код не падал).
+        Опубликовать событие revoke в шину (модуль bus). Все воркеры
+        инвалидируют свой SessionCache (подписка — SecurityApp.startup).
         """
         if not session_ids:
             return
-        try:
-            pubsub = env.apps.chat.chat_manager.pubsub
-        except Exception:
-            pubsub = None
-        if pubsub is None:
-            # Нет pubsub (тесты без chat-app) — инвалидируем локально
-            try:
-                for sid in session_ids:
-                    await env.apps.auth.session_cache.revoke(sid)
-            except Exception as e:
-                logger.warning("Failed to revoke session: %s", e)
-            return
-        await pubsub.publish(
+        if await env.apps.bus.publish(
             "session_revoked",
             {"session_ids": list(session_ids)},
-        )
+        ):
+            return
+        # Шины нет (тесты, один процесс) — инвалидируем локально.
+        try:
+            for sid in session_ids:
+                await env.apps.auth.session_cache.revoke(sid)
+        except Exception as e:
+            logger.warning("Failed to revoke session: %s", e)
 
     @staticmethod
     def _set_role_codes(session_obj: "Session", roles) -> None:
@@ -737,35 +731,29 @@ class Session(DotModel):
 
         Все воркеры сбрасывают сессии этих юзеров из SessionCache (НЕ
         revoke — без logout) → следующий запрос пересоберёт сессию со
-        свежими ролями. No-op при выключенном кэше / без pubsub.
+        свежими ролями. Без шины — только в этом процессе.
         """
         if not user_ids:
             return
-        try:
-            pubsub = env.apps.chat.chat_manager.pubsub
-        except Exception:
-            pubsub = None
-        if pubsub is None:
-            # Нет pubsub (тесты / single-process без chat) — локально.
-            try:
-                cache = env.apps.auth.session_cache
-                for uid in user_ids:
-                    await cache.invalidate_user(uid)
-            except Exception as e:
-                logger.warning("Failed to invalidate user sessions: %s", e)
-            return
-        await pubsub.publish(
+        if await env.apps.bus.publish(
             "session_roles_changed",
             {"user_ids": list(user_ids)},
-        )
+        ):
+            return
+        # Шины нет (тесты, один процесс) — локально.
+        try:
+            cache = env.apps.auth.session_cache
+            for uid in user_ids:
+                await cache.invalidate_user(uid)
+        except Exception as e:
+            logger.warning("Failed to invalidate user sessions: %s", e)
 
     @classmethod
     async def handle_pubsub_event(cls, event: dict) -> None:
         """
-        Потребитель шины для auth-событий. Вызывается из общего
-        диспетчера (chat/app.py) для type session_revoked /
-        session_roles_changed — так logout/revoke и смена ролей доходят
-        до ВСЕХ воркеров (раньше session_revoked не имел потребителя).
+        Потребитель шины для auth-событий session_revoked /
+        session_roles_changed (подписка — SecurityApp.startup): так
+        logout/revoke и смена ролей доходят до ВСЕХ воркеров.
         """
         etype = event.get("type")
         try:

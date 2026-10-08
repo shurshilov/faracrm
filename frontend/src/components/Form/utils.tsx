@@ -108,6 +108,16 @@ export const getChildrenRecursive = (
   return fieldsList;
 };
 
+/** Есть ли в разметке блок вкладок — для зоны «Дополнительно» вкладкой. */
+export const hasFormTabs = (children: React.ReactNode): boolean =>
+  Children.toArray(children).some(
+    child =>
+      isValidElement<Record<string, any>>(child) &&
+      isLayoutComponent(child) &&
+      ((child.type as any).displayName === 'FormTabs' ||
+        hasFormTabs(child.props.children)),
+  );
+
 export const getComponentsFromChildren = (
   children: React.ReactNode,
   fields: Record<string, GetFormField>,

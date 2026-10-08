@@ -24,7 +24,7 @@ export function ViewKanbanActivityType(props: ViewKanbanProps) {
     <Kanban
       model="activity_type"
       {...props}
-      fields={['id', 'name', 'icon', 'color', 'default_days']}
+      fields={['id', 'name', 'default_days']}
     />
   );
 }

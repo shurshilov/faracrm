@@ -2,7 +2,6 @@ from fastapi import FastAPI
 
 from backend.base.system.core.app import App
 from backend.base.system.core.enviroment import Environment
-from backend.base.crm.security.acl_post_init_mixin import ACLPerms
 
 
 class AdministrationApp(App):
@@ -21,27 +20,6 @@ class AdministrationApp(App):
         "post_init": True,
         # Публичный конфиг и брендинг — удалить из интерфейса нельзя.
         "core": True,
-    }
-
-    # BASE_USER_ACL = {
-    #     "system_settings": ACL.NO_ACCESS,
-    # }
-
-    # Для system_admin — read + update, но без create и delete.
-    # Идея: админ может сменить значение существующей настройки
-    # (например core.site_url), но не добавлять произвольные ключи
-    # и не удалять системные. Это держит каталог настроек стабильным
-    # и под контролем разработчиков, а админ делает только оперативные
-    # изменения значений.
-    ROLE_ACL = {
-        "system_admin": {
-            "system_settings": ACLPerms(
-                create=False,
-                read=True,
-                update=True,
-                delete=False,
-            ),
-        },
     }
 
     async def post_init(self, app: FastAPI):

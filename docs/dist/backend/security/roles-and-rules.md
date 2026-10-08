@@ -64,18 +64,14 @@ all_roles = await Role.get_all_roles([user_role_id])
 # Использует рекурсивный CTE — один запрос вместо N+1.
 ```
 
-## ACLPostInitMixin — декларативное задание прав
+## Декларативное задание прав модуля
 
-В `post_init` модуля права обычно описываются через миксин:
+Права своих моделей модуль объявляет атрибутами класса приложения — наследовать ничего не нужно. Строки `access_list` по атрибутам `BASE_USER_ACL` / `ROLE_ACL` создаёт хук security (`ACLHook` из `security/acl_post_init_mixin.py`, подключается в `security/app.py`): ядро даёт точку расширения — класс `AppHook` и список `App.hooks`, базовый `App.post_init` вызывает хуки там, где модуль зовёт `super().post_init()`; ядро о правах не знает.
 
 ```python title="backend/base/crm/leads/app.py"
-from backend.base.crm.security.acl_post_init_mixin import (
-    ACLPostInitMixin,
-    ACLPerms,
-    ACL,
-)
+from backend.base.crm.security.acl_post_init_mixin import ACLPerms, ACL
 
-class LeadsApp(ACLPostInitMixin, App):
+class LeadsApp(App):
     # Права для базовой роли base_user
     BASE_USER_ACL = {
         "lead": ACL.FULL,
@@ -93,9 +89,12 @@ class LeadsApp(ACLPostInitMixin, App):
     }
 
     async def post_init(self, app: FastAPI):
+        # Роли модуля — до super(): права ложатся в super().post_init()
+        await init_module_roles(...)
         await super().post_init(app)
-        await self._init_acl(app.state.env)
 ```
+
+Кто объявляет права: модуль — на **свои** модели для любых ролей или на **любые** модели для **своих** ролей. Права на модели ядра (`model`, `app`, `system_settings`) объявляет security. Строки реестров, по которым создаются права, заполнены раньше `post_init` security: `models` — ядро (`core/models/models.py`, `Model.seed` в `Environment.start_post_init`), `apps` — модуль `apps` (`apps/models/apps.py`, `App.seed` в его `post_init`, `sequence` 0).
 
 ### Готовые пресеты
 

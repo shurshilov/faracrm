@@ -18,20 +18,21 @@ from backend.base.system.dotorm_databases_postgres.settings import (
 )
 
 # from backend.base.crm.attachments.settings import AttachmentsSettings
-from backend.base.crm.chat.settings import ChatSettings, TurnSettings
+from backend.base.crm.chat.settings import TurnSettings
+from backend.base.system.bus.settings import BusSettings
 from backend.base.crm.auth_token.settings import AuthTokenSettings
 from backend.base.system.logger.settings import LoggerSettings
 
 #
-from backend.base.system.core.system_settings import SystemSettings
+from backend.base.system.core.models.system_settings import SystemSettings
 from backend.base.system.cron.models.cron_job import CronJob
 
 # from backend.base.system.mkdocs.app import MkdocsService
 from backend.base.crm.languages.models.language import Language
 from backend.base.crm.users.models.users import User
 from backend.base.crm.security.models.acls import AccessList
-from backend.base.crm.security.models.models import Model
-from backend.base.crm.security.models.apps import App as AppModel
+from backend.base.system.apps.models.apps import App as AppModel
+from backend.base.system.core.models.models import Model
 from backend.base.crm.security.models.roles import Role
 from backend.base.crm.security.models.rules import Rule
 from backend.base.crm.security.models.sessions import Session
@@ -57,6 +58,8 @@ from backend.base.system.saved_filters.models.saved_filter import SavedFilter
 from backend.base.system.view_settings.models.column_setting import (
     ColumnSetting,
 )
+from backend.base.system.studio.models.form_setting import FormSetting
+from backend.base.system.studio.models.studio_field import StudioField
 from backend.base.crm.sales.models.sale import Sale
 from backend.base.crm.sales.models.sale_line import SaleLine
 from backend.base.crm.partners.models.contact import Contact
@@ -130,6 +133,11 @@ from backend.base.crm.contract.models.contract import Contract
 from backend.base.crm.contract.models.company_ext import CompanyContractMixin
 from backend.base.crm.contract.models.requisites_ext import RequisitesMixin
 from backend.base.crm.contract.models.sale_ext import SaleContractMixin
+
+# @extend(App): флаг «установлено» у строки реестра приложений
+from backend.base.system.apps_install.models.app_ext import (  # noqa: F401
+    AppInstalled,
+)
 
 # @extend(Sale) / @extend(Contract): функции данных печатных форм и отчётов
 from backend.base.crm.sales_report_docx.models.sale_ext import (  # noqa: F401
@@ -259,8 +267,10 @@ from backend.base.system.cron.app import CronApp
 from backend.base.crm.languages.app import LanguageApp
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.administration.app import AdministrationApp
+from backend.base.system.apps.app import AppsApp
 from backend.base.system.saved_filters.app import SavedFiltersApp
 from backend.base.system.view_settings.app import ViewSettingsApp
+from backend.base.system.studio.app import StudioApp
 from backend.base.crm.users.app import UserApp
 from backend.base.crm.security.app import SecurityApp
 from backend.base.crm.attachments.app import AttachmentsApp
@@ -302,6 +312,8 @@ from backend.base.system.excel.app import ExcelApp
 
 # services
 from backend.base.system.logger.app import LoggerService
+from backend.base.system.bus.app import BusService
+from backend.base.system.apps_install.app import AppsInstallService
 from backend.base.system.swagger_offlain.app import SwaggerOfflainService
 from backend.base.system.docs_developer.app import DocsApp
 from backend.base.system.dotorm_databases_postgres.app import (
@@ -322,7 +334,8 @@ class Settings(SettingsCore):
     logger: LoggerSettings
     cron: CronSettings = CronSettings()
     dotorm_databases_postgres: dict[str, PostgresSettings]
-    chat: ChatSettings = ChatSettings()
+    # Шина событий между процессами: pg LISTEN/NOTIFY или Redis.
+    bus: BusSettings = BusSettings()
     auth: AuthTokenSettings = AuthTokenSettings()
     # STUN/TURN — общий на внутренние звонки и на звонилку к АТС.
     turn: TurnSettings = TurnSettings()
@@ -342,6 +355,8 @@ class Models(ModelsCore, ExtensibleMixin):
     user = User
     saved_filter = SavedFilter
     column_setting = ColumnSetting
+    form_setting = FormSetting
+    studio_field = StudioField
     language = Language
     company = Company
     partner = Partner
@@ -410,6 +425,8 @@ class Apps(AppsCore):
     "Соглашение имя атрибута должно совпадать с именем папки приложения"
 
     administration = AdministrationApp()
+    # Реестр приложений в БД (таблица apps).
+    apps = AppsApp()
     cron = CronApp()
     auth = AuthTokenApp()
     languages = LanguageApp()
@@ -417,6 +434,7 @@ class Apps(AppsCore):
     security = SecurityApp()
     saved_filters = SavedFiltersApp()
     view_settings = ViewSettingsApp()
+    studio = StudioApp()
     attachments = AttachmentsApp()
     attachments_google = AttachmentsGoogleApp()
     attachments_yandex = AttachmentsYandexApp()
@@ -457,6 +475,10 @@ class Apps(AppsCore):
     dotorm_crud_auto = DotormCrudAutoService()
     # alise
     db = DotormDatabasesPostgresService()
+    bus = BusService()
+    # Установка и удаление приложений на ходу. Без него активно всё, что
+    # перечислено здесь, а флага apps.installed нет.
+    apps_install = AppsInstallService()
     logger = LoggerService()
     swagger_offlain = SwaggerOfflainService()
     # mkdocs = MkdocsService()

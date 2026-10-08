@@ -47,7 +47,7 @@ async def init_module_roles(
         ])
     """
     from backend.base.crm.security.models.roles import Role
-    from backend.base.crm.security.models.apps import App as AppModel
+    from backend.base.system.apps.models.apps import App as AppModel
 
     # Получаем app_id
     app_record = await env.models.app.search_one(

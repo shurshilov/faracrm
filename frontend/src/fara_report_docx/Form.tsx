@@ -6,7 +6,7 @@ import { Form } from '@/components/Form/Form';
 import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
 import { FormSection, FormRow } from '@/components/Form/Layout';
-import { useInstalledApps } from '@/fara_apps/useInstalledApps';
+import { useInstalledApps } from '@/hooks/useInstalledApps';
 import {
   IconFileDescription,
   IconLayoutBoard,

@@ -21,11 +21,11 @@ pytestmark = pytest.mark.integration
 # Role Tests
 # ====================
 from backend.base.crm.security.models.roles import Role
-from backend.base.crm.security.models.models import Model
+from backend.base.system.core.models.models import Model
 from backend.base.crm.security.models.acls import AccessList
 from backend.base.crm.security.models.rules import Rule
 from backend.base.crm.security.models.sessions import Session
-from backend.base.crm.security.models.apps import App
+from backend.base.system.apps.models.apps import App
 from backend.base.crm.users.models.users import User
 
 

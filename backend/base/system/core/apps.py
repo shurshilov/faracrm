@@ -1,18 +1,18 @@
 import logging
-from typing import Iterable, Tuple
+from typing import Tuple
 
 from .app import App
-from .exceptions import environment
 from .service import Service
 
 log = logging.getLogger(__name__)
 
 
 class AppsCore:
-    """Реестр приложений: имена, порядок, граф зависимостей.
+    """Реестр приложений: имена, порядок, зависимости.
 
-    Чистые вычисления над `info` приложений, без БД. Состояние
-    «установлено» живёт в Environment.installed и в таблице apps.
+    Чистые вычисления над `info` приложений, без БД. Какие приложения
+    активны — Environment.installed; граф установки и удаления — модуль
+    apps_install (graph.py).
     """
 
     def get_names(self) -> list[str]:
@@ -37,7 +37,7 @@ class AppsCore:
         app = getattr(self, code, None)
         return None if app is None or callable(app) else app
 
-    # ── Граф зависимостей ────────────────────────────────────────────
+    # ── Зависимости ──────────────────────────────────────────────────
 
     def depends_of(self, code: str) -> list[str]:
         """Объявленные зависимости — только известные коды. Опечатка в
@@ -51,71 +51,3 @@ class AppsCore:
                 continue
             result.append(dep)
         return result
-
-    def is_core(self, code: str) -> bool:
-        """Нельзя удалить: сервис (инфраструктура) или core в info."""
-        app = self.get(code)
-        return bool(app and (app.info.get("service") or app.info.get("core")))
-
-    def _ensure_known(self, code: str) -> None:
-        if self.get(code) is None:
-            raise environment.FaraException(
-                {
-                    "content": "#APP_NOT_FOUND",
-                    "detail": code,
-                    "status_code": 404,
-                }
-            )
-
-    def install_order(
-        self, targets: Iterable[str], installed: Iterable[str]
-    ) -> list[str]:
-        """Что установить ради targets: сами приложения и ещё не
-        установленные зависимости, зависимости — раньше зависимых."""
-        installed = set(installed)
-        order: list[str] = []
-
-        def visit(code: str, stack: tuple[str, ...]) -> None:
-            if code in installed or code in order:
-                return
-            if code in stack:
-                raise ValueError(f"Cycle in app depends: {stack + (code,)}")
-            for dep in self.depends_of(code):
-                visit(dep, stack + (code,))
-            order.append(code)
-
-        for code in targets:
-            self._ensure_known(code)
-            visit(code, ())
-        return order
-
-    def uninstall_order(
-        self, targets: Iterable[str], installed: Iterable[str]
-    ) -> list[str]:
-        """Что удалить вместе с targets: все установленные зависимые
-        (транзитивно), зависимые — первыми. Core в списке — #APP_IS_CORE."""
-        installed = set(installed)
-        order: list[str] = []
-
-        def visit(code: str) -> None:
-            if code in order or code not in installed:
-                return
-            for dependent in sorted(installed):
-                if code in self.depends_of(dependent):
-                    visit(dependent)
-            order.append(code)
-
-        for code in targets:
-            self._ensure_known(code)
-            visit(code)
-
-        core = [c for c in order if self.is_core(c)]
-        if core:
-            raise environment.FaraException(
-                {
-                    "content": "#APP_IS_CORE",
-                    "detail": ", ".join(core),
-                    "status_code": 400,
-                }
-            )
-        return order

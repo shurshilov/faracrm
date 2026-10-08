@@ -41,8 +41,11 @@
 | `env.models` | `Models` | Все зарегистрированные DotModel-классы |
 | `env.apps` | `Apps` | Инициализированные сервисы |
 | `env.settings` | `Settings` | Конфигурация из `.env` |
-| `env.services_before` | `list[Service]` | Сервисы, запущенные до роутеров |
-| `env.services_after` | `list[Service]` | Сервисы, запущенные после роутеров |
+| `env.services_before` | `list[str]` | Коды сервисов, запускаемых до роутеров |
+| `env.services_after` | `list[str]` | Коды сервисов, запускаемых после роутеров |
+| `env.running` | `set[str]` | Коды сервисов, запущенных в этом процессе (отключаемый — только пока установлен) |
+| `env.installed` | `set[str]` | Коды активных приложений: по умолчанию всё из `project_setup`, модуль `apps_install` сужает по флагам в БД; проверка — `env.is_installed(code)` |
+| `env._routes` | `dict[str, list]` | Роуты, смонтированные в процессе, по кодам приложений (`_mount` / `_unmount`) |
 
 ## Models
 

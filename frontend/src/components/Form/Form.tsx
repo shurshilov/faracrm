@@ -28,33 +28,8 @@ import { useOnchange } from './hooks/useOnchange';
 import { getExtensionFields, ExtensionsContext } from '@/shared/extensions';
 import { useModelExtensions } from '@/shared/extensions/useModelExtensions';
 import { FormPanelSide, PanelType } from './Panels';
-
-/**
- * Генерирует функции валидации для обязательных полей
- */
-const buildValidation = (fields: Record<string, GetFormField>) => {
-  const validate: Record<string, (value: any) => string | null> = {};
-
-  for (const [fieldName, fieldInfo] of Object.entries(fields)) {
-    if (fieldInfo.required) {
-      validate[fieldName] = (value: any) => {
-        // Проверяем на пустое значение
-        if (value === null || value === undefined || value === '') {
-          return 'Обязательное поле';
-        }
-        // Для Many2one проверяем что есть id
-        if (fieldInfo.type === 'Many2one' && typeof value === 'object') {
-          if (!value.id) {
-            return 'Обязательное поле';
-          }
-        }
-        return null;
-      };
-    }
-  }
-
-  return validate;
-};
+import { FormWrap } from './FormWrap';
+import { useFormFieldProviders, withRequired } from './formFieldProviders';
 
 export const Form = <RecordType extends FaraRecord>({
   model,
@@ -113,7 +88,7 @@ export const Form = <RecordType extends FaraRecord>({
   const extensionsLoaded = useModelExtensions(model);
 
   // Собираем список полей из children + из расширений
-  const fieldsList = useMemo(() => {
+  const { childrenFields, layoutFields } = useMemo(() => {
     let childrenFields = getChildrenRecursive(children);
     // в режиме создания из другой формы
     // удаляем relatedFieldO2M поле
@@ -130,8 +105,23 @@ export const Form = <RecordType extends FaraRecord>({
         }
       }
     }
-    return childrenFields;
+
+    const layoutFields = childrenFields.map(item =>
+      typeof item === 'string' ? item : Object.keys(item)[0],
+    );
+    return { childrenFields, layoutFields };
   }, [children, model, extensionsLoaded]);
+
+  // Поля от модулей ('provide:FormFields', напр. зона студии): форма их
+  // запрашивает, рисует их сам модуль обёрткой разметки ('wrap:Form').
+  const provided = useFormFieldProviders(model, layoutFields, extensionsLoaded);
+  const fieldsList = useMemo(
+    () => [
+      ...childrenFields,
+      ...provided.fields.filter(name => !layoutFields.includes(name)),
+    ],
+    [childrenFields, layoutFields, provided.fields],
+  );
 
   const params = {
     model,
@@ -145,7 +135,7 @@ export const Form = <RecordType extends FaraRecord>({
     {
       ...params,
     },
-    { skip: isCreateForm || !extensionsLoaded },
+    { skip: isCreateForm || !extensionsLoaded || !provided.ready },
   ) as TypedUseQueryHookResult<ReadResult<RecordType>, ReadParams, BaseQueryFn>;
 
   const { data: dataDefault } = useReadDefaultValuesQuery(
@@ -153,7 +143,7 @@ export const Form = <RecordType extends FaraRecord>({
       ...params,
       fields: fieldsList,
     } as ReadParams,
-    { skip: !isCreateForm || !extensionsLoaded },
+    { skip: !isCreateForm || !extensionsLoaded || !provided.ready },
   ) as TypedUseQueryHookResult<
     ReadDefaultValuesResult<RecordType>,
     ReadDefaultValuesParams,
@@ -210,7 +200,9 @@ export const Form = <RecordType extends FaraRecord>({
       formData = dataDefault;
     }
     if (formData) {
-      setFieldsServer(formData.fields);
+      // required от поставщиков полей — дальше работают штатные
+      // звёздочка и проверка в кнопках «Создать»/«Сохранить»
+      setFieldsServer(withRequired(formData.fields, provided.required));
       form.reset();
       form.initialize(formData.data);
       form.setValues(formData.data);
@@ -227,15 +219,6 @@ export const Form = <RecordType extends FaraRecord>({
 
       form.resetDirty(formData.data);
       // form.resetDirty(form.getValues());
-
-      // Устанавливаем валидацию для обязательных полей
-      const validation = buildValidation(formData.fields);
-      if (Object.keys(validation).length > 0) {
-        // @ts-ignore - setFieldValidation не типизирован в Mantine
-        for (const [fieldName, validateFn] of Object.entries(validation)) {
-          form.setFieldError(fieldName, null); // Очищаем ошибки
-        }
-      }
 
       const components = getComponentsFromChildren(
         children,
@@ -277,6 +260,7 @@ export const Form = <RecordType extends FaraRecord>({
         labelWidth={labelWidth}>
         <FormProvider form={form}>
           <ExtensionsContext.Provider value={model}>
+            {provided.providers}
             <Box
               style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
               {/* Main form area */}
@@ -297,7 +281,11 @@ export const Form = <RecordType extends FaraRecord>({
                   onTogglePanel={showPanels ? handleTogglePanel : undefined}
                 />
                 {!!Object.keys(fieldsServer).length && !!childrenNew.length && (
-                  <form>{childrenNew}</form>
+                  <form>
+                    <FormWrap layoutFields={layoutFields}>
+                      {childrenNew}
+                    </FormWrap>
+                  </form>
                 )}
               </Box>
 

@@ -19,6 +19,7 @@ export function ViewListColumnSettings() {
     <List<ColumnSettingRecord> model="column_settings" order="desc" sort="id">
       <Field name="id" label={t('fields.id')} />
       <Field name="model_name" label={t('fields.model_name')} />
+      <Field name="view_type" label={t('fields.view_type')} />
       <Field name="columns" label={t('fields.columns')} />
       <Field name="widgets" label={t('fields.widgets')} />
       <Field name="filters" label={t('fields.filters')} />

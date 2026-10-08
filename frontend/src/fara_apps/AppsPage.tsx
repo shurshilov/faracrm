@@ -19,7 +19,7 @@ import {
 } from '@mantine/core';
 import { IconPuzzle, IconSearch } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
-import { useSelector } from 'react-redux';
+import { useIsSystemAdmin } from '@/hooks/useIsSystemAdmin';
 import { useTranslation } from 'react-i18next';
 import { MenuGroups } from '@/config/menuGroups';
 import {
@@ -31,19 +31,6 @@ import {
 import classes from './AppsPage.module.css';
 
 type Scope = 'all' | 'installed' | 'available';
-
-/** Ставить и удалять может суперпользователь или роль system_admin —
- *  то же правило, что на бэке (/apps/{code}/install). */
-function useCanManageApps(): boolean {
-  const session = useSelector((state: any) => state.auth.session);
-  const user = session?.user_id;
-  return (
-    !!user?.is_admin ||
-    (user?.role_ids ?? []).some(
-      (role: { code: string }) => role.code === 'system_admin',
-    )
-  );
-}
 
 // Иконка UI-приложения — иконка его группы меню, та же, что в лаунчере.
 function appIcon(app: CatalogApp) {
@@ -137,7 +124,9 @@ function AppCard({ app, canManage, busy, onInstall, onUninstall }: AppCardProps)
  */
 export default function AppsPage() {
   const { t } = useTranslation('apps');
-  const canManage = useCanManageApps();
+  // Ставить и удалять может администратор настроек — то же правило, что
+  // на бэке (/apps/{code}/install).
+  const canManage = useIsSystemAdmin();
   const [scope, setScope] = useState<Scope>('all');
   const [query, setQuery] = useState('');
   const [toRemove, setToRemove] = useState<CatalogApp | null>(null);

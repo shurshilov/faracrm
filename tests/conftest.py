@@ -222,11 +222,14 @@ async def _run_post_init_once():
 
     fake_app = SimpleNamespace(state=SimpleNamespace(env=env))
 
-    # Один проход, как в Environment.start_post_init: security идёт первым
-    # (sequence=1) и создаёт реестр моделей, base_user и system_admin, а
-    # модули создают свои роли ДО ACL (init_module_roles перед
+    # Как в Environment.start_post_init: сначала реестр models (Model.seed
+    # — его заполняет ядро), затем один проход post_init: apps (sequence=0)
+    # заполняет реестр apps, security (sequence=1) создаёт base_user и
+    # system_admin,
+    # а модули создают свои роли ДО ACL (init_module_roles перед
     # super().post_init). Раньше проходов было два: второй дописывал ACL
     # ролей, которые модуль создавал уже после попытки выдать им права.
+    await env.models.model.seed(env.models)
     for app_obj in _apps_instance.get_list():
         if app_obj.info.get("post_init"):
             try:
@@ -389,7 +392,9 @@ async def clean_all_tables(db_pool):
             pass
 
         try:
-            from backend.base.system.core.system_settings import SystemSettings
+            from backend.base.system.core.models.system_settings import (
+                SystemSettings,
+            )
 
             if hasattr(SystemSettings, "_cache"):
                 SystemSettings._cache.clear()

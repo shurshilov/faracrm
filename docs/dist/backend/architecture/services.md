@@ -25,40 +25,32 @@ class Service(App):
 
 ## Создание сервиса
 
-```python title="backend/base/crm/chat/app.py"
-class ChatApp(Service):
+```python title="backend/base/system/bus/app.py (сокращённо)"
+class BusService(Service):
     info = {
-        "name": "Chat",
-        "depends": ["security", "dotorm_databases_postgres"],  # (1)!
+        "name": "Bus",
+        "service": True,
+        "service_start_before": True,
+        "sequence": 3,  # (1)!
     }
 
     async def startup(self, app: FastAPI):
-        """Запуск PubSub для real-time уведомлений."""
-        await super().startup(app)
-
+        """LISTEN на канале шины."""
         env: Environment = app.state.env
-        settings = PubSubSettings()
-
-        backend = create_pubsub_backend(settings)
-        await backend.setup(pool=env.apps.db.fara)
-
-        chat_manager.set_pubsub(backend)
-        await backend.start_listening(chat_manager.handle_pubsub_event)
+        backend = create_pubsub_backend(env.settings.bus.backend)
+        await backend.setup(pool=env.apps.db.get_pool())
+        await backend.start_listening(self._dispatch)
+        self._backend = backend
 
     async def shutdown(self, app: FastAPI):
-        """Остановка PubSub, освобождение LISTEN-соединения."""
-        if chat_manager.pubsub:
-            await chat_manager.pubsub.stop()    # (2)!
-            chat_manager.set_pubsub(None)
-
-    async def post_init(self, app: FastAPI):
-        """Создание системных чатов при первом запуске."""
-        await super().post_init(app)
-        # ...создание данных по умолчанию
+        """Остановка LISTEN, освобождение соединения."""
+        if self._backend is not None:
+            await self._backend.stop()    # (2)!
+            self._backend = None
 ```
 
-1.  Зависимости определяют порядок запуска. Chat зависит от security и DB — они будут запущены раньше.
-2.  :warning: Всегда освобождайте ресурсы в `shutdown()`. PubSub listener держит соединение из пула — без cleanup пул утечёт.
+1.  Порядок запуска — `sequence` внутри `services_before` / `services_after`. Шине нужен пул базы (`db`, sequence 2) — она стартует сразу после.
+2.  :warning: Всегда освобождайте ресурсы в `shutdown()`. LISTEN держит соединение из пула — без cleanup пул утечёт.
 
 ## Регистрация
 
@@ -89,6 +81,16 @@ class Apps(AppsCore):
 !!! tip "services_before vs services_after"
     - **`services_before`** — запускаются **до** загрузки роутеров. Используй для инфраструктуры: DB, логгер, auth.
     - **`services_after`** — запускаются **после** загрузки роутеров. Используй для логики, которая зависит от роутеров (CRUD auto, WebSocket).
+
+## Отключаемый сервис
+
+По умолчанию сервис — core: стартует всегда, удалить его нельзя. С `"core": False` в `info` он отключаемый — это смысл, который задаёт модуль `apps_install` (без него активно всё из `project_setup`): стартует, только если установлен (страница `/apps`), установка на ходу зовёт `startup`, удаление — `shutdown` (`AppsInstallService.sync_services`), остальные воркеры делают то же по событию `apps_changed`. Сервис, который меняет модели (студия вешает на них поля), сам пересобирает схемы и роуты авто-CRUD — `env.apps.dotorm_crud_auto.rebuild(app, env)`, если автокруд запущен (`"dotorm_crud_auto" in env.running`). Так пересборка случается только при установке и удалении на ходу: на старте процесса автокруд (sequence 10) стартует позже, при остановке — останавливается раньше. `shutdown` вызывается и при остановке процесса, поэтому он должен быть быстрым.
+
+Флаги установки `apps_install` читает на своём старте (среди `services_before`, сразу после базы и шины), так что отключаемый сервис — в `services_after` (без `service_start_before`). Пример — студия: `"core": False, "auto_install": False, "sequence": 5` (до автокруда), в `shutdown` снимает свои поля с моделей.
+
+## Шина событий между процессами
+
+Воркеры и крон обмениваются событиями через системный сервис `bus` (`backend/base/system/bus`, бэкенд `bus__backend=pg|redis`). Модули друг о друге не знают: каждый подписывается на свои типы событий в своём `startup` — `env.apps.bus.subscribe(type, handler)` (`unsubscribe(type)` в `shutdown`, если сервис отключаемый) — и публикует `await env.apps.bus.publish(type, data)`. Событие получают все процессы, включая отправителя; внутри транзакции pg-бэкенд шлёт его на COMMIT. `publish` вернёт `False`, если шина не поднялась, — тогда вызывающий обрабатывает событие на месте (как сессии). Подписчики сейчас: chat (свои `PubSubCommand`), security (`session_revoked`, `session_roles_changed`), apps_install (`apps_changed`), студия (`studio_changed`).
 
 ## Handler Errors
 

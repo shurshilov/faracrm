@@ -102,6 +102,10 @@ import ruMarketplace from './fara_marketplace/locales/ru.json';
 import enDocs from './components/Docs/locales/en.json';
 import ruDocs from './components/Docs/locales/ru.json';
 
+// fara_studio — режим студии: поля модели из интерфейса
+import enStudio from './fara_studio/locales/en.json';
+import ruStudio from './fara_studio/locales/ru.json';
+
 // fara_excel — экспорт/импорт списков через Excel
 import enExcel from './fara_excel/locales/en.json';
 import ruExcel from './fara_excel/locales/ru.json';
@@ -136,6 +140,7 @@ const resources = {
     marketplace: enMarketplace,
     docs: enDocs,
     excel: enExcel,
+    studio: enStudio,
   },
   ru: {
     common: ruCommon,
@@ -163,6 +168,7 @@ const resources = {
     marketplace: ruMarketplace,
     docs: ruDocs,
     excel: ruExcel,
+    studio: ruStudio,
   },
 };
 
@@ -198,6 +204,7 @@ i18n
       'marketplace',
       'docs',
       'excel',
+      'studio',
     ],
 
     interpolation: {

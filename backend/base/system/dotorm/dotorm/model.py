@@ -250,6 +250,18 @@ class DotModel(
         cls.rebuild_field_caches()
 
     @classmethod
+    def remove_fields(cls, names: list[str]) -> None:
+        """Убрать поля, добавленные add_fields (пара к нему): атрибут,
+        аннотация и те же кэши/билдер."""
+        annotations = dict(getattr(cls, "__annotations__", {}))
+        for name in names:
+            if name in cls.__dict__:
+                delattr(cls, name)
+            annotations.pop(name, None)
+        cls.__annotations__ = annotations
+        cls.rebuild_field_caches()
+
+    @classmethod
     def rebuild_field_caches(cls) -> None:
         """Пересобрать кэши полей, compute-кэш и билдер по текущим полям
         класса (порядок важен: compute-кэш читает _cache_all_fields)."""
@@ -945,7 +957,10 @@ class DotModel(
 
     @classmethod
     def get_fields_info_list(cls, fields_list: list[str]):
-        """Get field info for list view."""
+        """Get field info for list view.
+
+        string — подпись поля (Field.string) для UI там, где у поля нет
+        своей метки: колонки и поля вне разметки формы."""
         fields_info = []
         for name, field in cls.get_fields().items():
             if name in fields_list:
@@ -961,6 +976,7 @@ class DotModel(
                                 else ""
                             ),
                             "required": required,
+                            "string": field.string,
                         }
                     )
                 else:
@@ -970,6 +986,7 @@ class DotModel(
                             "type": field.__class__.__name__,
                             "options": field.options or [],
                             "required": required,
+                            "string": field.string,
                         }
                     )
         return fields_info
@@ -993,6 +1010,7 @@ class DotModel(
                             ),
                             "relatedField": (field.relation_table_field or ""),
                             "required": required,
+                            "string": field.string,
                         }
                     )
                 else:
@@ -1002,6 +1020,7 @@ class DotModel(
                             "type": field.__class__.__name__,
                             "options": field.options or [],
                             "required": required,
+                            "string": field.string,
                         }
                     )
         return fields_info

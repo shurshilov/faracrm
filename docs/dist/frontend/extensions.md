@@ -35,6 +35,10 @@ frontend/src/business/
 | `before:FormTab:<name>`, `after:FormTab:<name>` | В начале и в конце контента вкладки `<name>` |
 | `replace:FormTab:<name>` | Вместо контента вкладки, последний зарегистрированный выигрывает |
 | `before:KanbanCard`, `after:KanbanCard`, `replace:KanbanCard` | Карточка канбана, компонент получает `{ record, model }` |
+| `provide:FormFields` | Поставщик полей формы: компонент без разметки, рендерится до загрузки записи, получает `{ model, layoutFields, onReport }` и сообщает `onReport({ ready, fields, required })` — какие поля добавить в запрос записи (их нет в разметке) и какие сделать обязательными. Форма грузит запись, когда все поставщики `ready` (`components/Form/formFieldProviders.tsx`) |
+| `wrap:Form` | Обёртка разметки формы (внутри `<form>`): компонент получает `{ children, layoutFields }`, обязан отрисовать `children` и может поставить своё вокруг — под разметкой, сбоку или вкладкой через `FormTabsExtraContext` из `Form/Layout/FormTabs` (вкладки, добавленные на ходу, встают последними). Смонтирована, пока открыта форма, даже когда добавленное стоит во вкладке (неактивную вкладку Mantine прячет через `Activity`). Первая зарегистрированная — внешняя |
+
+Модель `'*'` — расширение для всех моделей сразу. Так студия добавляет каждой форме зону «Дополнительно»: `registerExtension('*', StudioFormFields, 'provide:FormFields')` — поля зоны в запрос, `registerExtension('*', StudioFormShell, 'wrap:Form')` — сама зона вокруг разметки. Иконка в шапке приложения — `registerHeaderAction(key, Component)` из `shared/extensions/headerActions`: компонент сам решает, показываться ли. Панель справа на всю высоту под шапкой — `<LayoutAside width={…}>` из `shared/extensions/layoutAside`: пока он смонтирован, основная область сужается на ширину панели, а дети рендерятся в неё порталом (контексты React сохраняются); так открывается панель студии.
 
 Новая вкладка — `registerFormTab(model, { name, label, icon, component }, fields)`, она встаёт после вкладок из разметки формы. Имена вкладок формы — в `<FormTab name="...">` её `Form.tsx` (`fara_partners/Form.tsx` и т.д.).
 

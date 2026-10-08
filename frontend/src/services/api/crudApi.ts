@@ -38,6 +38,7 @@ export const crudApi = createApi({
     'Fields',
     'SavedFilters',
     'ColumnSettings',
+    'FormSettings',
     'Chat',
     'ChatMessage',
   ] as string[],
@@ -424,6 +425,8 @@ export interface FieldInfoResponse {
   relation?: string;
   options?: SelectionOption[];
   required?: boolean;
+  /** Подпись поля из модели (Field.string); у многих полей пустая. */
+  string?: string;
 }
 
 export const {

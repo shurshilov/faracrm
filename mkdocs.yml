@@ -129,6 +129,7 @@ plugins:
             "Планировщик задач (Cron)": "Cron — task scheduler"
             "Активности (Activity)": "Activity — tasks and deadlines"
             "Отчёты DOCX и рассылка": "DOCX reports and scheduled sending"
+            Студия: Studio
             Тестирование: Testing
             Юнит-тесты: "Unit tests"
             Интеграционные тесты: "Integration tests"
@@ -138,6 +139,7 @@ plugins:
             Фронтенд: Frontend
             Управление состоянием: "State management"
             Расширения без правки ядра: "Extensions without core changes"
+            Настройки видов без кода: "View settings without code"
             Модули: Modules
             Сервисы: Services
             "CRUD API сервис": "CRUD API service"
@@ -181,6 +183,7 @@ nav:
           - Планировщик задач (Cron): backend/system/cron.md
           - Активности (Activity): backend/system/activity.md
       - Отчёты DOCX и рассылка: backend/modules/report-docx.md
+      - Студия: backend/modules/studio.md
       - Тестирование:
           - backend/testing/index.md
           - Юнит-тесты: backend/testing/unit.md
@@ -195,6 +198,7 @@ nav:
           - Обзор: frontend/architecture/overview.md
           - Управление состоянием: frontend/architecture/state.md
       - Расширения без правки ядра: frontend/extensions.md
+      - Настройки видов без кода: frontend/view-settings.md
       - Модули:
           - Модуль чата: frontend/modules/chat.md
       - Сервисы:

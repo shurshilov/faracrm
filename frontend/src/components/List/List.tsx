@@ -37,7 +37,7 @@ import {
   saveViewState,
   useIsReturningToView,
 } from '@/components/ViewWrapper/viewStateStore';
-import { useInstalledApps } from '@/fara_apps/useInstalledApps';
+import { useInstalledApps } from '@/hooks/useInstalledApps';
 import { ExportModal, ImportModal } from '@/fara_excel';
 import listClasses from './List.module.css';
 

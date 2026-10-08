@@ -1,5 +1,5 @@
 # Copyright 2025 FARA CRM
-# Chat module - Redis Pub/Sub backend
+# Bus - Redis Pub/Sub backend
 """
 Redis Pub/Sub реализация PubSubBackend.
 
@@ -20,8 +20,8 @@ Redis Pub/Sub реализация PubSubBackend.
   pip install redis[hiredis]
 
 Настройки (.env):
-  PUBSUB__BACKEND=redis
-  PUBSUB__REDIS_URL=redis://localhost:6379/0
+  bus__backend=redis
+  bus__redis_url=redis://localhost:6379/0
 """
 
 import asyncio

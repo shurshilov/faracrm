@@ -1,13 +1,15 @@
 /**
- * useColumnConfig — per-user, per-model выбор колонок списка.
+ * useColumnConfig — per-user, per-model выбор полей вида: колонок списка
+ * (view = 'list') или полей карточки канбана (view = 'kanban').
  *
  * Источник истины для рендера — `selected` (итоговый порядок видимых
- * колонок). По умолчанию это колонки вью (`defaultVisible`, из <Field>).
- * Если пользователь настроил колонки — берём его сохранённый набор с
- * сервера (модель column_settings). Там же — настройки колонок-связей:
- * виджет (`widgets`) и фильтр на связанные записи (`filters`).
+ * полей). По умолчанию это поля вью (`defaultVisible`, из <Field> или
+ * пропа fields). Если пользователь настроил их — берём его сохранённый
+ * набор с сервера (модель column_settings). Там же — настройки
+ * колонок-связей: виджет (`widgets`) и фильтр на связанные записи
+ * (`filters`); их читает только список.
  *
- * Живые правки применяются мгновенно (`setDraft` → таблица перестраивается),
+ * Живые правки применяются мгновенно (`setDraft` → вид перестраивается),
  * а на сервер пишутся один раз при закрытии меню (`persistIfDirty`) —
  * так нет гонок create-дубликатов и лишних запросов на каждый чек-бокс.
  */
@@ -18,6 +20,7 @@ import {
   useCreateColumnSettingsMutation,
   useUpdateColumnSettingsMutation,
   useDeleteColumnSettingsMutation,
+  ColumnSettingsView,
   RelationColumnWidget,
   RelationColumnWidgets,
   RelationColumnFilters,
@@ -77,8 +80,13 @@ function compact<T>(map: Record<string, T | null>): Record<string, T> {
 export function useColumnConfig(
   model: string,
   defaultVisible: string[],
+  view: ColumnSettingsView = 'list',
 ): ColumnConfig {
-  const { data: row, isLoading } = useGetColumnSettingsQuery(model);
+  const key = useMemo(
+    () => ({ model_name: model, view_type: view }),
+    [model, view],
+  );
+  const { data: row, isLoading } = useGetColumnSettingsQuery(key);
   const [createSettings] = useCreateColumnSettingsMutation();
   const [updateSettings] = useUpdateColumnSettingsMutation();
   const [deleteSettings] = useDeleteColumnSettingsMutation();
@@ -161,7 +169,7 @@ export function useColumnConfig(
       if (rowId) {
         const id = rowId;
         setLocalRowId(undefined);
-        await deleteSettings({ id, model_name: model });
+        await deleteSettings({ id, ...key });
       }
       return;
     }
@@ -172,9 +180,9 @@ export function useColumnConfig(
       filters: relationEmpty ? null : JSON.stringify(nextFilters),
     };
     if (rowId) {
-      await updateSettings({ id: rowId, model_name: model, ...payload });
+      await updateSettings({ id: rowId, ...key, ...payload });
     } else {
-      const res = await createSettings({ model_name: model, ...payload })
+      const res = await createSettings({ ...key, ...payload })
         .unwrap()
         .catch(() => null);
       if (res?.id) setLocalRowId(res.id);
@@ -188,7 +196,7 @@ export function useColumnConfig(
     serverFilters,
     defaultVisible,
     rowId,
-    model,
+    key,
     createSettings,
     updateSettings,
     deleteSettings,
@@ -201,8 +209,8 @@ export function useColumnConfig(
     setDraftFilters({});
     const id = rowId;
     setLocalRowId(undefined);
-    if (id) await deleteSettings({ id, model_name: model });
-  }, [defaultVisible, rowId, model, deleteSettings]);
+    if (id) await deleteSettings({ id, ...key });
+  }, [defaultVisible, rowId, key, deleteSettings]);
 
   return {
     selected,

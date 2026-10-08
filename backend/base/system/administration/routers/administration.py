@@ -84,12 +84,25 @@ class PublicConfig(BaseModel):
     version: str
     demo_mode: bool
     branding: BrandingConfig
-    # Коды установленных приложений: странице входа нужно знать, есть ли
-    # регистрация, ещё до сессии. Полный каталог — приватный /apps/catalog.
+    # Коды активных приложений (без apps_install — всё из project_setup):
+    # странице входа нужно знать, есть ли регистрация, ещё до сессии, а
+    # интерфейсу — какие разделы и виджеты показывать. Полный каталог с
+    # описаниями — приватный /apps/catalog модуля apps_install.
     apps: list[str] = []
+    # Ключи групп меню (ui_menu_name) активных UI-приложений.
+    app_keys: list[str] = []
     # Куда отправить гостя с корня сайта: public_home первого установленного
     # модуля, который её объявил (маркетплейс → /market). Нет — форма входа.
     public_home: str | None = None
+
+
+def _app_keys() -> list[str]:
+    keys = set()
+    for code in env.installed:
+        info = env.apps.get(code).info or {}
+        if info.get("ui_menu") and info.get("ui_menu_name"):
+            keys.add(info["ui_menu_name"])
+    return sorted(keys)
 
 
 def _public_home() -> str | None:
@@ -290,6 +303,7 @@ async def public_config():
         demo_mode=bool(demo),
         branding=branding,
         apps=sorted(env.installed),
+        app_keys=_app_keys(),
         public_home=_public_home(),
     )
 

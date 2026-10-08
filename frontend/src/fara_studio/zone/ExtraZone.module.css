@@ -1,0 +1,69 @@
+/* Сетка зоны «Дополнительно»: поле с колонки --x и строки --y на
+   --w × --h клеток (ExtraGrid, zoneGrid.ts). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--extra-columns), minmax(0, 1fr));
+  gap: var(--mantine-spacing-md);
+}
+
+.cell {
+  grid-column: var(--x) / span var(--w);
+  grid-row: var(--y) / span var(--h);
+  min-width: 0;
+}
+
+/* Узкий экран — одна колонка в порядке строк, как FormRow до sm. */
+@media (max-width: 767px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cell {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}
+
+/* Размещение «сбоку»: колонка справа от разметки. Ширину смотрим у самой
+   формы (container query): её сужает и панель активностей — тогда зона
+   уходит под разметку. */
+.sideContainer {
+  container-type: inline-size;
+}
+
+.sideLayout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mantine-spacing-md);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.side {
+  width: 340px;
+  flex-shrink: 0;
+}
+
+.sideCollapsed {
+  flex-shrink: 0;
+}
+
+.sideHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-xs);
+}
+
+@container (max-width: 900px) {
+  .sideLayout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .side {
+    width: auto;
+  }
+}

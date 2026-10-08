@@ -16,6 +16,8 @@ class GetListField(BaseModel):
     relation: str | None = None
     options: list | None = None  # Добавлено для совместимости
     required: bool = False
+    # Подпись поля (Field.string) — для полей без метки в разметке
+    string: str | None = None
 
 
 class GetFormField(BaseModel):
@@ -28,6 +30,8 @@ class GetFormField(BaseModel):
     options: list | None = None
     relation: str | None = None  # Добавлено для совместимости с вложенными
     required: bool = False
+    # Подпись поля (Field.string) — для полей без метки в разметке
+    string: str | None = None
 
 
 class SchemaSearchOutput[Model](BaseModel):

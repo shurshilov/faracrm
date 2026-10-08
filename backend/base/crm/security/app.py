@@ -9,14 +9,20 @@ from backend.base.system.core.service import Service
 from backend.base.system.dotorm.dotorm.access import (
     set_access_checker,
 )
-from backend.base.crm.security.acl_post_init_mixin import ACL, ACLPerms
-from .models.models import Model
-from .models.apps import App as AppModel
+from backend.base.crm.security.acl_post_init_mixin import (
+    ACL,
+    ACLHook,
+    ACLPerms,
+)
 from .models.roles import Role
 from .models.workspace import Workspace
 from .access_control import SecurityAccessChecker
 
 log = logging.getLogger(__name__)
+
+# Права модулей: строки access_list по BASE_USER_ACL / ROLE_ACL создаёт
+# хук в post_init каждого приложения.
+App.hooks.append(ACLHook())
 
 
 class SecurityApp(Service):
@@ -34,8 +40,8 @@ class SecurityApp(Service):
         "version": "1.0.0.0",
         "license": "FARA CRM License v1.0",
         "post_init": True,
-        "sequence": 1,  # Выполняется первым - создаёт роли и модели
-        "depends": [],
+        "sequence": 1,  # Сразу после apps (0) - создаёт роли
+        "depends": ["apps"],
         "service": True,
     }
 
@@ -63,6 +69,14 @@ class SecurityApp(Service):
             "rule": ACL.FULL,
             # Управление «Рабочими местами» — часть настроек доступа.
             "workspace": ACL.FULL,
+            # Модель ядра — права на неё объявляет security. Read + update,
+            # без create и delete: админ меняет значение существующей
+            # настройки (например core.site_url), но не добавляет
+            # произвольные ключи и не удаляет системные — каталог настроек
+            # остаётся под контролем разработчиков.
+            "system_settings": ACLPerms(
+                create=False, read=True, update=True, delete=False
+            ),
         },
     }
 
@@ -100,6 +114,14 @@ class SecurityApp(Service):
         # Регистрируем глобальные обработчики ошибок
         self.handler_errors(app)
 
+        env: Environment = app.state.env
+        # Logout/revoke и смена ролей в другом воркере — сбросить его
+        # кэш сессий здесь.
+        for event_type in ("session_revoked", "session_roles_changed"):
+            env.apps.bus.subscribe(
+                event_type, env.models.session.handle_pubsub_event
+            )
+
     async def post_init(self, app: FastAPI):
         env: Environment = app.state.env
 
@@ -109,11 +131,9 @@ class SecurityApp(Service):
         # Регистрируем иконки приложений
         await self._init_app_icons(env)
 
-        # ВАЖНО: Сначала создаём модели и роль base_user,
-        # чтобы другие модули могли создать ACL
-        await self._init_models(env)
-        # _init_apps переносит ui_menu/ui_menu_name из модулей на строки App.
-        await self._init_apps(env)
+        # ВАЖНО: сначала роль base_user, чтобы другие модули могли создать
+        # ACL. Реестры к этому моменту заполнены: models — ядро
+        # (Environment.start_post_init), apps — модуль apps (sequence 0).
         await self._init_base_role(env)
         # Дефолтные «Рабочие места» (из запроса App.ui_menu) + бэкфилл.
         await self._init_default_workspaces(env)
@@ -193,91 +213,6 @@ class SecurityApp(Service):
 
         if registered:
             log.info("Registered app icons: %s", ", ".join(registered))
-
-    async def _init_models(self, env: Environment):
-        """Создаёт записи в таблице models для всех моделей.
-
-        Помимо name сохраняем table (__table__ модели) — так по связи model_id
-        сразу доступно имя таблицы (напр. в маршрутах вложений), без обратного
-        маппинга env-имя -> таблица. Для уже существующих записей table
-        бэкфиллится идемпотентно.
-        """
-        models_names = env.models._get_models_names()
-        if not models_names:
-            return
-
-        exist_models = await env.models.model.search(
-            filter=[("name", "in", models_names)],
-            fields=["id", "name", "table_name"],
-        )
-        exist_by_name = {m.name: m for m in exist_models}
-
-        for model_name in models_names:
-            table = env.models._get_model(model_name).__table__
-            existing = exist_by_name.get(model_name)
-            if existing is None:
-                await env.models.model.create(
-                    payload=Model(name=model_name, table_name=table)
-                )
-            elif table and existing.table_name != table:
-                # Бэкфилл имени таблицы у ранее созданных записей реестра
-                await existing.update(env.models.model(table_name=table))
-
-    async def _init_apps(self, env: Environment):
-        """Создаёт/обновляет записи в таблице apps из env.apps.
-
-        Каждый модуль может объявить у себя атрибуты ui_menu / ui_menu_name
-        (см. модель App) — тогда его строка становится «UI-приложением»
-        (плиткой лаунчера). Флаги переносятся сюда и для НОВЫХ, и для уже
-        существующих строк (идемпотентно), чтобы после обновления кода
-        объявления подхватывались без пересоздания apps.
-
-        installed у новой строки — из env.installed (правило auto_install,
-        см. Environment.load_installed); дальше его меняет только установка
-        и удаление. Core установлено всегда.
-        """
-        app_codes = env.apps.get_names()
-
-        if not app_codes:
-            return
-
-        exist_apps = await env.models.app.search(
-            filter=[("code", "in", app_codes)],
-            fields=["id", "code", "installed"],
-        )
-        exist_by_code = {a.code: a for a in exist_apps}
-
-        for code in app_codes:
-            app_instance: App | None = env.apps.get(code)
-            info = (
-                app_instance.info if app_instance and app_instance.info else {}
-            )
-            name = info.get("name", code)
-            ui_menu = bool(info.get("ui_menu", False))
-            ui_menu_name = info.get("ui_menu_name")
-
-            existing = exist_by_code.get(code)
-            if existing is None:
-                await env.models.app.create(
-                    payload=AppModel(
-                        code=code,
-                        name=name,
-                        ui_menu=ui_menu,
-                        ui_menu_name=ui_menu_name,
-                        installed=env.is_installed(code),
-                    )
-                )
-                continue
-
-            changed = {}
-            # Обновляем ТОЛЬКО UI-флаги у объявленных приложений; имя и
-            # прочее у существующих строк не трогаем.
-            if ui_menu or ui_menu_name:
-                changed.update(ui_menu=ui_menu, ui_menu_name=ui_menu_name)
-            if env.apps.is_core(code) and not existing.installed:
-                changed["installed"] = True
-            if changed:
-                await existing.update(payload=AppModel(**changed))
 
     async def _init_default_workspaces(self, env: Environment):
         """Сидит два «Рабочих места» и раздаёт базовое.
@@ -366,7 +301,7 @@ class SecurityApp(Service):
                 payload=Role(
                     code="base_user",
                     name="Internal User",
-                    app_id=AppModel(id=app_id),
+                    app_id=env.models.app(id=app_id),
                 )
             )
 
@@ -389,7 +324,7 @@ class SecurityApp(Service):
                 payload=Role(
                     code="system_admin",
                     name="Администратор настроек",
-                    app_id=AppModel(id=app_id),
+                    app_id=env.models.app(id=app_id),
                 )
             )
             # m2m (based_role_ids) сохраняются только через update(),

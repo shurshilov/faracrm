@@ -8,9 +8,9 @@ GET  /apps/catalog            — все приложения реестра с 
 POST /apps/{code}/install     — установить вместе с зависимостями
 POST /apps/{code}/uninstall   — удалить вместе с зависимыми
 
-Логика — Environment.install_apps / uninstall_apps; здесь права (is_admin
-или роль system_admin) и форма ответа. Каталог собирается из info модулей
-в памяти: в БД у приложения только флаг installed.
+Логика — AppsInstallService.install_apps / uninstall_apps; здесь права
+(is_admin или роль system_admin) и форма ответа. Каталог собирается из
+info модулей в памяти: в БД у приложения только флаг installed.
 """
 
 from typing import TYPE_CHECKING
@@ -20,9 +20,11 @@ from fastapi import APIRouter, Depends, Request
 from backend.base.crm.auth_token.app import AuthTokenApp
 from backend.base.system.core.exceptions.environment import FaraException
 
+from ..graph import is_core
+
 if TYPE_CHECKING:
+    from backend.base.crm.security.models.sessions import Session
     from backend.base.system.core.enviroment import Environment
-    from ..models.sessions import Session
 
 router_private = APIRouter(
     prefix="/apps",
@@ -69,7 +71,7 @@ async def apps_catalog(req: Request) -> dict:
                 "category": info.get("category"),
                 "version": info.get("version"),
                 "depends": apps.depends_of(code),
-                "core": apps.is_core(code),
+                "core": is_core(apps, code),
                 "installed": code in env.installed,
                 "app_key": (
                     info.get("ui_menu_name") if info.get("ui_menu") else None
@@ -88,7 +90,8 @@ async def install_app(req: Request, code: str) -> dict:
     Возвращает, что было установлено (в порядке установки)."""
     _require_manager(req.state.session)
     env: "Environment" = req.app.state.env
-    return {"installed": await env.install_apps([code], req.app)}
+    installed = await env.apps.apps_install.install_apps([code], req.app)
+    return {"installed": installed}
 
 
 @router_private.post("/{code}/uninstall")
@@ -97,4 +100,5 @@ async def uninstall_app(req: Request, code: str) -> dict:
     Возвращает, что было удалено (зависимые — первыми)."""
     _require_manager(req.state.session)
     env: "Environment" = req.app.state.env
-    return {"uninstalled": await env.uninstall_apps([code], req.app)}
+    removed = await env.apps.apps_install.uninstall_apps([code], req.app)
+    return {"uninstalled": removed}

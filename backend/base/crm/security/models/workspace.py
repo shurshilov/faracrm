@@ -13,7 +13,7 @@ from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 
 if TYPE_CHECKING:
-    from .apps import App
+    from backend.base.system.apps.models.apps import App
 
 
 class Workspace(DotModel):

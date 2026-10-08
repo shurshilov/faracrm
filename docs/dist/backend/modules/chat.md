@@ -136,12 +136,12 @@ ws.onmessage = (event) => {
 
 ## PubSub — Strategy Pattern
 
-PubSub backend выбирается через `.env`:
+Шина событий между воркерами — отдельный системный модуль `bus` (`backend/base/system/bus`): чат подписывается на свои типы событий (`PubSubCommand`) и публикует через `env.apps.bus`. Бэкенд выбирается через `.env`:
 
 === "PostgreSQL (по умолчанию)"
 
     ```bash title=".env"
-    PUBSUB__BACKEND=pg
+    bus__backend=pg
     ```
 
     Использует `LISTEN/NOTIFY`. Просто, без доп. инфраструктуры.
@@ -149,15 +149,15 @@ PubSub backend выбирается через `.env`:
 === "Redis"
 
     ```bash title=".env"
-    PUBSUB__BACKEND=redis
-    PUBSUB__REDIS_URL=redis://localhost:6379/0
+    bus__backend=redis
+    bus__redis_url=redis://localhost:6379/0
     ```
 
     Выше throughput, не занимает соединение из asyncpg pool.
 
 Переключение backend'а не требует изменения кода — Strategy pattern:
 
-```python title="backend/base/crm/chat/websocket/pubsub/"
+```python title="backend/base/system/bus/pubsub/"
 # pubsub/
 # ├── __init__.py      # create_pubsub_backend() factory
 # ├── base.py          # PubSubBackend (abstract)

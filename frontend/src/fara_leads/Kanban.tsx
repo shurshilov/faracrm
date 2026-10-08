@@ -19,12 +19,7 @@ export function ViewKanbanLeads() {
 }
 
 export function ViewKanbanLeadStage() {
-  return (
-    <Kanban<LeadStageRecord>
-      model="lead_stage"
-      fields={['id', 'name', 'sequence', 'color']}
-    />
-  );
+  return <Kanban<LeadStageRecord> model="lead_stage" fields={['id', 'name']} />;
 }
 
 export function ViewKanbanTeamCrm() {

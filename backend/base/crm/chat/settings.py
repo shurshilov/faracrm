@@ -1,28 +1,13 @@
 # Copyright 2025 FARA CRM
 # Chat module - settings
 """
-Настройки модуля chat.
+Настройки модуля chat: STUN/TURN для звонков (TurnSettings).
 
-Переменные окружения:
-    CHAT__PUBSUB_BACKEND: str = "pg"    - backend pub/sub: "pg" или "redis"
-    CHAT__REDIS_URL: str = "redis://localhost:6379/0" - URL Redis (если backend=redis)
-
-Примеры .env:
-    # PostgreSQL (по умолчанию, zero config):
-    CHAT__PUBSUB_BACKEND=pg
-
-    # Redis:
-    CHAT__PUBSUB_BACKEND=redis
-    CHAT__REDIS_URL=redis://localhost:6379/0
-
-    # Redis с паролем:
-    CHAT__REDIS_URL=redis://:mypassword@redis-host:6379/0
-
-    # Redis с SSL:
-    CHAT__REDIS_URL=rediss://redis-host:6380/0
+Шина событий между процессами — отдельный модуль bus
+(backend/base/system/bus, настройки bus__backend / bus__redis_url).
 """
 
-from typing import ClassVar, Literal
+from typing import ClassVar
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -112,18 +97,3 @@ class TurnSettings(BaseSettings):
         "force_relay",
         "fallback_stun",
     )
-
-
-class ChatSettings(BaseSettings):
-    """Настройки Chat модуля."""
-
-    # Pub/Sub backend: "pg" (PostgreSQL LISTEN/NOTIFY) или "redis"
-    pubsub_backend: Literal["pg", "redis"] = "pg"
-
-    # Redis
-    redis_url: str = "redis://localhost:6379/0"
-    redis_channel: str = "ws_events"
-
-    # PostgreSQL
-    pg_channel: str = "ws_events"
-    pg_max_payload: int = 7900

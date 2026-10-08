@@ -43,6 +43,8 @@ PORTAL_ACL = {
     "attachment_cache": ACL.CREATE_READ,
     "saved_filter": ACL.FULL,
     "column_setting": ACL.FULL,
+    # Общие настройки форм читает каждая форма (прогрев при входе).
+    "form_setting": ACL.READ_ONLY,
     "payment": ACL.READ_ONLY,
     "contact": ACL.NO_DELETE,
 }
@@ -114,7 +116,7 @@ class MarketplaceApp(App):
 
     async def _init_role(self, env: "Environment") -> int:
         """Роль marketplace_user — без наследования base_user."""
-        from backend.base.crm.security.models.apps import App as AppModel
+        from backend.base.system.apps.models.apps import App as AppModel
         from backend.base.crm.security.models.roles import Role
 
         existing = await env.models.role.search_one(

@@ -5,7 +5,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Boolean,
 )
 from backend.base.system.dotorm.dotorm.model import DotModel
-from .models import Model
+from backend.base.system.core.models.models import Model
 from .roles import Role
 
 

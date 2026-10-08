@@ -1,14 +1,17 @@
 /**
- * ColumnsMenu — выбор видимых колонок списка.
+ * ColumnsMenu — выбор видимых полей вида: колонок списка или полей
+ * карточки канбана.
  *
  * Поповер со всеми полями модели (из GET /auto/{model}/fields) открывает
- * пункт «Колонки» меню списка (ListMenu); якорь поповера — сама кнопка
- * меню, она приходит как children, а открыт/закрыт решает родитель
- * (opened/onOpenChange). Галочка = колонка показана; стрелки —
- * порядок; «По умолчанию» — сброс к колонкам вью. У колонок-связей
- * (One2many/Many2many/полиморфные) — шестерёнка: виджет и фильтр на
- * связанные записи (ColumnRelationSettings). Изменения применяются
- * к таблице сразу (onChange), а на сервер пишутся при закрытии (onClose).
+ * пункт меню вида («Колонки» в ListMenu, «Поля карточки» в канбане);
+ * якорь поповера — сама кнопка меню, она приходит как children, а
+ * открыт/закрыт решает родитель (opened/onOpenChange). Галочка = поле
+ * показано; стрелки — порядок; «По умолчанию» — сброс к полям вью.
+ * У колонок-связей (One2many/Many2many/полиморфные) — шестерёнка: виджет
+ * и фильтр на связанные записи (ColumnRelationSettings); это только для
+ * списка — канбан обработчики не передаёт, и шестерёнки нет. Изменения
+ * применяются к виду сразу (onChange), а на сервер пишутся при закрытии
+ * (onClose).
  */
 import { ReactNode, useMemo, useState } from 'react';
 import {
@@ -51,22 +54,23 @@ interface ColumnsMenuProps {
   /** Открыт ли поповер — решает родитель (пункт меню открывает). */
   opened: boolean;
   onOpenChange: (opened: boolean) => void;
-  /** Якорь поповера — кнопка меню списка. */
+  /** Якорь поповера — кнопка меню вида. */
   children: ReactNode;
   model: string;
-  /** Видимые колонки в порядке отображения. */
+  /** Заголовок поповера; по умолчанию «Колонки». */
+  title?: string;
+  /** Видимые поля в порядке отображения. */
   selected: string[];
-  /** Набор отличается от колонок вью по умолчанию. */
+  /** Набор отличается от полей вью по умолчанию. */
   isCustom: boolean;
-  /** Виджеты колонок-связей по имени поля. */
-  widgets: RelationColumnWidgets;
-  /** Фильтры колонок-связей по имени поля. */
-  filters: RelationColumnFilters;
-  /** Живое изменение набора/порядка (мгновенно перестраивает таблицу). */
+  /** Настройки колонок-связей — только у списка; без них шестерёнки нет. */
+  widgets?: RelationColumnWidgets;
+  filters?: RelationColumnFilters;
+  onWidgetChange?: (field: string, widget: RelationColumnWidget | null) => void;
+  onFilterChange?: (field: string, filter: FilterExpression | null) => void;
+  /** Живое изменение набора/порядка (мгновенно перестраивает вид). */
   onChange: (cols: string[]) => void;
-  onWidgetChange: (field: string, widget: RelationColumnWidget | null) => void;
-  onFilterChange: (field: string, filter: FilterExpression | null) => void;
-  /** Сброс к колонкам вью по умолчанию. */
+  /** Сброс к полям вью по умолчанию. */
   onReset: () => void;
   /** Вызывается при закрытии меню — момент записи выбора на сервер. */
   onClose: () => void;
@@ -77,6 +81,7 @@ export function ColumnsMenu({
   onOpenChange,
   children,
   model,
+  title = 'Колонки',
   selected,
   isCustom,
   widgets,
@@ -138,8 +143,9 @@ export function ColumnsMenu({
   // Шестерёнка у колонки-связи: подсвечена, если виджет/фильтр заданы.
   const relationSettingsButton = (name: string) => {
     const info = fieldsByName.get(name);
+    if (!onWidgetChange || !onFilterChange) return null;
     if (!info?.relation || !RELATION_TYPES.has(info.type)) return null;
-    const configured = !!widgets[name] || !!filters[name]?.length;
+    const configured = !!widgets?.[name] || !!filters?.[name]?.length;
     return (
       <ActionIcon
         size="xs"
@@ -154,12 +160,13 @@ export function ColumnsMenu({
 
   const relationSettingsPanel = (name: string) => {
     const info = fieldsByName.get(name);
+    if (!onWidgetChange || !onFilterChange) return null;
     if (settingsFor !== name || !info?.relation) return null;
     return (
       <ColumnRelationSettings
         relation={info.relation}
-        widget={widgets[name]}
-        filter={filters[name]}
+        widget={widgets?.[name]}
+        filter={filters?.[name]}
         onWidgetChange={widget => onWidgetChange(name, widget)}
         onFilterChange={filter => onFilterChange(name, filter)}
       />
@@ -205,7 +212,7 @@ export function ColumnsMenu({
       <Popover.Dropdown p="xs" style={{ width: settingsFor ? 520 : 320 }}>
         <Group justify="space-between" mb={6} wrap="nowrap">
           <Text size="sm" fw={600}>
-            Колонки
+            {title}
           </Text>
           {isCustom && (
             <Button

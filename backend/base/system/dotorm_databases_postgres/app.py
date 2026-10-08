@@ -71,6 +71,22 @@ class DotormDatabasesPostgresService(Service):
         """Пул по имени подключения: они кладутся setattr'ом при старте."""
         return getattr(self, alias)
 
+    async def sync_tables(
+        self, models: list, alias: str = DatabaseAlias.MAIN
+    ) -> None:
+        """Создать/дополнить таблицы моделей (колонки, FK) — то же, что на
+        старте; поля студии добавляют колонки в работающей системе."""
+        await self._containers[alias].create_and_update_tables(models)
+
+    # Удаление колонки поля студии отключено намеренно: данные остаются в
+    # базе (см. routers/studio.py). Вернуть — раскомментировать здесь и в
+    # ContainerPostgres.drop_column.
+    # async def drop_column(
+    #     self, table: str, column: str, alias: str = DatabaseAlias.MAIN
+    # ) -> None:
+    #     """Удалить колонку поля студии вместе с данными."""
+    #     await self._containers[alias].drop_column(table, column)
+
     def set_pool(
         self, pool: asyncpg.Pool, alias: str = DatabaseAlias.MAIN
     ) -> None:
@@ -129,6 +145,10 @@ class DotormDatabasesPostgresService(Service):
         for model in models_list:
             model.__database__ = DatabaseAlias.MAIN
 
+        # Контейнеры по имени подключения — для DDL после старта
+        # (sync_tables / drop_column).
+        self._containers: dict[str, ContainerPostgres] = {}
+
         if settings.dotorm_databases_postgres:
 
             for (
@@ -148,6 +168,7 @@ class DotormDatabasesPostgresService(Service):
                 container = ContainerPostgres(
                     pool_settings, container_settings
                 )
+                self._containers[db_name] = container
 
                 try:
                     await container.create_pool()

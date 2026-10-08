@@ -72,6 +72,8 @@ export interface GetListField {
   /** Для Selection-полей бэкенд (get_fields_info_list) отдаёт варианты. */
   options?: SelectionOption[];
   required?: boolean;
+  /** Подпись поля из модели (Field.string); у многих полей пустая. */
+  string?: string;
 }
 export interface GetFormField {
   name: string;
@@ -80,6 +82,8 @@ export interface GetFormField {
   relatedField?: string;
   options?: SelectionOption[];
   required?: boolean;
+  /** Подпись поля из модели (Field.string); у многих полей пустая. */
+  string?: string;
 }
 export interface GetListResult<RecordType extends FaraRecord> {
   data: RecordType[];

@@ -21,7 +21,7 @@ import {
   useResolveRecordPartnerChatQuery,
 } from '@/services/api/chat';
 import { useHasWorkspaceApp } from '@/hooks/useWorkspaceApps';
-import { useInstalledApps } from '@/fara_apps/useInstalledApps';
+import { useInstalledApps } from '@/hooks/useInstalledApps';
 import { ActivityPanel } from './ActivityPanel';
 import { MessagesPanel } from './MessagesPanel';
 import { AttachmentsPanel } from './AttachmentsPanel';

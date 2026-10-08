@@ -17,6 +17,7 @@ export function ViewFormColumnSettings(props: ViewFormProps) {
       <FormSheet>
         <FormRow cols={2}>
           <Field name="model_name" label={t('fields.model_name')} />
+          <Field name="view_type" label={t('fields.view_type')} />
           <Field name="created_at" label={t('fields.created_at')} />
         </FormRow>
         <Field name="columns" label={t('fields.columns')} />

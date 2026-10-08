@@ -1,18 +1,14 @@
 # Copyright 2025 FARA CRM
-# Chat module - abstract pub/sub backend (Strategy pattern)
+# Bus - abstract pub/sub backend (Strategy pattern)
 """
 Абстрактный интерфейс для pub/sub backend.
 
 Паттерн Strategy: конкретная реализация (PostgreSQL / Redis)
-подставляется при startup на основе настроек.
+подставляется при старте шины (BusService) по настройке bus__backend:
+    bus__backend=pg       # PostgreSQL LISTEN/NOTIFY (default)
+    bus__backend=redis    # Redis Pub/Sub
 
-Использование (в коде приложения):
-    chat_manager.set_pubsub(backend)
-    await chat_manager._pubsub.publish("send_to_users", {...})
-
-Выбор backend — через env переменную PUBSUB__BACKEND:
-    PUBSUB__BACKEND=pg       # PostgreSQL LISTEN/NOTIFY (default)
-    PUBSUB__BACKEND=redis    # Redis Pub/Sub
+Модули им напрямую не пользуются — только через env.apps.bus.
 """
 
 import asyncio

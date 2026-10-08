@@ -1,4 +1,11 @@
-import { ReactNode, ReactElement, Children, isValidElement } from 'react';
+import {
+  ReactNode,
+  ReactElement,
+  Children,
+  createContext,
+  isValidElement,
+  useContext,
+} from 'react';
 import { Tabs, Box, Badge } from '@mantine/core';
 import classes from './FormLayout.module.css';
 import {
@@ -7,13 +14,23 @@ import {
   useTabExtensions,
 } from '@/shared/extensions';
 
-interface FormTabProps {
+export interface FormTabProps {
   name: string;
   label: string;
   icon?: ReactNode;
   badge?: number | string;
   children?: ReactNode;
 }
+
+const NO_TABS: FormTabProps[] = [];
+
+/**
+ * Вкладки, которые модуль добавляет форме на ходу — по данным, а не
+ * регистрацией (так студия ставит зону «Дополнительно» вкладкой из своей
+ * обёртки разметки 'wrap:Form'). Встают последними; внутри панелей FormTabs
+ * снова пусто — во вложенных вкладках не повторяются.
+ */
+export const FormTabsExtraContext = createContext<FormTabProps[]>(NO_TABS);
 
 /**
  * Одна вкладка внутри FormTabs
@@ -62,6 +79,7 @@ interface FormTabsProps {
  * (registerFormTab для модели формы), например «Реквизиты» партнёра
  * из fara_contract. Секции расширений вокруг всего блока вкладок —
  * позиции 'before:FormTabs' и 'after:FormTabs' (как 'after:FormSheet').
+ * Последними — вкладки, добавленные на ходу (FormTabsExtraContext).
  *
  * @example
  * <FormTabs defaultTab="general">
@@ -82,6 +100,7 @@ export function FormTabs({
   const extensionTabs = useFormTabExtensions();
   const extensionsBefore = useExtensions('before:FormTabs');
   const extensionsAfter = useExtensions('after:FormTabs');
+  const extraTabs = useContext(FormTabsExtraContext);
 
   // Извлекаем props из детей FormTab
   const tabs: FormTabProps[] = Children.toArray(children)
@@ -101,6 +120,8 @@ export function FormTabs({
     });
   }
 
+  tabs.push(...extraTabs);
+
   const firstTabName = tabs[0]?.name;
   const defaultValue = defaultTab || firstTabName;
 
@@ -109,42 +130,44 @@ export function FormTabs({
       {extensionsBefore.map((Ext, i) => (
         <Ext key={i} />
       ))}
-      <Box className={classes.tabsContainer}>
-        <Tabs
-          defaultValue={defaultValue}
-          variant={variant}
-          orientation={orientation}
-          classNames={{
-            root: classes.tabsRoot,
-            list: classes.tabsList,
-            tab: classes.tab,
-            panel: classes.tabPanel,
-          }}>
-          <Tabs.List>
-            {tabs.map(tab => (
-              <Tabs.Tab
-                key={tab.name}
-                value={tab.name}
-                leftSection={tab.icon}
-                rightSection={
-                  tab.badge !== undefined ? (
-                    <Badge size="sm" variant="filled" radius="xl">
-                      {tab.badge}
-                    </Badge>
-                  ) : undefined
-                }>
-                {tab.label}
-              </Tabs.Tab>
-            ))}
-          </Tabs.List>
+      <FormTabsExtraContext.Provider value={NO_TABS}>
+        <Box className={classes.tabsContainer}>
+          <Tabs
+            defaultValue={defaultValue}
+            variant={variant}
+            orientation={orientation}
+            classNames={{
+              root: classes.tabsRoot,
+              list: classes.tabsList,
+              tab: classes.tab,
+              panel: classes.tabPanel,
+            }}>
+            <Tabs.List>
+              {tabs.map(tab => (
+                <Tabs.Tab
+                  key={tab.name}
+                  value={tab.name}
+                  leftSection={tab.icon}
+                  rightSection={
+                    tab.badge !== undefined ? (
+                      <Badge size="sm" variant="filled" radius="xl">
+                        {tab.badge}
+                      </Badge>
+                    ) : undefined
+                  }>
+                  {tab.label}
+                </Tabs.Tab>
+              ))}
+            </Tabs.List>
 
-          {tabs.map(tab => (
-            <Tabs.Panel key={tab.name} value={tab.name} pt="md">
-              <TabContent name={tab.name}>{tab.children}</TabContent>
-            </Tabs.Panel>
-          ))}
-        </Tabs>
-      </Box>
+            {tabs.map(tab => (
+              <Tabs.Panel key={tab.name} value={tab.name} pt="md">
+                <TabContent name={tab.name}>{tab.children}</TabContent>
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </Box>
+      </FormTabsExtraContext.Provider>
       {extensionsAfter.map((Ext, i) => (
         <Ext key={i} />
       ))}

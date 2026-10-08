@@ -53,6 +53,23 @@ class DotormCrudAutoService(Service):
     def __init__(self, default_auto_crud: bool = True) -> None:
         super().__init__()
         self.default_auto_crud = default_auto_crud
+        # Смонтированные авто-роуты — по ним rebuild вырезает прежние.
+        self._routes: list = []
+
+    async def rebuild(self, app, env: "Environment") -> None:
+        """Пересобрать схемы и авто-роуты после изменения полей модели
+        (поля студии): прежние роуты вырезаются, новые монтируются на их
+        место. Новый список, а не правка старого: запрос, который сейчас
+        перебирает роуты, дочитает свой снимок."""
+        gone = self._routes
+        app.router.routes = [
+            route
+            for route in app.router.routes
+            if not any(route is g for g in gone)
+        ]
+        schema_registry.reset()
+        await self.create_autocrud(app, env)
+        app.openapi_schema = None
 
     async def create_autocrud(self, app, env: "Environment") -> None:
         """Создание CRUD роутов для всех моделей."""
@@ -70,6 +87,7 @@ class DotormCrudAutoService(Service):
         log.info("Schemas generated in %.3fs", schema_time - start_time)
 
         # Шаг 2: Создаём роутеры
+        before = len(app.router.routes)
         for model in models:
             # Уважаем явный opt-in/opt-out на модели: если класс модели
             # сам задал __auto_crud__ (в собственном __dict__, а не
@@ -89,6 +107,7 @@ class DotormCrudAutoService(Service):
                     tags=[f"{model.__table__} AUTO CRUD"],
                 )
                 app.include_router(router, prefix=self.CRUD_PREFIX)
+        self._routes = app.router.routes[before:]
 
         end_time = time.perf_counter()
         log.info("Routers created in %.3fs", end_time - schema_time)

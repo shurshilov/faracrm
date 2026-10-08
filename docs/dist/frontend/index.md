@@ -70,5 +70,6 @@ frontend/src/
 - [Архитектура](architecture/overview.md) — компоненты, модули, routing
 - [State Management](architecture/state.md) — Redux store, RTK Query
 - [Расширения без правки ядра](extensions.md) — поля и секции форм из `business/`-модулей
+- [Настройки видов без кода](view-settings.md) — колонки списка и поля формы из интерфейса
 - [Модули](modules/chat.md) — Chat UI
 - [API-сервисы](services/crud-api.md) — CRUD API клиент

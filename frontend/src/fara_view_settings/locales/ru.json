@@ -6,6 +6,7 @@
   "fields": {
     "id": "Ид",
     "model_name": "Модель",
+    "view_type": "Вид",
     "columns": "Колонки (JSON)",
     "widgets": "Виджеты колонок-связей (JSON)",
     "filters": "Фильтры колонок-связей (JSON)",

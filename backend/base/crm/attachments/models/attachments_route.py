@@ -20,7 +20,7 @@ from .attachments_cache import AttachmentCache
 
 if TYPE_CHECKING:
     from .attachments_storage import AttachmentStorage
-    from backend.base.crm.security.models.models import Model
+    from backend.base.system.core.models.models import Model
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,7 @@
 import logging
-from typing import NotRequired, TypedDict, TYPE_CHECKING
+from typing import ClassVar, NotRequired, TypedDict, TYPE_CHECKING
+
+from backend.base.system.dotorm.dotorm.access import SudoAccessor
 
 if TYPE_CHECKING:
     from fastapi import FastAPI
@@ -23,7 +25,8 @@ class AppInfo(TypedDict):
     sequence: NotRequired[int]
     post_init: NotRequired[bool]
     cron_skip: NotRequired[bool]
-    # Установка/удаление из интерфейса (см. Environment.install_apps).
+    # Ключи auto_install и core читает модуль apps_install (установка и
+    # удаление из интерфейса); без него активно всё из project_setup.
     # auto_install (по умолчанию True) — ставить приложение само, когда оно
     # впервые появилось в коде и все его depends установлены. False —
     # ждать, пока админ установит его руками (маркетплейс, оплата и т.п.).
@@ -32,6 +35,10 @@ class AppInfo(TypedDict):
     auto_install: NotRequired[bool]
     # core — удалить нельзя (users, auth, company…). Сервисы (service=True)
     # считаются core автоматически: это инфраструктура, а не функционал.
+    # Сервис с core=False — отключаемый: стартует, только когда установлен,
+    # удаление зовёт его shutdown (AppsInstallService.sync_services). Флаги
+    # установки читаются на старте apps_install (среди services_before),
+    # поэтому такой сервис — без service_start_before.
     core: NotRequired[bool]
     # Публичная страница модуля, на которую отправляется гость с корня сайта
     # вместо формы входа (маркетплейс → "/market"). Отдаётся фронту в
@@ -39,37 +46,33 @@ class AppInfo(TypedDict):
     public_home: NotRequired[str]
 
 
-# Импортируем после определения AppInfo чтобы избежать циклических импортов
-from backend.base.crm.security.acl_post_init_mixin import ACLPostInitMixin
-from backend.base.system.dotorm.dotorm.access import SudoAccessor
+class AppHook:
+    """
+    Поведение, которое другой модуль добавляет всем приложениям: ядро
+    зовёт методы, реализацию даёт модуль (как AccessChecker у dotorm).
+    Регистрация — App.hooks.append(MyHook()) в app.py модуля.
+    """
+
+    async def post_init(self, service: "App", app: "FastAPI") -> None:
+        """Из App.post_init — там, где приложение зовёт super().post_init()."""
 
 
-class App(ACLPostInitMixin):
+class App:
     """
     Базовый класс приложения.
 
-    Включает ACL инициализацию через BASE_USER_ACL и ROLE_ACL.
-
-    Пример:
-        from backend.base.crm.security.acl_post_init_mixin import ACL, ACLPerms
-
-        class LeadsApp(App):
-            BASE_USER_ACL = {
-                "lead": ACL.FULL,
-                "lead_stage": ACLPerms(create=True, read=True, update=True, delete=False),
-            }
-
-            ROLE_ACL = {
-                "viewer": {
-                    "lead": ACL.READ_ONLY,
-                },
-            }
+    Права своих моделей модуль объявляет атрибутами BASE_USER_ACL и
+    ROLE_ACL — строки по ним создаёт хук security (ACLHook,
+    security/acl_post_init_mixin.py); ядро о правах не знает.
     """
 
     info: AppInfo
 
+    # Хуки других модулей (AppHook), вызываются базовым post_init.
+    hooks: ClassVar[list[AppHook]] = []
+
     # Как у моделей: `await service.sudo().post_init(app)` — сидеры модуля
-    # с полным доступом при установке из интерфейса (Environment.install_apps).
+    # с полным доступом при установке из интерфейса (apps_install).
     sudo = SudoAccessor()
 
     def __init__(self) -> None:
@@ -85,12 +88,12 @@ class App(ACLPostInitMixin):
         Инициализация приложения после старта.
 
         Системная сессия уже установлена в Environment.start_post_init().
-        Автоматически создаёт ACL из BASE_USER_ACL и ROLE_ACL.
-        Наследники могут переопределять этот метод, вызывая super().
+        Наследники переопределяют этот метод, вызывая super() — он
+        выполняет хуки (security создаёт права, поэтому роли модуля — до
+        super()).
         """
-        # Автоматическая инициализация ACL
-        if self.BASE_USER_ACL or self.ROLE_ACL:
-            await self._init_acl(app.state.env)
+        for hook in App.hooks:
+            await hook.post_init(self, app)
 
     def handler_errors(self, app_server: "FastAPI"):
         """Регистрация обработчиков ошибок приложения (override в наследниках)."""

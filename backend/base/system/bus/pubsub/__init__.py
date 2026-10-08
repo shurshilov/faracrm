@@ -1,20 +1,17 @@
 # Copyright 2025 FARA CRM
-# Chat module - Pub/Sub factory
+# Bus - Pub/Sub factory
 """
-Фабрика для создания pub/sub backend.
-
-Backend устанавливается в chat_manager через set_pubsub() при startup.
+Фабрика pub/sub backend для шины (BusService).
 
 Использование:
-    from backend.base.crm.chat.websocket.pubsub import create_pubsub_backend
+    from backend.base.system.bus.pubsub import create_pubsub_backend
 
-    backend = create_pubsub_backend(settings)
-    chat_manager.set_pubsub(backend)
+    backend = create_pubsub_backend("pg")
 
 Настройки (.env):
-    PUBSUB__BACKEND=pg          # PostgreSQL (default)
-    PUBSUB__BACKEND=redis       # Redis
-    PUBSUB__REDIS_URL=redis://localhost:6379/0
+    bus__backend=pg          # PostgreSQL (default)
+    bus__backend=redis       # Redis
+    bus__redis_url=redis://localhost:6379/0
 """
 
 import logging
@@ -22,7 +19,6 @@ import logging
 
 from .base import PubSubBackend
 from .pg_backend import PgPubSubBackend  # noqa: F401 (re-export)
-from ...settings import ChatSettings
 
 logger = logging.getLogger(__name__)
 
@@ -33,23 +29,16 @@ __all__ = [
 ]
 
 
-def create_pubsub_backend(
-    settings: ChatSettings | None = None,
-) -> PubSubBackend:
+def create_pubsub_backend(backend_type: str) -> PubSubBackend:
     """
-    Фабрика для создания pub/sub backend из настроек.
+    Фабрика для создания pub/sub backend.
 
     Args:
-        settings: ChatSettings. Если None — создаёт из env.
+        backend_type: "pg" или "redis" (BusSettings.backend)
 
     Returns:
         Инстанс PubSubBackend
     """
-    if settings is None:
-        settings = ChatSettings()
-
-    backend_type = settings.pubsub_backend.lower()
-
     if backend_type == "redis":
         # Ленивый импорт — redis_backend.py не загружается
         # если backend != "redis", не нужен pip install redis
@@ -62,6 +51,6 @@ def create_pubsub_backend(
         return PgPubSubBackend()
     else:
         raise ValueError(
-            f"Unknown PUBSUB__BACKEND='{backend_type}'. "
+            f"Unknown bus__backend='{backend_type}'. "
             f"Supported: 'pg', 'redis'"
         )

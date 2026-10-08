@@ -106,6 +106,45 @@ const TRANSLATIONS: Record<
       title: 'Дубликат: контакт',
       description: 'Этот контакт уже указан у другого сотрудника:',
     },
+    FORM_SETTING_UNKNOWN_MODEL: {
+      title: 'Настройки формы',
+      description: 'Модель не найдена:',
+    },
+    FORM_SETTING_UNKNOWN_FIELD: {
+      title: 'Настройки формы',
+      description: 'Поле не найдено или не настраивается:',
+    },
+    FORM_SETTING_INVALID_JSON: {
+      title: 'Настройки формы',
+      description:
+        'Обязательные поля — JSON-массив имён, поля зоны — JSON-массив клеток {name, x, y, w, h} с целыми от 1.',
+    },
+    FORM_SETTING_BAD_GRID: {
+      title: 'Настройки формы',
+      description: 'В сетке зоны колонок и строк должно быть не меньше одной:',
+    },
+    STUDIO_FIELD_BAD_MODEL: {
+      title: 'Поле студии',
+      description: 'Модель не найдена:',
+    },
+    STUDIO_FIELD_BAD_NAME: {
+      title: 'Поле студии',
+      description:
+        'Техническое имя: x_, латиница, цифры и подчёркивание. Получено:',
+    },
+    STUDIO_FIELD_EXISTS: {
+      title: 'Поле студии',
+      description: 'Поле с таким именем уже есть:',
+    },
+    STUDIO_FIELD_BAD_TYPE: {
+      title: 'Поле студии',
+      description: 'Неизвестный тип поля:',
+    },
+    STUDIO_FIELD_BAD_OPTIONS: {
+      title: 'Поле студии',
+      description:
+        'Варианты: непустой список пар «значение — подпись» без повторов.',
+    },
     VALIDATION_ERROR: {
       title: 'Ошибка валидации',
       description: 'Проверьте правильность заполнения полей:',
@@ -196,6 +235,45 @@ const TRANSLATIONS: Record<
     DUPLICATE_CONTACT_OPERATOR: {
       title: 'Duplicate: contact',
       description: 'This contact is already listed on another employee:',
+    },
+    FORM_SETTING_UNKNOWN_MODEL: {
+      title: 'Form settings',
+      description: 'Model not found:',
+    },
+    FORM_SETTING_UNKNOWN_FIELD: {
+      title: 'Form settings',
+      description: 'Field not found or not configurable:',
+    },
+    FORM_SETTING_INVALID_JSON: {
+      title: 'Form settings',
+      description:
+        'Required fields are a JSON array of names, zone fields a JSON array of cells {name, x, y, w, h} with integers from 1.',
+    },
+    FORM_SETTING_BAD_GRID: {
+      title: 'Form settings',
+      description: 'The zone grid needs at least one column and one row:',
+    },
+    STUDIO_FIELD_BAD_MODEL: {
+      title: 'Studio field',
+      description: 'Model not found:',
+    },
+    STUDIO_FIELD_BAD_NAME: {
+      title: 'Studio field',
+      description:
+        'Technical name: x_, Latin letters, digits and underscore. Got:',
+    },
+    STUDIO_FIELD_EXISTS: {
+      title: 'Studio field',
+      description: 'A field with this name already exists:',
+    },
+    STUDIO_FIELD_BAD_TYPE: {
+      title: 'Studio field',
+      description: 'Unknown field type:',
+    },
+    STUDIO_FIELD_BAD_OPTIONS: {
+      title: 'Studio field',
+      description:
+        'Options: a non-empty list of value/label pairs without repeats.',
     },
     VALIDATION_ERROR: {
       title: 'Validation Error',

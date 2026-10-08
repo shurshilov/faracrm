@@ -1,10 +1,11 @@
 """
-Mixin для инициализации ACL в post_init модулей.
+Права модулей: приложение объявляет ACL атрибутами класса, security
+создаёт строки access_list при его post_init.
 
 Использование:
-    from backend.base.crm.security.acl_post_init_mixin import ACLPostInitMixin, ACLPerms, ACL
+    from backend.base.crm.security.acl_post_init_mixin import ACLPerms, ACL
 
-    class LeadsApp(ACLPostInitMixin, App):
+    class LeadsApp(App):
         # Для роли base_user (по умолчанию)
         BASE_USER_ACL = {
             "lead": ACL.FULL,
@@ -21,16 +22,20 @@ Mixin для инициализации ACL в post_init модулей.
             },
         }
 
-        async def post_init(self, app: FastAPI):
-            await super().post_init(app)
-            await self._init_acl(app.state.env)
+Ядро о правах не знает: базовый App.post_init зовёт хуки (App.hooks),
+security подключает свой — ACLHook ниже (в security/app.py);
+наследовать ничего не нужно.
+Роли модуля создаются до super().post_init() — права ложатся в нём.
 """
 
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from backend.base.system.core.app import App, AppHook
+
 if TYPE_CHECKING:
+    from fastapi import FastAPI
     from backend.base.system.core.enviroment import Environment
 
 log = logging.getLogger(__package__)
@@ -57,29 +62,32 @@ class ACL:
     CREATE_READ = ACLPerms(create=True, read=True, update=False, delete=False)
 
 
-class ACLPostInitMixin:
-    """Mixin для создания ACL записей в post_init."""
+class ACLHook(AppHook):
+    """Права приложения — строки access_list при его post_init.
 
-    # ACL для роли base_user (по умолчанию)
-    BASE_USER_ACL: dict[str, ACLPerms] = {}
+    BASE_USER_ACL: model_name -> ACLPerms для роли base_user;
+    ROLE_ACL: role_code -> {model_name -> ACLPerms} для других ролей.
+    """
 
-    # ACL для других ролей
-    # Формат: role_code -> {model_name -> ACLPerms}
-    ROLE_ACL: dict[str, dict[str, ACLPerms]] = {}
-
-    async def _init_acl(self, env: "Environment"):
+    async def post_init(self, service: App, app: "FastAPI") -> None:
         """Создаёт ACL для всех ролей на модели этого модуля."""
+        env: "Environment" = app.state.env
         # Инициализация для base_user
-        if self.BASE_USER_ACL:
-            await self._init_acl_for_role(env, "base_user", self.BASE_USER_ACL)
+        base_user_acl = getattr(service, "BASE_USER_ACL", None)
+        if base_user_acl:
+            await self._init_acl_for_role(
+                env, service, "base_user", base_user_acl
+            )
 
         # Инициализация для других ролей
-        for role_code, acl_config in self.ROLE_ACL.items():
-            await self._init_acl_for_role(env, role_code, acl_config)
+        role_acl = getattr(service, "ROLE_ACL", None) or {}
+        for role_code, acl_config in role_acl.items():
+            await self._init_acl_for_role(env, service, role_code, acl_config)
 
     async def _init_acl_for_role(
         self,
         env: "Environment",
+        service: App,
         role_code: str,
         acl_config: dict[str, ACLPerms],
     ):
@@ -88,8 +96,8 @@ class ACLPostInitMixin:
             return
 
         from backend.base.crm.security.models.acls import AccessList
-        from backend.base.crm.security.models.models import Model
         from backend.base.crm.security.models.roles import Role
+        from backend.base.system.core.models.models import Model
 
         # Получаем роль
         role = await env.models.role.search_one(
@@ -102,7 +110,7 @@ class ACLPostInitMixin:
             # init_module_roles ДО super().post_init().
             log.warning(
                 "ACL %s: role %r does not exist yet, ACL skipped",
-                type(self).__name__,
+                type(service).__name__,
                 role_code,
             )
             return
@@ -132,7 +140,7 @@ class ACLPostInitMixin:
             if not model_id:
                 log.warning(
                     "ACL %s/%s: model %r is not registered, ACL skipped",
-                    type(self).__name__,
+                    type(service).__name__,
                     role_code,
                     model_name,
                 )

@@ -1,9 +1,11 @@
 /**
- * API для пользовательских настроек колонок списков (per-user, per-model).
+ * API для пользовательских настроек колонок списков и полей карточек
+ * канбана (per-user, per-model, per-view).
  *
- * Одна запись column_settings = набор видимых колонок конкретного
- * пользователя для конкретной модели. Правила доступа на бэке отдают
- * только СВОИ строки, поэтому поиск по model_name всегда возвращает
+ * Одна запись column_settings = набор видимых полей конкретного
+ * пользователя для конкретной модели и вида (list — колонки списка,
+ * kanban — поля карточки). Правила доступа на бэке отдают только СВОИ
+ * строки, поэтому поиск по model_name и view_type всегда возвращает
  * настройку текущего пользователя (или ничего).
  *
  * У колонок-связей (One2many/Many2many/полиморфные) есть свои настройки:
@@ -16,9 +18,13 @@ import type { FilterExpression } from '@/services/api/crudTypes';
 /** Как рисовать колонку-связь. */
 export type RelationColumnWidget = 'count' | 'present' | 'text';
 
+/** Вид, к которому относится настройка. */
+export type ColumnSettingsView = 'list' | 'kanban';
+
 export interface ColumnSettingDTO {
   id: number;
   model_name: string;
+  view_type: ColumnSettingsView;
   /** JSON-массив имён полей в порядке отображения. */
   columns: string;
   /** JSON {имя поля: RelationColumnWidget}. */
@@ -33,72 +39,85 @@ export interface ColumnSettingPayload {
   filters?: string | null;
 }
 
+/** Ключ настройки: модель + вид. */
+export interface ColumnSettingKey {
+  model_name: string;
+  view_type: ColumnSettingsView;
+}
+
 export type RelationColumnWidgets = Record<string, RelationColumnWidget>;
 export type RelationColumnFilters = Record<string, FilterExpression>;
 
+const tag = ({ model_name, view_type }: ColumnSettingKey) => ({
+  type: 'ColumnSettings',
+  id: `${model_name}:${view_type}`,
+});
+
 const columnSettingsApi = crudApi.injectEndpoints({
   endpoints: build => ({
-    // Получить настройку колонок текущего пользователя для модели.
+    // Получить настройку текущего пользователя для модели и вида.
     // Возвращает одну запись (или null, если пользователь не настраивал).
-    getColumnSettings: build.query<ColumnSettingDTO | null, string>({
-      query: modelName => ({
+    getColumnSettings: build.query<ColumnSettingDTO | null, ColumnSettingKey>({
+      query: ({ model_name, view_type }) => ({
         url: '/auto/column_settings/search',
         method: 'POST',
         body: {
-          fields: ['id', 'model_name', 'columns', 'widgets', 'filters'],
-          filter: [['model_name', '=', modelName]],
+          fields: [
+            'id',
+            'model_name',
+            'view_type',
+            'columns',
+            'widgets',
+            'filters',
+          ],
+          filter: [
+            ['model_name', '=', model_name],
+            ['view_type', '=', view_type],
+          ],
           limit: 1,
         },
       }),
       transformResponse: (response: { data: ColumnSettingDTO[] }) =>
         response.data?.[0] ?? null,
-      providesTags: (_result, _error, modelName) => [
-        { type: 'ColumnSettings', id: modelName },
-      ],
+      providesTags: (_result, _error, key) => [tag(key)],
     }),
 
-    // Создать настройку колонок (user_id проставит бэк дефолтом из сессии).
+    // Создать настройку (user_id проставит бэк дефолтом из сессии).
     createColumnSettings: build.mutation<
       { id: number },
-      { model_name: string } & ColumnSettingPayload
+      ColumnSettingKey & ColumnSettingPayload
     >({
       query: data => ({
         url: '/auto/column_settings',
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: (_result, _error, data) => [
-        { type: 'ColumnSettings', id: data.model_name },
-      ],
+      invalidatesTags: (_result, _error, key) => [tag(key)],
     }),
 
     // Обновить существующую настройку.
     updateColumnSettings: build.mutation<
       void,
-      { id: number; model_name: string } & ColumnSettingPayload
+      { id: number } & ColumnSettingKey & ColumnSettingPayload
     >({
       query: ({ id, columns, widgets, filters }) => ({
         url: `/auto/column_settings/${id}`,
         method: 'PUT',
         body: { columns, widgets, filters },
       }),
-      invalidatesTags: (_result, _error, { model_name }) => [
-        { type: 'ColumnSettings', id: model_name },
-      ],
+      invalidatesTags: (_result, _error, key) => [tag(key)],
     }),
 
-    // Удалить настройку (сброс к колонкам вью по умолчанию).
+    // Удалить настройку (сброс к полям вью по умолчанию).
     deleteColumnSettings: build.mutation<
       void,
-      { id: number; model_name: string }
+      { id: number } & ColumnSettingKey
     >({
       query: ({ id }) => ({
         url: `/auto/column_settings/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: (_result, _error, { model_name }) => [
-        { type: 'ColumnSettings', id: model_name },
-      ],
+      invalidatesTags: (_result, _error, key) => [tag(key)],
     }),
   }),
   overrideExisting: false,

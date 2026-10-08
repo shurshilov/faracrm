@@ -1,4 +1,5 @@
 import { crudApi } from '@/services/api/crudApi';
+import { configApi } from '@/services/config/config';
 
 /** Приложение реестра (GET /apps/catalog): описание из info модуля плюс флаг. */
 export interface CatalogApp {
@@ -33,10 +34,22 @@ export const appsApi = crudApi.injectEndpoints({
     installApp: build.mutation<{ installed: string[] }, string>({
       query: code => ({ url: `/apps/${code}/install`, method: 'POST' }),
       invalidatesTags: [CATALOG_TAG],
+      // Активные приложения интерфейс берёт из публичного конфига
+      // (useInstalledApps) — перечитать его.
+      async onQueryStarted(_code, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(configApi.util.invalidateTags(['PublicConfig']));
+      },
     }),
     uninstallApp: build.mutation<{ uninstalled: string[] }, string>({
       query: code => ({ url: `/apps/${code}/uninstall`, method: 'POST' }),
       invalidatesTags: [CATALOG_TAG],
+      // Активные приложения интерфейс берёт из публичного конфига
+      // (useInstalledApps) — перечитать его.
+      async onQueryStarted(_code, { dispatch, queryFulfilled }) {
+        await queryFulfilled;
+        dispatch(configApi.util.invalidateTags(['PublicConfig']));
+      },
     }),
   }),
 });

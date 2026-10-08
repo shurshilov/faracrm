@@ -15,12 +15,7 @@ export function ViewKanbanSales() {
 }
 
 export function ViewKanbanSaleStage() {
-  return (
-    <Kanban<SaleStageRecord>
-      model="sale_stage"
-      fields={['id', 'name', 'sequence', 'color']}
-    />
-  );
+  return <Kanban<SaleStageRecord> model="sale_stage" fields={['id', 'name']} />;
 }
 
 export function ViewKanbanTax() {

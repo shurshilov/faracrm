@@ -5,7 +5,11 @@ import asyncio
 import logging
 from typing import TYPE_CHECKING
 
-from .websocket.manager import ConnectionManager, WS_REAP_INTERVAL_SECONDS
+from .websocket.manager import (
+    ConnectionManager,
+    PubSubCommand,
+    WS_REAP_INTERVAL_SECONDS,
+)
 from backend.base.system.core.service import Service
 from backend.base.crm.security.acl_post_init_mixin import ACL
 
@@ -86,21 +90,13 @@ class ChatApp(Service):
 
     async def startup(self, app: "FastAPI"):
         """
-        Инициализация pub/sub backend для cross-process WebSocket events.
+        Менеджер WebSocket-соединений и межпроцессная доставка его событий.
 
-        Backend выбирается через настройку PUBSUB__BACKEND:
-        - "pg"    → PostgreSQL LISTEN/NOTIFY (default, zero config)
-        - "redis" → Redis Pub/Sub (requires redis server)
-
-        Настройки (.env):
-            PUBSUB__BACKEND=pg
-            PUBSUB__BACKEND=redis
-            PUBSUB__REDIS_URL=redis://localhost:6379/0
+        События чата (сообщения, присутствие, звонки) ходят между воркерами
+        через шину (модуль bus): чат подписывается на свои типы
+        (PubSubCommand) и публикует через неё. Не поднялась шина — воркер
+        доставляет только своим подключённым.
         """
-        from .websocket.pubsub import (
-            create_pubsub_backend,
-        )
-
         env: "Environment" = app.state.env
         # Адресаты событий чата — участники из chat_member, не подписки клиента.
         self.chat_manager = ConnectionManager(
@@ -110,60 +106,14 @@ class ChatApp(Service):
         # Жнец залипших соединений. Мобильный клиент уходит молча (сон
         # вкладки, NAT оператора, WiFi↔LTE рвут TCP без close-кадра), и без
         # этой уборки он навсегда остаётся «в сети» для остальных.
-        # Запускаем до pub/sub: не зависит от него и нужен даже если шина
-        # не поднялась.
+        # Не зависит от шины и нужен даже если она не поднялась.
         self._ws_reaper_task = asyncio.create_task(self._ws_reaper_loop())
 
-        settings = env.settings.chat
-
-        # Создаём backend через фабрику (Strategy pattern)
-        backend = create_pubsub_backend(settings)
-
-        # Инициализируем в зависимости от типа
-        if settings.pubsub_backend == "redis":
-            await backend.setup(redis_url=settings.redis_url)
-            logger.info(
-                "ChatApp: using Redis pub/sub (%s)", settings.redis_url
-            )
-        else:
-            # PostgreSQL — нужен asyncpg pool
-            pool = env.apps.db.get_pool()
-            if not pool:
-                logger.error(
-                    "ChatApp: no asyncpg pool — pub/sub will not work"
-                )
-                return
-            await backend.setup(pool=pool)
-            logger.info("ChatApp: using PostgreSQL pub/sub (LISTEN/NOTIFY)")
-
-        # Устанавливаем backend в chat_manager
-        self.chat_manager.set_pubsub(backend)
-
-        # Один listener на канал ws_events — диспетчеризуем по типу:
-        # auth-события (session_revoked / session_roles_changed) идут в
-        # SessionCache через Session.handle_pubsub_event, остальное — в
-        # chat_manager. Так logout/revoke и смена ролей доходят до ВСЕХ
-        # воркеров (раньше session_revoked публиковался, но потребителя
-        # на шине не было).
-        async def _bus_dispatch(event: dict):
-            etype = event.get("type")
-            if etype in ("session_revoked", "session_roles_changed"):
-                await env.models.session.handle_pubsub_event(event)
-            elif etype == "apps_changed":
-                # Приложение установили/удалили в другом воркере —
-                # перечитать флаги и домонтировать/вырезать его роуты здесь.
-                await env.load_installed()
-                env.sync_routers(app)
-            else:
-                await self.chat_manager.handle_pubsub_event(event)
-
-        await backend.start_listening(_bus_dispatch)
-
-        logger.info(
-            "ChatApp: pub/sub started (backend=%s) — "
-            "WS events are cross-process",
-            settings.pubsub_backend,
-        )
+        bus = env.apps.bus
+        for command in PubSubCommand:
+            bus.subscribe(command.value, self.chat_manager.handle_pubsub_event)
+        if bus.ready:
+            self.chat_manager.set_pubsub(bus)
 
         self._init_turn_secret(env)
 
@@ -204,7 +154,7 @@ class ChatApp(Service):
             )
 
     async def shutdown(self, app: "FastAPI"):
-        """Остановка pub/sub backend."""
+        """Остановка жнеца соединений (шину останавливает модуль bus)."""
 
         if self._ws_reaper_task:
             self._ws_reaper_task.cancel()
@@ -213,12 +163,6 @@ class ChatApp(Service):
             except asyncio.CancelledError:
                 pass
             self._ws_reaper_task = None
-
-        if self.chat_manager.pubsub:
-            await self.chat_manager.pubsub.stop()
-            self.chat_manager.set_pubsub(None)
-
-        logger.info("ChatApp: pub/sub stopped")
 
     async def post_init(self, app: "FastAPI"):
         await super().post_init(app)
