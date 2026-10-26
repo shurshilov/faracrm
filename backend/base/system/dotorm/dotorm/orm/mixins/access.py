@@ -186,9 +186,7 @@ class AccessMixin(_Base):
         if not fields_with_roles:
             return list(fields)
         denied = set(
-            await checker.check_field_access(
-                session, operation, fields_with_roles
-            )
+            await checker.check_field_access(session, fields_with_roles)
         )
         if operation != Operation.READ:
             if denied:

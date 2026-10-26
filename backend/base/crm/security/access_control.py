@@ -139,7 +139,6 @@ class SecurityAccessChecker(AccessChecker["Session"]):
     async def check_field_access(
         self,
         session: "Session",
-        operation: Operation,
         fields_with_roles: dict[str, list[str]],
     ) -> list[str]:
         """
@@ -219,16 +218,6 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         result = await db_session.execute(stmt, [user_id])
         return [row["role_id"] for row in result]
 
-    async def _get_user_team_ids(self, user_id: int) -> list[int]:
-        """ID команд пользователя (team_crm.user_ids M2M) — источник
-        {{team_ids}}. Прямой SQL (внутри checker нельзя звать ORM — рекурсия).
-        Join-таблица team_crm_user_many2many: column1=user_id, column2=team_id.
-        """
-        db_session = self.env.models.model._get_db_session()
-        stmt = "SELECT team_id FROM team_crm_user_many2many WHERE user_id = %s"
-        result = await db_session.execute(stmt, [user_id])
-        return [row["team_id"] for row in result]
-
     async def _check_acl(
         self,
         role_ids: list[int],
@@ -293,7 +282,7 @@ class SecurityAccessChecker(AccessChecker["Session"]):
             ):
                 team_ids = [t.id for t in user.team_ids]
             else:
-                team_ids = await self._get_user_team_ids(user_id)
+                team_ids = await self.env.models.user.get_all_team_ids(user_id)
 
         # Парсим и объединяем domains
         domains = []

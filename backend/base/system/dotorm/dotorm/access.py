@@ -146,12 +146,11 @@ class AccessChecker(Generic[TSession]):
     async def check_field_access(
         self,
         session: TSession,
-        operation: Operation,
         fields_with_roles: dict[str, list[str]],
     ) -> list[str]:
         """
         Field-level доступ: какие из переданных полей сессия НЕ вправе
-        читать (operation=READ) или писать (CREATE/UPDATE).
+        читать или писать.
 
         Это третья ось контроля доступа (помимо ACL=таблица и Rules=строка):
         ограничение на уровне отдельных полей (атрибуты role_*). На записи —
