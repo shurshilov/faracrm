@@ -157,23 +157,31 @@ class TasksApp(App):
         ]
         # Для тасков — через FK на project_id, а проверка project'а
         # делается через @has_parent_access (рекурсивно применит правила
-        # project_id, в т.ч. @is_member выше).
-        task_member_domain = [
-            ["@has_parent_access", "project", "project_id"],
+        # project_id, в т.ч. @is_member выше). Читать задачи — где проект
+        # виден; создавать, менять, удалять — где проект можно менять
+        # (parent_perm = update, см. rule_operators).
+        task_read_domain = [
+            ["@has_parent_access", "project", "project_id", "read"],
+        ]
+        task_write_domain = [
+            ["@has_parent_access", "project", "project_id", "update"],
         ]
 
+        full = {"create": True, "read": True, "update": True, "delete": True}
         rules_to_create = [
             {
                 "name": "Проекты: мои или где я участник",
                 "model_id": project_model_rec,
                 "role_id": role_user,
                 "domain": project_member_domain,
+                "perms": full,
             },
             {
                 "name": "Проекты: все (менеджер)",
                 "model_id": project_model_rec,
                 "role_id": role_manager,
                 "domain": BYPASS_DOMAIN,
+                "perms": full,
             },
             # {
             #     "name": "Проекты: все (админ)",
@@ -185,13 +193,22 @@ class TasksApp(App):
                 "name": "Задачи: в проектах где я участник",
                 "model_id": task_model_rec,
                 "role_id": role_user,
-                "domain": task_member_domain,
+                "domain": task_read_domain,
+                "perms": {"read": True},
+            },
+            {
+                "name": "Задачи: в проектах, которые я могу менять",
+                "model_id": task_model_rec,
+                "role_id": role_user,
+                "domain": task_write_domain,
+                "perms": {"create": True, "update": True, "delete": True},
             },
             {
                 "name": "Задачи: все (менеджер)",
                 "model_id": task_model_rec,
                 "role_id": role_manager,
                 "domain": BYPASS_DOMAIN,
+                "perms": full,
             },
             # {
             #     "name": "Задачи: все (админ)",
@@ -209,6 +226,7 @@ class TasksApp(App):
             if existing:
                 continue
 
+            perms = rule_data["perms"]
             await env.models.rule.create(
                 payload=Rule(
                     name=rule_data["name"],
@@ -216,9 +234,9 @@ class TasksApp(App):
                     model_id=rule_data["model_id"],
                     role_id=rule_data["role_id"],
                     domain=rule_data["domain"],
-                    perm_create=True,
-                    perm_read=True,
-                    perm_update=True,
-                    perm_delete=True,
+                    perm_create=perms.get("create", False),
+                    perm_read=perms.get("read", False),
+                    perm_update=perms.get("update", False),
+                    perm_delete=perms.get("delete", False),
                 )
             )

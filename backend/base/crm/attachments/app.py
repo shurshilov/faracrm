@@ -184,18 +184,34 @@ class AttachmentsApp(App):
         # Универсальный rule: видишь parent — видишь его вложения.
         # Полиморфный оператор:
         #   - сам узнаёт какие res_model встречаются (DISTINCT)
-        #   - параллельно через asyncio.gather проверяет доступ
-        #     к каждой родительской модели через её собственные rules
+        #   - проверяет доступ к каждой родительской модели через её
+        #     собственные rules (parent_perm — какой флаг родителя нужен)
         #   - возвращает OR-domain покрывающий все типы родителей
         #
         # Не нужно явно прописывать rule для chat_message, lead, partner и
         # каждой будущей res_model. Если у родителя есть rules
         # (как у chat_message — @is_member) — они применятся. Если нет —
         # доступ открыт всем у кого есть ACL на родителя (как у partner).
+        parent_access = "@has_polymorphic_parent_access"
         await create_rule_if_missing(
             name="Attachment: visible if parent record is accessible",
-            domain=[["@has_polymorphic_parent_access", "res_model", "res_id"]],
-            perms={"read": True, "update": True},
+            domain=[[parent_access, "res_model", "res_id", "read"]],
+            perms={"read": True},
+        )
+        # Менять и удалять вложение — тому, кто может менять родителя
+        # (как write на res_model у ir.attachment в Odoo). Раньше update
+        # давался за чтение родителя, а правил на delete не было вовсе:
+        # ACL базовой роли удалял любую строку по id, даже невидимую.
+        await create_rule_if_missing(
+            name="Attachment: editable if parent record is editable",
+            domain=[[parent_access, "res_model", "res_id", "update"]],
+            perms={"update": True, "delete": True},
+        )
+        # Свой файл удаляется и там, где менять родителя нельзя.
+        await create_rule_if_missing(
+            name="Attachment: own files",
+            domain=[["create_user_id", "=", "{{user_id}}"]],
+            perms={"delete": True},
         )
 
     async def _init_system_settings(self, env: "Environment"):

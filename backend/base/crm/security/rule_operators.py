@@ -3,8 +3,14 @@
 #
 # Расширяет систему rules спец-операторами:
 #   ("@is_member", target_field, member_table, member_field, [active_field])
-#   ("@has_parent_access", parent_model, fk_field)
-#   ("@has_polymorphic_parent_access", model_field, id_field)
+#   ("@has_parent_access", parent_model, fk_field, [parent_perm])
+#   ("@has_polymorphic_parent_access", model_field, id_field, [parent_perm])
+#
+# parent_perm — какой флаг нужен на РОДИТЕЛЕ: read (по умолчанию), create,
+# update или delete. Флаги самого правила (perm_*) говорят, при каком
+# действии над дочерней записью правило берётся; parent_perm — что при этом
+# требовать от родителя. Пример: реакцию СОЗДАТЬ (perm_create) можно, если
+# сообщение разрешено МЕНЯТЬ (parent_perm = update).
 #
 # Операторы возвращают SqlFragment (готовый SQL+values), который
 # FilterParser подставляет напрямую в финальный запрос. Никакой
@@ -45,6 +51,16 @@ def register_operator(name: str):
         return fn
 
     return decorator
+
+
+def _parent_perm(args: list, position: int) -> Operation:
+    """Необязательный аргумент parent_perm: флаг родителя, по умолчанию read.
+
+    Неизвестное значение — ValueError от Operation прямо при раскрытии.
+    """
+    if len(args) <= position:
+        return Operation.READ
+    return Operation(args[position])
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -239,13 +255,17 @@ async def has_parent_access(args: list, ctx: dict):
     Parent-access фильтр через рекурсивный subquery.
 
     Использование:
-        ("@has_parent_access", "chat_message", "message_id")
+        ("@has_parent_access", "chat_message", "message_id", "update")
+
+    parent_perm (3-й аргумент, по умолчанию read) — какой флаг нужен на
+    родителе: его ACL и rules берутся по нему. Реакцию создать можно,
+    если сообщение разрешено менять; прочитать — если оно видно.
 
     Возвращает:
         SqlFragment:
             "message_id" IN (
                 SELECT id FROM "chat_message"
-                WHERE <скомпилированные rules chat_message>
+                WHERE <rules chat_message на parent_perm>
             )
 
     Rules родителя получаются через checker._get_domains, рекурсивно
@@ -253,13 +273,15 @@ async def has_parent_access(args: list, ctx: dict):
     компилируются через FilterParser в SQL-фрагмент. Всё внутри одного
     финального запроса — никаких отдельных SELECT'ов в Python.
     """
-    if len(args) != 2:
+    if len(args) not in (2, 3):
         raise ValueError(
-            "@has_parent_access expects 2 args: (parent_model, fk_field)"
+            "@has_parent_access expects 2 or 3 args: "
+            "(parent_model, fk_field, [parent_perm])"
         )
 
     parent_model_name = args[0]
     fk_field = args[1]
+    parent_perm = _parent_perm(args, 2)
 
     seen = ctx["seen_models"]
     if parent_model_name in seen:
@@ -272,7 +294,13 @@ async def has_parent_access(args: list, ctx: dict):
     env = ctx["env"]
 
     cache = ctx.get("cache")
-    cache_key = ("has_parent_access", user_id, parent_model_name, fk_field)
+    cache_key = (
+        "has_parent_access",
+        user_id,
+        parent_model_name,
+        fk_field,
+        parent_perm.value,
+    )
     if cache is not None and cache_key in cache:
         return cache[cache_key]
 
@@ -299,7 +327,7 @@ async def has_parent_access(args: list, ctx: dict):
     role_ids = await checker._get_user_roles(user_id)
 
     has_acl = await checker._check_acl(
-        role_ids, parent_model_name, Operation.READ
+        role_ids, parent_model_name, parent_perm
     )
     if not has_acl:
         result = SqlFragment("FALSE", [])
@@ -311,7 +339,7 @@ async def has_parent_access(args: list, ctx: dict):
     # resolve_operators (см. интеграцию в access_control). Вернётся
     # domain с SqlFragment'ами и обычными triplet'ами.
     parent_domain = await checker._get_domains(
-        role_ids, parent_model_name, Operation.READ, user_id
+        role_ids, parent_model_name, parent_perm, user_id
     )
 
     parent_table = parent_cls.__table__
@@ -346,7 +374,10 @@ async def has_polymorphic_parent_access(args: list, ctx: dict):
     Полиморфный parent-access фильтр.
 
     Использование:
-        ("@has_polymorphic_parent_access", "res_model", "res_id")
+        ("@has_polymorphic_parent_access", "res_model", "res_id", "update")
+
+    parent_perm (3-й аргумент, по умолчанию read) — какой флаг нужен на
+    родителе, как у @has_parent_access.
 
     Возвращает один большой SqlFragment с OR по всем встретившимся
     res_model:
@@ -363,14 +394,15 @@ async def has_polymorphic_parent_access(args: list, ctx: dict):
     Никакой материализации, никаких параллельных запросов —
     всё в одном финальном SQL который БД оптимизирует.
     """
-    if len(args) != 2:
+    if len(args) not in (2, 3):
         raise ValueError(
-            "@has_polymorphic_parent_access expects 2 args: "
-            "(model_field, id_field)"
+            "@has_polymorphic_parent_access expects 2 or 3 args: "
+            "(model_field, id_field, [parent_perm])"
         )
 
     model_field = args[0]
     id_field = args[1]
+    parent_perm = _parent_perm(args, 2)
 
     user_id = ctx["user_id"]
     env = ctx["env"]
@@ -387,6 +419,7 @@ async def has_polymorphic_parent_access(args: list, ctx: dict):
         current_model_name,
         model_field,
         id_field,
+        parent_perm.value,
     )
     if cache is not None and cache_key in cache:
         return cache[cache_key]
@@ -467,7 +500,7 @@ async def has_polymorphic_parent_access(args: list, ctx: dict):
         # ACL родителя
         try:
             has_acl = await checker._check_acl(
-                role_ids, parent_model_class_name, Operation.READ
+                role_ids, parent_model_class_name, parent_perm
             )
         except Exception:
             continue
@@ -479,7 +512,7 @@ async def has_polymorphic_parent_access(args: list, ctx: dict):
         # без WHERE подзапрос отдал бы все записи родителя
         try:
             parent_domain = await checker._get_domains(
-                role_ids, parent_model_class_name, Operation.READ, user_id
+                role_ids, parent_model_class_name, parent_perm, user_id
             )
         except Exception:
             logger.exception(

@@ -179,7 +179,9 @@ class ChatApp(Service):
         - chat_message: видят те, у кого есть доступ к chat
         - chat_member: видят те, у кого есть доступ к chat
                        (не нужно смотреть участников чужих чатов)
-        - chat_message_reaction: видят те, у кого есть доступ к message
+        - chat_message_reaction: видят те, у кого есть доступ к message;
+                                 ставят свою те, кто может писать в чат;
+                                 снимают только свою
 
         Все правила создаются с role_id=None — применяются ко всем
         ролям. sudo, SystemSession и is_admin проскакивают сами на уровне
@@ -263,7 +265,7 @@ class ChatApp(Service):
         await create_rule_if_missing(
             name="ChatMessage: readable if chat is accessible",
             model_name="chat_message",
-            domain=[["@has_parent_access", "chat", "chat_id"]],
+            domain=[["@has_parent_access", "chat", "chat_id", "read"]],
             perms={"read": True},
         )
         # ChatMessage ЗАПИСЬ — только участники чата (team-читатель писать не
@@ -275,12 +277,36 @@ class ChatApp(Service):
             perms={"create": True, "update": True, "delete": True},
         )
 
-        # ChatMessageReaction — через has_parent_access на message
+        # ChatMessageReaction. perms — действие над реакцией, parent_perm —
+        # что требуется от сообщения (см. rule_operators).
+        # Читать: видишь сообщение — видишь реакции.
         await create_rule_if_missing(
             name="ChatMessageReaction: visible if message is accessible",
             model_name="chat_message_reaction",
-            domain=[["@has_parent_access", "chat_message", "message_id"]],
-            perms={"read": True, "create": True, "delete": True},
+            domain=[
+                ["@has_parent_access", "chat_message", "message_id", "read"]
+            ],
+            perms={"read": True},
+        )
+        # Ставить: только свою и только там, где можно писать (update
+        # сообщения — правило «members can write»). Раньше хватало видеть
+        # сообщение: читатель из команды ставил реакции, участник — от
+        # чужого имени.
+        await create_rule_if_missing(
+            name="ChatMessageReaction: members add own",
+            model_name="chat_message_reaction",
+            domain=[
+                ["user_id", "=", "{{user_id}}"],
+                ["@has_parent_access", "chat_message", "message_id", "update"],
+            ],
+            perms={"create": True},
+        )
+        # Менять и снимать: только свою (раньше — любую на видимом сообщении).
+        await create_rule_if_missing(
+            name="ChatMessageReaction: own",
+            model_name="chat_message_reaction",
+            domain=[["user_id", "=", "{{user_id}}"]],
+            perms={"update": True, "delete": True},
         )
 
         # ChatFolder — читать можно свои + общие (user_id IS NULL, их заводит
