@@ -146,9 +146,8 @@ class AccessChecker(Generic[TSession]):
     async def check_field_access(
         self,
         session: TSession,
-        model: str,
         operation: Operation,
-        field_names: list[str],
+        fields_with_roles: dict[str, list[str]],
     ) -> list[str]:
         """
         Field-level доступ: какие из переданных полей сессия НЕ вправе
@@ -160,9 +159,11 @@ class AccessChecker(Generic[TSession]):
         пользователь, выставляющий себе role_ids или is_admin); на чтении —
         секреты, которые видит только нужная роль.
 
-        ORM (AccessMixin._check_field_access) передаёт ВСЕ поля операции:
-        на записи — назначенные, на чтении — выбираемые и из фильтра с
-        сортировкой. Отбирать поля с role_* на этой операции — дело чекера.
+        fields_with_roles — {имя поля: коды ролей, которым операция
+        разрешена} (Field.required_roles); только поля с ограничением, без
+        них ORM (AccessMixin._check_field_access) чекер не зовёт. Чекер
+        только сопоставляет коды с ролями сессии. Зарезервированный код
+        SUPERUSER — «только суперпользователь».
 
         Returns:
             Список запрещённых полей. Пустой — всё разрешено. База разрешает

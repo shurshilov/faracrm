@@ -122,8 +122,10 @@ class AccessMixin(_Base):
         filter: list | None = None,
         sort: str | None = None,
     ) -> list[str]:
-        """Field-level доступ (атрибуты role_*). Какие поля сессии запрещены,
-        решает чекер; здесь — что с ними делать.
+        """Field-level доступ (атрибуты role_*). Чекеру уходят только поля
+        с ограничением на эту операцию, как {имя: коды ролей}, — у
+        большинства моделей таких нет, и чекер не вызывается вовсе; какие
+        из них сессии запрещены, решает он, здесь — что с ними делать.
 
         Запись (CREATE/UPDATE): запрещённое поле в payload — AccessDenied,
         операция отклоняется целиком. Защита от privilege escalation через
@@ -154,20 +156,38 @@ class AccessMixin(_Base):
         """
         session = get_access_session()
         checker = get_access_checker()
-        if session is None and checker.require_session:
-            raise AccessDenied(
-                f"No session in DotORM context for {operation.value} on "
-                f"{cls.__table__}"
-            )
-        if session is None or checker.is_full_access(session):
+        if session is None:
+            # Та же политика, что в _check_access: require_session →
+            # default-deny, иначе default-allow (автономный dotorm).
+            if checker.require_session:
+                raise AccessDenied(
+                    f"No session in DotORM context for {operation.value} on "
+                    f"{cls.__table__}"
+                )
+            return list(fields)
+
+        # Полный доступ (sudo, системная сессия, у FARA admin): поля не
+        # проверяются.
+        if checker.is_full_access(session):
             return list(fields)
 
         used = _filter_field_names(filter)
         if sort:
             used.add(sort)
+        all_fields = cls.get_fields()
+        fields_with_roles: dict[str, list[str]] = {}
+        for name in [*fields, *used]:
+            field = all_fields.get(name)
+            if field is None:
+                continue
+            codes = field.required_roles(operation.value)
+            if codes:
+                fields_with_roles[name] = codes
+        if not fields_with_roles:
+            return list(fields)
         denied = set(
             await checker.check_field_access(
-                session, cls.__table__, operation, [*fields, *used]
+                session, operation, fields_with_roles
             )
         )
         if operation != Operation.READ:

@@ -139,17 +139,16 @@ class SecurityAccessChecker(AccessChecker["Session"]):
     async def check_field_access(
         self,
         session: "Session",
-        model: str,
         operation: Operation,
-        field_names: list[str],
+        fields_with_roles: dict[str, list[str]],
     ) -> list[str]:
         """
         Field-level доступ: какие поля сессия НЕ вправе читать или писать.
 
         Третья ось доступа (ACL=таблица, Rules=строка, тут=поле). ORM отдаёт
-        сюда все поля операции (выбираемые, фильтр и сортировку на чтении;
-        назначенные на записи), а ограниченные role_*-поля отбирает цикл
-        ниже: остальные пропускаются.
+        сюда {поле: коды ролей, которым операция разрешена} — только поля
+        с role_* (на чтении — все такие поля модели, на записи — из
+        назначенных); здесь коды сопоставляются с ролями сессии.
 
         Правила role_* трактуются так:
         - токен SUPERUSER → разрешено только is_admin (полный доступ отсечён
@@ -160,41 +159,21 @@ class SecurityAccessChecker(AccessChecker["Session"]):
         Returns:
             Список запрещённых полей (пустой = всё можно).
         """
-        # AnonymousSession ролей не несёт: ограниченные поля цикл запретит
-        # ей сам, остальные пропустит.
-        model_name = self.env.models._get_model_name_by_table(model)
-        Model = self.env.models._get_model(model_name)
-        if Model is None:
-            return []
-
-        all_fields = Model.get_fields()
         # Коды ролей берём из самой сессии (кладутся развёрнутыми при
         # сборке/кэшировании сессии — горячий путь без запроса в БД).
         # role_ids может быть None у негидратированных сессий (cookie-auth,
-        # внутренний код) → трактуем как «нет ролей»: restricted-поля будут
-        # запрещены, но без падения (иначе TypeError на итерации None).
+        # внутренний код) и пуст у AnonymousSession → «нет ролей»:
+        # ограниченные поля запрещены, но без падения (иначе TypeError на
+        # итерации None).
         user_codes = {
             r.code for r in (session.user_id.role_ids or []) if r.code
         }
         denied: list[str] = []
-
-        for name in field_names:
-            field = all_fields.get(name)
-            if field is None:
-                continue
-            required = field.required_roles(operation.value)
-            if not required:
-                continue
-
-            req_codes = set(required) - {SUPERUSER}
-            if not req_codes:
-                # Поле только для суперпользователя, а мы уже не admin.
+        for name, codes in fields_with_roles.items():
+            req_codes = set(codes) - {SUPERUSER}
+            # Пусто — поле только для суперпользователя, а мы уже не admin.
+            if not req_codes or not (req_codes & user_codes):
                 denied.append(name)
-                continue
-
-            if not (req_codes & (user_codes or set())):
-                denied.append(name)
-
         return denied
 
     def is_full_access(self, session: "Session") -> bool:
