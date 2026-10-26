@@ -9,7 +9,14 @@ import {
   BaseQueryFn,
   TypedUseQueryHookResult,
 } from '@reduxjs/toolkit/query/react';
-import { Children, isValidElement, useEffect, useRef, useState } from 'react';
+import {
+  Children,
+  isValidElement,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -416,10 +423,22 @@ export const List = <RecordType extends FaraRecord>({
   }
 
   // Теперь массив колонок готов — снимок хука увидит их все.
-  const { effectiveColumns } = useDataTableColumns<RecordType>({
-    // key: props.model,
-    key: undefined,
-    columns,
+  //
+  // key — тот же, что storeColumnsKey у DataTable. Библиотека хранит в
+  // localStorage ширины колонок (нужны) и их ПОРЯДОК (не нужен: он наш, в
+  // column_settings). Mantine useLocalStorage при монтировании записывает
+  // текущий порядок в storage, а DataTable v9 дальше переставляет колонки
+  // по сохранённому, дописывая новые в конец, — навязывает порядок первого
+  // показа поверх любого нашего (меню колонок, изменённый порядок <Field>
+  // в коде). Поэтому держим сохранённый порядок равным нашему: разошлись —
+  // пишем свой. useLayoutEffect — до отрисовки, чтобы старый не мелькал.
+  const { effectiveColumns, columnsOrder, setColumnsOrder } =
+    useDataTableColumns<RecordType>({ key: props.model, columns });
+  const ownOrder = columns.map(column => column.accessor as string);
+  useLayoutEffect(() => {
+    if (JSON.stringify(ownOrder) !== JSON.stringify(columnsOrder)) {
+      setColumnsOrder(ownOrder);
+    }
   });
 
   if (!data) {

@@ -6,7 +6,9 @@
  * пункт меню вида («Колонки» в ListMenu, «Поля карточки» в канбане);
  * якорь поповера — сама кнопка меню, она приходит как children, а
  * открыт/закрыт решает родитель (opened/onOpenChange). Галочка = поле
- * показано; стрелки — порядок; «По умолчанию» — сброс к полям вью.
+ * показано; порядок — стрелками или перетаскиванием строки за «грип»
+ * (dnd-kit sortable, как карточки канбана); «По умолчанию» — сброс к
+ * полям вью.
  * У колонок-связей (One2many/Many2many/полиморфные) — шестерёнка: виджет
  * и фильтр на связанные записи (ColumnRelationSettings); это только для
  * списка — канбан обработчики не передаёт, и шестерёнки нет. Изменения
@@ -32,9 +34,27 @@ import {
   IconSearch,
   IconChevronUp,
   IconChevronDown,
+  IconGripVertical,
   IconArrowBackUp,
   IconSettings,
 } from '@tabler/icons-react';
+import {
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useGetFieldsQuery, FieldInfoResponse } from '@/services/api/crudApi';
 import type { FilterExpression } from '@/services/api/crudTypes';
 import { ColumnRelationSettings } from './ColumnRelationSettings';
@@ -74,6 +94,63 @@ interface ColumnsMenuProps {
   onReset: () => void;
   /** Вызывается при закрытии меню — момент записи выбора на сервер. */
   onClose: () => void;
+}
+
+/** Строка видимой колонки: тянется за «грип» справа (useSortable). */
+function SortableRow({
+  name,
+  children,
+  actions,
+  panel,
+}: {
+  name: string;
+  /** Чекбокс колонки. */
+  children: ReactNode;
+  /** Кнопки справа от чекбокса (настройка связи, стрелки). */
+  actions?: ReactNode;
+  /** Раскрытая настройка связи под строкой. */
+  panel?: ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: name });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        // Только по вертикали: x обнуляем, чтобы строка не уезжала вбок.
+        transform: CSS.Transform.toString(transform && { ...transform, x: 0 }),
+        transition,
+        position: 'relative',
+        zIndex: isDragging ? 1 : undefined,
+        opacity: isDragging ? 0.6 : undefined,
+      }}>
+      <Group gap={4} wrap="nowrap" justify="space-between">
+        {children}
+        <Group gap={0} wrap="nowrap">
+          {actions}
+          <ActionIcon
+            size="xs"
+            variant="subtle"
+            color="gray"
+            title="Перетащить"
+            // touch-action: none — иначе на сенсорном экране жест уйдёт
+            // в прокрутку, а не в перенос.
+            style={{ cursor: 'grab', touchAction: 'none' }}
+            {...attributes}
+            {...listeners}>
+            <IconGripVertical size={14} />
+          </ActionIcon>
+        </Group>
+      </Group>
+      {panel}
+    </div>
+  );
 }
 
 export function ColumnsMenu({
@@ -129,6 +206,23 @@ export function ColumnsMenu({
     const next = selected.slice();
     [next[index], next[target]] = [next[target], next[index]];
     onChange(next);
+  };
+
+  // Перетаскивание строк. distance — клик по «грипу» не начинает перенос;
+  // с клавиатуры — Space и стрелки на «грипе». При поиске тянутся только
+  // найденные строки, индексы считаются по полному списку.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = selected.indexOf(String(active.id));
+    const to = selected.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    onChange(arrayMove(selected, from, to));
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -188,6 +282,7 @@ export function ColumnsMenu({
   };
 
   const hasAvailableMatches = available.some(matches);
+  const shown = selected.filter(matches);
 
   return (
     <Popover
@@ -237,53 +332,65 @@ export function ColumnsMenu({
         />
 
         {/* offsetScrollbars — скроллбар получает свой «жёлоб» справа и не
-            перекрывает стрелки ▲▼ перестановки колонок. pr — небольшой
-            зазор между контентом и жёлобом. */}
+            перекрывает стрелки ▲▼ и «грип». pr — небольшой зазор между
+            контентом и жёлобом. */}
         <ScrollArea.Autosize mah={360} type="auto" offsetScrollbars="y">
           <Stack gap={2} pr={4}>
-            {/* Показанные колонки — в порядке отображения + перестановка */}
-            {selected.filter(matches).map(name => {
-              const index = selected.indexOf(name);
-              return (
-                <div key={name}>
-                  <Group gap={4} wrap="nowrap" justify="space-between">
-                    <Checkbox
-                      size="xs"
-                      checked
-                      onChange={e =>
-                        handleToggle(name, e.currentTarget.checked)
-                      }
-                      label={
-                        <Group gap={6} wrap="nowrap">
-                          <Text size="xs">{name}</Text>
-                          {typeBadge(name)}
-                        </Group>
-                      }
-                    />
-                    <Group gap={0} wrap="nowrap">
-                      {relationSettingsButton(name)}
-                      <ActionIcon
+            {/* Показанные колонки — в порядке отображения; перестановка
+                стрелками или перетаскиванием */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}>
+              <SortableContext
+                items={shown}
+                strategy={verticalListSortingStrategy}>
+                {shown.map(name => {
+                  const index = selected.indexOf(name);
+                  return (
+                    <SortableRow
+                      key={name}
+                      name={name}
+                      panel={relationSettingsPanel(name)}
+                      actions={
+                        <>
+                          {relationSettingsButton(name)}
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            color="gray"
+                            disabled={index <= 0}
+                            onClick={() => move(index, -1)}>
+                            <IconChevronUp size={14} />
+                          </ActionIcon>
+                          <ActionIcon
+                            size="xs"
+                            variant="subtle"
+                            color="gray"
+                            disabled={index >= selected.length - 1}
+                            onClick={() => move(index, 1)}>
+                            <IconChevronDown size={14} />
+                          </ActionIcon>
+                        </>
+                      }>
+                      <Checkbox
                         size="xs"
-                        variant="subtle"
-                        color="gray"
-                        disabled={index <= 0}
-                        onClick={() => move(index, -1)}>
-                        <IconChevronUp size={14} />
-                      </ActionIcon>
-                      <ActionIcon
-                        size="xs"
-                        variant="subtle"
-                        color="gray"
-                        disabled={index >= selected.length - 1}
-                        onClick={() => move(index, 1)}>
-                        <IconChevronDown size={14} />
-                      </ActionIcon>
-                    </Group>
-                  </Group>
-                  {relationSettingsPanel(name)}
-                </div>
-              );
-            })}
+                        checked
+                        onChange={e =>
+                          handleToggle(name, e.currentTarget.checked)
+                        }
+                        label={
+                          <Group gap={6} wrap="nowrap">
+                            <Text size="xs">{name}</Text>
+                            {typeBadge(name)}
+                          </Group>
+                        }
+                      />
+                    </SortableRow>
+                  );
+                })}
+              </SortableContext>
+            </DndContext>
 
             {hasAvailableMatches && (
               <Divider my={4} label="Скрытые" labelPosition="center" />

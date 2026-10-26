@@ -13,7 +13,7 @@ Every user configures the list and the kanban for themselves through the "⋮" m
 
 ## List columns and card fields
 
-A checkbox shows the field, arrows set the order, "Default" restores the view's fields. For relation columns (One2many, Many2many) in the list the gear sets the widget (count, "yes/no", text) and a filter on the related records, using the same condition editor as the list filter. Kanban card values render like list cells: a checkbox, a date, the record name for a relation, the record count for a relation list.
+A checkbox shows the field, the arrows or dragging a row by the grip on the right set the order, "Default" restores the view's fields. For relation columns (One2many, Many2many) in the list the gear sets the widget (count, "yes/no", text) and a filter on the related records, using the same condition editor as the list filter. Kanban card values render like list cells: a checkbox, a date, the record name for a relation, the record count for a relation list.
 
 ## Form fields
 
