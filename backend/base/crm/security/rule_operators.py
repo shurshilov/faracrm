@@ -17,6 +17,7 @@ import logging
 from typing import Any, Awaitable, Callable
 
 from backend.base.system.dotorm.dotorm.components.filter_parser import (
+    FilterParser,
     SqlFragment,
 )
 from backend.base.system.dotorm.dotorm.access import (
@@ -44,15 +45,6 @@ def register_operator(name: str):
         return fn
 
     return decorator
-
-
-def is_operator_triplet(expr: Any) -> bool:
-    return (
-        isinstance(expr, (list, tuple))
-        and len(expr) >= 1
-        and isinstance(expr[0], str)
-        and expr[0].startswith("@")
-    )
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -104,7 +96,7 @@ async def resolve_operators(
         return domain
 
     # @-operator triplet
-    if is_operator_triplet(domain):
+    if FilterParser.is_operator_triplet(domain):
         op_name = domain[0]
         op_args = list(domain[1:])
 
@@ -132,20 +124,12 @@ async def resolve_operators(
             _depth + 1,
         )
 
-    # Обычный triplet (не @)
-    if (
-        len(domain) == 3
-        and isinstance(domain[0], str)
-        and not domain[0].startswith("@")
-    ):
+    # Обычный triplet — @-оператор отсеян выше
+    if FilterParser.is_triplet(domain):
         return list(domain)
 
     # NOT expression
-    if (
-        len(domain) == 2
-        and isinstance(domain[0], str)
-        and domain[0].lower() == "not"
-    ):
+    if FilterParser.is_not_expr(domain):
         inner = await resolve_operators(
             domain[1],
             user_id,

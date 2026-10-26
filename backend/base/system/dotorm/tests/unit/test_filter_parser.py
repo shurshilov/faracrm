@@ -572,7 +572,7 @@ class TestFilterParserCompatibility:
 
 @pytest.mark.unit
 class TestFilterParserIsTriplet:
-    """Tests for _is_triplet helper method."""
+    """Tests for is_triplet helper method."""
 
     def setup_method(self):
         """Setup test fixtures."""
@@ -583,27 +583,27 @@ class TestFilterParserIsTriplet:
 
     def test_valid_triplet_tuple(self):
         """Test valid triplet as tuple."""
-        assert self.parser._is_triplet(("field", "=", "value")) is True
+        assert self.parser.is_triplet(("field", "=", "value")) is True
 
     def test_valid_triplet_list(self):
         """Test valid triplet as list."""
-        assert self.parser._is_triplet(["field", "=", "value"]) is True
+        assert self.parser.is_triplet(["field", "=", "value"]) is True
 
     def test_invalid_triplet_wrong_length(self):
         """Test invalid triplet with wrong length."""
-        assert self.parser._is_triplet(("field", "=")) is False
+        assert self.parser.is_triplet(("field", "=")) is False
         assert (
-            self.parser._is_triplet(("field", "=", "value", "extra")) is False
+            self.parser.is_triplet(("field", "=", "value", "extra")) is False
         )
 
     def test_invalid_triplet_non_string_field(self):
         """Test invalid triplet with non-string field."""
-        assert self.parser._is_triplet((123, "=", "value")) is False
+        assert self.parser.is_triplet((123, "=", "value")) is False
 
     def test_invalid_triplet_not_sequence(self):
         """Test invalid triplet that is not a sequence."""
-        assert self.parser._is_triplet("not a triplet") is False
-        assert self.parser._is_triplet(123) is False
+        assert self.parser.is_triplet("not a triplet") is False
+        assert self.parser.is_triplet(123) is False
 
 
 class TestValueCoercionByFieldType:

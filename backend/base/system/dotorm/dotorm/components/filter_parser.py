@@ -124,12 +124,40 @@ class FilterParser:
         # в JSON нет дат, они приезжают строками, а драйверу нужен datetime.
         self.fields = fields or {}
 
-    def _is_triplet(self, expr: Any) -> bool:
-        """Check if expression is a simple triplet."""
+    # Формы выражения. Статические: ими же пользуется резолвер
+    # rule-операторов (security.rule_operators), а экземпляра парсера у
+    # него нет.
+
+    @staticmethod
+    def is_triplet(expr: Any) -> bool:
+        """Условие ("field", op, value): три элемента, первый — строка."""
         return (
             isinstance(expr, (list, tuple))
             and len(expr) == 3
             and isinstance(expr[0], str)
+        )
+
+    @staticmethod
+    def is_operator_triplet(expr: Any) -> bool:
+        """@-оператор rules: ("@is_member", ...), ("@has_parent_access", ...).
+
+        До parse его раскрывает в SqlFragment резолвер операторов.
+        """
+        return (
+            isinstance(expr, (list, tuple))
+            and len(expr) >= 1
+            and isinstance(expr[0], str)
+            and expr[0].startswith("@")
+        )
+
+    @staticmethod
+    def is_not_expr(expr: Any) -> bool:
+        """Отрицание ("not", expr); регистр, как у and/or, не важен."""
+        return (
+            isinstance(expr, (list, tuple))
+            and len(expr) == 2
+            and isinstance(expr[0], str)
+            and expr[0].lower() == "not"
         )
 
     def extract_field_names(self, expr: Any) -> set[str]:
@@ -139,7 +167,7 @@ class FilterParser:
         (role_read) — ошибка, см. AccessMixin._check_field_access.
         """
         names: set[str] = set()
-        if self._is_triplet(expr):
+        if self.is_triplet(expr):
             names.add(expr[0])
         elif isinstance(expr, (list, tuple)):
             for item in expr:
@@ -156,17 +184,13 @@ class FilterParser:
             return filter_expr.sql, tuple(filter_expr.values)
 
         # NOT expression: ("not", expr)
-        if (
-            isinstance(filter_expr, (list, tuple))
-            and len(filter_expr) == 2
-            and filter_expr[0] == "not"
-        ):
+        if self.is_not_expr(filter_expr):
             inner_expr = filter_expr[1]
             clause, values = self.parse(inner_expr)  # type: ignore
             return f"NOT ({clause})", values
 
         # Simple triplet: ("field", "op", value)
-        if self._is_triplet(filter_expr):
+        if self.is_triplet(filter_expr):
             name, op, value = filter_expr
             if self.fields:
                 # Имя подставляется в SQL как идентификатор, поэтому ОБЯЗАНО
@@ -264,7 +288,7 @@ class FilterParser:
 
                 elif isinstance(item, (list, tuple)):
                     clause, clause_values = self.parse(item)  # type: ignore
-                    wrap = not self._is_triplet(item)
+                    wrap = not self.is_triplet(item)
                     parts.append(("EXPR", clause, wrap))
                     values.extend(clause_values)
                     i += 1

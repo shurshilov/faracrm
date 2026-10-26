@@ -16,7 +16,7 @@ import logging
 from typing import ClassVar
 
 from backend.base.system.dotorm.dotorm.decorators import hybridmethod
-from ...system.dotorm.dotorm.model import DotModel
+from backend.base.system.dotorm.dotorm.model import DotModel
 from backend.base.system.core.enviroment import env
 
 logger = logging.getLogger(__name__)

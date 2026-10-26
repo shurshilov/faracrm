@@ -92,7 +92,7 @@ class AccessMixin(_Base):
                 # А нам нужно:
                 #   filter AND (a OR b)
                 # При вложенном list парсер ставит скобки автоматически
-                # (см. wrap=True в FilterParser._is_triplet)
+                # (см. wrap=True в FilterParser.is_triplet)
                 return [*filter, domain]
             return domain
 
