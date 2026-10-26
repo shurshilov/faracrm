@@ -27,6 +27,8 @@
   "language": "Язык",
   "settings": "Настройки",
   "cardFields": "Поля карточки",
+  "kanbanFoldStage": "Свернуть стадию",
+  "kanbanUnfoldStage": "Раскрыть стадию",
   "more": "Ещё",
   "profile": "Профиль",
   "logout": "Выход",

@@ -27,6 +27,8 @@
   "language": "Language",
   "settings": "Settings",
   "cardFields": "Card fields",
+  "kanbanFoldStage": "Fold stage",
+  "kanbanUnfoldStage": "Unfold stage",
   "more": "More",
   "profile": "Profile",
   "logout": "Logout",

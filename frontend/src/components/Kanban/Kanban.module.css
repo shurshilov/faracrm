@@ -53,6 +53,32 @@
   background-color: var(--mantine-color-dark-6);
 }
 
+/* Свёрнутая стадия (stage.fold): узкая полоска, название вдоль, клик
+   раскрывает; при переносе карточки подсвечивается как цель. Селектор
+   с двумя классами — чтобы перебить ширину .column, в т.ч. мобильную. */
+.column.columnFolded {
+  width: 44px;
+  min-width: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 3px solid;
+  cursor: pointer;
+  scroll-snap-align: none;
+}
+
+.column.columnFolded[data-over] {
+  background-color: var(--mantine-color-blue-light);
+}
+
+.foldedTitle {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  max-height: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .columnHeader {
   padding: 10px 12px;
   border-top: 3px solid;

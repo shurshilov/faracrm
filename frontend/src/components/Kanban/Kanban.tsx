@@ -11,7 +11,11 @@ import {
   ActionIcon,
   Box,
 } from '@mantine/core';
-import { IconAdjustments, IconGripVertical } from '@tabler/icons-react';
+import {
+  IconAdjustments,
+  IconChevronsLeft,
+  IconGripVertical,
+} from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -236,6 +240,10 @@ interface KanbanColumnProps {
   fields: string[];
   types: FieldTypes;
   onCardClick: (id: number) => void;
+  /** Показать узкой полоской (stage.fold, пользователь не раскрыл). */
+  folded?: boolean;
+  /** Свернуть/раскрыть колонку — только у стадий с fold. */
+  onToggleFold?: () => void;
 }
 
 // Колонка канбана (для группированного вида)
@@ -246,7 +254,10 @@ function KanbanColumn({
   fields,
   types,
   onCardClick,
+  folded = false,
+  onToggleFold,
 }: KanbanColumnProps) {
+  const { t } = useTranslation('common');
   // Вся колонка — droppable-зона. Без этого нельзя было бросить карточку в
   // пустую колонку или в пустое место под карточками: droppable'ами были
   // только сами карточки (useSortable), а контейнер колонки — нет, поэтому
@@ -257,18 +268,51 @@ function KanbanColumn({
     data: { type: 'column', stageId: stage.id },
   });
 
+  // Свёрнутая стадия (issue #43): узкая полоска с названием вдоль и
+  // счётчиком — отработанные стадии («Проиграно», «Отменено») не занимают
+  // место на доске. Клик раскрывает до перезагрузки; карточку можно
+  // бросить прямо на полоску — droppable вся она.
+  if (folded) {
+    return (
+      <div
+        ref={setNodeRef}
+        className={`${classes.column} ${classes.columnFolded}`}
+        data-over={isOver || undefined}
+        style={{ borderTopColor: stage.color || '#3498db' }}
+        title={t('kanbanUnfoldStage')}
+        onClick={onToggleFold}>
+        <Badge size="sm" variant="light" color="gray">
+          {records.length}
+        </Badge>
+        <Text fw={600} size="sm" className={classes.foldedTitle}>
+          {stage.name}
+        </Text>
+      </div>
+    );
+  }
+
   return (
     <div className={classes.column}>
       <div
         className={classes.columnHeader}
         style={{ borderTopColor: stage.color || '#3498db' }}>
-        <Group justify="space-between">
+        <Group justify="space-between" wrap="nowrap">
           <Group gap="xs">
             <Text fw={600}>{stage.name}</Text>
             <Badge size="sm" variant="light" color="gray">
               {records.length}
             </Badge>
           </Group>
+          {onToggleFold && (
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              size="sm"
+              title={t('kanbanFoldStage')}
+              onClick={onToggleFold}>
+              <IconChevronsLeft size={16} />
+            </ActionIcon>
+          )}
         </Group>
       </div>
       <ScrollArea className={classes.columnContent} offsetScrollbars>
@@ -334,6 +378,17 @@ export function Kanban<T extends FaraRecord>({
   const { t } = useTranslation('common');
   const [activeId, setActiveId] = useState<number | null>(null);
   const [updateRecord] = useUpdateMutation();
+
+  // Свёрнутые стадии (stage.fold), раскрытые пользователем кликом — на
+  // время сессии, без сохранения.
+  const [unfolded, setUnfolded] = useState<Set<number>>(() => new Set());
+  const toggleFold = (stageId: number) =>
+    setUnfolded(prev => {
+      const next = new Set(prev);
+      if (next.has(stageId)) next.delete(stageId);
+      else next.add(stageId);
+      return next;
+    });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -554,17 +609,24 @@ export function Kanban<T extends FaraRecord>({
             offsetScrollbars
             type="always">
             <div className={classes.columnsWrapper}>
-              {stages.map(stage => (
-                <KanbanColumn
-                  key={stage.id}
-                  stage={stage}
-                  records={recordsByStage.get(Number(stage.id)) || []}
-                  model={model}
-                  fields={cardFields}
-                  types={types}
-                  onCardClick={handleCardClick}
-                />
-              ))}
+              {stages.map(stage => {
+                const stageId = Number(stage.id);
+                return (
+                  <KanbanColumn
+                    key={stage.id}
+                    stage={stage}
+                    records={recordsByStage.get(stageId) || []}
+                    model={model}
+                    fields={cardFields}
+                    types={types}
+                    onCardClick={handleCardClick}
+                    folded={!!stage.fold && !unfolded.has(stageId)}
+                    onToggleFold={
+                      stage.fold ? () => toggleFold(stageId) : undefined
+                    }
+                  />
+                );
+              })}
             </div>
           </ScrollArea>
           <DragOverlay>
