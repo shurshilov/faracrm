@@ -141,6 +141,7 @@ export interface PartnerRecord extends BaseRecord {
   notes: string | null;
   website: string | null;
   contact_ids: RelationRecord[];
+  utm_tags: string | null;
   // Реквизиты РФ — RequisitesMixin модуля contract (@extend), общий с компанией
   legal_type: 'person' | 'company' | 'entrepreneur' | null;
   vat: string | null;
@@ -152,6 +153,10 @@ export interface PartnerRecord extends BaseRecord {
   bank_name: string | null;
   bank_corr_account: string | null;
   bank_account: string | null;
+  // Только партнёр — PartnerRequisitesMixin там же (физлицо, доставка)
+  birth_date: string | null;
+  passport: string | null;
+  address_delivery: string | null;
 }
 
 export interface ContactRecord extends BaseRecord {

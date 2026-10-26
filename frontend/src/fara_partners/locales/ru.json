@@ -22,7 +22,8 @@
     "child_ids": "Дочерние партнёры",
     "contact_ids": "Контакты",
     "contact_type": "Тип контакта",
-    "is_primary": "Основной"
+    "is_primary": "Основной",
+    "utm_tags": "UTM-метки"
   },
   "partners": {
     "title": "Партнёры"

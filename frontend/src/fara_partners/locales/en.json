@@ -22,7 +22,8 @@
     "child_ids": "Child Partners",
     "contact_ids": "Contacts",
     "contact_type": "Contact Type",
-    "is_primary": "Primary"
+    "is_primary": "Primary",
+    "utm_tags": "UTM Tags"
   },
   "partners": {
     "title": "Partners"

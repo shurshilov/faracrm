@@ -44,6 +44,7 @@ export function ViewFormPartners(props: ViewFormProps) {
             <Field name="parent_id" label={t('fields.parent_id')} />
             <Field name="user_id" label={t('fields.user_id')} />
             <Field name="company_id" label={t('fields.company_id')} />
+            <Field name="utm_tags" label={t('fields.utm_tags')} />
           </FormRow>
         </FormTab>
         <FormTab

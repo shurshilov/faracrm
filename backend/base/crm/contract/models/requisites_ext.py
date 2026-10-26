@@ -1,9 +1,16 @@
 # Copyright 2025 FARA CRM
 # Contract module — реквизиты РФ, общие для партнёра и компании
 
+from datetime import date
+
 from backend.base.crm.company.models.company import Company
 from backend.base.crm.partners.models.partners import Partner
-from backend.base.system.dotorm.dotorm.fields import Char, Selection, Text
+from backend.base.system.dotorm.dotorm.fields import (
+    Char,
+    Date,
+    Selection,
+    Text,
+)
 from backend.base.system.core.extensions import extend
 
 
@@ -74,3 +81,18 @@ class RequisitesMixin:
         string="Корреспондентский счёт", max_length=20
     )
     bank_account: str | None = Char(string="Расчётный счёт", max_length=20)
+
+
+@extend(Partner)
+class PartnerRequisitesMixin:
+    """
+    Реквизиты только контрагента (issue #42): у физлица и ИП — дата
+    рождения и паспорт (форма прячет их у юрлица по legal_type), адрес
+    доставки — отдельно от юридического. У Company этого нет, поэтому
+    не в RequisitesMixin. Паспорт — строка без валидации: формат зависит
+    от страны.
+    """
+
+    birth_date: date | None = Date(string="Дата рождения")
+    passport: str | None = Char(string="№ паспорта", max_length=32)
+    address_delivery: str | None = Text(string="Адрес доставки")

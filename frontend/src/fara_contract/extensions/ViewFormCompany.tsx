@@ -13,8 +13,8 @@
  */
 
 import { FieldMany2one } from '@/components/Form/Fields/FieldMany2one';
-import { FormRow } from '@/components/Form/Layout';
-import { IconFileCertificate } from '@tabler/icons-react';
+import { FormRow, FormSection } from '@/components/Form/Layout';
+import { IconFileCertificate, IconSignature } from '@tabler/icons-react';
 import { registerFormTab } from '@/shared/extensions';
 import {
   REQUISITES_FIELDS,
@@ -26,10 +26,12 @@ export function CompanyRequisitesTab() {
   return (
     <>
       <RequisitesFields />
-      <FormRow cols={2}>
-        <FieldMany2one name="chief_id" label="Руководитель" />
-        <FieldMany2one name="accountant_id" label="Главный бухгалтер" />
-      </FormRow>
+      <FormSection title="Подписанты" icon={<IconSignature size={18} />}>
+        <FormRow cols={2}>
+          <FieldMany2one name="chief_id" label="Руководитель" />
+          <FieldMany2one name="accountant_id" label="Главный бухгалтер" />
+        </FormRow>
+      </FormSection>
     </>
   );
 }

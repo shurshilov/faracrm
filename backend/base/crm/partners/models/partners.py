@@ -82,6 +82,11 @@ class Partner(AuditMixin, PolymorphicParentMixin):
     notes: str | None = Text(string="Notes")
     website: str | None = Char(string="Website URL")
 
+    # UTM-метки рекламного источника одной строкой (issue #42):
+    # «utm_source=yandex&utm_medium=cpc&…». Дата рождения, паспорт и адрес
+    # доставки — PartnerRequisitesMixin модуля contract.
+    utm_tags: str | None = Char(string="UTM Tags")
+
     # Контакты (телефоны, email, telegram и т.д.)
     # Внешние аккаунты доступны через contact_ids.external_account_ids
     contact_ids: list["Contact"] = One2many(
