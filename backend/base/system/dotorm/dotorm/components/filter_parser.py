@@ -132,6 +132,20 @@ class FilterParser:
             and isinstance(expr[0], str)
         )
 
+    def extract_field_names(self, expr: Any) -> set[str]:
+        """Имена полей из триплетов выражения — так же, как их видит parse.
+
+        ORM спрашивает до запроса: фильтр по закрытому сессии полю
+        (role_read) — ошибка, см. AccessMixin._check_field_access.
+        """
+        names: set[str] = set()
+        if self._is_triplet(expr):
+            names.add(expr[0])
+        elif isinstance(expr, (list, tuple)):
+            for item in expr:
+                names |= self.extract_field_names(item)
+        return names
+
     def parse(self, filter_expr: FilterExpression) -> tuple[str, tuple]:
         """Recursively parse filter expression."""
         escape = self.dialect.escape

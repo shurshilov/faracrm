@@ -18,18 +18,6 @@ else:
     _Base = object
 
 
-def _filter_field_names(expr) -> set[str]:
-    """Имена полей из триплетов фильтра — так же, как их видит FilterParser."""
-    names: set[str] = set()
-    if isinstance(expr, (list, tuple)):
-        if len(expr) == 3 and isinstance(expr[0], str):
-            names.add(expr[0])
-        else:
-            for item in expr:
-                names |= _filter_field_names(item)
-    return names
-
-
 class AccessMixin(_Base):
     """
     Mixin добавляющий проверку доступа в CRUD операции.
@@ -171,7 +159,7 @@ class AccessMixin(_Base):
         if checker.is_full_access(session):
             return list(fields)
 
-        used = _filter_field_names(filter)
+        used = cls._builder.filter_parser.extract_field_names(filter)
         if sort:
             used.add(sort)
         all_fields = cls.get_fields()
