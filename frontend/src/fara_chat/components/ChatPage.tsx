@@ -14,11 +14,13 @@ import { IconMessageCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import {
   Chat,
+  ChatSection,
   GetChatsArgs,
   WSMessage,
   chatApi,
   useMarkChatAsReadMutation,
   useGetChatsQuery,
+  useGetChatQuery,
   useGetPinnedMessagesQuery,
   useGetChatConnectorsQuery,
   useSetChatDefaultConnectorMutation,
@@ -36,6 +38,14 @@ import { MessageSearchModal } from './MessageSearchModal';
 import styles from './ChatPage.module.css';
 import { useDispatch } from 'react-redux';
 import type { AppDispatch } from '@/store/store';
+
+/** Раздел чата, как SECTION_SQL на бэке: одиночный GET /chats/{id} его не
+ *  отдаёт. */
+function chatSection(chat: Chat): ChatSection {
+  if (chat.chat_type === 'record') return 'records';
+  if (chat.chat_type === 'channel') return 'channels';
+  return chat.is_internal ? 'staff' : 'clients';
+}
 
 interface ChatPageProps {
   token: string;
@@ -128,20 +138,50 @@ export function ChatPage({
   // Получаем список чатов с фильтром из URL
   const { data: chatsData } = useGetChatsQuery(getChatsArgs);
 
-  // Авто-открытие чата по ?open=chatId (из notification toast). Пока open в
-  // URL, список — по всем разделам; открыв чат, переходим в его квадрат.
+  // Канал, который просит открывший: ?contact_type=<id типа контакта> со
+  // значка контакта (виджет «Контакты», список контактов). Параметр
+  // снимается вместе с ?open, поэтому держим его до прихода коннекторов
+  // этого чата.
+  const requestedContactTypeRef = useRef<number | null>(null);
+
+  // Авто-открытие чата по ?open=chatId (уведомление, значок контакта). Пока
+  // open в URL, список — по всем разделам; открыв чат, переходим в его
+  // квадрат. Чат ищем в списке; нет там (список дальше первых 100 или из
+  // кэша без только что созданного чата) — грузим сам чат.
+  const openChatId = Number(searchParams.get('open')) || null;
+  const listedChat = openChatId
+    ? chatsData?.data.find(c => c.id === openChatId)
+    : undefined;
+  const { data: openChatData } = useGetChatQuery(
+    { chatId: openChatId || 0 },
+    { skip: !openChatId || !!listedChat },
+  );
+  const openChat = listedChat || openChatData?.data;
+
   useEffect(() => {
-    const openChatId = searchParams.get('open');
-    if (openChatId && chatsData?.data) {
-      const chat = chatsData.data.find(c => c.id === Number(openChatId));
-      if (chat) {
-        setSelectedChat(chat);
-        setSearchParams(chat.section ? { section: chat.section } : {}, {
-          replace: true,
-        });
-      }
-    }
-  }, [searchParams, chatsData?.data]);
+    if (!openChatId || !openChat) return;
+    requestedContactTypeRef.current =
+      Number(searchParams.get('contact_type')) || null;
+    setSelectedChat(openChat);
+    // Открыть могли из окна создания или настроек (бейдж «есть чат»).
+    setNewChatModalOpen(false);
+    setSettingsModalOpen(false);
+    // На мобильном список и переписка — разные экраны: показываем чат.
+    if (isMobile) setShowSidebar(false);
+    setSearchParams(
+      { section: openChat.section ?? chatSection(openChat) },
+      { replace: true },
+    );
+  }, [openChatId, openChat, searchParams]);
+
+  // Значок контакта без чата: ?new_contact=<id контакта> — визард создания
+  // с этим собеседником (подставляет сам NewChatModal); создаёт
+  // пользователь кнопкой, параметр снимается при закрытии.
+  const newContactId = Number(searchParams.get('new_contact')) || null;
+  const handleNewChatClose = () => {
+    setNewChatModalOpen(false);
+    if (newContactId) setSearchParams({}, { replace: true });
+  };
 
   // Получаем пиннед сообщения для выбранного чата
   const { data: pinnedData, refetch: refetchPinned } =
@@ -150,22 +190,40 @@ export function ChatPage({
       { skip: !selectedChat },
     );
 
-  // Получаем доступные коннекторы для выбранного чата
-  const { data: connectorsData } = useGetChatConnectorsQuery(
-    { chatId: selectedChat?.id || 0 },
-    { skip: !selectedChat },
-  );
+  // Получаем доступные коннекторы для выбранного чата. currentData — ответ
+  // именно для этого чата (data при смене чата ещё хранит список прошлого).
+  const { data: connectorsData, currentData: currentConnectors } =
+    useGetChatConnectorsQuery(
+      { chatId: selectedChat?.id || 0 },
+      { skip: !selectedChat },
+    );
 
   const availableConnectors = connectorsData?.data || [];
 
   // При открытии чата подставляем коннектор по умолчанию из ответа бэкенда:
   // галочка пользователя в свитчере, иначе канал, из которого пришёл чат;
-  // null = internal.
+  // null = internal. Пришли по значку контакта — канал его типа (один раз,
+  // галочку «по умолчанию» не трогаем).
   useEffect(() => {
     const saved = connectorsData?.default_connector_id ?? null;
     setDefaultConnectorId(saved);
+    const requested = requestedContactTypeRef.current;
+    if (requested && currentConnectors) {
+      requestedContactTypeRef.current = null;
+      const match = currentConnectors.data.find(
+        c => c.contact_type_id === requested,
+      );
+      if (match) {
+        setSelectedConnectorId(match.connector_id);
+        return;
+      }
+    }
     setSelectedConnectorId(saved);
-  }, [selectedChat?.id, connectorsData?.default_connector_id]);
+  }, [
+    selectedChat?.id,
+    connectorsData?.default_connector_id,
+    currentConnectors,
+  ]);
 
   const [saveDefaultConnector] = useSetChatDefaultConnectorMutation();
   const handleSetDefaultConnector = useCallback(
@@ -289,7 +347,18 @@ export function ChatPage({
   };
 
   const handleChatCreated = (chat: Chat) => {
-    setSelectedChat(chat);
+    setNewChatModalOpen(false);
+    // Открываем как по ?open: в ответе создания нет участников и раздела,
+    // а так чат дочитывается целиком и список переходит в его квадрат;
+    // канал контакта (?contact_type) подставится там же.
+    const contactType = searchParams.get('contact_type');
+    setSearchParams(
+      {
+        open: String(chat.id),
+        ...(contactType && { contact_type: contactType }),
+      },
+      { replace: true },
+    );
     // Обновляем список чатов
     if (refetchChatsRef.current) {
       refetchChatsRef.current();
@@ -420,9 +489,10 @@ export function ChatPage({
 
       {/* New chat modal */}
       <NewChatModal
-        opened={newChatModalOpen}
-        onClose={() => setNewChatModalOpen(false)}
+        opened={newChatModalOpen || !!newContactId}
+        onClose={handleNewChatClose}
         onChatCreated={handleChatCreated}
+        contactId={newContactId}
         currentUserId={currentUserId}
       />
 

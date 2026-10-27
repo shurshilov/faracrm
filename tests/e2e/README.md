@@ -73,7 +73,8 @@ e2e/
     │   ├── chat-multitab.spec.ts  # 6 тестов: 2 браузера real-time
     │   ├── chat-members.spec.ts   # 6 тестов: админ группы, участники (API + UI)
     │   ├── chat-settings.spec.ts  # 17 тестов: настройки чата — суперпользователь, админ чата, участник
-    │   └── chat-edge-cases.spec.ts# 8 тестов: reconnect, burst, isolation
+    │   ├── chat-edge-cases.spec.ts# 8 тестов: reconnect, burst, isolation
+│   │   └── contact-chat.spec.ts   # 7 тестов: чат по значку контакта — клиент/сотрудник, визард с собеседником, бейдж «есть чат», звонилка
     ├── crud/
     │   └── search.spec.ts         # 3 теста: поиск в List/Kanban
     └── views/

@@ -149,7 +149,11 @@
     "selectPartnerFirst": "Select a partner first",
     "selectPartnerHint": "Contacts are stored on the selected partner",
     "pressPlusToAdd": "Press «+» to add a contact",
-    "saveFailed": "Failed to save the contact"
+    "saveFailed": "Failed to save the contact",
+    "call": "Dial number",
+    "openChat": "Open chat",
+    "phoneUnavailable": "Dialer is unavailable",
+    "chatFailed": "Failed to open the chat"
   },
   "docxEditor": {
     "edit": "Edit document",

@@ -124,6 +124,17 @@
   flex-shrink: 0;
 }
 
+/* Значок-кнопка: позвонить / открыть чат (см. useContactAction) */
+.contactIconButton {
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.contactIconButton:hover {
+  box-shadow: 0 0 0 2px var(--mantine-color-blue-2);
+}
+
 .contactIcon[data-type="phone"] {
   background: var(--mantine-color-green-1);
   color: var(--mantine-color-green-7);

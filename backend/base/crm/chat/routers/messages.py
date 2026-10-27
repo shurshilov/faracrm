@@ -297,6 +297,55 @@ async def create_partner_chat(req: Request, partner_id: int):
     return {"chat_id": chat.id, "partner_id": partner_id}
 
 
+@router_private.get("/contacts/{contact_id}/chat")
+async def resolve_contact_chat(req: Request, contact_id: int):
+    """Чат собеседника по его контакту (значок контакта в карточке партнёра/
+    лида/заказа и в списке контактов) — БЕЗ создания. Клиент — единственный
+    внешний групповой чат партнёра (модель 1:1), сотрудник — личный чат с
+    текущим пользователем. Нет чата — фронт открывает визард создания с этим
+    собеседником (клиент → группа, сотрудник → личный), создаёт пользователь
+    кнопкой; name — имя собеседника для визарда. Свой контакт — всё null.
+    Доступ к контакту — правила модели contact (ORM search), чужой — 404.
+    """
+    env: "Environment" = req.app.state.env
+    user_id = req.state.session.user_id.id
+
+    contact = await env.models.contact.search_one(
+        filter=[("id", "=", contact_id)],
+        fields=["id", "partner_id", "user_id"],
+        fields_nested={
+            "partner_id": {"fields": ["id", "name"]},
+            "user_id": {"fields": ["id", "name"]},
+        },
+    )
+    if not contact:
+        raise FaraException(
+            {"content": "NOT_FOUND", "status_code": HTTP_404_NOT_FOUND}
+        )
+
+    if contact.partner_id:
+        chat = await env.models.chat.find_partner_group_chat(
+            contact.partner_id.id
+        )
+        return {
+            "chat_id": chat.id if chat else None,
+            "partner_id": contact.partner_id.id,
+            "user_id": None,
+            "name": contact.partner_id.name,
+        }
+    if contact.user_id and contact.user_id.id != user_id:
+        chat = await env.models.chat._find_direct_chat(
+            user_id, contact.user_id.id
+        )
+        return {
+            "chat_id": chat.id if chat else None,
+            "partner_id": None,
+            "user_id": contact.user_id.id,
+            "name": contact.user_id.name,
+        }
+    return {"chat_id": None, "partner_id": None, "user_id": None, "name": None}
+
+
 @router_private.get("/chats/{chat_id}/tags")
 async def get_chat_tags(
     req: Request,

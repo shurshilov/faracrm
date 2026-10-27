@@ -4,7 +4,7 @@ import { Field } from '@/components/List/Field';
 import { ViewFormProps } from '@/route/type';
 import type { ContactRecord } from '@/types/records';
 import { FormRow } from '@/components/Form/Layout';
-import { Badge } from '@mantine/core';
+import { Badge, UnstyledButton } from '@mantine/core';
 import {
   IconPhone,
   IconMail,
@@ -21,6 +21,7 @@ import {
   useContactTypes,
   getContactTypeConfig,
 } from '@/components/ContactsWidget';
+import { useContactAction } from '@/components/ContactsWidget/useContactAction';
 
 // Маппинг icon name → React component
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -50,6 +51,7 @@ function getIcon(iconName: string): React.ElementType {
 // name — человекочитаемое ОПИСАНИЕ («Александр рабочий телефон»), опционально.
 export function ViewListContacts() {
   const { contactTypes } = useContactTypes();
+  const contactAction = useContactAction();
 
   return (
     <List<ContactRecord> model="contact">
@@ -57,17 +59,36 @@ export function ViewListContacts() {
       <Field
         name="contact_type_id"
         label="Тип"
-        render={value => {
+        render={(value, record) => {
           const typeName = value?.name || value;
           const config = getContactTypeConfig(typeName, contactTypes);
           const Icon = getIcon(config?.icon || '');
-          return (
+          const badge = (
             <Badge
               size="sm"
               color={config?.color || 'gray'}
               leftSection={<Icon size={14} />}>
               {config?.label || typeName}
             </Badge>
+          );
+          // Клик по бейджу — номер в звонилку или чат с собеседником
+          // (issue #47); запись открывается по остальной строке.
+          const action = contactAction({
+            id: Number(record.id),
+            value: record.value ?? '',
+            contact_type: typeName,
+            contact_type_id: value?.id,
+          });
+          if (!action) return badge;
+          return (
+            <UnstyledButton
+              title={action.label}
+              onClick={e => {
+                e.stopPropagation();
+                action.run();
+              }}>
+              {badge}
+            </UnstyledButton>
           );
         }}
       />

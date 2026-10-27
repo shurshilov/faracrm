@@ -5,14 +5,16 @@
  *   - NewChatModal — выбор участников при создании чата
  *   - ChatSettingsModal — добавление участников в существующий чат
  *
- * Поддерживает поиск по имени пользователя.
+ * Поиск по имени — GET /chats/members: у сотрудника, с которым уже есть
+ * личный чат, приходит chat_id — бейдж «есть чат» со стрелкой в опции.
  * Опционально исключает уже выбранных/существующих пользователей из списка.
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { MultiSelect, Loader } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
-import { useRouteUsersSearchPostMutation } from '@/services/api/users';
+import { useSearchChatMembersQuery } from '@/services/api/chat';
+import { MemberOption, renderMemberOption } from './MemberOption';
 
 interface UserMultiSelectProps {
   /** Выбранные ID пользователей */
@@ -29,6 +31,11 @@ interface UserMultiSelectProps {
   maxValues?: number;
   /** Disabled state */
   disabled?: boolean;
+  /**
+   * Пользователи, выбранные снаружи (визард со значка контакта): в выдаче
+   * поиска их может не быть, а пилюле нужна подпись.
+   */
+  knownUsers?: { id: number; name: string }[];
 }
 
 export function UserMultiSelect({
@@ -39,39 +46,31 @@ export function UserMultiSelect({
   placeholder,
   maxValues,
   disabled = false,
+  knownUsers = [],
 }: UserMultiSelectProps) {
   const { t } = useTranslation('chat');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [searchUsers, { data: usersData, isLoading }] =
-    useRouteUsersSearchPostMutation();
-
-  // Загружаем при монтировании и при изменении поиска
-  useEffect(() => {
-    const filter: any[] = [];
-    if (searchQuery.trim()) {
-      // ilike = подстрока: %…% и экранирование добавляет бэкенд
-      filter.push(['name', 'ilike', searchQuery]);
-    }
-
-    searchUsers({
-      userSearchInput: {
-        fields: ['id', 'name'],
-        filter,
-        limit: 50,
-      },
-    });
-  }, [searchQuery, searchUsers]);
+  const { data: usersData, isFetching } = useSearchChatMembersQuery({
+    kind: 'users',
+    search: searchQuery.trim(),
+  });
 
   // Преобразуем в опции MultiSelect, исключая excludeIds
   const excludeSet = new Set(excludeIds);
-  const options =
+  const options: MemberOption[] =
     usersData?.data
-      ?.filter(u => !excludeSet.has(u.id))
+      .filter(u => !excludeSet.has(u.id))
       .map(u => ({
         value: u.id.toString(),
         label: u.name || `#${u.id}`,
+        chatId: u.chat_id ?? undefined,
       })) || [];
+  for (const u of knownUsers) {
+    if (!options.some(o => o.value === String(u.id))) {
+      options.push({ value: String(u.id), label: u.name || `#${u.id}` });
+    }
+  }
 
   // Value как строки для MultiSelect
   const stringValue = value.map(id => id.toString());
@@ -84,11 +83,15 @@ export function UserMultiSelect({
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
       data={options}
+      // Фильтрует бэкенд (и по контактам, которых в подписи нет) — свой
+      // фильтр по подписи MultiSelect выключаем.
+      filter={({ options }) => options}
       value={stringValue}
       onChange={vals => onChange(vals.map(v => parseInt(v, 10)))}
       maxValues={maxValues}
-      leftSection={isLoading ? <Loader size="xs" /> : <IconSearch size={16} />}
-      nothingFoundMessage={isLoading ? t('searching') : t('noUsersFound')}
+      renderOption={renderMemberOption}
+      leftSection={isFetching ? <Loader size="xs" /> : <IconSearch size={16} />}
+      nothingFoundMessage={isFetching ? t('searching') : t('noUsersFound')}
       clearable
       disabled={disabled}
     />

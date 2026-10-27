@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Modal,
   TextInput,
@@ -9,17 +9,27 @@ import {
 } from '@mantine/core';
 import { IconUsers, IconUser } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
-import { useCreateChatMutation, Chat } from '@/services/api/chat';
+import {
+  useCreateChatMutation,
+  useResolveContactChatQuery,
+  Chat,
+} from '@/services/api/chat';
 import {
   ChatParticipantSelect,
   ParticipantSelection,
 } from './ChatParticipantSelect';
+import type { ContactSelection } from './ContactMultiSelect';
 
 interface NewChatModalProps {
   opened: boolean;
   onClose: () => void;
   onChatCreated: (chat: Chat) => void;
   currentUserId: number;
+  /**
+   * Собеседник со значка контакта (ChatPage, ?new_contact): клиент → группа
+   * с именем партнёра, сотрудник → личный. Создаёт пользователь кнопкой.
+   */
+  contactId?: number | null;
 }
 
 export function NewChatModal({
@@ -27,6 +37,7 @@ export function NewChatModal({
   onClose,
   onChatCreated,
   currentUserId,
+  contactId,
 }: NewChatModalProps) {
   const { t } = useTranslation('chat');
   const [chatType, setChatType] = useState<'direct' | 'group'>('direct');
@@ -35,6 +46,42 @@ export function NewChatModal({
     userIds: [],
     partnerIds: [],
   });
+
+  // Собеседник по контакту. Пока он не загружен, окно не открываем: выбор
+  // участников монтируется уже с ним (initialContacts). currentData — ответ
+  // именно для этого контакта.
+  const { currentData: contact } = useResolveContactChatQuery(
+    { contactId: contactId || 0 },
+    { skip: !contactId },
+  );
+  const peer =
+    contact && (contact.partner_id || contact.user_id) ? contact : null;
+  useEffect(() => {
+    if (!opened || !peer) return;
+    const partner = peer.partner_id;
+    setChatType(partner ? 'group' : 'direct');
+    setGroupName(partner ? peer.name || '' : '');
+    setSelection(
+      partner
+        ? { userIds: [], partnerIds: [partner] }
+        : { userIds: [peer.user_id as number], partnerIds: [] },
+    );
+  }, [opened, peer]);
+  // Клиент — во вкладке «Контакты», сотрудник — в «Пользователи».
+  const initialContacts: ContactSelection[] =
+    peer?.partner_id && contactId
+      ? [
+          {
+            contactId,
+            type: 'partner',
+            sourceId: peer.partner_id,
+            label: peer.name || '',
+          },
+        ]
+      : [];
+  const initialUsers = peer?.user_id
+    ? [{ id: peer.user_id, name: peer.name || '' }]
+    : [];
 
   const [createChat, { isLoading: isCreating }] = useCreateChatMutation();
 
@@ -54,8 +101,8 @@ export function NewChatModal({
       setGroupName('');
       setChatType('direct');
 
+      // Окно закрывает родитель — вместе с переходом к созданному чату.
       onChatCreated(result.data as unknown as Chat);
-      onClose();
     } catch (error) {
       console.error('Failed to create chat:', error);
     }
@@ -75,7 +122,7 @@ export function NewChatModal({
 
   return (
     <Modal
-      opened={opened}
+      opened={opened && (!contactId || !!contact)}
       onClose={handleClose}
       title={t('createNewChat')}
       size="md">
@@ -127,6 +174,8 @@ export function NewChatModal({
           onChange={setSelection}
           excludeUserIds={[currentUserId]}
           maxValues={chatType === 'direct' ? 1 : undefined}
+          initialContacts={initialContacts}
+          initialUsers={initialUsers}
         />
 
         {/* Action buttons */}

@@ -810,10 +810,26 @@ export interface ChatConnector {
   name: string;
 }
 
+/**
+ * Кандидат в участники чата (GET /chats/members): сотрудник (kind=users)
+ * или контакт партнёра (kind=partners); chat_id — уже существующий чат с
+ * ним.
+ */
+export interface ChatMemberCandidate {
+  id: number;
+  name: string;
+  chat_id: number | null;
+  partner_id?: number;
+  partner_name?: string;
+}
+
 export interface ChatConnectorDetail {
   connector_id: number;
   connector_type: string;
   connector_name: string;
+  /** Тип контакта канала — по нему ChatPage подставляет канал контакта,
+   *  со значка которого открыли чат (?contact_type). null у internal. */
+  contact_type_id: number | null;
 }
 
 export interface Chat {
@@ -1151,6 +1167,37 @@ const partnerChatApi = api.injectEndpoints({
       }),
     }),
 
+    // Чат собеседника по его контакту (значок контакта в карточке и списке
+    // контактов) — без создания: клиента — чат партнёра, сотрудника — личный
+    // чат с текущим пользователем. Нет чата — ChatPage открывает визард
+    // создания с этим собеседником (name — его имя). Свой контакт — всё null.
+    resolveContactChat: build.query<
+      {
+        chat_id: number | null;
+        partner_id: number | null;
+        user_id: number | null;
+        name: string | null;
+      },
+      { contactId: number }
+    >({
+      query: ({ contactId }) => `/contacts/${contactId}/chat`,
+    }),
+
+    // Кандидаты в участники чата по имени — вкладки «Пользователи»
+    // (сотрудники) и «Партнёры» (их контакты); chat_id — уже существующий
+    // чат с ним (личный / внешний партнёра): второго не создать, селект
+    // показывает бейдж и открывает его.
+    searchChatMembers: build.query<
+      { data: ChatMemberCandidate[] },
+      { kind: 'users' | 'partners'; search: string }
+    >({
+      query: ({ kind, search }) => ({
+        url: '/chats/members',
+        params: { kind, search },
+      }),
+      providesTags: [{ type: 'Chat', id: 'LIST' }],
+    }),
+
     // Недавние теги чата (лиды/задачи) — для селектора тега при ответе.
     getChatTags: build.query<
       { data: { lead_ids: number[]; task_ids: number[] } },
@@ -1224,6 +1271,9 @@ export const {
   useResolveRecordPartnerChatQuery,
   useGetChatTagsQuery,
   useCreatePartnerChatMutation,
+  useResolveContactChatQuery,
+  useLazyResolveContactChatQuery,
+  useSearchChatMembersQuery,
 } = partnerChatApi;
 export const {
   useGetChatsQuery,

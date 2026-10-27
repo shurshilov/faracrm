@@ -276,10 +276,15 @@ class Chat(AuditMixin, DotModel):
 
         return chat
 
+    @hybridmethod
     async def _find_direct_chat(
         self, user1_id: int, user2_id: int
     ) -> "Chat | None":
-        """Найти существующий прямой чат между двумя пользователями."""
+        """Найти существующий прямой чат между двумя пользователями.
+
+        hybridmethod, как find_partner_group_chat: зовётся и с экземпляра
+        (create_direct_chat), и с класса env.models.chat (роут
+        /contacts/{id}/chat)."""
         session = self._get_db_session()
         query = """
             SELECT c.id, c.name, c.chat_type,
@@ -302,13 +307,18 @@ class Chat(AuditMixin, DotModel):
 
     @hybridmethod
     async def create_group_chat(
-        self, name: str, creator_id: int, member_ids: list[int]
+        self,
+        name: str,
+        creator_id: int,
+        member_ids: list[int],
+        is_internal=True,
     ):
         """Создать групповой чат."""
         chat = Chat(
             name=name,
             chat_type="group",
             create_user_id=env.models.user(id=creator_id),
+            is_internal=is_internal,
         )
         chat.id = await self.create(payload=chat)
 
@@ -428,6 +438,49 @@ class Chat(AuditMixin, DotModel):
         if rows:
             return Chat(id=rows[0]["id"], name=rows[0]["name"])
         return None
+
+    @hybridmethod
+    async def external_chats_of_partners(
+        self, partner_ids: list[int]
+    ) -> dict[int, int]:
+        """Внешние чаты партнёров {partner_id: chat_id} одним запросом.
+        У партнёра он один (модель 1:1): второй не создать (create_chat),
+        визард создания помечает таких партнёров."""
+        if not partner_ids:
+            return {}
+        rows = await self._get_db_session().execute(
+            """
+            SELECT DISTINCT cm.partner_id, c.id AS chat_id FROM chat c
+            JOIN chat_member cm ON cm.chat_id = c.id
+                AND cm.partner_id = ANY(%s) AND cm.is_active = true
+            WHERE c.is_internal = false AND c.active = true
+              AND c.chat_type != 'record'
+            """,
+            (partner_ids,),
+        )
+        return {row["partner_id"]: row["chat_id"] for row in rows}
+
+    @hybridmethod
+    async def direct_chats_with_users(
+        self, user_id: int, user_ids: list[int]
+    ) -> dict[int, int]:
+        """Личные чаты пользователя user_id с каждым из user_ids
+        {user_id: chat_id} одним запросом. Личный чат двух людей один
+        (create_direct_chat возвращает существующий)."""
+        if not user_ids:
+            return {}
+        rows = await self._get_db_session().execute(
+            """
+            SELECT cm2.user_id, c.id AS chat_id FROM chat c
+            JOIN chat_member cm1 ON cm1.chat_id = c.id
+                AND cm1.user_id = %s AND cm1.is_active = true
+            JOIN chat_member cm2 ON cm2.chat_id = c.id
+                AND cm2.user_id = ANY(%s) AND cm2.is_active = true
+            WHERE c.chat_type = 'direct' AND c.active = true
+            """,
+            (user_id, user_ids),
+        )
+        return {row["user_id"]: row["chat_id"] for row in rows}
 
     @hybridmethod
     async def get_or_create_partner_chat(
@@ -600,15 +653,19 @@ class Chat(AuditMixin, DotModel):
                 "connector_id": None,
                 "connector_type": "internal",
                 "connector_name": "Internal",
+                "contact_type_id": None,
             }
         ]
 
+        # contact_type_id — фронту: открыв чат со значка контакта, он
+        # подставляет канал этого типа контакта.
         result = await self._get_db_session().execute(
             f"""
             SELECT DISTINCT
                 cc.id as connector_id,
                 cc.type as connector_type,
-                cc.name as connector_name
+                cc.name as connector_name,
+                cc.contact_type_id as contact_type_id
             {_MEMBER_CONTACTS_SQL}
             JOIN chat_connector cc ON cc.active = true
                 AND cc.category IS DISTINCT FROM 'notification'
@@ -627,6 +684,7 @@ class Chat(AuditMixin, DotModel):
                     "connector_id": row["connector_id"],
                     "connector_type": row["connector_type"],
                     "connector_name": row["connector_name"],
+                    "contact_type_id": row["contact_type_id"],
                 }
             )
 

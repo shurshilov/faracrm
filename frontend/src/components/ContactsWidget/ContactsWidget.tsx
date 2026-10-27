@@ -35,6 +35,7 @@ import {
   detectContactType,
   getContactTypeConfig,
 } from './config';
+import { useContactAction } from './useContactAction';
 import classes from './ContactsWidget.module.css';
 import { useTranslation } from 'react-i18next';
 
@@ -102,20 +103,13 @@ export function ContactsWidget({
   disabled = false,
   hidePrimary = false,
   showTypeButton = false,
-  canOpenChat = false,
-  onOpenChat,
-  chatLoading = false,
 }: Omit<ContactsWidgetProps, 'label'> & {
   loading?: boolean;
   showTypeButton?: boolean;
-  /** Показать иконку «открыть чат» в конце инпута. */
-  canOpenChat?: boolean;
-  /** Колбэк по клику на иконку чата. */
-  onOpenChat?: () => void;
-  /** Индикатор загрузки на иконке чата (создание чата). */
-  chatLoading?: boolean;
 }) {
   const { t } = useTranslation('common');
+  // Клик по значку контакта: позвонить / открыть чат.
+  const contactAction = useContactAction();
   const [inputValue, setInputValue] = useState('');
   const [selectedType, setSelectedType] = useState<ContactType | null>(null);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -369,19 +363,6 @@ export function ContactsWidget({
                     onClick={handleAdd}>
                     <IconPlus size={14} />
                   </ActionIcon>
-                ) : canOpenChat ? (
-                  // Иначе (есть контакт, ввода нет) — иконка перехода в чат.
-                  // Один слот rightSection → вёрстка инпута не меняется.
-                  <Tooltip label="Открыть чат" withArrow>
-                    <ActionIcon
-                      variant="subtle"
-                      color="blue"
-                      size="sm"
-                      loading={chatLoading}
-                      onClick={onOpenChat}>
-                      <IconMessageCircle size={16} />
-                    </ActionIcon>
-                  </Tooltip>
                 ) : null
               }
             />
@@ -426,16 +407,31 @@ export function ContactsWidget({
             );
             const IconComponent = getIcon(config?.icon || '');
             const isEditing = editingIndex === index;
+            // Значок — кнопка «позвонить» / «открыть чат», если есть действие.
+            const action = contactAction(contact);
 
             return (
               <Box
                 key={contact.id || `new-${index}`}
                 className={`${classes.contactItem} ${contact._isNew ? classes.contactItemNew : ''} ${isEditing ? classes.contactItemEditing : ''}`}>
-                <Box
-                  className={classes.contactIcon}
-                  data-type={contact.contact_type}>
-                  <IconComponent size={14} />
-                </Box>
+                {action ? (
+                  <Tooltip label={action.label} withArrow>
+                    <button
+                      type="button"
+                      className={`${classes.contactIcon} ${classes.contactIconButton}`}
+                      data-type={contact.contact_type}
+                      aria-label={action.label}
+                      onClick={action.run}>
+                      <IconComponent size={14} />
+                    </button>
+                  </Tooltip>
+                ) : (
+                  <Box
+                    className={classes.contactIcon}
+                    data-type={contact.contact_type}>
+                    <IconComponent size={14} />
+                  </Box>
+                )}
 
                 {isEditing ? (
                   <TextInput

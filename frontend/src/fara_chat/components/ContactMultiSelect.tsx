@@ -1,15 +1,18 @@
 /**
- * ContactMultiSelect — компонент выбора контактов с поиском.
+ * ContactMultiSelect — выбор партнёров по их контактам (вкладка «Партнёры»).
  *
- * Резолвит контакт в user_id или partner_id (depending on what contact points to).
- * Возвращает массив результатов, каждый с type и sourceId.
+ * Только контакты партнёров: сотрудников выбирают во вкладке «Пользователи».
+ * Поиск — GET /chats/members?kind=partners: у партнёра, чей внешний чат уже
+ * есть, приходит chat_id — бейдж «есть чат» со стрелкой в опции (второго не
+ * создать, модель 1:1). Возвращает массив результатов с type и sourceId.
  *
- * Используется внутри ChatParticipantSelect для режима "контакты".
+ * Используется внутри ChatParticipantSelect для режима "partners".
  */
 import { useState } from 'react';
 import { MultiSelect, Loader } from '@mantine/core';
 import { IconSearch } from '@tabler/icons-react';
-import { useSearchQuery } from '@/services/api/crudApi';
+import { useSearchChatMembersQuery } from '@/services/api/chat';
+import { MemberOption, renderMemberOption } from './MemberOption';
 
 export interface ContactSelection {
   /** Оригинальный ID контакта */
@@ -22,12 +25,16 @@ export interface ContactSelection {
   label: string;
 }
 
+type ContactOption = MemberOption & {
+  contactId: number;
+  type: 'partner';
+  sourceId: number;
+};
+
 interface ContactMultiSelectProps {
   value: ContactSelection[];
   onChange: (selections: ContactSelection[]) => void;
-  /** ID пользователей, которых нужно исключить (например уже в чате) */
-  excludeUserIds?: number[];
-  /** ID партнёров, которых нужно исключить */
+  /** ID партнёров, которых нужно исключить (например уже в чате) */
   excludePartnerIds?: number[];
   label?: string;
   placeholder?: string;
@@ -38,50 +45,48 @@ interface ContactMultiSelectProps {
 export function ContactMultiSelect({
   value,
   onChange,
-  excludeUserIds = [],
   excludePartnerIds = [],
-  label = 'Выберите контакт',
-  placeholder = 'Поиск по телефону, email...',
+  label = 'Выберите партнёра',
+  placeholder = 'Поиск по телефону, email, имени...',
   maxValues,
   disabled = false,
 }: ContactMultiSelectProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: contactsData, isFetching } = useSearchQuery({
-    model: 'contact',
-    fields: ['id', 'name', 'contact_type_id', 'partner_id', 'user_id'],
-    // ilike = подстрока: %…% и экранирование добавляет бэкенд
-    filter: searchQuery ? [['name', 'ilike', searchQuery]] : [],
-    limit: 50,
+  const { data: contactsData, isFetching } = useSearchChatMembersQuery({
+    kind: 'partners',
+    search: searchQuery.trim(),
   });
 
-  const excludeUsers = new Set(excludeUserIds);
   const excludePartners = new Set(excludePartnerIds);
 
-  // Трансформируем контакты в опции
-  const options =
+  // Трансформируем контакты в опции, скрывая уже добавленных
+  const options: ContactOption[] =
     contactsData?.data
-      ?.filter((c: any) => c.partner_id?.id || c.user_id?.id)
-      .filter((c: any) => {
-        // Скрываем уже добавленных
-        if (c.user_id?.id && excludeUsers.has(c.user_id.id)) return false;
-        if (c.partner_id?.id && excludePartners.has(c.partner_id.id))
-          return false;
-        return true;
-      })
-      .map((contact: any) => {
-        const isPartner = !!contact.partner_id?.id;
-        const ownerName = isPartner
-          ? contact.partner_id?.name
-          : contact.user_id?.name;
-        return {
-          value: `contact-${contact.id}`,
-          label: `${ownerName} (${contact.name})`,
-          contactId: contact.id,
-          type: isPartner ? ('partner' as const) : ('user' as const),
-          sourceId: isPartner ? contact.partner_id.id : contact.user_id.id,
-        };
-      }) || [];
+      .filter(c => c.partner_id && !excludePartners.has(c.partner_id))
+      .map(c => ({
+        value: `contact-${c.id}`,
+        label: `${c.partner_name} (${c.name})`,
+        contactId: c.id,
+        type: 'partner' as const,
+        sourceId: c.partner_id as number,
+        chatId: c.chat_id ?? undefined,
+      })) || [];
+
+  // Контакт, заданный снаружи (визард со значка контакта), в выдаче поиска
+  // может не быть: MultiSelect рисует пилюлю по опциям, и без своей опции
+  // она выйдет с сырым value «contact-N» вместо имени.
+  for (const sel of value) {
+    if (!options.some(o => o.value === `contact-${sel.contactId}`)) {
+      options.push({
+        value: `contact-${sel.contactId}`,
+        label: sel.label,
+        contactId: sel.contactId,
+        type: 'partner',
+        sourceId: sel.sourceId,
+      });
+    }
+  }
 
   // Текущее значение — массив value-строк для MultiSelect
   const stringValue = value.map(v => `contact-${v.contactId}`);
@@ -89,7 +94,7 @@ export function ContactMultiSelect({
   const handleChange = (vals: string[]) => {
     const selected: ContactSelection[] = [];
     for (const v of vals) {
-      const opt = options.find((o: any) => o.value === v);
+      const opt = options.find(o => o.value === v);
       if (opt) {
         selected.push({
           contactId: opt.contactId,
@@ -114,11 +119,14 @@ export function ContactMultiSelect({
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
       data={options}
+      // Фильтрует бэкенд — свой фильтр по подписи MultiSelect выключаем.
+      filter={({ options }) => options}
       value={stringValue}
       onChange={handleChange}
       maxValues={maxValues}
+      renderOption={renderMemberOption}
       leftSection={isFetching ? <Loader size="xs" /> : <IconSearch size={16} />}
-      nothingFoundMessage={isFetching ? 'Поиск...' : 'Контакты не найдены'}
+      nothingFoundMessage={isFetching ? 'Поиск...' : 'Партнёры не найдены'}
       clearable
       disabled={disabled}
     />

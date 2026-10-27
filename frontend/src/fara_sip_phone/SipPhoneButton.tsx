@@ -5,7 +5,7 @@
 // партнёра своего поля телефона нет вовсе. Поэтому «Клиенты» и «Сотрудники» это
 // не две вкладки, а одна выдача с пометкой владельца.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActionIcon,
   Badge,
@@ -38,6 +38,7 @@ import { FilterExpression } from '@/services/api/crudTypes';
 import { useCall } from '@/fara_chat/context/CallContext';
 import { useChatWebSocketContext } from '@/fara_chat/context';
 import { useSipPhone, SipState } from './useSipPhone';
+import { registerSipDialer } from './dialer';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'];
 
@@ -222,6 +223,21 @@ export function SipPhoneButton() {
     setOpened(false);
     internalCall.startCall(user);
   };
+
+  // Набор по значку телефона у контакта: открываем звонилку с этим номером,
+  // звонок — по её кнопке. Номер набирается SIP-каналом: при «внутреннем»
+  // переключаемся на тот, которым зарегистрированы, иначе на первый.
+  useEffect(
+    () =>
+      registerSipDialer(target => {
+        if (!viaSip) {
+          setChannel(String(fallbackSipId ?? sipChannels[0]?.id ?? INTERNAL));
+        }
+        setNumber(target);
+        setOpened(true);
+      }),
+    [viaSip, fallbackSipId, sipChannels],
+  );
 
   return (
     <>

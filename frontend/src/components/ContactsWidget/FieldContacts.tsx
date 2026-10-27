@@ -11,14 +11,13 @@ import { FieldWrapper } from '@/components/Form/Fields/FieldWrapper';
 import { LabelPosition } from '@/components/Form/FormSettingsContext';
 import { ContactsWidget } from './ContactsWidget';
 import { Contact, ContactType } from './types';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import {
   useCreateMutation,
   useDeleteBulkMutation,
   useSearchQuery,
   useUpdateMutation,
 } from '@/services/api/crudApi';
-import { useCreateChatMutation } from '@/services/api/chat';
 
 interface FieldContactsProps {
   /** Имя поля в форме */
@@ -84,11 +83,9 @@ export function FieldContacts({
   const { t } = useTranslation('common');
   const { fields: fieldsServer, isCreateForm } = useContext(FormFieldsContext);
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [deleteBulk] = useDeleteBulkMutation();
   const [create] = useCreateMutation();
   const [update] = useUpdateMutation();
-  const [createChat, { isLoading: creatingChat }] = useCreateChatMutation();
 
   const displayLabel = label ?? name;
 
@@ -144,6 +141,7 @@ export function FieldContacts({
       const initialContacts: Contact[] = data.data.map((item: any) => ({
         id: item.id,
         contact_type: item.contact_type_id?.name || item.contact_type_id,
+        contact_type_id: item.contact_type_id?.id,
         // Фоллбэк на name — легаси-записи, созданные до рефактора name→value
         // (миграция PartnersApp._migration_contact_name_to_value заполняет
         // value на старте бэка, но до неё значение лежит только в name).
@@ -230,39 +228,6 @@ export function FieldContacts({
     }
   };
 
-  // ── Чат с партнёром ─────────────────────────────────────────────────
-  // Чат в системе — на уровне партнёра (chat_member.partner_id), а контакт
-  // это канал. Поэтому иконка одна на виджет и открывает чат с владельцем.
-  // Показываем только если владелец-партнёр известен И есть хотя бы один
-  // контакт (без канала чат бессмысленен). Только для партнёров.
-  const activeContactsCount = contacts.filter(c => !c._isDeleted).length;
-  // Кнопка чата из виджета «Контакты» отключена: она создавала ЛИЧНЫЙ (direct)
-  // чат с партнёром, что теперь запрещено (модель 1:1 — переписка с клиентом в
-  // едином ГРУППОВОМ чате партнёра, см. вкладку «Чат» в форме + create-правило
-  // на бэке). onOpenChat остаётся, но не показывается.
-  void activeContactsCount;
-  const canOpenChat = false;
-
-  const handleOpenChat = async () => {
-    if (!ownerId) return;
-    try {
-      // /chats делает get-or-create, поэтому повторный клик откроет тот же чат.
-      const res = await createChat({
-        chat_type: 'direct',
-        user_ids: [],
-        partner_ids: [ownerId],
-      }).unwrap();
-
-      // ?open: ChatPage найдёт чат среди всех разделов и откроет его квадрат.
-      navigate(`/chat?open=${res.data.id}`);
-    } catch {
-      notifications.show({
-        color: 'red',
-        message: 'Не удалось открыть чат',
-      });
-    }
-  };
-
   // Контакт в модели принадлежит партнёру (contact.partner_id). На лиде/
   // заказе виджет привязан к partner_id (parentField): телефон должен
   // сохраниться у ПАРТНЁРА, а не у лида (в contact нет lead_id — вешать
@@ -308,8 +273,7 @@ export function FieldContacts({
           </div>
         </Group>
       ) : (
-        /* Наш кастомный виджет. Иконка «открыть чат» рендерится в конце
-           инпута добавления контакта (см. ContactsWidget). */
+        /* Наш кастомный виджет. */
         <ContactsWidget
           name={name}
           value={contacts}
@@ -318,9 +282,6 @@ export function FieldContacts({
           maxContacts={maxContacts}
           hidePrimary={hidePrimary}
           loading={isFetching}
-          canOpenChat={canOpenChat}
-          onOpenChat={handleOpenChat}
-          chatLoading={creatingChat}
         />
       )}
     </FieldWrapper>

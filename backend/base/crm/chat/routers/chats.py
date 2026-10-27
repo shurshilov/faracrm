@@ -3,7 +3,7 @@
 
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from fastapi import APIRouter, Depends, Request, Query
 from starlette.status import HTTP_404_NOT_FOUND, HTTP_403_FORBIDDEN
 
@@ -220,6 +220,94 @@ async def pin_chat(req: Request, chat_id: int, body: ChatPin):
     return {"success": True, "is_pinned": body.pinned}
 
 
+# Раньше /chats/{chat_id}: иначе «members» ушло бы в chat_id.
+@router_private.get("/chats/members")
+async def search_chat_members(
+    req: Request,
+    kind: Literal["users", "partners"] = Query(...),
+    search: str = Query("", max_length=200),
+    limit: int = Query(50, ge=1, le=100),
+):
+    """Кандидаты в участники чата (визард создания, добавление в чат) —
+    вкладки «Пользователи» (kind=users) и «Партнёры» (kind=partners: их
+    контакты). У каждого — chat_id уже существующего чата (личного с
+    текущим пользователем / внешнего партнёра), если он есть: второго не
+    создать, фронт показывает бейдж и открывает его. Поиск — ORM search
+    (права), чаты — одним запросом.
+    """
+    env: "Environment" = req.app.state.env
+    user_id = req.state.session.user_id.id
+    like = [("name", "ilike", search)] if search else []
+
+    if kind == "users":
+        # Сотрудника ищут и по имени, и по его контакту (email, телефон,
+        # telegram); фильтра по связанному полю в ORM нет — контакты
+        # находим отдельно.
+        if search:
+            found = await env.models.contact.search(
+                fields=["user_id"],
+                filter=[("user_id", "!=", None), ("active", "=", True), *like],
+                limit=limit,
+            )
+            if found:
+                like = [
+                    [
+                        like[0],
+                        "or",
+                        ("id", "in", [c.user_id.id for c in found]),
+                    ]
+                ]
+        users = await env.models.user.search(
+            fields=["id", "name"], filter=like, sort="name", limit=limit
+        )
+        chats = await env.models.chat.direct_chats_with_users(
+            user_id, [u.id for u in users]
+        )
+        return {
+            "data": [
+                {"id": u.id, "name": u.name, "chat_id": chats.get(u.id)}
+                for u in users
+            ]
+        }
+
+    # Контакт ищут и по значению (contact.name — email/телефон), и по
+    # имени клиента; фильтра по связанному полю в ORM нет — партнёров
+    # находим отдельно.
+    if search:
+        partners = await env.models.partner.search(
+            fields=["id"], filter=like, limit=limit
+        )
+        if partners:
+            like = [
+                [
+                    like[0],
+                    "or",
+                    ("partner_id", "in", [p.id for p in partners]),
+                ]
+            ]
+    contacts = await env.models.contact.search(
+        fields=["id", "name", "partner_id"],
+        filter=[("partner_id", "!=", None), ("active", "=", True), *like],
+        fields_nested={"partner_id": {"fields": ["id", "name"]}},
+        limit=limit,
+    )
+    chats = await env.models.chat.external_chats_of_partners(
+        [c.partner_id.id for c in contacts]
+    )
+    return {
+        "data": [
+            {
+                "id": c.id,
+                "name": c.name,
+                "partner_id": c.partner_id.id,
+                "partner_name": c.partner_id.name,
+                "chat_id": chats.get(c.partner_id.id),
+            }
+            for c in contacts
+        ]
+    }
+
+
 @router_private.get("/chats/{chat_id}")
 async def get_chat(req: Request, chat_id: int):
     """
@@ -296,16 +384,9 @@ async def create_chat(req: Request, body: ChatCreate):
     #     указанных партнёров уже есть внешний чат (group ИЛИ direct), где он
     #     активный участник — второй создавать нельзя.
     if has_partners:
-        # Один запрос по всем партнёрам сразу (ANY) — без N+1.
-        _taken_rows = await env.apps.db.get_session().execute(
-            "SELECT DISTINCT cm.partner_id FROM chat c "
-            "JOIN chat_member cm ON cm.chat_id = c.id "
-            "  AND cm.partner_id = ANY(%s) AND cm.is_active = true "
-            "WHERE c.is_internal = false AND c.active = true "
-            "  AND c.chat_type != 'record'",
-            (body.partner_ids,),
+        _taken = await env.models.chat.external_chats_of_partners(
+            body.partner_ids
         )
-        _taken = [r["partner_id"] for r in _taken_rows]
         if _taken:
             raise FaraException(
                 {
@@ -333,10 +414,14 @@ async def create_chat(req: Request, body: ChatCreate):
             if not body.name:
                 raise FaraException({"content": "NAME_REQUIRED"})
 
+            is_internal = True
+            if has_partners:
+                is_internal = False
             chat = await env.models.chat.create_group_chat(
                 name=body.name,
                 creator_id=user_id,
                 member_ids=body.user_ids,
+                is_internal=is_internal,
             )
             all_user_ids = [user_id] + [
                 m for m in body.user_ids if m != user_id
@@ -346,9 +431,6 @@ async def create_chat(req: Request, body: ChatCreate):
             if has_partners:
                 for partner_id in body.partner_ids:
                     await chat.add_partner(partner_id)
-                is_internal = False
-            else:
-                is_internal = True
 
     # Уведомляем участников через шину, а не локальным фан-аутом: они сидят
     # на разных воркерах (см. секцию PRESENCE в websocket/manager.py), и

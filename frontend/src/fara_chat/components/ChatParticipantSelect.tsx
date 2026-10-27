@@ -2,8 +2,8 @@
  * ChatParticipantSelect — компонент выбора участников чата.
  *
  * Содержит SegmentedControl переключатель между двумя режимами:
- *   1. Пользователи — выбор из системных пользователей
- *   2. Контакты — выбор из контактов (партнёров/пользователей через контакты)
+ *   1. Пользователи — сотрудники (системные пользователи)
+ *   2. Партнёры — по их контактам
  *
  * Возвращает унифицированный результат: { userIds, partnerIds }.
  * Это позволяет передать результат напрямую в API создания чата
@@ -39,6 +39,13 @@ interface ChatParticipantSelectProps {
   disabled?: boolean;
   /** Показывать ли подсказку под селектом */
   showHint?: boolean;
+  /**
+   * Контакты, выбранные заранее (визард со значка контакта партнёра) —
+   * открывает режим «Партнёры» с ними. Читается при монтировании.
+   */
+  initialContacts?: ContactSelection[];
+  /** Пользователи, выбранные заранее (значок контакта сотрудника). */
+  initialUsers?: { id: number; name: string }[];
 }
 
 export function ChatParticipantSelect({
@@ -49,16 +56,20 @@ export function ChatParticipantSelect({
   maxValues,
   disabled = false,
   showHint = true,
+  initialContacts,
+  initialUsers,
 }: ChatParticipantSelectProps) {
-  const [mode, setMode] = useState<'users' | 'contacts'>('users');
+  const [mode, setMode] = useState<'users' | 'partners'>(
+    initialContacts?.length ? 'partners' : 'users',
+  );
   // Локальное состояние для режима контактов — нужно чтобы помнить
   // какие контакты выбрал пользователь (а не только резолвленные IDs)
   const [contactSelections, setContactSelections] = useState<
     ContactSelection[]
-  >([]);
+  >(initialContacts ?? []);
 
   const handleModeChange = (newMode: string) => {
-    setMode(newMode as 'users' | 'contacts');
+    setMode(newMode as 'users' | 'partners');
     // Сбрасываем выбор при переключении режима
     onChange({ userIds: [], partnerIds: [] });
     setContactSelections([]);
@@ -100,11 +111,11 @@ export function ChatParticipantSelect({
             ),
           },
           {
-            value: 'contacts',
+            value: 'partners',
             label: (
               <Group gap="xs" justify="center">
                 <IconAddressBook size={14} />
-                <span>Контакты</span>
+                <span>Партнёры</span>
               </Group>
             ),
           },
@@ -121,12 +132,12 @@ export function ChatParticipantSelect({
           excludeIds={excludeUserIds}
           maxValues={maxValues}
           disabled={disabled}
+          knownUsers={initialUsers}
         />
       ) : (
         <ContactMultiSelect
           value={contactSelections}
           onChange={handleContactsChange}
-          excludeUserIds={excludeUserIds}
           excludePartnerIds={excludePartnerIds}
           maxValues={maxValues}
           disabled={disabled}
@@ -135,9 +146,9 @@ export function ChatParticipantSelect({
 
       {showHint && (
         <Text size="xs" c="dimmed">
-          {mode === 'contacts'
-            ? 'Поиск по номеру телефона, email или имени контакта'
-            : 'Поиск по имени пользователя'}
+          {mode === 'partners'
+            ? 'Поиск по телефону, email или имени партнёра'
+            : 'Поиск по имени или контакту сотрудника'}
         </Text>
       )}
     </Stack>

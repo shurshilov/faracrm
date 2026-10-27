@@ -160,6 +160,8 @@ export interface PartnerRecord extends BaseRecord {
 }
 
 export interface ContactRecord extends BaseRecord {
+  /** Значение (+79991234567, ivan@mail.ru, @username); name — описание. */
+  value: string | null;
   name: string;
   partner_id: RelationRecord | null;
   user_id: RelationRecord | null;
