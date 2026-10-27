@@ -2,7 +2,8 @@
  * ExportModal — выгрузка записей списка в Excel.
  *
  * Поля: по умолчанию видимые колонки списка (в их порядке), любое поле
- * модели можно добавить или снять; заголовки файла — имена полей. Что
+ * модели можно добавить или снять; в окне поля подписаны как в меню колонок
+ * (fieldLabel + техническое имя), заголовки файла — имена полей. Что
  * выгружать, решает вызывающий: выбранные записи (ids) или вся текущая
  * выборка (query — фильтр и сортировка списка, как ушли в /search).
  */
@@ -23,6 +24,7 @@ import { notifications } from '@mantine/notifications';
 import { IconSearch } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useGetFieldsQuery } from '@/services/api/crudApi';
+import { fieldLabel } from '@/components/Form/fieldLabel';
 import { ExcelQuery, useExcelExport } from './api';
 
 // Байты в ячейку не положить (вложения выгружаются как id).
@@ -67,42 +69,59 @@ export function ExportModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened]);
 
-  const typeByName = useMemo(
+  const fieldByName = useMemo(
     () =>
       new Map(
         (allFields ?? [])
           .filter(field => !SKIP_TYPES.has(field.type))
-          .map(field => [field.name, field.type]),
+          .map(field => [field.name, field]),
       ),
     [allFields],
   );
 
   // Колонки вью могут содержать то, что в файл не выгружается (или поля
   // ещё не загружены) — наружу уходят только известные выгружаемые.
-  const chosen = selected.filter(name => typeByName.has(name));
-  const rest = Array.from(typeByName.keys()).filter(
+  const chosen = selected.filter(name => fieldByName.has(name));
+  const rest = Array.from(fieldByName.keys()).filter(
     name => !selected.includes(name),
   );
+  // Подпись поля — как в меню колонок (перевод модуля / Field.string).
+  const labelOf = (name: string) => {
+    const info = fieldByName.get(name);
+    return info ? fieldLabel(t, model, info) : name;
+  };
   const q = search.trim().toLowerCase();
-  const matches = (name: string) => !q || name.toLowerCase().includes(q);
+  const matches = (name: string) =>
+    !q ||
+    name.toLowerCase().includes(q) ||
+    labelOf(name).toLowerCase().includes(q);
 
   const toggle = (name: string, checked: boolean) =>
     setSelected(prev =>
       checked ? [...prev, name] : prev.filter(item => item !== name),
     );
 
-  const fieldLabel = (name: string) => (
-    <Group gap={6} wrap="nowrap">
-      <Text size="xs">{name}</Text>
-      <Badge
-        size="xs"
-        variant="light"
-        color="gray"
-        style={{ textTransform: 'none' }}>
-        {typeByName.get(name)}
-      </Badge>
-    </Group>
-  );
+  // Подпись, техническое имя (если отличается) и тип поля.
+  const fieldTitle = (name: string) => {
+    const label = labelOf(name);
+    return (
+      <Group gap={6} wrap="nowrap">
+        <Text size="xs">{label}</Text>
+        {label !== name && (
+          <Text size="xs" c="dimmed" fs="italic">
+            {name}
+          </Text>
+        )}
+        <Badge
+          size="xs"
+          variant="light"
+          color="gray"
+          style={{ textTransform: 'none' }}>
+          {fieldByName.get(name)?.type}
+        </Badge>
+      </Group>
+    );
+  };
 
   const handleExport = async () => {
     setLoading(true);
@@ -148,7 +167,7 @@ export function ExportModal({
                 size="xs"
                 checked
                 onChange={event => toggle(name, event.currentTarget.checked)}
-                label={fieldLabel(name)}
+                label={fieldTitle(name)}
               />
             ))}
             {rest.some(matches) && (
@@ -160,7 +179,7 @@ export function ExportModal({
                 size="xs"
                 checked={false}
                 onChange={event => toggle(name, event.currentTarget.checked)}
-                label={fieldLabel(name)}
+                label={fieldTitle(name)}
               />
             ))}
           </Stack>
