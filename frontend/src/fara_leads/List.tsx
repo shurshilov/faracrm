@@ -35,7 +35,7 @@ export function ViewListLeads() {
       <Field
         name="stage_id"
         label={t('leads.stage_id')}
-        render={value => <RelationCell value={value} model="stages" />}
+        render={value => <RelationCell value={value} model="lead_stage" />}
       />
       <Field name="active" label={t('leads.active')} />
     </List>

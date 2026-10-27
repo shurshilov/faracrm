@@ -1,0 +1,18 @@
+/* Иконка «Открыть запись» — как действия строк в таблицах связей
+   (FieldRelation .rowActions): видна при наведении на поле или фокусе в нём.
+   На тач-экранах наведения нет — там видна всегда. */
+.openIcon {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.target:hover .openIcon,
+.target:focus-within .openIcon {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .openIcon {
+    opacity: 1;
+  }
+}

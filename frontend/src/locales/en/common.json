@@ -69,6 +69,7 @@
   "requiredFieldsTitle": "Fill in the required fields",
   "autofillNotFound": "Nothing found",
   "openLink": "Open link",
+  "openRecord": "Open record",
   "fields": {
     "id": "ID",
     "active": "Active",

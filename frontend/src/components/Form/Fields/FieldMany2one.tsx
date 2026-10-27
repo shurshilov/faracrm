@@ -1,9 +1,12 @@
 import {
+  ActionIcon,
   Combobox,
+  Group,
   InputBase,
   useCombobox,
   Modal,
   CloseButton,
+  Tooltip,
 } from '@mantine/core';
 import {
   MouseEvent as ReactMouseEvent,
@@ -14,10 +17,11 @@ import {
   useMemo,
   Suspense,
 } from 'react';
-import { IconChevronDown } from '@tabler/icons-react';
+import { IconChevronDown, IconExternalLink } from '@tabler/icons-react';
 import { notifications } from '@mantine/notifications';
 import { useDisclosure } from '@mantine/hooks';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   BaseQueryFn,
   TypedUseQueryHookResult,
@@ -34,6 +38,7 @@ import { FieldWrapper } from './FieldWrapper';
 import { LabelPosition } from '../FormSettingsContext';
 import { getModelViews } from '@/route/Routers';
 import LoadingScreen from '../../LoadingScreen/LoadingScreen';
+import styles from './FieldMany2one.module.css';
 
 const QUICK_CREATE_VALUE = '__quick_create__';
 const QUICK_CREATE_MODAL_VALUE = '__quick_create_modal__';
@@ -179,6 +184,21 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
   // (в число не конвертируется) → на бэк уходит null и связь снимается.
   const clearable = !required && !!form.getValues()[name];
 
+  // Переход в карточку выбранной записи (как у строки-ссылки charUrl и
+  // drill-in строк One2many): поле остаётся редактируемым, иконка справа
+  // ведёт на /<модель>/<id>. Только если у связанной модели есть форма.
+  const navigate = useNavigate();
+  const currentId = form.getValues()[name]?.id;
+  const openable = !!currentId && !!RelatedForm;
+  const openRecord = () => navigate(`/${relatedModel}/${currentId}`);
+
+  // Иконки справа лежат внутри таргета-<button>: не даём ему получить фокус
+  // (иначе откроется дропдаун вместо действия) и сами не всплываем.
+  const stopTarget = (event: ReactMouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
   const combobox = useCombobox({
     onDropdownClose: () => {
       combobox.resetSelectedOption();
@@ -253,29 +273,50 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
                 component="button"
                 type="button"
                 pointer
+                // Обёртка поля — по ней наведение/фокус показывают иконку.
+                classNames={{ wrapper: styles.target }}
                 rightSection={
-                  clearable ? (
+                  openable || clearable ? (
                     // component="div": таргет комбобокса сам <button>,
                     // вложенная кнопка — невалидный DOM.
-                    <CloseButton
-                      component="div"
-                      role="button"
-                      aria-label={t('clear')}
-                      title={t('clear')}
-                      size="sm"
-                      style={{ cursor: 'pointer' }}
-                      onMouseDown={(event: ReactMouseEvent) => {
-                        // Не даём таргету получить фокус → не открываем
-                        // дропдаун вместо очистки.
-                        event.preventDefault();
-                        event.stopPropagation();
-                      }}
-                      onClick={(event: ReactMouseEvent) => {
-                        event.stopPropagation();
-                        selectRecord(null);
-                        combobox.closeDropdown();
-                      }}
-                    />
+                    <Group gap={2} wrap="nowrap">
+                      {openable && (
+                        <Tooltip label={t('openRecord')} withArrow>
+                          <ActionIcon
+                            component="div"
+                            role="button"
+                            variant="subtle"
+                            color="gray"
+                            size="sm"
+                            className={styles.openIcon}
+                            aria-label={t('openRecord')}
+                            onMouseDown={stopTarget}
+                            onClick={(event: ReactMouseEvent) => {
+                              event.stopPropagation();
+                              combobox.closeDropdown();
+                              openRecord();
+                            }}>
+                            <IconExternalLink size={16} />
+                          </ActionIcon>
+                        </Tooltip>
+                      )}
+                      {clearable && (
+                        <CloseButton
+                          component="div"
+                          role="button"
+                          aria-label={t('clear')}
+                          title={t('clear')}
+                          size="sm"
+                          style={{ cursor: 'pointer' }}
+                          onMouseDown={stopTarget}
+                          onClick={(event: ReactMouseEvent) => {
+                            event.stopPropagation();
+                            selectRecord(null);
+                            combobox.closeDropdown();
+                          }}
+                        />
+                      )}
+                    </Group>
                   ) : (
                     <IconChevronDown
                       size={16}
@@ -289,7 +330,10 @@ export const FieldMany2one = <RecordType extends FaraRecord>({
                     />
                   )
                 }
-                rightSectionPointerEvents={clearable ? 'auto' : 'none'}
+                rightSectionWidth={openable && clearable ? 52 : undefined}
+                rightSectionPointerEvents={
+                  openable || clearable ? 'auto' : 'none'
+                }
                 onClick={() => {
                   combobox.openDropdown();
                 }}

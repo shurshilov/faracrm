@@ -69,6 +69,7 @@
   "requiredFieldsTitle": "Заполните обязательные поля",
   "autofillNotFound": "Ничего не найдено",
   "openLink": "Открыть ссылку",
+  "openRecord": "Открыть запись",
   "fields": {
     "id": "Ид",
     "active": "Активен",
