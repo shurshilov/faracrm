@@ -18,6 +18,7 @@ import {
   IconLock,
   IconCopy,
   IconSettings,
+  IconSignature,
   IconUsers,
 } from '@tabler/icons-react';
 import { FormActions, FormAction } from '@/components/Form/FormActions';
@@ -213,6 +214,20 @@ export default function ViewFormUsers(props: ViewFormProps) {
                 label={t('workspace:fields.workspace_id', 'Рабочее место')}
               />
             </FormRow>
+          </FormTab>
+
+          {/* Персональная подпись к письмам — вставляется кнопкой в
+              редакторе письма в чате (issue #41). */}
+          <FormTab
+            name="signature"
+            label={t('tabs.signature', 'Подпись')}
+            icon={<IconSignature size={16} />}>
+            <Field
+              name="signature"
+              widget="html"
+              labelPosition="top"
+              label={t('fields.signature', 'Подпись в письмах')}
+            />
           </FormTab>
         </FormTabs>
       </Form>

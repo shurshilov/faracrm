@@ -12,7 +12,8 @@
     "is_admin": "Superuser",
     "contact_ids": "Contacts",
     "home_page": "Home Page",
-    "layout_theme": "Layout Theme"
+    "layout_theme": "Layout Theme",
+    "signature": "Email signature"
   },
   "role_ids":{
     "user_ids": "Users"
@@ -25,7 +26,8 @@
   "tabs": {
     "roles": "Roles & Permissions",
     "languages": "Available Languages",
-    "preferences": "Preferences"
+    "preferences": "Preferences",
+    "signature": "Signature"
   },
   "menu": {
     "title": "Users",

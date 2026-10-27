@@ -12,7 +12,8 @@
     "is_admin": "Суперпользователь",
     "contact_ids": "Контакты",
     "home_page": "Домашняя страница",
-    "layout_theme": "Тема интерфейса"
+    "layout_theme": "Тема интерфейса",
+    "signature": "Подпись в письмах"
   },
   "role_ids":{
     "user_ids": "Пользователи"
@@ -25,7 +26,8 @@
   "tabs": {
     "roles": "Роли и права",
     "languages": "Доступные языки",
-    "preferences": "Настройки"
+    "preferences": "Настройки",
+    "signature": "Подпись"
   },
   "menu": {
     "title": "Пользователи",

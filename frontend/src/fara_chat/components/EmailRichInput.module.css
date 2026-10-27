@@ -10,3 +10,17 @@
   max-height: 320px;
   overflow-y: auto;
 }
+
+/* Подпись под текстом письма: здесь не редактируется (правится в карточке
+   пользователя), приглушена и отбита пунктиром, чтобы отличаться от текста. */
+.signature {
+  margin: 0 var(--mantine-spacing-md);
+  padding: var(--mantine-spacing-xs) 0 var(--mantine-spacing-sm);
+  border-top: 1px dashed var(--mantine-color-default-border);
+  color: var(--mantine-color-dimmed);
+  font-size: var(--mantine-font-size-sm);
+}
+
+.signature p {
+  margin: 0;
+}

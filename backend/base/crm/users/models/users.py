@@ -25,6 +25,7 @@ from backend.base.system.dotorm.dotorm.fields import (
     Many2one,
     One2many,
     Selection,
+    Text,
 )
 from backend.base.crm.security.polymorphic_parent import (
     PolymorphicParentMixin,
@@ -244,6 +245,13 @@ class User(PolymorphicParentMixin):
     notification_sound: bool = Boolean(
         default=True,
         description="Воспроизводить звук уведомлений",
+    )
+
+    # Персональная подпись к письмам (HTML из того же редактора, что у
+    # письма в чате). Необязательна: вставляется вручную кнопкой в
+    # редакторе письма. Пользователь задаёт её сам в своей карточке.
+    signature: str | None = Text(
+        required=False, description="Подпись в письмах"
     )
 
     # @hybridmethod

@@ -361,6 +361,8 @@ export interface UserRecord extends BaseRecord {
   contact_ids: RelationRecord[];
   home_page: string;
   layout_theme: 'classic' | 'modern';
+  /** Подпись к письмам (HTML). */
+  signature?: string | null;
 }
 
 // ============================================================

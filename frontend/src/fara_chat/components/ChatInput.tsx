@@ -26,6 +26,7 @@ import {
   useGetChatEmailSubjectQuery,
 } from '@/services/api/chat';
 import type { SendMessageAttachment } from '@/services/api/chat';
+import { useReadQuery } from '@/services/api/crudApi';
 import {
   AttachmentPreview,
   VoiceRecorder,
@@ -146,6 +147,20 @@ export function ChatInput({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId, defaultSubject, isEmail]);
 
+  // Подпись пользователя к письмам (users.signature). Грузим только для email.
+  const { data: userData } = useReadQuery(
+    { model: 'users', id: currentUserId, fields: ['id', 'signature'] },
+    { skip: !isEmail },
+  );
+  const signature = userData?.data?.signature;
+  // Подпись в письме по умолчанию включена; кнопкой в тулбаре её можно
+  // убрать. На новом чате и после отправки — снова включена.
+  const [signatureOn, setSignatureOn] = useState(true);
+  useEffect(() => {
+    setSignatureOn(true);
+  }, [chatId]);
+  const signatureHtml = signatureOn && signature ? signature : '';
+
   // Есть ли что отправлять (для email проверяем текст письма без HTML-тегов).
   const hasText = isEmail
     ? htmlToPlainText(message).trim().length > 0
@@ -201,9 +216,13 @@ export function ChatInput({
     if ((!plain && attachments.length === 0) || disabled || sending) return;
 
     // Для email тело — «email-формат» {subject, html} (тема едет внутри body,
-    // как system хранит JSON). Для остального — обычный plain-текст.
+    // как system хранит JSON); подпись дописывается в конец. Для остального —
+    // обычный plain-текст.
     const bodyToSend = isEmail
-      ? JSON.stringify({ subject: subject.trim(), html: plain ? message : '' })
+      ? JSON.stringify({
+          subject: subject.trim(),
+          html: plain ? message + signatureHtml : '',
+        })
       : plain || ' ';
 
     setSending(true);
@@ -244,6 +263,7 @@ export function ChatInput({
 
       setMessage('');
       setComposerKey(k => k + 1); // очистить rich-редактор письма
+      setSignatureOn(true);
       setAttachments([]);
       inputRef.current?.focus();
       onMessageSent?.();
@@ -271,6 +291,7 @@ export function ChatInput({
     onMessageSent,
     selectedConnectorType,
     subject,
+    signatureHtml,
   ]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -500,6 +521,10 @@ export function ChatInput({
               onChange={setMessage}
               onSend={handleSend}
               disabled={disabled}
+              signature={signature}
+              signatureOn={signatureOn}
+              onToggleSignature={() => setSignatureOn(on => !on)}
+              currentUserId={currentUserId}
             />
           </Box>
           {connectorSwitcher}

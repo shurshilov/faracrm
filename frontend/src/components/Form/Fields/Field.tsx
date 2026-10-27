@@ -5,6 +5,7 @@ import { FieldChar } from './FieldChar';
 import { FieldCharUrl } from './FieldCharUrl';
 import { FieldTranslatedChar } from './FieldTranslatedChar';
 import { FieldText } from './FieldText';
+import { FieldHtml } from './FieldHtml';
 import { FieldBoolean } from './FieldBoolean';
 import { FieldFloat } from './FieldFloat';
 import { FieldDatetime } from './FieldDatetime';
@@ -50,6 +51,9 @@ export const FieldComponents: Record<string, React.FC<any>> = {
   FieldCharUrl,
   FieldTranslatedChar,
   FieldText,
+  // Rich-text редактор для Text-полей с HTML (widget="html"), напр. подпись
+  // пользователя к письмам.
+  FieldHtml,
   FieldBoolean,
   FieldFloat,
   // Decimal (деньги, аналог Monetary) рендерится как Float:
