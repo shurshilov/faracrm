@@ -21,9 +21,11 @@ import {
   IconArrowNarrowLeft,
   IconArrowNarrowRight,
   IconArrowsExchange2,
+  IconDownload,
   IconPlayerPlayFilled,
 } from '@tabler/icons-react';
 import { AudioPlayer } from '@/components/Attachment/AudioPlayer';
+import { attachmentContentUrl } from '@/utils/attachmentUrls';
 
 export type CallDirection = 'incoming' | 'outgoing';
 export type CallDisposition =
@@ -43,7 +45,7 @@ export interface CallRecord {
   number_to?: string | null;
   duration_talk?: number | null;
   /** Запись разговора — вложение (m2o), приходит как {id, name}. */
-  record_id?: { id: number } | null;
+  record_id?: { id: number; name?: string | null } | null;
   [key: string]: any;
 }
 
@@ -135,7 +137,8 @@ export function CallDurationCell({ value }: { value?: number | null }) {
   return <Text size="sm">{`${minutes}:${String(seconds).padStart(2, '0')}`}</Text>;
 }
 
-/** Запись разговора: кнопка «play», плеер раскрывается поповером. */
+/** Запись разговора: кнопка «play» (плеер раскрывается поповером) и
+ *  «скачать» — та же ссылка на содержимое вложения, что в списке файлов. */
 export function CallRecordCell({ record }: { record: CallRecord }) {
   const { t } = useTranslation('chat');
   const recording = record.record_id;
@@ -148,7 +151,7 @@ export function CallRecordCell({ record }: { record: CallRecord }) {
     // пробрасывает в неё свой обработчик открытия, а Tooltip спредит props
     // ребёнка последними — собственный onClick затирал бы открытие поповера.
     <Box
-      style={{ display: 'inline-flex' }}
+      style={{ display: 'inline-flex', gap: 4 }}
       onClick={event => event.stopPropagation()}>
       <Popover position="left" shadow="md" withArrow withinPortal>
         <Popover.Target>
@@ -164,6 +167,17 @@ export function CallRecordCell({ record }: { record: CallRecord }) {
           </Box>
         </Popover.Dropdown>
       </Popover>
+      <Tooltip label={t('calls.recordDownload', 'Скачать запись')}>
+        <ActionIcon
+          variant="light"
+          radius="xl"
+          color="gray"
+          component="a"
+          href={attachmentContentUrl(recording.id)}
+          download={recording.name || 'recording'}>
+          <IconDownload size={14} />
+        </ActionIcon>
+      </Tooltip>
     </Box>
   );
 }
