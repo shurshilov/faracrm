@@ -31,7 +31,9 @@
     "color": "Color",
     "fold": "Folded",
     "is_closed": "Closing",
-    "status": "Status"
+    "status": "Status",
+    "joined_at": "Joined at",
+    "left_at": "Left at"
   },
   "sections": {
     "general": "General",

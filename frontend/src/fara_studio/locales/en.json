@@ -64,7 +64,7 @@
   "menu": {
     "form_settings": "Form Settings"
   },
-  "formSettings": {
+  "form_settings": {
     "id": "ID",
     "model_name": "Model",
     "required": "Required fields (JSON)",

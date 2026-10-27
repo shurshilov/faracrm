@@ -16,6 +16,7 @@
 import { Icon as IconType } from '@tabler/icons-react';
 import { modelsConfig } from '@/config/models';
 import { MenuGroups } from '@/config/menuGroups';
+import { modelNamespace } from '@/config/modelNamespace';
 import { RoleRecord } from '@/types/records';
 
 /* ============================================================
@@ -116,7 +117,7 @@ export type GroupConfig = {
 };
 
 /* ============================================================
- * ЛЕЙБЛЫ И I18N NAMESPACE ДЛЯ МОДЕЛЕЙ
+ * ЛЕЙБЛЫ МОДЕЛЕЙ (i18n namespace — config/modelNamespace)
  * ============================================================ */
 
 function formatModelName(modelName: string): string {
@@ -125,59 +126,6 @@ function formatModelName(modelName: string): string {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 }
-
-const modelToNamespace: Record<string, string> = {
-  chat_connector: 'chat',
-  chat_external_account: 'chat',
-  chat_external_chat: 'chat',
-  chat_external_message: 'chat',
-  chat_folder: 'chat',
-  phone_number: 'chat',
-  products: 'products',
-  category: 'products',
-  uom: 'products',
-  partners: 'partners',
-  contact: 'partners',
-  contact_type: 'partners',
-  sales: 'sales',
-  sale_line: 'sales',
-  sale_stage: 'sales',
-  tax: 'sales',
-  contract: 'sales',
-  leads: 'leads',
-  lead_stage: 'leads',
-  team_crm: 'leads',
-  company: 'company',
-  attachments: 'attachments',
-  attachments_storage: 'attachments',
-  attachments_route: 'attachments',
-  attachments_cache: 'attachments',
-  users: 'users',
-  roles: 'security',
-  rules: 'security',
-  access_list: 'security',
-  sessions: 'security',
-  models: 'security',
-  apps: 'security',
-  language: 'languages',
-  cron_job: 'cron',
-  saved_filters: 'saved_filters',
-  form_settings: 'studio',
-  system_settings: 'system_settings',
-  report_template: 'reports',
-  tasks: 'tasks',
-  project: 'tasks',
-  task_stage: 'tasks',
-  task_tag: 'tasks',
-  activity: 'activity',
-  activity_type: 'activity',
-  marketplace_app: 'marketplace',
-  marketplace_purchase: 'marketplace',
-  marketing_video: 'marketing',
-  marketing_channel: 'marketing',
-  marketing_publication: 'marketing',
-  marketing_rule: 'marketing',
-};
 
 const modelLabels: Record<string, string> = {
   phone_number: 'Номера',
@@ -209,7 +157,7 @@ function resolveModelMenuItem(
     );
     return null;
   }
-  const namespace = modelToNamespace[modelName] || modelName;
+  const namespace = modelNamespace(modelName);
   return {
     type: 'simple',
     id: `menu_${modelName}`,

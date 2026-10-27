@@ -20,7 +20,10 @@
     "email": "Email",
     "phone": "Phone",
     "mobile": "Mobile",
-    "progress": "Progress"
+    "progress": "Progress",
+    "connector_id": "Connector",
+    "team_id": "Team",
+    "contact_ids": "Contacts"
   },
   "lead_stage":{
     "id": "Id",
@@ -28,12 +31,14 @@
     "sequence": "Sequence",
     "color": "Color",
     "fold": "Folded",
-    "progress": "Default progress"
+    "progress": "Default progress",
+    "progress_auto": "Auto-set progress"
   },
   "team_crm": {
     "id": "Id",
     "title": "CRM Teams",
-    "name": "Team Name"
+    "name": "Team Name",
+    "user_ids": "Users"
   },
   "sale_link": {
     "create_sale": "Create order",

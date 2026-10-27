@@ -10,6 +10,7 @@
   "scheduleActivity": "Schedule activity",
   "summaryPlaceholder": "E.g. call the customer back",
   "fields": {
+    "id": "ID",
     "name": "Name",
     "summary": "Summary",
     "note": "Note",
@@ -26,7 +27,8 @@
     "icon": "Icon",
     "color": "Color",
     "default_days": "Default days",
-    "sequence": "Sequence"
+    "sequence": "Sequence",
+    "notification_sent": "Notification sent"
   },
   "sections": {
     "note": "Note"

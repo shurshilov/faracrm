@@ -24,7 +24,9 @@
     "action": "Action",
     "code": "Module code",
     "verified": "Verified by administration",
-    "vendor_verified": "Verified vendor"
+    "vendor_verified": "Verified vendor",
+    "app_id": "App",
+    "payment_id": "Payment"
   },
   "tabs": {
     "main": "General",

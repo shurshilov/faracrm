@@ -25,7 +25,13 @@
     "order_line_ids": "Позиции заказа",
     "contact_ids": "Контакты",
     "lead_id": "Лид",
-    "progress": "Прогресс"
+    "progress": "Прогресс",
+    "amount_untaxed": "Сумма без налога",
+    "amount_tax": "Налоги",
+    "amount_total": "Итого",
+    "amount_undiscounted": "Сумма до скидки",
+    "amount_paid": "Оплачено / аванс",
+    "contract_id": "Договор"
   },
   "sale_line": {
     "title": "Позиции заказа",
@@ -40,11 +46,13 @@
     "price_subtotal": "Подитог",
     "price_tax": "Сумма налога",
     "price_total": "Итого",
-    "notes": "Заметки"
+    "notes": "Заметки",
+    "price_undiscounted": "Подитог без скидки"
   },
   "tax": {
     "title": "Налоги",
-    "name": "Название налога"
+    "name": "Название налога",
+    "amount": "Ставка"
   },
   "sale_stage":{
     "id": "Ид",
@@ -52,6 +60,7 @@
     "sequence": "Порядок",
     "color": "Цвет",
     "fold": "Свёрнута",
-    "progress": "Прогресс по умолчанию"
+    "progress": "Прогресс по умолчанию",
+    "progress_auto": "Прогресс автоматически"
   }
 }

@@ -411,6 +411,99 @@
       "relations": "Relations"
     }
   },
+  "phone_number": {
+    "number": "Number",
+    "extension": "Extension",
+    "sip_password": "SIP password",
+    "kind": "Number type",
+    "lead_generation": "Lead on answered call",
+    "lead_generation_missed": "Lead on missed call",
+    "create_partner": "Create partner",
+    "ignore": "Hide from history"
+  },
+  "call": {
+    "uniqueid": "PBX call ID",
+    "direction": "Direction",
+    "is_internal": "Internal",
+    "disposition": "Disposition",
+    "number_from": "From",
+    "number_to": "To",
+    "started_at": "Started at",
+    "duration": "Duration, s",
+    "duration_talk": "Talk time, s",
+    "phone_number_id": "Phone number",
+    "record_id": "Call recording"
+  },
+  "asterisk_log": {
+    "kind": "Event kind",
+    "event_type": "Event type",
+    "uniqueid": "PBX call ID",
+    "note": "Note",
+    "payload": "Event payload"
+  },
+  "chat_connector": {
+    "category": "Category",
+    "marketing": "Publishes marketing videos",
+    "contact_type_id": "Contact type",
+    "connector_url": "API URL",
+    "webhook_hash": "Webhook secret hash",
+    "webhook_state": "Webhook state",
+    "access_token": "Access Token",
+    "access_token_expired": "Access Token expires",
+    "refresh_token": "Refresh Token",
+    "refresh_token_expired": "Refresh Token expires",
+    "access_token_type": "Token type",
+    "client_app_id": "App ID",
+    "notify": "Duplicate notifications",
+    "lead_type": "Lead type",
+    "lead_stage_id": "Initial lead stage",
+    "lead_generation": "Lead generation",
+    "lead_distribution": "Lead distribution",
+    "lead_set_date_deadline": "Set lead deadline",
+    "last_response": "Last API response",
+    "outbox_account_id": "Outbox account",
+    "account_ids": "External accounts",
+    "routing_rule_ids": "Routing rules",
+    "manager_ids": "Managers",
+    "smtp_host": "SMTP host",
+    "smtp_port": "SMTP port",
+    "smtp_encryption": "SMTP encryption",
+    "imap_host": "IMAP host",
+    "imap_port": "IMAP port",
+    "imap_ssl": "IMAP SSL",
+    "imap_last_uid": "Last IMAP UID",
+    "email_username": "Email username",
+    "email_password": "Email password",
+    "email_from": "From address",
+    "email_from_name": "From name",
+    "email_reply_to": "Reply-To address",
+    "email_bounce": "Bounce address",
+    "email_default_subject": "Default subject",
+    "client_secret": "Client secret",
+    "vk_confirmation": "Confirmation string (Callback API)",
+    "email": "Email",
+    "password": "Password",
+    "license_id": "License ID",
+    "sip_ws_url": "SIP WebSocket URL",
+    "sip_realm": "SIP realm",
+    "sip_ice": "Own ICE/TURN server"
+  },
+  "chat_external_account": {
+    "lead_generation": "Lead generation",
+    "lead_generation_missed": "Lead generation on missed calls"
+  },
+  "chat_external_chat": {
+    "item_title": "Listing title",
+    "item_url": "Listing URL"
+  },
+  "chat_folder": {
+    "domain": "Chat filter"
+  },
+  "chat_routing_rule_lead": {
+    "field_name": "Field",
+    "condition": "Condition",
+    "value": "Value"
+  },
   "fields": {
     "id": "ID",
     "name": "Name",

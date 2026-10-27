@@ -7,13 +7,21 @@
     "image": "Аватар",
     "role_ids": "Роли",
     "lang": "Язык",
+    "lang_id": "Язык",
     "lang_ids": "Доступные языки",
+    "workspace_id": "Рабочее место",
+    "call_connector_id": "Канал звонков по умолчанию",
+    "team_ids": "Команды",
+    "notification_popup": "Всплывающие уведомления",
+    "notification_sound": "Звук уведомлений",
     "active": "Активен",
     "is_admin": "Суперпользователь",
     "contact_ids": "Контакты",
     "home_page": "Домашняя страница",
     "layout_theme": "Тема интерфейса",
-    "signature": "Подпись в письмах"
+    "signature": "Подпись в письмах",
+    "payout_account": "Счёт для выплат",
+    "verified": "Подтверждённый продавец"
   },
   "role_ids":{
     "user_ids": "Пользователи"

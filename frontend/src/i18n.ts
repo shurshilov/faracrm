@@ -114,6 +114,10 @@ import ruExcel from './fara_excel/locales/ru.json';
 import enMarketing from './fara_marketing/locales/en.json';
 import ruMarketing from './fara_marketing/locales/ru.json';
 
+// fara_contract — договоры
+import enContract from './fara_contract/locales/en.json';
+import ruContract from './fara_contract/locales/ru.json';
+
 
 // ============ Склейка переводов ============
 const resources = {
@@ -146,6 +150,7 @@ const resources = {
     excel: enExcel,
     studio: enStudio,
     marketing: enMarketing,
+    contract: enContract,
   },
   ru: {
     common: ruCommon,
@@ -175,6 +180,7 @@ const resources = {
     excel: ruExcel,
     studio: ruStudio,
     marketing: ruMarketing,
+    contract: ruContract,
   },
 };
 
@@ -212,6 +218,7 @@ i18n
       'excel',
       'studio',
       'marketing',
+      'contract',
     ],
 
     interpolation: {

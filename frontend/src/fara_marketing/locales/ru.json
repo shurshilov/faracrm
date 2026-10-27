@@ -43,7 +43,9 @@
     "proxy_url": "Прокси",
     "authorized": "Подключён",
     "url": "Ссылка",
-    "publication_ids": "Публикации"
+    "publication_ids": "Публикации",
+    "access_token_expires": "Срок действия токена",
+    "external_account_id": "Ид аккаунта"
   },
   "hints": {
     "connector_id": "Только коннекторы, которые поддерживают маркетинг: Telegram и MAX публикуют сообщением, ВКонтакте — сторис сообщества",

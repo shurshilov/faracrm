@@ -25,7 +25,13 @@
     "order_line_ids": "Order Lines",
     "contact_ids": "Contacts",
     "lead_id": "Lead",
-    "progress": "Progress"
+    "progress": "Progress",
+    "amount_untaxed": "Untaxed Amount",
+    "amount_tax": "Taxes",
+    "amount_total": "Total",
+    "amount_undiscounted": "Amount Before Discount",
+    "amount_paid": "Paid / Advance",
+    "contract_id": "Contract"
   },
   "sale_line": {
     "title": "Order Lines",
@@ -40,11 +46,13 @@
     "price_subtotal": "Subtotal",
     "price_tax": "Tax Amount",
     "price_total": "Total",
-    "notes": "Notes"
+    "notes": "Notes",
+    "price_undiscounted": "Subtotal Without Discount"
   },
   "tax": {
     "title": "Taxes",
-    "name": "Tax Name"
+    "name": "Tax Name",
+    "amount": "Amount"
   },
   "sale_stage":{
     "id": "Id",
@@ -52,6 +60,7 @@
     "sequence": "Sequence",
     "color": "Color",
     "fold": "Folded",
-    "progress": "Default progress"
+    "progress": "Default progress",
+    "progress_auto": "Auto-set progress"
   }
 }

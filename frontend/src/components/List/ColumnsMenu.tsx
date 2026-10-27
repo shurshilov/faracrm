@@ -5,7 +5,9 @@
  * Поповер со всеми полями модели (из GET /auto/{model}/fields) открывает
  * пункт меню вида («Колонки» в ListMenu, «Поля карточки» в канбане);
  * якорь поповера — сама кнопка меню, она приходит как children, а
- * открыт/закрыт решает родитель (opened/onOpenChange). Галочка = поле
+ * открыт/закрыт решает родитель (opened/onOpenChange). Строка поля —
+ * подпись (перевод модуля / Field.string из Студии), техническое имя,
+ * если отличается, и тип; поиск — по подписи и имени. Галочка = поле
  * показано; порядок — стрелками или перетаскиванием строки за «грип»
  * (dnd-kit sortable, как карточки канбана); «По умолчанию» — сброс к
  * полям вью.
@@ -55,7 +57,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useTranslation } from 'react-i18next';
 import { useGetFieldsQuery, FieldInfoResponse } from '@/services/api/crudApi';
+import { fieldLabel } from '@/components/Form/fieldLabel';
 import type { FilterExpression } from '@/services/api/crudTypes';
 import { ColumnRelationSettings } from './ColumnRelationSettings';
 import type {
@@ -169,6 +173,7 @@ export function ColumnsMenu({
   onReset,
   onClose,
 }: ColumnsMenuProps) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   // Колонка-связь с раскрытой настройкой (виджет + фильтр).
   const [settingsFor, setSettingsFor] = useState<string | null>(null);
@@ -180,6 +185,13 @@ export function ColumnsMenu({
     return map;
   }, [allFields]);
 
+  // Подпись поля: перевод модуля / Field.string (её задают в Студии для
+  // доп. полей вроде x_char_1), иначе техническое имя.
+  const labelOf = (name: string) => {
+    const info = fieldsByName.get(name);
+    return info ? fieldLabel(t, model, info) : name;
+  };
+
   const selectedSet = useMemo(() => new Set(selected), [selected]);
 
   // Поля модели, которых нет в видимых — их можно добавить.
@@ -190,7 +202,10 @@ export function ColumnsMenu({
   );
 
   const q = search.trim().toLowerCase();
-  const matches = (name: string) => !q || name.toLowerCase().includes(q);
+  const matches = (name: string) =>
+    !q ||
+    name.toLowerCase().includes(q) ||
+    labelOf(name).toLowerCase().includes(q);
 
   const handleToggle = (name: string, checked: boolean) => {
     if (checked) {
@@ -278,6 +293,24 @@ export function ColumnsMenu({
         style={{ textTransform: 'none' }}>
         {t}
       </Badge>
+    );
+  };
+
+  // Подпись, техническое имя (если отличается) и тип поля.
+  const fieldTitle = (name: string, c?: 'dimmed') => {
+    const label = labelOf(name);
+    return (
+      <Group gap={6} wrap="nowrap">
+        <Text size="xs" c={c}>
+          {label}
+        </Text>
+        {label !== name && (
+          <Text size="xs" c="dimmed" fs="italic">
+            {name}
+          </Text>
+        )}
+        {typeBadge(name)}
+      </Group>
     );
   };
 
@@ -379,12 +412,7 @@ export function ColumnsMenu({
                         onChange={e =>
                           handleToggle(name, e.currentTarget.checked)
                         }
-                        label={
-                          <Group gap={6} wrap="nowrap">
-                            <Text size="xs">{name}</Text>
-                            {typeBadge(name)}
-                          </Group>
-                        }
+                        label={fieldTitle(name)}
                       />
                     </SortableRow>
                   );
@@ -403,14 +431,7 @@ export function ColumnsMenu({
                 size="xs"
                 checked={false}
                 onChange={e => handleToggle(name, e.currentTarget.checked)}
-                label={
-                  <Group gap={6} wrap="nowrap">
-                    <Text size="xs" c="dimmed">
-                      {name}
-                    </Text>
-                    {typeBadge(name)}
-                  </Group>
-                }
+                label={fieldTitle(name, 'dimmed')}
               />
             ))}
 

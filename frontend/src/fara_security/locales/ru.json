@@ -26,7 +26,15 @@
     "update_user_id": "Изменил",
     "acl_ids": "Права доступа",
     "rule_ids": "Правила",
-    "user_ids": "Пользователи"
+    "user_ids": "Пользователи",
+    "app_id": "Приложение",
+    "based_role_ids": "Базовые роли",
+    "domain": "Условие (domain)",
+    "table_name": "Таблица",
+    "ui_menu": "Пункт меню",
+    "ui_menu_name": "Название пункта меню",
+    "installed": "Установлено",
+    "last_activity": "Последняя активность"
   },
   "sections": {
     "basicInfo": "Основная информация",

@@ -26,7 +26,15 @@
     "update_user_id": "Updated By",
     "acl_ids": "Access Lists",
     "rule_ids": "Rules",
-    "user_ids": "Users"
+    "user_ids": "Users",
+    "app_id": "App",
+    "based_role_ids": "Base roles",
+    "domain": "Condition (domain)",
+    "table_name": "Table",
+    "ui_menu": "Menu item",
+    "ui_menu_name": "Menu item name",
+    "installed": "Installed",
+    "last_activity": "Last activity"
   },
   "sections": {
     "basicInfo": "Basic Information",

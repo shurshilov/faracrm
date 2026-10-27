@@ -12,6 +12,8 @@
     "date_end": "End Date",
     "signed": "Signed",
     "active": "Active",
-    "notes": "Notes"
+    "notes": "Notes",
+    "stamp": "Print stamp",
+    "sale_ids": "Sales orders"
   }
 }

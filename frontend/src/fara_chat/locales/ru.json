@@ -411,6 +411,99 @@
       "relations": "Связи"
     }
   },
+  "phone_number": {
+    "number": "Номер",
+    "extension": "Внутренний номер",
+    "sip_password": "SIP-пароль",
+    "kind": "Тип номера",
+    "lead_generation": "Лид при отвеченном звонке",
+    "lead_generation_missed": "Лид при пропущенном звонке",
+    "create_partner": "Создавать партнёра",
+    "ignore": "Не показывать в истории"
+  },
+  "call": {
+    "uniqueid": "Ид звонка в АТС",
+    "direction": "Направление",
+    "is_internal": "Внутренний",
+    "disposition": "Результат",
+    "number_from": "Откуда",
+    "number_to": "Куда",
+    "started_at": "Начало",
+    "duration": "Длительность, с",
+    "duration_talk": "Разговор, с",
+    "phone_number_id": "Номер",
+    "record_id": "Запись разговора"
+  },
+  "asterisk_log": {
+    "kind": "Вид события",
+    "event_type": "Тип события",
+    "uniqueid": "Ид звонка в АТС",
+    "note": "Примечание",
+    "payload": "Данные события"
+  },
+  "chat_connector": {
+    "category": "Категория",
+    "marketing": "Публикует ролики маркетинга",
+    "contact_type_id": "Тип контакта",
+    "connector_url": "URL API",
+    "webhook_hash": "Секретный хеш вебхука",
+    "webhook_state": "Статус вебхука",
+    "access_token": "Access Token",
+    "access_token_expired": "Access Token истекает",
+    "refresh_token": "Refresh Token",
+    "refresh_token_expired": "Refresh Token истекает",
+    "access_token_type": "Тип токена",
+    "client_app_id": "Ид приложения",
+    "notify": "Дублировать уведомления",
+    "lead_type": "Тип лида",
+    "lead_stage_id": "Начальная стадия для лидов",
+    "lead_generation": "Генерация лидов",
+    "lead_distribution": "Распределение лидов",
+    "lead_set_date_deadline": "Ставить дедлайн лиду",
+    "last_response": "Последний ответ API",
+    "outbox_account_id": "Аккаунт для отправки",
+    "account_ids": "Внешние аккаунты",
+    "routing_rule_ids": "Правила маршрутизации",
+    "manager_ids": "Руководители",
+    "smtp_host": "SMTP-сервер",
+    "smtp_port": "SMTP-порт",
+    "smtp_encryption": "Шифрование SMTP",
+    "imap_host": "IMAP-сервер",
+    "imap_port": "IMAP-порт",
+    "imap_ssl": "IMAP SSL",
+    "imap_last_uid": "Последний UID IMAP",
+    "email_username": "Логин почты",
+    "email_password": "Пароль почты",
+    "email_from": "Адрес отправителя",
+    "email_from_name": "Имя отправителя",
+    "email_reply_to": "Адрес для ответа (Reply-To)",
+    "email_bounce": "Адрес для возвратов (bounce)",
+    "email_default_subject": "Тема письма по умолчанию",
+    "client_secret": "Секрет клиента",
+    "vk_confirmation": "Строка подтверждения (Callback API)",
+    "email": "Email",
+    "password": "Пароль",
+    "license_id": "Ид лицензии",
+    "sip_ws_url": "SIP WebSocket URL",
+    "sip_realm": "SIP realm",
+    "sip_ice": "Свой ICE/TURN-сервер"
+  },
+  "chat_external_account": {
+    "lead_generation": "Лидогенерация",
+    "lead_generation_missed": "Лидогенерация по пропущенным"
+  },
+  "chat_external_chat": {
+    "item_title": "Заголовок объявления",
+    "item_url": "Ссылка на объявление"
+  },
+  "chat_folder": {
+    "domain": "Условие отбора чатов"
+  },
+  "chat_routing_rule_lead": {
+    "field_name": "Поле",
+    "condition": "Условие",
+    "value": "Значение"
+  },
   "fields": {
     "id": "Ид",
     "name": "Название",

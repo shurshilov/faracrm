@@ -27,7 +27,8 @@
     "icon": "Иконка",
     "color": "Цвет",
     "default_days": "Дней по умолчанию",
-    "sequence": "Порядок"
+    "sequence": "Порядок",
+    "notification_sent": "Уведомление отправлено"
   },
   "sections": {
     "note": "Заметка"

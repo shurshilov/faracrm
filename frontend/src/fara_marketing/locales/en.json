@@ -43,7 +43,9 @@
     "proxy_url": "Proxy",
     "authorized": "Connected",
     "url": "Link",
-    "publication_ids": "Publications"
+    "publication_ids": "Publications",
+    "access_token_expires": "Access token expires",
+    "external_account_id": "Account ID"
   },
   "hints": {
     "connector_id": "Only connectors that support marketing: Telegram and MAX publish a message, VK — a community story",

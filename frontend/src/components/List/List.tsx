@@ -18,6 +18,7 @@ import {
   useState,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import {
   FaraRecord,
@@ -32,6 +33,7 @@ import {
   useFilteredSearchQuery,
 } from '@/components/SearchFilter/useFilteredSearchQuery';
 import { BooleanCell } from '@/components/ListCells';
+import { fieldLabel } from '@/components/Form/fieldLabel';
 import { buildRecordNav, RecordNavState } from '@/components/RecordNav';
 import { Field } from './Field';
 import { Toolbar } from './Toolbar';
@@ -83,6 +85,7 @@ export const List = <RecordType extends FaraRecord>({
 }: ListProps<RecordType>) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   // Общий фильтр вью из FilterContext. Здесь он нужен только для сброса
   // страницы при его изменении (см. эффект ниже). В сам запрос его —
@@ -330,7 +333,10 @@ export const List = <RecordType extends FaraRecord>({
       const obj: DataTableColumn = {
         // accessorKey: field.name.toLowerCase(),
         accessor: field.name.toLowerCase(),
-        title: customLabels[field.name] || field.name,
+        // Заголовок: метка из разметки вью, иначе подпись поля (перевод /
+        // Field.string из Студии), иначе техническое имя — колонки,
+        // добавленные через меню, не подписываются как x_char_1.
+        title: customLabels[field.name] || fieldLabel(t, props.model, field),
         sortable: true,
         resizable: true,
         sortKey: field.name.toLowerCase(),

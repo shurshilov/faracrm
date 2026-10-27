@@ -7,13 +7,21 @@
     "image": "Avatar",
     "role_ids": "Roles",
     "lang": "Language",
+    "lang_id": "Language",
     "lang_ids": "Available Languages",
+    "workspace_id": "Workspace",
+    "call_connector_id": "Default call channel",
+    "team_ids": "Teams",
+    "notification_popup": "Popup notifications",
+    "notification_sound": "Notification sound",
     "active": "Active",
     "is_admin": "Superuser",
     "contact_ids": "Contacts",
     "home_page": "Home Page",
     "layout_theme": "Layout Theme",
-    "signature": "Email signature"
+    "signature": "Email signature",
+    "payout_account": "Payout account",
+    "verified": "Verified vendor"
   },
   "role_ids":{
     "user_ids": "Users"

@@ -64,7 +64,7 @@
   "menu": {
     "form_settings": "Настройки форм"
   },
-  "formSettings": {
+  "form_settings": {
     "id": "Ид",
     "model_name": "Модель",
     "required": "Обязательные поля (JSON)",

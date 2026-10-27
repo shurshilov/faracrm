@@ -21,11 +21,14 @@ export function ViewListFormSettings() {
       model="form_settings"
       order="asc"
       sort="model_name">
-      <Field name="id" label={t('formSettings.id')} />
-      <Field name="model_name" label={t('formSettings.model_name')} />
-      <Field name="extra_placement" label={t('formSettings.extra_placement')} />
-      <Field name="required" label={t('formSettings.required')} />
-      <Field name="extra_fields" label={t('formSettings.extra_fields')} />
+      <Field name="id" label={t('form_settings.id')} />
+      <Field name="model_name" label={t('form_settings.model_name')} />
+      <Field
+        name="extra_placement"
+        label={t('form_settings.extra_placement')}
+      />
+      <Field name="required" label={t('form_settings.required')} />
+      <Field name="extra_fields" label={t('form_settings.extra_fields')} />
     </List>
   );
 }
@@ -36,17 +39,20 @@ export function ViewFormFormSettings(props: ViewFormProps) {
   return (
     <Form<FormSettingRecord> model="form_settings" {...props}>
       <FormSheet>
-        <Field name="model_name" label={t('formSettings.model_name')} />
+        <Field name="model_name" label={t('form_settings.model_name')} />
         <FormRow cols={3}>
           <Field
             name="extra_placement"
-            label={t('formSettings.extra_placement')}
+            label={t('form_settings.extra_placement')}
           />
-          <Field name="extra_columns" label={t('formSettings.extra_columns')} />
-          <Field name="extra_rows" label={t('formSettings.extra_rows')} />
+          <Field
+            name="extra_columns"
+            label={t('form_settings.extra_columns')}
+          />
+          <Field name="extra_rows" label={t('form_settings.extra_rows')} />
         </FormRow>
-        <Field name="required" label={t('formSettings.required')} />
-        <Field name="extra_fields" label={t('formSettings.extra_fields')} />
+        <Field name="required" label={t('form_settings.required')} />
+        <Field name="extra_fields" label={t('form_settings.extra_fields')} />
       </FormSheet>
     </Form>
   );

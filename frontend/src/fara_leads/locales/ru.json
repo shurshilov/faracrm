@@ -21,7 +21,10 @@
     "email": "Email",
     "phone": "Телефон",
     "mobile": "Мобильный",
-    "progress": "Прогресс"
+    "progress": "Прогресс",
+    "connector_id": "Коннектор",
+    "team_id": "Команда",
+    "contact_ids": "Контакты"
   },
   "lead_stage":{
     "id": "Ид",
@@ -29,12 +32,14 @@
     "sequence": "Порядок",
     "color": "Цвет",
     "fold": "Свёрнута",
-    "progress": "Прогресс по умолчанию"
+    "progress": "Прогресс по умолчанию",
+    "progress_auto": "Прогресс автоматически"
   },
   "team_crm": {
     "id": "Ид",
     "title": "Команды CRM",
-    "name": "Название команды"
+    "name": "Название команды",
+    "user_ids": "Пользователи"
   },
   "sale_link": {
     "create_sale": "Создать заказ",
