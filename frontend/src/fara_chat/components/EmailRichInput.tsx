@@ -4,6 +4,7 @@ import { useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import { Box } from '@mantine/core';
+import DOMPurify from 'dompurify';
 import { IconSignature, IconSignatureOff } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -116,10 +117,12 @@ export function EmailRichInput({
         )}
       </RichTextEditor.Toolbar>
       <RichTextEditor.Content className={styles.content} />
+      {/* Подпись — свой HTML из карточки; чистим, как и остальной HTML в
+          чате (EmailMessageContent), чтобы сырой код из API не исполнялся. */}
       {signature && signatureOn && (
         <Box
           className={styles.signature}
-          dangerouslySetInnerHTML={{ __html: signature }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(signature) }}
         />
       )}
     </RichTextEditor>
