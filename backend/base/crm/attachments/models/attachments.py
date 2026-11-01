@@ -36,31 +36,65 @@ logger = logging.getLogger(__name__)
 # (смещение, первые байты, семейство). Порядок важен — берётся первая
 # подошедшая: HEIC и AVIF — картинки в том же контейнере ftyp, что и mp4
 SIGNATURES = (
-    (0, b"%PDF-", "pdf"),
-    (0, b"\x89PNG", "image"),
-    (0, b"\xff\xd8\xff", "image"),  # JPEG
-    (0, b"GIF8", "image"),
-    (8, b"WEBP", "image"),  # RIFF....WEBP
-    (0, b"BM", "image"),
-    (0, b"II*\x00", "image"),  # TIFF
-    (0, b"MM\x00*", "image"),
-    (0, b"\x00\x00\x01\x00", "image"),  # ICO
-    (8, b"heic", "image"),
-    (8, b"heix", "image"),
-    (8, b"mif1", "image"),
-    (8, b"avif", "image"),
-    (4, b"ftyp", "media"),  # mp4, mov, m4a, 3gp
-    (0, b"\x1a\x45\xdf\xa3", "media"),  # webm, mkv
-    (0, b"OggS", "media"),
-    (0, b"ID3", "media"),  # mp3 с тегами
-    (0, b"\xff\xfb", "media"),  # mp3 без тегов
-    (0, b"\xff\xf3", "media"),
-    (0, b"\xff\xf2", "media"),
-    (0, b"\xff\xf1", "media"),  # aac
-    (8, b"WAVE", "media"),  # RIFF....WAVE
-    (8, b"AVI ", "media"),  # RIFF....AVI
-    (0, b"fLaC", "media"),
-    (0, b"#!AMR", "media"),
+    # --- СЕМЕЙСТВО DOCS / PDF ---
+    (0, b"%PDF-", "pdf"),  # application/pdf
+    # --- СЕМЕЙСТВО IMAGE (БЕЗОПАСНЫЕ КАРТИНКИ) ---
+    # Внимание: image/svg+xml СУДА НЕ ДОБАВЛЯЕТСЯ, так как содержит XML/JS и опасен для inline
+    (0, b"\x89PNG", "image"),  # image/png
+    (0, b"\xff\xd8\xff", "image"),  # image/jpeg
+    (0, b"GIF8", "image"),  # image/gif
+    (8, b"WEBP", "image"),  # image/webp (внутри контейнера RIFF)
+    (0, b"BM", "image"),  # image/bmp
+    (0, b"II*\x00", "image"),  # image/tiff (Intel byte order)
+    (0, b"MM\x00*", "image"),  # image/tiff (Motorola byte order)
+    (
+        0,
+        b"\x00\x00\x01\x00",
+        "image",
+    ),  # image/x-icon / image/vnd.microsoft.icon
+    (8, b"heic", "image"),  # image/heic
+    (8, b"heix", "image"),  # image/heic (вариация)
+    (8, b"mif1", "image"),  # image/heif
+    (8, b"avif", "image"),  # image/avif
+    # --- СЕМЕЙСТВО MEDIA (БЕЗОПАСНЫЕ АУДИО И ВИДЕО) ---
+    # Видео-контейнеры и базовые форматы
+    (
+        4,
+        b"ftyp",
+        "media",
+    ),  # video/mp4, audio/mp4, video/quicktime (mov), audio/m4a, video/3gpp
+    (
+        0,
+        b"\x1a\x45\xdf\xa3",
+        "media",
+    ),  # video/webm, audio/webm, video/x-matroska (mkv)
+    (0, b"OggS", "media"),  # audio/ogg, video/ogg, application/ogg
+    # Чистый MP3 (audio/mpeg)
+    (0, b"ID3", "media"),  # MP3 с тегами ID3v2
+    (0, b"\xff\xfb", "media"),  # MP3 без тегов (MPEG-1 Layer 3)
+    (0, b"\xff\xf3", "media"),  # MP3 без тегов (MPEG-2 Layer 3)
+    (0, b"\xff\xf2", "media"),  # MP3 без тегов (MPEG-2.5 Layer 3)
+    (0, b"\xff\xfa", "media"),  # Дополнительные фреймы MP3
+    (0, b"\xff\xf9", "media"),
+    (0, b"\xff\xe3", "media"),
+    # Чистый AAC (audio/aac)
+    (0, b"\xff\xf1", "media"),  # AAC ADTS (MPEG-4, без защиты)
+    (0, b"\xff\xf0", "media"),  # AAC ADTS (MPEG-4, с защитой CRC)
+    (0, b"\xff\xf9", "media"),  # AAC ADTS (MPEG-2, без защиты)
+    (0, b"\xff\xf8", "media"),  # AAC ADTS (MPEG-2, с защитой CRC)
+    (0, b"ADIF", "media"),  # Rare AAC ADIF формат
+    # Другие популярные аудиоформаты
+    (0, b"fLaC", "media"),  # audio/flac
+    (0, b"#!AMR", "media"),  # audio/amr
+    (0, b"MThd", "media"),  # audio/midi
+    # Обработка контейнеров RIFF (WAV, AVI и гибриды вроде RIFF-MP3)
+    (8, b"WAVE", "media"),  # audio/wav / audio/x-wav
+    (8, b"AVI ", "media"),  # video/x-msvideo (avi)
+    (
+        0,
+        b"RIFF",
+        "media",
+    ),  # Запасной вариант для RIFF-MP3, старых AVI и WebP без смещения
 )
 
 
@@ -71,17 +105,31 @@ def mimetype_essence(mimetype: str | None) -> str:
 
 
 def _inline_family(mimetype: str | None) -> str | None:
-    """Семейство типа, который просмотр показывает inline и который можно
-    подтвердить сигнатурой; None — у типа нет сигнатуры или он не inline."""
+    """
+    Семейство типа, который просмотр показывает inline и который можно подтвердить сигнатурой;
+    None — у типа нет сигнатуры или он не inline (безопасный офис, архивы).
+    "unsafe" — тип опасен для inline (HTML, SVG, XML), его нужно принудительно качать.
+    """
     mimetype = mimetype or ""
+
+    # 1. ЗАЩИТА: Явно отлавливаем опасные форматы, способные исполнять скрипты
+    if mimetype in (
+        "text/html",
+        "image/svg+xml",
+        "text/xml",
+        "application/xml",
+    ):
+        return "unsafe"
+
     if mimetype == "application/pdf":
         return "pdf"
-    if mimetype.startswith("image/") and mimetype != "image/svg+xml":
+
+    if mimetype.startswith("image/"):  # SVG мы уже отсекли выше
         return "image"
-    # webm и mp4 бывают и аудио, и видео: голосовое audio/webm по
-    # сигнатуре — video/webm
+
     if mimetype.startswith(("audio/", "video/")):
         return "media"
+
     return None
 
 

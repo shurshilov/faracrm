@@ -526,7 +526,7 @@ async def _wrap_relations_for_ui(
     record,
     response_data: dict,
     fields_client: list[str],
-    fields_client_nested: dict[str, list[str]],
+    fields_client_nested: dict[str, dict[str, Any]],
 ):
     """
     Обернуть O2M/M2M поля в {data, fields, total} формат для UI.
@@ -690,10 +690,12 @@ async def copy_record(
         record_id,
         fields=store_names + m2m_names + list(o2m_fields),
         fields_nested={
-            **{name: ["id"] for name in m2m_names},
-            **{
-                name: _copy_store_fields(field.relation_table)
-                for name, field in o2m_fields.items()
+            "fields": {
+                **{name: ["id"] for name in m2m_names},
+                **{
+                    name: _copy_store_fields(field.relation_table)
+                    for name, field in o2m_fields.items()
+                },
             },
         },
     )

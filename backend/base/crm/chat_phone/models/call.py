@@ -35,8 +35,27 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Сигнатуры форматов записи, отличных от mp3 (он же — дефолт, см.
-# Call._recording_mimetype).
-AUDIO_SIGNATURES = ((b"RIFF", "audio/wav"), (b"OggS", "audio/ogg"))
+# Важно: (8, b"WAVE") должна идти ВЫШЕ, чем (0, b"RIFF")
+AUDIO_SIGNATURES = (
+    # 1. Специфические гибридные контейнеры
+    (20, b"\x55\x00", "audio/mpeg"),  # MP3 внутри WAV контейнера
+    # 2. Базовые форматы по смещениям
+    (8, b"WAVE", "audio/wav"),
+    (0, b"OggS", "audio/ogg"),
+    # Чистый MP3
+    (0, b"ID3", "audio/mpeg"),
+    (0, b"\xff\xfb", "audio/mpeg"),
+    (0, b"\xff\xf3", "audio/mpeg"),
+    (0, b"\xff\xf2", "audio/mpeg"),
+    # Чистый AAC (добавлено)
+    (0, b"\xff\xf1", "audio/aac"),
+    (0, b"\xff\xf0", "audio/aac"),
+    (0, b"\xff\xf9", "audio/aac"),
+    (0, b"\xff\xf8", "audio/aac"),
+    (0, b"ADIF", "audio/aac"),
+    # Запасной медиа-контейнер
+    (0, b"RIFF", "audio/mpeg"),
+)
 
 
 class Call(AuditMixin, DotModel):
@@ -255,15 +274,12 @@ class Call(AuditMixin, DotModel):
 
     @staticmethod
     def _recording_mimetype(content: bytes) -> str:
-        """
-        Формат записи — по сигнатуре СОДЕРЖИМОГО: FreePBX пишет wav, облачные
-        АТС mp3, а имя файла бывает без расширения. Неверный Content-Type ломает
-        воспроизведение в браузере (скачанный файл при этом играет — плеер ОС
-        определяет формат сам). Всё неопознанное считаем mp3, как раньше.
-        """
-        for signature, mimetype in AUDIO_SIGNATURES:
-            if content.startswith(signature):
+        """Определяет точный MIME-тип аудио по его содержимому."""
+        for offset, magic, mimetype in AUDIO_SIGNATURES:
+            if content.startswith(magic, offset):
                 return mimetype
+
+        # Всё неопознанное по дефолту считаем MP3, как в старой логике
         return "audio/mpeg"
 
     @staticmethod
