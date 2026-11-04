@@ -8,6 +8,7 @@ import {
   isAudioMimetype,
   isDocxMimetype,
   isImageMimetype,
+  isPptxMimetype,
   isVideoMimetype,
   isXlsxMimetype,
 } from './fileIcons';
@@ -85,7 +86,11 @@ export function canEditAttachment(
   mimetype?: string | null,
   name?: string | null,
 ): boolean {
-  return isDocxMimetype(mimetype, name) || isXlsxMimetype(mimetype, name);
+  return (
+    isDocxMimetype(mimetype, name) ||
+    isXlsxMimetype(mimetype, name) ||
+    isPptxMimetype(mimetype, name)
+  );
 }
 
 function extensionOf(name?: string | null): string {

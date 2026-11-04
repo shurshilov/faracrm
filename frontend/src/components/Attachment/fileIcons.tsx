@@ -204,6 +204,22 @@ export function isXlsxMimetype(
   return !!name && name.toLowerCase().endsWith('.xlsx');
 }
 
+const PPTX_MIMETYPE =
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+/**
+ * Проверить, является ли файл презентацией PowerPoint (.pptx) — такие
+ * выводятся во встроенном просмотрщике (PPTXViewer). Имя — запасной признак,
+ * как у docx и xlsx.
+ */
+export function isPptxMimetype(
+  mimetype?: string | null,
+  name?: string | null,
+): boolean {
+  if (mimetype === PPTX_MIMETYPE) return true;
+  return !!name && name.toLowerCase().endsWith('.pptx');
+}
+
 /**
  * Форматировать размер файла
  */

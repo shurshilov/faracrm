@@ -16,6 +16,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@docx-editor.dev/core": "2.23.0",
     "@docx-editor.dev/react": "2.23.0",
+    "@extend-ai/react-pptx": "^0.2.2",
     "@fortune-sheet/react": "1.0.4",
     "@mantine/core": "^9.5.0",
     "@mantine/dates": "^9.5.0",
