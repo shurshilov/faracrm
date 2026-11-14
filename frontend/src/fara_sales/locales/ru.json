@@ -16,7 +16,7 @@
     "name": "Номер заказа",
     "date_order": "Дата заказа",
     "stage_id": "Стадия",
-    "partner_id": "Клиент",
+    "partner_id": "Партнёр",
     "user_id": "Менеджер",
     "company_id": "Компания",
     "origin": "Источник",
