@@ -313,9 +313,12 @@ class TestPartnerChatFromWizard:
     """POST /chats с партнёром — чат клиента, а не внутренний."""
 
     async def test_group_with_partner_is_external(
-        self, client, db_service, db_pool, partner_factory, staff
+        self, client, db_service, db_pool, partner_factory, staff, contact_type
     ):
         partner = await partner_factory(name="Клиент")
+        await _contact(
+            contact_type, "client@example.com", partner_id=partner.id
+        )
 
         resp = await _create_partner_group(
             client, staff.alice, partner.id, "Клиент"
@@ -331,7 +334,7 @@ class TestPartnerChatFromWizard:
         # Раздел «Клиенты», а не «Сотрудники»
         resp = await client.get(
             "/chats",
-            params={"section": "partners"},
+            params={"section": "clients"},
             headers=staff.alice.headers,
         )
         assert resp.status_code == 200, resp.text

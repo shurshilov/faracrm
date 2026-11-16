@@ -28,9 +28,11 @@ import {
   GetListParams,
   GetListResult,
   FilterExpression,
+  SelectionOption,
 } from '@/services/api/crudTypes';
 import { useFilteredSearchQuery } from '@/components/SearchFilter/useFilteredSearchQuery';
 import { BooleanCell, DateTimeCell } from '@/components/ListCells';
+import { TruncatedText } from '@/components/TruncatedText';
 import { ColumnsMenu } from '@/components/List/ColumnsMenu';
 import { useColumnConfig } from '@/components/List/useColumnConfig';
 import { ViewMenu } from '@/components/ViewWrapper/ViewMenu';
@@ -65,38 +67,70 @@ import {
 } from '@reduxjs/toolkit/query/react';
 import classes from './Kanban.module.css';
 
-/** Типы полей по имени — из ответа поиска (data.fields). */
-type FieldTypes = Map<string, string>;
+/** Сведения о поле из ответа поиска (data.fields). */
+interface FieldInfo {
+  type: string;
+  /** Пары [код, подпись] у Selection — в карточке показываем подпись. */
+  options?: SelectionOption[];
+}
+
+/** Сведения о полях по имени — из ответа поиска (data.fields). */
+type FieldInfoMap = Map<string, FieldInfo>;
 
 interface KanbanCardProps {
   record: FaraRecord;
   model: string;
   fields: string[];
-  types: FieldTypes;
+  fieldInfo: FieldInfoMap;
+  /** Подписи полей карточки: у таких полей выводится «Подпись: значение». */
+  fieldLabels?: Record<string, string>;
   onClick: () => void;
 }
 
 /**
  * Значение поля в карточке — как в ячейке списка: флажок, дата, у связи —
  * имя записи, у связи-списка — число записей. Пусто — строки нет.
+ *
+ * Текстовые значения отдаются строкой: карточка рисует их в одну строку с
+ * «…» и подсказкой полного текста. Флажок и дата — готовыми узлами: им
+ * обрезка не нужна, у даты уже есть своя подсказка с полным временем.
  */
-function fieldValue(type: string | undefined, value: unknown): ReactNode {
+type FieldDisplay =
+  | { kind: 'text'; text: string }
+  | { kind: 'node'; node: ReactNode };
+
+function fieldDisplay(
+  info: FieldInfo | undefined,
+  value: unknown,
+): FieldDisplay | null {
   if (value === null || value === undefined || value === '') return null;
-  if (type === 'Boolean') return <BooleanCell value={value === true} />;
-  if (type === 'Datetime' || type === 'Date') {
-    return (
-      <DateTimeCell
-        value={String(value)}
-        format={type === 'Date' ? 'date' : 'compact'}
-      />
-    );
+  const type = info?.type;
+  if (type === 'Boolean') {
+    return { kind: 'node', node: <BooleanCell value={value === true} /> };
   }
-  if (Array.isArray(value)) return String(value.length);
+  if (type === 'Datetime' || type === 'Date') {
+    return {
+      kind: 'node',
+      node: (
+        <DateTimeCell
+          value={String(value)}
+          format={type === 'Date' ? 'date' : 'compact'}
+        />
+      ),
+    };
+  }
+  if (Array.isArray(value)) return { kind: 'text', text: String(value.length) };
   if (typeof value === 'object') {
     const rel = value as { id?: unknown; name?: unknown };
-    return rel.name ? String(rel.name) : `#${String(rel.id)}`;
+    return {
+      kind: 'text',
+      text: rel.name ? String(rel.name) : `#${String(rel.id)}`,
+    };
   }
-  return String(value);
+  // Selection: код варианта заменяем подписью (company → «Юридическое лицо»),
+  // как в форме и фильтрах; неизвестный код показываем как есть.
+  const option = info?.options?.find(([code]) => code === String(value));
+  return { kind: 'text', text: option?.[1] ?? String(value) };
 }
 
 /**
@@ -113,7 +147,8 @@ function KanbanCardBody({
   record,
   model,
   fields,
-  types,
+  fieldInfo,
+  fieldLabels,
 }: Omit<KanbanCardProps, 'onClick'>) {
   const { before, after, replace } = getExtensionsForKanbanCard(model);
 
@@ -127,20 +162,31 @@ function KanbanCardBody({
       {before.map((Before, i) => (
         <Before key={`before-${i}`} record={record} model={model} />
       ))}
-      <Text fw={500} truncate>
-        {record.name || `#${record.id}`}
-      </Text>
+      {/* Название — до двух строк (issue #79), остальные строки — по одной
+          с «…»; полный текст не влезшей строки виден в подсказке. */}
+      <TruncatedText fw={500} lines={2} text={record.name || `#${record.id}`} />
       {fields.map(field => {
         if (field === 'id' || field === 'name') {
           return null;
         }
-        const value = fieldValue(types.get(field), record[field]);
-        if (value === null) {
+        const display = fieldDisplay(fieldInfo.get(field), record[field]);
+        if (display === null) {
           return null;
         }
-        return (
+        // Подпись выводим только там, где её задал вью (fieldLabels): без неё
+        // карточка остаётся «как ячейки списка» — только значения.
+        const label = fieldLabels?.[field];
+        return display.kind === 'text' ? (
+          <TruncatedText
+            key={field}
+            size="sm"
+            c="dimmed"
+            text={label ? `${label}: ${display.text}` : display.text}
+          />
+        ) : (
           <Text key={field} size="sm" c="dimmed" truncate>
-            {value}
+            {label ? `${label}: ` : null}
+            {display.node}
           </Text>
         );
       })}
@@ -156,7 +202,8 @@ function SortableKanbanCard({
   record,
   model,
   fields,
-  types,
+  fieldInfo,
+  fieldLabels,
   onClick,
 }: KanbanCardProps) {
   const {
@@ -190,7 +237,8 @@ function SortableKanbanCard({
             record={record}
             model={model}
             fields={fields}
-            types={types}
+            fieldInfo={fieldInfo}
+            fieldLabels={fieldLabels}
           />
         </Box>
         <ActionIcon
@@ -212,7 +260,8 @@ function SimpleKanbanCard({
   record,
   model,
   fields,
-  types,
+  fieldInfo,
+  fieldLabels,
   onClick,
 }: KanbanCardProps) {
   return (
@@ -227,7 +276,8 @@ function SimpleKanbanCard({
         record={record}
         model={model}
         fields={fields}
-        types={types}
+        fieldInfo={fieldInfo}
+        fieldLabels={fieldLabels}
       />
     </Card>
   );
@@ -238,7 +288,8 @@ interface KanbanColumnProps {
   records: FaraRecord[];
   model: string;
   fields: string[];
-  types: FieldTypes;
+  fieldInfo: FieldInfoMap;
+  fieldLabels?: Record<string, string>;
   onCardClick: (id: number) => void;
   /** Показать узкой полоской (stage.fold, пользователь не раскрыл). */
   folded?: boolean;
@@ -252,7 +303,8 @@ function KanbanColumn({
   records,
   model,
   fields,
-  types,
+  fieldInfo,
+  fieldLabels,
   onCardClick,
   folded = false,
   onToggleFold,
@@ -336,7 +388,8 @@ function KanbanColumn({
                   record={record}
                   model={model}
                   fields={fields}
-                  types={types}
+                  fieldInfo={fieldInfo}
+                  fieldLabels={fieldLabels}
                   onClick={() => onCardClick(Number(record.id))}
                 />
               ))}
@@ -352,6 +405,12 @@ export interface KanbanProps<T extends FaraRecord> {
   model: string;
   /** Поля карточки по умолчанию; пользователь меняет их через меню «⋮». */
   fields?: (keyof T & string)[];
+  /**
+   * Подписи полей карточки (имя поля → подпись): у таких полей перед значением
+   * выводится «Подпись: ». Как правило — переводы вью (см. fara_partners /
+   * Kanban): по умолчанию карточка, как и список, показывает только значения.
+   */
+  fieldLabels?: Record<string, string>;
   groupByField?: keyof T & string;
   groupByModel?: string;
   /** Жёсткий префильтр от родителя (комбинируется с общим фильтром вью). */
@@ -369,6 +428,7 @@ export interface KanbanProps<T extends FaraRecord> {
 export function Kanban<T extends FaraRecord>({
   model,
   fields = ['id', 'name'],
+  fieldLabels,
   groupByField,
   groupByModel,
   filter,
@@ -538,8 +598,13 @@ export function Kanban<T extends FaraRecord>({
 
   const records = recordsData?.data || [];
   const stages = stagesData?.data || [];
-  const types: FieldTypes = new Map(
-    (recordsData?.fields ?? []).map(f => [f.name, f.type]),
+  // Тип и варианты выбора полей — подписи вариантов нужны карточке, чтобы
+  // Selection показывался «Юридическое лицо», а не кодом `company`.
+  const fieldInfo: FieldInfoMap = new Map(
+    (recordsData?.fields ?? []).map(f => [
+      f.name,
+      { type: f.type, options: f.options },
+    ]),
   );
 
   // Меню «⋮» канбана: поля карточки. Поповер якорится на кнопку меню,
@@ -618,7 +683,8 @@ export function Kanban<T extends FaraRecord>({
                     records={recordsByStage.get(stageId) || []}
                     model={model}
                     fields={cardFields}
-                    types={types}
+                    fieldInfo={fieldInfo}
+                    fieldLabels={fieldLabels}
                     onCardClick={handleCardClick}
                     folded={!!stage.fold && !unfolded.has(stageId)}
                     onToggleFold={
@@ -637,9 +703,11 @@ export function Kanban<T extends FaraRecord>({
                 radius="md"
                 withBorder
                 className={classes.dragOverlay}>
-                <Text fw={500}>
-                  {activeRecord.name || `#${activeRecord.id}`}
-                </Text>
+                <TruncatedText
+                  fw={500}
+                  lines={2}
+                  text={activeRecord.name || `#${activeRecord.id}`}
+                />
               </Card>
             ) : null}
           </DragOverlay>
@@ -659,7 +727,8 @@ export function Kanban<T extends FaraRecord>({
             record={record}
             model={model}
             fields={cardFields}
-            types={types}
+            fieldInfo={fieldInfo}
+            fieldLabels={fieldLabels}
             onClick={() => handleCardClick(Number(record.id))}
           />
         ))}
